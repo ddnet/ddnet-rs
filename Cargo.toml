@@ -206,6 +206,11 @@ crossbeam = "0.8.4"
 chrono = { version = "0.4.39", features = ["serde"] }
 egui-notify = { git = "https://github.com/ItsEthra/egui-notify", rev = "3a25512d43f04354686c796d1fd5295b3ca854e0" }
 
+# Better patches are always welcome
+#[target.'cfg(target_os = "windows")'.patch.crates-io]
+[patch.crates-io]
+ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branch = "pr_mingw_workaround" }
+
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14.1"
 ndk = { version = "0.9.0", default-features = false }
