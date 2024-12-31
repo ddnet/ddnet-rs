@@ -4,12 +4,10 @@ contact_links:
     url: https://ddnet.org/discord
     about: Please ask questions in our official discord.
   - name: Feature requests, refactors & concepts
-    url: https://github.com/ddnet/ddnet-rs-rfcs
+    url: https://github.com/ddnet/ddnet-rs-rfc
     about: Please use our rfc repository for feature requests, concepts or bigger refactors. You can also discuss such things in our chat rooms (discord etc.)
-  - name: Questions (Matrix)
+  - name: Questions (Matrix & IRC)
     url: https://matrix.to/#/#ddnet:ddnet.org
-    about: Please ask questions in our official Matrix space. It's bridged to discord
-  - name: Questions (IRC) #ddnet
-    about: We also have a IRC channel bridged to discord.
+    about: 'Please ask questions in our official Matrix space. Or on irc #ddnet. It''s bridged to discord.'
 
 
