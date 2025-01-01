@@ -744,7 +744,7 @@ impl<T> HiUnsafeMutex<T> {
     /// Even tho this function is not unsafe in the sense of memory safety,
     /// this function is only intended to be used by macros that know what they are doing.
     /// In case you call, it you risk panics.
-    pub unsafe fn borrow(&self) -> std::sync::MutexGuard<T> {
+    pub unsafe fn hi_borrow(&self) -> std::sync::MutexGuard<T> {
         self.0.lock().unwrap()
     }
 

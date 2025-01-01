@@ -2,7 +2,6 @@
 
 cargo build -p api
 cargo build -p base
-cargo build -p base-log
 cargo build -p graphics-types
 cargo build -p native
 cargo build -p ui-base
@@ -30,6 +29,7 @@ cargo build -p image
 cargo build -p sound
 cargo build -p wasm-logic-fs
 cargo build -p av-encoder
+cargo build -p av-encoder --features ffmpeg
 cargo build -p base-io-traits
 cargo build -p config-macro
 cargo build -p graphics-base-traits
