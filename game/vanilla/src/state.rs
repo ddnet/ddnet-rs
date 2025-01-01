@@ -1428,15 +1428,20 @@ pub mod state {
             }
         }
 
-        fn chech_player_info(&self, mut info: NetworkCharacterInfo) -> NetworkCharacterInfo {
+        fn chech_player_info(
+            &self,
+            mut info: NetworkCharacterInfo,
+            player_id: Option<PlayerId>,
+        ) -> NetworkCharacterInfo {
             // check if the name is already in use
             let name_exists = |name: &str| {
                 self.game.stages.values().any(|s| {
                     s.world
                         .characters
-                        .values()
+                        .iter()
+                        .filter_map(|(id, c)| (Some(*id) != player_id).then_some(c))
                         .any(|c| c.player_info.player_info.name.as_str() == name)
-                }) || self.game.spectator_players.any_with_name(name)
+                }) || self.game.spectator_players.any_with_name(player_id, name)
             };
             let mut name = info.name.clone();
             if name_exists(name.as_str()) {
@@ -1917,7 +1922,7 @@ pub mod state {
             let player_id = self.id_generator.next_id();
             let stage_0_id = self.stage_0_id;
 
-            let character_info = self.chech_player_info(client_player_info.info.clone());
+            let character_info = self.chech_player_info(client_player_info.info.clone(), None);
 
             self.game
                 .stages
@@ -2071,7 +2076,7 @@ pub mod state {
             version: NonZeroU64,
         ) {
             let old_info = &mut None;
-            let new_info = self.chech_player_info(info.clone());
+            let new_info = self.chech_player_info(info.clone(), Some(*id));
             let mut stage_id = self.stage_0_id;
             if let Some(player) = self.game.players.player(id) {
                 stage_id = player.stage_id();
@@ -2138,10 +2143,7 @@ pub mod state {
                 old_info
                     .take()
                     .and_then(|(old_name, old_skin, old_skin_info)| {
-                        (old_name != new_info.name
-                            || old_skin != new_info.skin
-                            || old_skin_info != new_info.skin_info)
-                            .then_some((old_name, old_skin, old_skin_info))
+                        (old_name != new_info.name).then_some((old_name, old_skin, old_skin_info))
                     })
             {
                 let stage = self.game.stages.get(&stage_id).unwrap();
