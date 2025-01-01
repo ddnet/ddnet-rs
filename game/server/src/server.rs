@@ -38,6 +38,7 @@ use game_database::{
     traits::{DbInterface, DbKind, DbKindExtra},
 };
 use game_database_backend::GameDbBackend;
+use game_state_wasm::game::state_wasm_manager::GameStateWasmManager;
 use http_accounts::http::AccountHttp;
 use master_server_types::response::RegisterResponse;
 use network::network::{
@@ -59,12 +60,11 @@ use network::network::{
 };
 use pool::{datatypes::PoolFxLinkedHashMap, mt_datatypes::PoolCow, pool::Pool};
 use rand::RngCore;
+use sql::database::{Database, DatabaseDetails};
 use vanilla::{
     command_chain::{Command, CommandChain},
     sql::account_info::AccountInfo,
 };
-use game_state_wasm::game::state_wasm_manager::GameStateWasmManager;
-use sql::database::{Database, DatabaseDetails};
 use x509_cert::der::Encode;
 
 use crate::{
@@ -1066,8 +1066,12 @@ impl Server {
                         }
                     }
                     ClientToServerPlayerMessage::Chat(msg) => {
+                        fn prepare_msg(msg: &str) -> String {
+                            msg.trim_matches(char::is_whitespace)
+                                .replace(|c: char| c.is_control(), "")
+                        }
                         let mut handle_msg = |msg: &str, channel: NetChatMsgPlayerChannel| {
-                            if !msg.is_empty() {
+                            if !prepare_msg(msg).is_empty() {
                                 if self
                                     .game_server
                                     .game
@@ -1158,41 +1162,45 @@ impl Server {
                                 handle_msg(&msg, NetChatMsgPlayerChannel::GameTeam);
                             }
                             MsgClChatMsg::Whisper { receiver_id, msg } => {
-                                if let (
-                                    Some(own_char_info),
-                                    Some(recv_char_info),
-                                    Some(recv_client),
-                                ) = (
-                                    self.game_server.cached_character_infos.get(player_id),
-                                    self.game_server.cached_character_infos.get(&receiver_id),
-                                    self.game_server.players.get(&receiver_id),
-                                ) {
-                                    let net_channel = NetworkInOrderChannel::Custom(3841); // This number reads as "chat".
-                                    let pkt = ServerToClientMessage::Chat(MsgSvChatMsg {
-                                        msg: NetChatMsg {
-                                            sender: ChatPlayerInfo {
-                                                id: *player_id,
-                                                name: own_char_info.info.name.clone(),
-                                                skin: own_char_info.info.skin.clone(),
-                                                skin_info: own_char_info.info.skin_info,
-                                            },
-                                            msg: msg.to_string(),
-                                            channel: NetChatMsgPlayerChannel::Whisper(
-                                                ChatPlayerInfo {
-                                                    id: receiver_id,
-                                                    name: recv_char_info.info.name.clone(),
-                                                    skin: recv_char_info.info.skin.clone(),
-                                                    skin_info: recv_char_info.info.skin_info,
+                                if !prepare_msg(&msg).is_empty() {
+                                    if let (
+                                        Some(own_char_info),
+                                        Some(recv_char_info),
+                                        Some(recv_client),
+                                    ) = (
+                                        self.game_server.cached_character_infos.get(player_id),
+                                        self.game_server.cached_character_infos.get(&receiver_id),
+                                        self.game_server.players.get(&receiver_id),
+                                    ) {
+                                        let net_channel = NetworkInOrderChannel::Custom(3841); // This number reads as "chat".
+                                        let pkt = ServerToClientMessage::Chat(MsgSvChatMsg {
+                                            msg: NetChatMsg {
+                                                sender: ChatPlayerInfo {
+                                                    id: *player_id,
+                                                    name: own_char_info.info.name.clone(),
+                                                    skin: own_char_info.info.skin.clone(),
+                                                    skin_info: own_char_info.info.skin_info,
                                                 },
-                                            ),
-                                        },
-                                    });
+                                                msg: msg.to_string(),
+                                                channel: NetChatMsgPlayerChannel::Whisper(
+                                                    ChatPlayerInfo {
+                                                        id: receiver_id,
+                                                        name: recv_char_info.info.name.clone(),
+                                                        skin: recv_char_info.info.skin.clone(),
+                                                        skin_info: recv_char_info.info.skin_info,
+                                                    },
+                                                ),
+                                            },
+                                        });
 
-                                    self.network.send_in_order_to(
-                                        &pkt,
-                                        &recv_client.network_id,
-                                        net_channel,
-                                    );
+                                        self.network.send_in_order_to(
+                                            &pkt,
+                                            &recv_client.network_id,
+                                            net_channel,
+                                        );
+                                        // and also send it back to the sender
+                                        self.network.send_in_order_to(&pkt, con_id, net_channel);
+                                    }
                                 }
                             }
                         }

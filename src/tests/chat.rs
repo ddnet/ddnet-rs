@@ -39,6 +39,7 @@ pub fn test_chat(
                 tee_render: render_tee,
                 mode: ChatMode::Global,
                 character_infos: &Default::default(),
+                local_character_ids: &Default::default(),
             });
         };
         render_helper(
