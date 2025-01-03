@@ -1,0 +1,128 @@
+name: Build
+
+on:
+  push:
+    branches-ignore:
+      - gh-readonly-queue/**
+  pull_request:
+  merge_group:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        include:
+        - os: ubuntu-latest
+          features-debug: "bundled_data_dir,ffmpeg,microphone"
+          features: "bundled_data_dir,ffmpeg,microphone"
+          bin: ddnet-rs
+        - os: macOS-latest
+          features-debug: "bundled_data_dir,ffmpeg,microphone"
+          features: "bundled_data_dir,ffmpeg,microphone"
+          bin: ddnet-rs
+        - os: windows-latest
+          # ffmpeg takes years on win
+          features-debug: "bundled_data_dir,microphone"
+          features: "bundled_data_dir,ffmpeg,microphone"
+          bin: ddnet-rs.exe
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash {0}' }}
+    steps:
+    - name: Prepare Windows (msys2)
+      uses: msys2/setup-msys2@v2
+      if: contains(matrix.os, 'windows')
+      with:
+        msystem: MINGW64
+  
+    - name: Configure Windows Path for msys2
+      shell: powershell {0}
+      if: contains(matrix.os, 'windows')
+      run: |
+        $env:PATH = "${{ steps.msys2.outputs.msys2-location }}/usr/bin;" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        [System.Environment]::SetEnvironmentVariable("Path", $env:PATH, "User")
+
+    - name: Configure rustup for msys2
+      if: contains(matrix.os, 'windows')
+      run: |
+        export PATH="/c/users/$(whoami)/.cargo/bin:$PATH"
+        echo -e "export PATH=\"/c/users/$(whoami)/.cargo/bin:\$PATH\"\n" >> ~/.bash_profile
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - run: |
+        rustup toolchain install stable --profile minimal
+
+    - name: Prepare Linux
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        sudo apt update -y
+        sudo apt install rustc cargo gcc libwayland-dev libasound2-dev nasm -y
+        # for ffmpeg
+        sudo apt install -y clang libavcodec-dev libavformat-dev libavutil-dev libx264-dev
+
+    - name: Prepare macOS
+      if: contains(matrix.os, 'macOS')
+      run: |
+        brew update || true
+        brew install pkg-config autoconf automake || true
+        # for ffmpeg
+        brew install ffmpeg || true
+
+    - name: Prepare msys
+      if: contains(matrix.os, 'windows')
+      run: |
+        set MINGW_ARCH=mingw64
+        # important detail: mingw-w64-x86_64-libx264 is installed for the package config files!
+        pacman --noconfirm -S git make mingw-w64-x86_64-libx264 mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm mingw-w64-x86_64-opus
+        # self compile for now
+        # https://github.com/msys2/MINGW-packages/issues/8824
+        git clone https://github.com/mirror/x264 ~/x264
+        (
+          cd ~/x264
+          ./configure --enable-static
+          make -j$(nproc)
+        )
+        rm /mingw64/lib/libx264.dll.a
+        mv ~/x264/libx264.a /mingw64/lib/libx264.a
+        rustup target add x86_64-pc-windows-gnu
+        rustup update stable
+        rustup set default-host x86_64-pc-windows-gnu
+        rustup default stable-x86_64-pc-windows-gnu
+
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Build debug
+      run: cargo build --verbose --features ${{ matrix.features-debug }}
+
+    - name: Build release
+      run: cargo build --release --verbose --features ${{ matrix.features }}
+
+    - name: Prepare artifacts
+      run: |
+        mkdir bin-artifacts || true
+        mv target/release/${{ matrix.bin }} bin-artifacts
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ddnet-rs-${{ matrix.os }}
+        path: bin-artifacts
+
+    - name: Build release with steam
+      run: cargo build --release --verbose --features ${{ matrix.features }},enable_steam
+
+    - name: Prepare artifacts
+      run: |
+        mkdir bin-artifacts || true
+        mv target/release/${{ matrix.bin }} bin-artifacts
+
+    - name: Upload Artifacts steam
+      uses: actions/upload-artifact@v4
+      with:
+        name: ddnet-rs-${{ matrix.os }}-steam
+        path: bin-artifacts

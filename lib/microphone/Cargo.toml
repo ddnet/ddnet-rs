@@ -19,11 +19,12 @@ deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "978576
 ndarray = { version = "=0.15", optional = true }
 atomic_enum = { version = "0.3.0", optional = true }
 opus = { version = "0.3.0", optional = true }
+audiopus_sys = { version = "0.2.2", features = ["static"], optional = true }
 rubato = { version = "0.16.1", optional = true }
 
 [package.metadata.cargo-machete]
 ignored = ["deep_filter"]
 
 [features]
-cpal_opus = ["dep:cpal", "dep:deep_filter", "dep:ndarray", "dep:atomic_enum", "dep:opus", "dep:rubato"]
+cpal_opus = ["dep:cpal", "dep:deep_filter", "dep:ndarray", "dep:atomic_enum", "dep:audiopus_sys", "dep:opus", "dep:rubato"]
 default = []
