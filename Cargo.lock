@@ -6260,7 +6260,7 @@ dependencies = [
  "pollster",
  "pool",
  "prefix-trie",
- "quinn 0.11.3",
+ "quinn 0.11.7",
  "rand",
  "rcgen",
  "rustls",
@@ -7460,23 +7460,6 @@ dependencies = [
 
 [[package]]
 name = "quinn"
-version = "0.11.3"
-source = "git+https://github.com/Jupeyy/quinn?rev=190b1f1121566c45d6ba72316b19ad944a7d964d#190b1f1121566c45d6ba72316b19ad944a7d964d"
-dependencies = [
- "bytes",
- "pin-project-lite",
- "quinn-proto 0.11.6",
- "quinn-udp 0.5.4",
- "rustc-hash 2.1.0",
- "rustls",
- "socket2",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "quinn"
 version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62e96808277ec6f97351a2380e6c25114bc9e67037775464979f3037c92d05ef"
@@ -7484,7 +7467,7 @@ dependencies = [
  "bytes",
  "pin-project-lite",
  "quinn-proto 0.11.9",
- "quinn-udp 0.5.9",
+ "quinn-udp 0.5.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 2.1.0",
  "rustls",
  "socket2",
@@ -7494,18 +7477,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "quinn-proto"
-version = "0.11.6"
-source = "git+https://github.com/Jupeyy/quinn?rev=190b1f1121566c45d6ba72316b19ad944a7d964d#190b1f1121566c45d6ba72316b19ad944a7d964d"
+name = "quinn"
+version = "0.11.7"
+source = "git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48#1d71f49f0efbbdd9b0e84ada8d23daf556125a48"
 dependencies = [
  "bytes",
- "rand",
- "ring",
+ "pin-project-lite",
+ "quinn-proto 0.11.10",
+ "quinn-udp 0.5.9 (git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48)",
  "rustc-hash 2.1.0",
  "rustls",
- "slab",
- "thiserror 1.0.69",
- "tinyvec",
+ "socket2",
+ "thiserror 2.0.9",
+ "tokio",
  "tracing",
 ]
 
@@ -7530,15 +7514,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "quinn-udp"
-version = "0.5.4"
-source = "git+https://github.com/Jupeyy/quinn?rev=190b1f1121566c45d6ba72316b19ad944a7d964d#190b1f1121566c45d6ba72316b19ad944a7d964d"
+name = "quinn-proto"
+version = "0.11.10"
+source = "git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48#1d71f49f0efbbdd9b0e84ada8d23daf556125a48"
 dependencies = [
- "libc",
- "once_cell",
- "socket2",
+ "bytes",
+ "getrandom",
+ "rand",
+ "ring",
+ "rustc-hash 2.1.0",
+ "rustls",
+ "rustls-pki-types",
+ "slab",
+ "thiserror 2.0.9",
+ "tinyvec",
  "tracing",
- "windows-sys 0.59.0",
+ "web-time",
 ]
 
 [[package]]
@@ -7553,6 +7544,19 @@ dependencies = [
  "socket2",
  "tracing",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "quinn-udp"
+version = "0.5.9"
+source = "git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48#1d71f49f0efbbdd9b0e84ada8d23daf556125a48"
+dependencies = [
+ "cfg_aliases 0.2.1",
+ "libc",
+ "once_cell",
+ "socket2",
+ "tracing",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
