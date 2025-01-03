@@ -5,8 +5,8 @@ use client_containers::skins::SkinContainer;
 use client_render_base::render::tee::RenderTee;
 use client_types::chat::{ChatMsg, MsgSystem, ServerMsg, SystemMsgPlayerSkin};
 use client_ui::chat::user_data::{ChatMode, MsgInChat};
-use game_base::network::types::chat::NetChatMsgPlayerChannel;
-use game_interface::types::character_info::NetworkSkinInfo;
+use game_base::network::types::chat::{ChatPlayerInfo, NetChatMsgPlayerChannel};
+use game_interface::types::{character_info::NetworkSkinInfo, id_gen::IdGenerator};
 use graphics::{
     graphics::graphics::Graphics,
     handles::{canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle},
@@ -38,6 +38,7 @@ impl ChatPage {
         pipe: &mut UiRenderPipe<()>,
         ui_state: &mut UiState,
     ) {
+        let id_gen = IdGenerator::default();
         let mut entries: VecDeque<MsgInChat> = vec![
             MsgInChat {
                 msg: ServerMsg::Chat(ChatMsg {
@@ -49,7 +50,7 @@ impl ChatPage {
                         feet_color: ubvec4::new(255, 255, 255, 255),
                     },
                     msg: "test".into(),
-                    channel: NetChatMsgPlayerChannel::Global,
+                    channel: NetChatMsgPlayerChannel::GameTeam,
                 }),
                 add_time: Duration::MAX,
             },
@@ -66,7 +67,15 @@ impl ChatPage {
                             smth like that bla bla bla bla bla bla bla bla bla bla \
                             bla bla bla bla bla bla"
                         .into(),
-                    channel: NetChatMsgPlayerChannel::Global,
+                    channel: NetChatMsgPlayerChannel::Whisper(ChatPlayerInfo {
+                        id: id_gen.next_id(),
+                        name: "other".try_into().unwrap(),
+                        skin: "skin".try_into().unwrap(),
+                        skin_info: NetworkSkinInfo::Custom {
+                            body_color: ubvec4::new(0, 255, 255, 255),
+                            feet_color: ubvec4::new(255, 255, 255, 255),
+                        },
+                    }),
                 }),
                 add_time: Duration::MAX,
             },
@@ -150,7 +159,13 @@ impl ChatPage {
                     skin_container: &mut self.skin_container,
                     render_tee: &self.render_tee,
                     mode: ChatMode::Global,
+
                     character_infos: &Default::default(),
+                    local_character_ids: &Default::default(),
+
+                    find_player_prompt: &mut Default::default(),
+                    find_player_id: &mut Default::default(),
+                    cur_whisper_player_id: &mut Default::default(),
                 },
             ),
             ui_state,

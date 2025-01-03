@@ -11,7 +11,7 @@ use super::user_data::UserData;
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
         // active input comes first (most bottom)
-        super::input::render(ui, pipe);
+        super::input::render(ui, ui_state, pipe);
 
         for msg in pipe.user_data.entries.iter() {
             let time_diff = if pipe.user_data.show_chat_history {

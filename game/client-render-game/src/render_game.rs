@@ -1,4 +1,10 @@
-use std::{borrow::Borrow, collections::HashMap, num::NonZeroU32, sync::Arc, time::Duration};
+use std::{
+    borrow::Borrow,
+    collections::{HashMap, HashSet},
+    num::NonZeroU32,
+    sync::Arc,
+    time::Duration,
+};
 
 use crate::components::{
     cursor::{RenderCursor, RenderCursorPipe},
@@ -781,6 +787,7 @@ impl RenderGame {
 
         render_info: &RenderGameInput,
         mut player_info: Option<(&PlayerId, &mut RenderGameForPlayer)>,
+        local_player_ids: &Option<HashSet<PlayerId>>,
         player_vote_rect: &mut Option<Rect>,
         expects_player_vote_miniscreen: bool,
     ) -> Vec<PlayerFeedbackEvent> {
@@ -806,6 +813,9 @@ impl RenderGame {
                 false
             };
 
+            let dummy_local_player_ids = HashSet::default();
+            let local_player_ids = local_player_ids.as_ref().unwrap_or(&dummy_local_player_ids);
+
             res.extend(
                 self.chat
                     .render(&mut ChatRenderPipe {
@@ -820,6 +830,7 @@ impl RenderGame {
                         skin_container: &mut self.containers.skin_container,
                         tee_render: &mut self.players.tee_renderer,
                         character_infos: &render_info.character_infos,
+                        local_character_ids: local_player_ids,
                     })
                     .into_iter()
                     .map(PlayerFeedbackEvent::Chat),
@@ -2526,6 +2537,7 @@ impl RenderGameInterface for RenderGame {
         self.handle_events(cur_time, &mut input);
 
         let mut has_scoreboard = false;
+        let mut has_chat_input = false;
 
         let mut next_sound_listeners = self.world_sound_listeners_pool.new();
         std::mem::swap(&mut *next_sound_listeners, &mut self.world_sound_listeners);
@@ -2576,6 +2588,7 @@ impl RenderGameInterface for RenderGame {
             }
 
             has_scoreboard |= player.render_for_player.scoreboard_active;
+            has_chat_input |= player.render_for_player.chat_info.is_some();
         }
 
         // always clear motd if scoreboard is open
@@ -2584,11 +2597,21 @@ impl RenderGameInterface for RenderGame {
             self.motd.started_at = None;
         }
 
+        // only call this when chat input is active, since it will allocate memory on heap
+        let local_player_ids = has_chat_input.then(|| {
+            input
+                .players
+                .keys()
+                .copied()
+                .chain(input.dummies.iter().copied())
+                .collect()
+        });
+
         let player_count = input.players.len();
         if player_count == 0 {
             self.render_ingame(config_map, cur_time, &input, None);
             self.backend_handle.consumble_multi_samples();
-            let _ = self.render_uis(cur_time, &input, None, &mut None, false);
+            let _ = self.render_uis(cur_time, &input, None, &local_player_ids, &mut None, false);
         } else {
             let players_per_row = Self::calc_players_per_row(player_count);
             let window_props = self.canvas_handle.window_props();
@@ -2660,6 +2683,7 @@ impl RenderGameInterface for RenderGame {
                     cur_time,
                     &input,
                     Some((player_id, render_for_player_game)),
+                    &local_player_ids,
                     &mut player_vote_rect,
                     expected_vote_miniscreen,
                 );

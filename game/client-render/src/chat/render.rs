@@ -1,4 +1,7 @@
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::{HashSet, VecDeque},
+    time::Duration,
+};
 
 use base::linked_hash_map_view::FxLinkedHashMap;
 use client_containers::skins::SkinContainer;
@@ -8,7 +11,10 @@ use client_ui::chat::{
     user_data::{ChatEvent, ChatMode, MsgInChat, UserData},
 };
 use egui::Color32;
-use game_interface::types::{id_types::CharacterId, render::character::CharacterInfo};
+use game_interface::types::{
+    id_types::{CharacterId, PlayerId},
+    render::character::CharacterInfo,
+};
 use graphics::{
     graphics::graphics::Graphics,
     handles::{
@@ -40,6 +46,7 @@ pub struct ChatRenderPipe<'a> {
     pub skin_container: &'a mut SkinContainer,
     pub tee_render: &'a RenderTee,
     pub character_infos: &'a FxLinkedHashMap<CharacterId, CharacterInfo>,
+    pub local_character_ids: &'a HashSet<CharacterId>,
 }
 
 pub struct ChatRender {
@@ -48,6 +55,10 @@ pub struct ChatRender {
 
     pub msgs: RememberMut<VecDeque<MsgInChat>>,
     pub last_render_options: Option<ChatRenderOptions>,
+
+    find_player_prompt: String,
+    find_player_id: Option<PlayerId>,
+    cur_whisper_player_id: Option<PlayerId>,
 
     backend_handle: GraphicsBackendHandle,
     canvas_handle: GraphicsCanvasHandle,
@@ -65,6 +76,10 @@ impl ChatRender {
 
             msgs: Default::default(),
             last_render_options: None,
+
+            find_player_prompt: Default::default(),
+            find_player_id: Default::default(),
+            cur_whisper_player_id: Default::default(),
 
             backend_handle: graphics.backend_handle.clone(),
             canvas_handle: graphics.canvas_handle.clone(),
@@ -103,6 +118,10 @@ impl ChatRender {
             render_tee: pipe.tee_render,
             mode: pipe.mode,
             character_infos: pipe.character_infos,
+            local_character_ids: pipe.local_character_ids,
+            find_player_prompt: &mut self.find_player_prompt,
+            find_player_id: &mut self.find_player_id,
+            cur_whisper_player_id: &mut self.cur_whisper_player_id,
         };
         let mut dummy_pipe = UiRenderPipe::new(*pipe.cur_time, &mut user_data);
         let (screen_rect, full_output, zoom_level) = self.ui.render_cached(
