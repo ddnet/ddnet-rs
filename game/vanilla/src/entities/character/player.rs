@@ -196,9 +196,10 @@ pub mod player {
         pub fn contains_key(&self, id: &PlayerId) -> bool {
             self.players.get(id).is_some()
         }
-        pub fn any_with_name(&self, name: &str) -> bool {
+        pub fn any_with_name(&self, except_id: Option<PlayerId>, name: &str) -> bool {
             self.players
-                .values()
+                .iter()
+                .filter_map(|(id, p)| (Some(*id) != except_id).then_some(p))
                 .any(|p| p.player_info.player_info.name.as_str() == name)
         }
 
