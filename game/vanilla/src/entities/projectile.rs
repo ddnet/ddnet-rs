@@ -6,7 +6,7 @@ pub mod projectile {
     };
     use game_interface::types::id_types::{CharacterId, ProjectileId};
     use game_interface::types::render::game::game_match::MatchSide;
-    use game_interface::types::weapons::WeaponType;
+    use game_interface::types::render::projectiles::WeaponWithProjectile;
     use hiarc::Hiarc;
     use math::math::vector::vec2;
     use math::math::{length, lerp, normalize};
@@ -49,7 +49,7 @@ pub mod projectile {
 
     pub type PoolProjectileReusableCore = Recycle<ProjectileReusableCore>;
 
-    #[derive(Debug, Hiarc, Default, Copy, Clone, Serialize, Deserialize)]
+    #[derive(Debug, Hiarc, Copy, Clone, Serialize, Deserialize)]
     pub struct ProjectileCore {
         pub pos: vec2,
         pub vel: vec2,
@@ -58,7 +58,7 @@ pub mod projectile {
         pub damage: u32,
         pub force: f32,
         pub is_explosive: bool,
-        pub ty: WeaponType,
+        pub ty: WeaponWithProjectile,
         pub side: Option<MatchSide>,
     }
 
@@ -90,7 +90,7 @@ pub mod projectile {
             damage: u32,
             force: f32,
             explosive: bool,
-            ty: WeaponType,
+            ty: WeaponWithProjectile,
             pool: &ProjectilePool,
             game_pending_events: &GameWorldPendingEvents,
             simulation_events: &SimulationWorldEvents,
@@ -145,19 +145,18 @@ pub mod projectile {
             let speed;
 
             match core.ty {
-                WeaponType::Grenade => {
+                WeaponWithProjectile::Grenade => {
                     curvature = tuning.grenade_curvature;
                     speed = tuning.grenade_speed;
                 }
-                WeaponType::Shotgun => {
+                WeaponWithProjectile::Shotgun => {
                     curvature = tuning.shotgun_curvature;
                     speed = tuning.shotgun_speed;
                 }
-                WeaponType::Gun => {
+                WeaponWithProjectile::Gun => {
                     curvature = tuning.gun_curvature;
                     speed = tuning.gun_speed;
                 }
-                _ => panic!("Weapon types other than grenade, shotgun or gun are not supported"),
             }
 
             calc_pos_and_vel(pos, &mut core.vel, curvature, speed, time)
@@ -208,7 +207,7 @@ pub mod projectile {
                         None => DamageTypes::Character(&pipe.characters_helper.owner_character),
                     },
                     DamageBy::Weapon {
-                        weapon: self.core.ty,
+                        weapon: self.core.ty.into(),
                         flags: Default::default(),
                     },
                 );
@@ -225,7 +224,7 @@ pub mod projectile {
 
         fn tick(&mut self, pipe: &mut SimulationPipeProjectile) -> EntityTickResult {
             let ticks_per_second = TICKS_PER_SECOND;
-            let prev_pos = self.core.pos; // Self::get_pos(core, pt);
+            let prev_pos = self.core.pos;
             let mut cur_pos = self.core.pos;
             Self::advance_pos_and_dir(
                 pipe.collision,
@@ -257,10 +256,6 @@ pub mod projectile {
                 || self.core.life_span < 0
                 || Entity::<ProjectileId>::outside_of_playfield(&cur_pos, pipe.collision)
             {
-                if self.core.life_span >= 0 || self.core.ty == WeaponType::Grenade {
-                    //ent.entity_events.push(EntitiyEvent::Sound {}); // TODO: GameServer()->CreateSound(cur_pos, m_SoundImpact);
-                }
-
                 if self.core.is_explosive {
                     self.game_pending_events.push_sound(
                         Some(pipe.characters_helper.owner_character),
@@ -289,7 +284,7 @@ pub mod projectile {
                             None => DamageTypes::Character(&pipe.characters_helper.owner_character),
                         },
                         DamageBy::Weapon {
-                            weapon: self.core.ty,
+                            weapon: self.core.ty.into(),
                             flags: Default::default(),
                         },
                     );

@@ -3,7 +3,7 @@ pub mod events {
         events::GameWorldActionKillWeapon,
         types::{
             flag::FlagType, game::GameTickCooldown, id_types::CharacterId, pickup::PickupType,
-            weapons::WeaponType,
+            render::projectiles::WeaponWithProjectile,
         },
     };
     use hiarc::Hiarc;
@@ -82,7 +82,7 @@ pub mod events {
         Projectile {
             pos: vec2,
             dir: vec2,
-            ty: WeaponType,
+            ty: WeaponWithProjectile,
             lifetime: f32,
         },
         Laser {

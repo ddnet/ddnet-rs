@@ -4,10 +4,29 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{id_types::CharacterId, weapons::WeaponType};
 
+#[derive(
+    Debug, Hiarc, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, PartialOrd, Ord,
+)]
+pub enum WeaponWithProjectile {
+    Gun,
+    Shotgun,
+    Grenade,
+}
+
+impl From<WeaponWithProjectile> for WeaponType {
+    fn from(value: WeaponWithProjectile) -> Self {
+        match value {
+            WeaponWithProjectile::Gun => Self::Gun,
+            WeaponWithProjectile::Shotgun => Self::Shotgun,
+            WeaponWithProjectile::Grenade => Self::Grenade,
+        }
+    }
+}
+
 /// The ingame metric is 1 tile = 1.0 float units
 #[derive(Debug, Hiarc, Copy, Clone, Serialize, Deserialize)]
 pub struct ProjectileRenderInfo {
-    pub ty: WeaponType,
+    pub ty: WeaponWithProjectile,
     pub pos: vec2,
     pub vel: vec2,
 

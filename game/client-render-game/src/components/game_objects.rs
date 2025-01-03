@@ -13,6 +13,7 @@ use client_render_base::{
         toolkit::{get_ninja_as_quad, get_weapon_as_quad, pickup_scale},
     },
 };
+use game_base::game_types::intra_tick_time_to_ratio;
 use game_interface::types::{
     emoticons::EnumCount,
     flag::FlagType,
@@ -20,8 +21,11 @@ use game_interface::types::{
     laser::LaserType,
     pickup::PickupType,
     render::{
-        character::CharacterInfo, flag::FlagRenderInfo, laser::LaserRenderInfo,
-        pickup::PickupRenderInfo, projectiles::ProjectileRenderInfo,
+        character::CharacterInfo,
+        flag::FlagRenderInfo,
+        laser::LaserRenderInfo,
+        pickup::PickupRenderInfo,
+        projectiles::{ProjectileRenderInfo, WeaponWithProjectile},
     },
     weapons::WeaponType,
 };
@@ -43,7 +47,6 @@ use math::math::{
     PI_F64,
 };
 use num_traits::FromPrimitive;
-use game_base::game_types::intra_tick_time_to_ratio;
 
 pub struct GameObjectsRender {
     items_quad_container: QuadContainer,
@@ -51,7 +54,7 @@ pub struct GameObjectsRender {
     stream_handle: GraphicsStreamHandle,
 
     // offsets
-    ctf_flag_offset: usize, // TODO
+    ctf_flag_offset: usize,
     projectile_sprite_offset: usize,
     pickup_sprite_off: usize,
     particle_splat_off: usize,
@@ -209,7 +212,7 @@ impl GameObjectsRender {
 
         // add particle for this projectile
         // don't check for validity of the projectile for the current weapon here, so particle effects are rendered for mod compatibility
-        if ty == WeaponType::Grenade {
+        if ty == WeaponWithProjectile::Grenade {
             let mut effects = Effects::new(pipe.particle_manager, *pipe.cur_time);
             effects.smoke_trail(&pos, &(vel * -1.0), phased_alpha, 0.0, proj.owner_id);
 
@@ -227,11 +230,9 @@ impl GameObjectsRender {
         }
 
         let texture = match ty {
-            WeaponType::Hammer => panic!("hammers have no projectiles"),
-            WeaponType::Gun => &weapon.gun.projectiles[0],
-            WeaponType::Shotgun => &weapon.shotgun.weapon.projectiles[0],
-            WeaponType::Grenade => &weapon.grenade.weapon.projectiles[0],
-            WeaponType::Laser => panic!("lasers have no projectiles"),
+            WeaponWithProjectile::Gun => &weapon.gun.projectiles[0],
+            WeaponWithProjectile::Shotgun => &weapon.shotgun.weapon.projectiles[0],
+            WeaponWithProjectile::Grenade => &weapon.grenade.weapon.projectiles[0],
         };
         quad_scope.set_colors_from_single(1.0, 1.0, 1.0, phased_alpha);
         self.items_quad_container.render_quad_container_as_sprite(

@@ -15,6 +15,7 @@ pub mod character {
     use base::linked_hash_map_view::{
         FxLinkedHashMap, FxLinkedHashSet, LinkedHashMapView, LinkedHashMapViewMut,
     };
+    use game_base::mapdef_06::DdraceTileNum;
     use game_interface::{
         events::{
             GameBuffNinjaEventSound, GameBuffSoundEvent, GameCharacterEffectEvent,
@@ -32,6 +33,7 @@ pub mod character {
             render::{
                 character::{CharacterBuff, CharacterDebuff, TeeEye},
                 game::game_match::MatchSide,
+                projectiles::WeaponWithProjectile,
             },
             weapons::WeaponType,
         },
@@ -39,7 +41,6 @@ pub mod character {
     use hiarc::{hiarc_safer_rc_refcell, Hiarc};
     use pool::{datatypes::PoolFxLinkedHashMap, mt_pool::Pool as MtPool};
     use rustc_hash::FxHashSet;
-    use game_base::mapdef_06::DdraceTileNum;
 
     use super::{
         core::character_core::{Core, CoreEvents, CorePipe, CoreReusable, PHYSICAL_SIZE},
@@ -1049,7 +1050,7 @@ pub mod character {
                     pipe.entity_events.push(CharacterTickEvent::Projectile {
                         pos: proj_start_pos,
                         dir: direction,
-                        ty: WeaponType::Gun,
+                        ty: WeaponWithProjectile::Gun,
                         lifetime: tunings.gun_lifetime,
                     });
                     self.push_sound(
@@ -1075,7 +1076,7 @@ pub mod character {
                         pipe.entity_events.push(CharacterTickEvent::Projectile {
                             pos: proj_start_pos,
                             dir: vec2::new(a.cos(), a.sin()) * speed,
-                            ty: WeaponType::Shotgun,
+                            ty: WeaponWithProjectile::Shotgun,
                             lifetime: tunings.shotgun_lifetime,
                         });
                     }
@@ -1098,7 +1099,7 @@ pub mod character {
                     pipe.entity_events.push(CharacterTickEvent::Projectile {
                         pos: proj_start_pos,
                         dir: direction,
-                        ty: WeaponType::Grenade,
+                        ty: WeaponWithProjectile::Grenade,
                         lifetime: tunings.grenade_lifetime,
                     });
                     self.push_sound(

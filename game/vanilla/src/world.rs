@@ -20,7 +20,7 @@ pub mod world {
             id_types::{CharacterId, LaserId, PickupId, ProjectileId, StageId},
             input::{CharacterInput, CharacterInputConsumableDiff},
             pickup::PickupType,
-            render::game::game_match::MatchSide,
+            render::{game::game_match::MatchSide, projectiles::WeaponWithProjectile},
             weapons::WeaponType,
         },
     };
@@ -552,7 +552,7 @@ pub mod world {
             damage: u32,
             force: f32,
             explosive: bool,
-            ty: WeaponType,
+            ty: WeaponWithProjectile,
             side: Option<MatchSide>,
         ) {
             let projectile = Projectile::new(
@@ -780,11 +780,9 @@ pub mod world {
                                     1,
                                     0.0,
                                     match ty {
-                                        WeaponType::Hammer
-                                        | WeaponType::Gun
-                                        | WeaponType::Shotgun
-                                        | WeaponType::Laser => false,
-                                        WeaponType::Grenade => true,
+                                        WeaponWithProjectile::Gun
+                                        | WeaponWithProjectile::Shotgun => false,
+                                        WeaponWithProjectile::Grenade => true,
                                     },
                                     *ty,
                                     &pipe.world_pool.projectile_pool,
