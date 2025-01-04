@@ -1,4 +1,4 @@
-CREATE TABLE user_save (
+CREATE TABLE IF NOT EXISTS user_save (
     id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT,
     user_hash BINARY(32),
