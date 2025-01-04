@@ -39,6 +39,7 @@ pub mod character {
         },
     };
     use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use map::map::groups::layers::tiles::Tile;
     use pool::{datatypes::PoolFxLinkedHashMap, mt_pool::Pool as MtPool};
     use rustc_hash::FxHashSet;
 
@@ -99,6 +100,9 @@ pub mod character {
     }
 
     #[derive(Debug, Hiarc, Default, Serialize, Deserialize, Copy, Clone)]
+    pub struct CharacterCoreMod {}
+
+    #[derive(Debug, Hiarc, Default, Serialize, Deserialize, Copy, Clone)]
     pub struct CharacterCore {
         pub core: Core,
         // vanilla
@@ -129,6 +133,17 @@ pub mod character {
         /// is timeout e.g. by a network disconnect.
         /// this is a hint, not a logic variable.
         pub is_timeout: bool,
+
+        pub modifications: CharacterCoreMod,
+    }
+
+    impl CharacterCore {
+        fn get_core_mut_and_input(
+            &mut self,
+            _reusable_core: &CharacterReusableCore,
+        ) -> (&mut Core, &CharacterInput) {
+            (&mut self.core, &self.input)
+        }
     }
 
     #[derive(Debug, Hiarc, Serialize, Deserialize, Clone)]
@@ -228,6 +243,21 @@ pub mod character {
     }
 
     impl CharacterPhaseDead {
+        fn push_character_event(
+            simulation_events: &SimulationWorldEvents,
+            id: CharacterId,
+            killer_id: Option<CharacterId>,
+            weapon: GameWorldActionKillWeapon,
+        ) {
+            simulation_events.push_world(SimulationEventWorldEntityType::Character {
+                ev: CharacterEvent::Despawn {
+                    id,
+                    killer_id,
+                    weapon,
+                },
+            });
+        }
+
         pub fn new(
             id: CharacterId,
             respawn_in_ticks: GameTickCooldown,
@@ -242,13 +272,7 @@ pub mod character {
             silent: bool,
         ) -> Self {
             if !silent {
-                simulation_events.push_world(SimulationEventWorldEntityType::Character {
-                    ev: CharacterEvent::Despawn {
-                        id,
-                        killer_id,
-                        weapon,
-                    },
-                });
+                Self::push_character_event(simulation_events, id, killer_id, weapon);
                 game_pending_events.push(GameWorldEvent::Notification(
                     GameWorldNotificationEvent::Action(GameWorldAction::Kill {
                         killer: killer_id,
@@ -456,6 +480,24 @@ pub mod character {
             }
         }
 
+        fn respawn_weapons(reusable_core: &mut CharacterReusableCore) {
+            let gun = Weapon {
+                cur_ammo: Some(10),
+                next_ammo_regeneration_tick: 0.into(),
+            };
+            let hammer = Weapon {
+                cur_ammo: None,
+                next_ammo_regeneration_tick: 0.into(),
+            };
+            reusable_core.weapons.clear();
+            reusable_core.weapons.insert(WeaponType::Hammer, hammer);
+            reusable_core.weapons.insert(WeaponType::Gun, gun);
+        }
+
+        fn default_active_weapon() -> WeaponType {
+            WeaponType::Gun
+        }
+
         /// Call this and you can't forget to reset anything important
         #[must_use]
         pub(crate) fn respawn(
@@ -471,23 +513,12 @@ pub mod character {
                 health: 10,
                 armor: 0,
                 input: player_input,
-                active_weapon: WeaponType::Gun,
+                active_weapon: Self::default_active_weapon(),
                 ..Default::default()
             };
             let mut reusable_core = character_pool.character_reusable_cores_pool.new();
 
-            let gun = Weapon {
-                cur_ammo: Some(10),
-                next_ammo_regeneration_tick: 0.into(),
-            };
-            let hammer = Weapon {
-                cur_ammo: None,
-                next_ammo_regeneration_tick: 0.into(),
-            };
-
-            reusable_core.weapons.clear();
-            reusable_core.weapons.insert(WeaponType::Hammer, hammer);
-            reusable_core.weapons.insert(WeaponType::Gun, gun);
+            Self::respawn_weapons(&mut reusable_core);
 
             core.default_eye = player_info.player_info.default_eyes;
             core.eye = core.default_eye;
@@ -622,16 +653,20 @@ pub mod character {
                 .push_effect(Some(self.base.game_element_id), pos, ev);
         }
 
+        fn handle_game_layer_tiles(&mut self, tile: &Tile, res: &mut CharacterDamageResult) {
+            if tile.index == DdraceTileNum::Death as u8 {
+                self.die(None, GameWorldActionKillWeapon::World, Default::default());
+                *res = CharacterDamageResult::Death;
+            }
+        }
+
         #[must_use]
         fn handle_tiles(&mut self, old_pos: vec2, collision: &Collision) -> CharacterDamageResult {
             let mut res = CharacterDamageResult::None;
             let cur_pos = *self.pos.pos();
             collision.intersect_line_feedback(&old_pos, &cur_pos, |tile| match tile {
                 HitTile::Game(tile) => {
-                    if tile.index == DdraceTileNum::Death as u8 {
-                        self.die(None, GameWorldActionKillWeapon::World, Default::default());
-                        res = CharacterDamageResult::Death;
-                    }
+                    self.handle_game_layer_tiles(tile, &mut res);
                 }
                 HitTile::Front(tile) => {
                     if tile.index == DdraceTileNum::Death as u8 {
@@ -758,6 +793,7 @@ pub mod character {
             killer_id: CharacterId,
             force: &vec2,
             _source: &vec2,
+            _friendly_fire_ty: FriendlyFireTy,
             mut dmg_amount: u32,
             from: DamageTypes,
             by: DamageBy,
@@ -878,6 +914,7 @@ pub mod character {
                 killer_id,
                 force,
                 source,
+                friendly_fire_ty,
                 dmg_amount,
                 from,
                 by,
@@ -1243,6 +1280,10 @@ pub mod character {
                 }
                 buff.remaining_tick.is_some()
             });
+            self.reusable_core.debuffs.retain_with_order(|_, buff| {
+                buff.remaining_tick.tick();
+                buff.remaining_tick.is_some()
+            });
 
             self.handle_ninja(pipe);
         }
@@ -1424,6 +1465,9 @@ pub mod character {
                 });
         }
 
+        /// For modifications
+        fn mod_tick(&mut self) {}
+
         fn handle_ticks(&mut self) {
             self.core.attack_recoil.tick();
             self.core.no_ammo_sound.tick();
@@ -1454,16 +1498,18 @@ pub mod character {
         }
 
         fn tick(&mut self, pipe: &mut SimulationPipeCharacter) -> EntityTickResult {
+            self.mod_tick();
             self.handle_ticks();
 
             self.handle_weapon_switch(None, None);
 
             let old_pos = *self.pos.pos();
+            let (core, input) = self.core.get_core_mut_and_input(&self.reusable_core);
             let mut core_pipe = CorePipe {
                 characters: pipe.characters,
-                input: &self.core.input,
+                input,
             };
-            self.core.core.physics_tick(
+            core.physics_tick(
                 &mut self.pos,
                 self.phased.hook_mut(),
                 true,

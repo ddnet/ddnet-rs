@@ -6,7 +6,7 @@ pub mod match_manager {
     use hiarc::{hi_closure, Hiarc};
 
     use crate::{
-        events::events::{CharacterEvent, FlagEvent},
+        events::events::{CharacterEvent, CharacterEventMod, FlagEvent},
         match_state::match_state::{Match, MatchState, MatchType},
         simulation_pipe::simulation_pipe::{
             SimulationEventWorldEntityType, SimulationStageEvents, SimulationWorldEvent,
@@ -53,6 +53,14 @@ pub mod match_manager {
             }
         }
 
+        fn mod_event(
+            _world: &mut GameWorld,
+            _game_match: &mut Match,
+            _game_options: &GameOptions,
+            _ev: &CharacterEventMod,
+        ) {
+        }
+
         fn handle_events(&mut self, world: &mut GameWorld) {
             let game_match = &mut self.game_match;
             let game_options = &self.game_options;
@@ -61,18 +69,24 @@ pub mod match_manager {
                     match ev {
                         SimulationWorldEvent::Entity(entity_ev) => match &entity_ev.ev {
                             SimulationEventWorldEntityType::Character { ev, .. } => {
-                                let CharacterEvent::Despawn { killer_id, id: victim_id, .. } = ev;
-                                if let Some(char) = killer_id.and_then(|killer_id| world.characters.get_mut(&killer_id)) {
-                                    if Some(*victim_id) == *killer_id {
-                                        char.score.set(char.score.get() - 1);
-                                    }
-                                    else {
-                                        char.score.set(char.score.get() + 1);
-                                        if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
-                                            scores[team as usize] += 1;
+                                match ev {
+                                    CharacterEvent::Despawn { killer_id, id: victim_id, .. } => {
+                                        if let Some(char) = killer_id.and_then(|killer_id| world.characters.get_mut(&killer_id)) {
+                                            if Some(*victim_id) == *killer_id {
+                                                char.score.set(char.score.get() - 1);
+                                            }
+                                            else {
+                                                char.score.set(char.score.get() + 1);
+                                                if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
+                                                    scores[team as usize] += 1;
+                                                }
+                                            }
+                                            game_match.win_check(game_options, &world.scores, false);
                                         }
                                     }
-                                    game_match.win_check(game_options, &world.scores, false);
+                                    CharacterEvent::Mod(mod_ev) => {
+                                        MatchManager::mod_event(world, game_match,game_options, mod_ev);
+                                    }
                                 }
                             },
                             SimulationEventWorldEntityType::Flag { ev, .. } => {

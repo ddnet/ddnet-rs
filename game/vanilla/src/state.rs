@@ -65,7 +65,7 @@ pub mod state {
     use game_base::mapdef_06::EEntityTiles;
     use game_interface::interface::{
         GameStateCreate, GameStateCreateOptions, GameStateInterface, GameStateServerOptions,
-        GameStateStaticInfo, MAX_MAP_NAME_LEN,
+        GameStateStaticInfo, MAX_MAP_NAME_LEN, MAX_PHYSICS_GAME_TYPE_NAME_LEN,
     };
     use game_interface::types::render::character::{
         CharacterBuff, CharacterBuffInfo, CharacterDebuff, CharacterDebuffInfo,
@@ -88,7 +88,7 @@ pub mod state {
 
     use crate::collision::collision::Tunings;
     use crate::command_chain::{Command, CommandChain};
-    use crate::config::{ConfigGameType, ConfigVanilla};
+    use crate::config::config::{ConfigGameType, ConfigVanilla};
     use crate::entities::character::character::{self, CharacterPlayerTy};
     use crate::entities::character::core::character_core::Core;
     use crate::entities::character::player::player::{
@@ -224,6 +224,26 @@ pub mod state {
     }
 
     impl GameState {
+        fn get_game_type_from_conf(conf: ConfigGameType) -> GameType {
+            match conf {
+                ConfigGameType::Ctf => GameType::Team,
+                ConfigGameType::Dm => GameType::Solo,
+            }
+        }
+
+        fn get_mod_name_from_conf(
+            conf: ConfigGameType,
+        ) -> NetworkString<MAX_PHYSICS_GAME_TYPE_NAME_LEN> {
+            match conf {
+                ConfigGameType::Dm => "dm".try_into().unwrap(),
+                ConfigGameType::Ctf => "ctf".try_into().unwrap(),
+            }
+        }
+
+        fn is_sided_from_conf(conf: ConfigGameType) -> bool {
+            matches!(conf, ConfigGameType::Ctf)
+        }
+
         fn new_impl(
             map: Vec<u8>,
             map_name: NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
@@ -302,10 +322,7 @@ pub mod state {
                 .and_then(|config| serde_json::from_slice(&config).ok())
                 .unwrap_or_default();
 
-            let game_type = match config.game_type {
-                ConfigGameType::Ctf => GameType::Team,
-                ConfigGameType::Dm => GameType::Solo,
-            };
+            let game_type = Self::get_game_type_from_conf(config.game_type);
 
             let (statements, account_info) = db_task.get_storage().ok().flatten().unzip();
 
@@ -486,15 +503,12 @@ pub mod state {
                     rcon_commands,
                     config: serde_json::to_vec(&config).ok(),
 
-                    mod_name: match config.game_type {
-                        ConfigGameType::Dm => "dm".try_into().unwrap(),
-                        ConfigGameType::Ctf => "ctf".try_into().unwrap(),
-                    },
+                    mod_name: Self::get_mod_name_from_conf(config.game_type),
                     version: "pre-alpha".try_into().unwrap(),
                     options: GameStateServerOptions {
                         physics_group_name: "vanilla".try_into().unwrap(),
                         allow_stages: config.allow_stages,
-                        use_vanilla_sides: matches!(config.game_type, ConfigGameType::Ctf),
+                        use_vanilla_sides: Self::is_sided_from_conf(config.game_type),
                         use_account_name: has_accounts,
                         forced_ingame_camera_zoom: Some(FixedZoomLevel::new_lossy(1.0)),
                         allows_voted_player_miniscreen: config.allow_player_vote_cam,
@@ -2403,7 +2417,7 @@ pub mod state {
                     }
                 }
                 ClientCommand::JoinSide(side) => {
-                    if matches!(self.config.game_type, ConfigGameType::Ctf) {
+                    if Self::is_sided_from_conf(self.config.game_type) {
                         if let Some(player) = self.game.players.player(player_id) {
                             let stage = self.game.stages.get_mut(&player.stage_id()).unwrap();
                             if let Some(character) = stage.world.characters.get_mut(player_id) {

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use proc_macro::{TokenStream, TokenTree};
-use quote::ToTokens;
+use quote::{format_ident, ToTokens};
 use syn::{parse::Parse, parse_macro_input, ImplItem, Item, TraitItem};
 /*
 fn rewrite_exact_mod_name(tokens: &mut String, mod_name: &str, new_mod_name: &str) {
@@ -73,11 +73,11 @@ fn impl_mod(base_tokens: TokenStream, mod_tokens: TokenStream) -> TokenStream {
                 }
             }*/
 
-            for item in mod_input.content.unwrap().1 {
+            'next_item: for item in mod_input.content.unwrap().1 {
                 match item {
                     Item::Impl(mod_impl) => {
                         // find all items of this impl in the base impls
-                        for impl_item in mod_impl.items {
+                        'next_impl_item: for impl_item in mod_impl.items {
                             match impl_item {
                                 ImplItem::Const(_) => todo!(),
                                 ImplItem::Fn(mut func) => {
@@ -93,8 +93,30 @@ fn impl_mod(base_tokens: TokenStream, mod_tokens: TokenStream) -> TokenStream {
                                                     ImplItem::Const(_) => todo!(),
                                                     ImplItem::Fn(base_func) => {
                                                         if base_func.sig.ident == func_name {
+                                                            let mut needs_super = false;
+                                                            func.attrs.retain(|attr| {
+                                                                let has_needs_super = attr
+                                                                    .meta
+                                                                    .to_token_stream()
+                                                                    .to_string()
+                                                                    == "needs_super";
+                                                                needs_super |= has_needs_super;
+                                                                !has_needs_super
+                                                            });
                                                             std::mem::swap(base_func, &mut func);
-                                                            break;
+
+                                                            if needs_super
+                                                                && base_impl.trait_.is_none()
+                                                            {
+                                                                func.sig.ident = format_ident!(
+                                                                    "_super_{}",
+                                                                    func_name
+                                                                );
+                                                                base_impl
+                                                                    .items
+                                                                    .push(ImplItem::Fn(func));
+                                                            }
+                                                            continue 'next_impl_item;
                                                         }
                                                     }
                                                     ImplItem::Type(_) => todo!(),
@@ -123,14 +145,36 @@ fn impl_mod(base_tokens: TokenStream, mod_tokens: TokenStream) -> TokenStream {
                             .insert(0, Item::Use(mod_use));
                     }
                     Item::Const(_) => todo!(),
-                    Item::Enum(_) => todo!(),
+                    Item::Enum(mod_enum) => {
+                        let content = &mut base_input.content.as_mut().unwrap().1;
+                        for item_base in content.iter_mut() {
+                            if let Item::Enum(base_enum) = item_base {
+                                if mod_enum.ident == base_enum.ident {
+                                    *base_enum = mod_enum;
+                                    continue 'next_item;
+                                }
+                            }
+                        }
+                        content.push(Item::Enum(mod_enum));
+                    }
                     Item::ExternCrate(_) => todo!(),
                     Item::Fn(_) => todo!(),
                     Item::ForeignMod(_) => todo!(),
                     Item::Macro(_) => todo!(),
                     Item::Mod(_) => todo!(),
                     Item::Static(_) => todo!(),
-                    Item::Struct(_) => todo!(),
+                    Item::Struct(mod_struct) => {
+                        let content = &mut base_input.content.as_mut().unwrap().1;
+                        for item_base in content.iter_mut() {
+                            if let Item::Struct(base_struct) = item_base {
+                                if mod_struct.ident == base_struct.ident {
+                                    *base_struct = mod_struct;
+                                    continue 'next_item;
+                                }
+                            }
+                        }
+                        content.push(Item::Struct(mod_struct));
+                    }
                     Item::Trait(mod_trait) => {
                         let mod_trait_name = mod_trait.ident.to_string();
                         // find all items of this impl in the base impls
@@ -331,6 +375,17 @@ pub fn game_objects_mod(attr: TokenStream, tokens: TokenStream) -> TokenStream {
         get_tokens_from_file(
             attr.into_iter().next().unwrap(),
             "game/vanilla/src/game_objects.rs",
+        ),
+        tokens,
+    )
+}
+
+#[proc_macro_attribute]
+pub fn config_mod(attr: TokenStream, tokens: TokenStream) -> TokenStream {
+    impl_mod(
+        get_tokens_from_file(
+            attr.into_iter().next().unwrap(),
+            "game/vanilla/src/config.rs",
         ),
         tokens,
     )
