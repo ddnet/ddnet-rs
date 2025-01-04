@@ -700,8 +700,8 @@ pub mod state {
             self.game_db.cur_queries_helper.clear();
             for query in self.game_db.cur_queries.drain(..) {
                 if query.is_finished() {
-                    if let Ok(query) = query.get_storage() {
-                        match query {
+                    match query.get_storage() {
+                        Ok(query) => match query {
                             GameDbQueries::AccountInfo {
                                 player_id,
                                 account_info: info,
@@ -780,8 +780,13 @@ pub mod state {
                                     );
                                 }
                             }
+                        },
+                        Err(err) => {
+                            log::warn!("query failed: {err}");
                         }
                     }
+                } else {
+                    self.game_db.cur_queries_helper.push(query);
                 }
             }
             std::mem::swap(
