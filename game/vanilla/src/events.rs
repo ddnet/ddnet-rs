@@ -69,12 +69,16 @@ pub mod events {
     }
 
     #[derive(Debug, Hiarc, Clone, Copy, Serialize, Deserialize)]
+    pub enum CharacterEventMod {}
+
+    #[derive(Debug, Hiarc, Clone, Copy, Serialize, Deserialize)]
     pub enum CharacterEvent {
         Despawn {
             id: CharacterId,
             killer_id: Option<CharacterId>,
             weapon: GameWorldActionKillWeapon,
         },
+        Mod(CharacterEventMod),
     }
 
     #[derive(Debug, Hiarc, Clone, Copy, Serialize, Deserialize)]

@@ -45,7 +45,7 @@ mod test {
     use math::math::{vector::dvec2, Rng};
     use pool::pool::Pool;
 
-    use crate::{config::ConfigVanilla, state::state::GameState};
+    use crate::{config::config::ConfigVanilla, state::state::GameState};
 
     #[test]
     fn benchmark() {

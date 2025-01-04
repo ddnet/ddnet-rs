@@ -32,9 +32,7 @@ pub mod sql {
     pub use ::vanilla::sql::*;
 }
 
-pub mod config {
-    pub use ::vanilla::config::*;
-}
+pub mod config;
 
 pub mod reusable {
     pub use ::vanilla::reusable::*;
