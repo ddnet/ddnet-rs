@@ -68,7 +68,7 @@ const MAP_VOTE_DIR_STORAGE_NAME: &str = "map-vote-sort-dir";
 
 fn render_table(
     ui: &mut egui::Ui,
-    map_infos: &[&(MapVoteKey, MapVote)],
+    map_infos: &[(usize, &(MapVoteKey, MapVote))],
     index: usize,
     config: &mut Config,
     has_ddrace: bool,
@@ -106,8 +106,8 @@ fn render_table(
         })
         .body(|body| {
             body.rows(25.0, map_infos.len(), |mut row| {
-                row.set_selected(index == row.index());
-                let (map, info) = &map_infos[row.index()];
+                let (original_index, (map, info)) = &map_infos[row.index()];
+                row.set_selected(index == *original_index);
                 row.col(|ui| {
                     ui.label(map.name.as_str());
                 });
@@ -168,7 +168,7 @@ fn render_table(
                         .ui
                         .path
                         .query
-                        .insert("vote-map-index".to_string(), row.index().to_string());
+                        .insert("vote-map-index".to_string(), original_index.to_string());
                 }
             })
         });
@@ -588,7 +588,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                             add_margins(ui, |ui| {
                                                 let map_infos: Vec<_> = map_infos
                                                     .iter()
-                                                    .filter(|(key, _)| {
+                                                    .enumerate()
+                                                    .filter(|(_, (key, _))| {
                                                         key.name
                                                             .as_str()
                                                             .to_lowercase()
