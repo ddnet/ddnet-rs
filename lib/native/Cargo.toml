@@ -10,6 +10,6 @@ native-display = { path = "../native-display" }
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 raw-window-handle = "0.6.2"
 log = "0.4.22"
-winit = { version = "0.30.7", default-features = false, features = ["serde", "rwh_06", "android-native-activity", "x11", "wayland"] }
+winit = { version = "0.30.8", default-features = false, features = ["serde", "rwh_06", "android-native-activity", "x11", "wayland"] }
 
 

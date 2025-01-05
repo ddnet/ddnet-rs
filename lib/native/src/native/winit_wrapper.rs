@@ -75,14 +75,6 @@ impl WindowMouse {
                             internal_events.insert(InternalEvent::MouseGrabWrong);
                         }
                     }
-                    #[cfg(target_os = "linux")]
-                    if matches!(err, ExternalError::NotSupported(_)) {
-                        // workaround for an x11 bug
-                        // https://github.com/rust-windowing/winit/issues/4064
-                        // fixed by https://github.com/rust-windowing/winit/pull/4065
-                        let _ = window.set_cursor_grab(CursorGrabMode::None);
-                        let _ = window.set_cursor_grab(self.last_mouse_mode);
-                    }
                     false
                 }
             }
