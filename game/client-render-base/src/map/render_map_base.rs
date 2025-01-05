@@ -18,7 +18,7 @@ use base::{
     hash::{fmt_hash, Hash},
     join_all,
 };
-use base_io::{io::Io, runtime::IoRuntimeTask};
+use base_io::{io::Io, path_to_url::relative_path_to_url, runtime::IoRuntimeTask};
 use config::config::ConfigDebug;
 use graphics::{
     graphics::graphics::Graphics,
@@ -36,12 +36,12 @@ use image::png::{is_png_image_valid, load_png_image};
 use map::map::Map;
 use math::math::vector::vec2;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use vanilla::collision::collision::Collision;
 use sound::{
     commands::SoundSceneCreateProps, ogg_vorbis::verify_ogg_vorbis, scene_handle::SoundSceneHandle,
     sound::SoundManager,
 };
 use url::Url;
+use vanilla::collision::collision::Collision;
 
 pub struct ClientMapFileData {
     pub collision: Collision,
@@ -177,7 +177,11 @@ impl RenderMapLoading {
                                         // try to download file
                                         if let Some(resource_download_server) =
                                             resource_download_server.and_then(|url| {
-                                                url.join(&download_read_file_path).ok()
+                                                relative_path_to_url(
+                                                    download_read_file_path.as_ref(),
+                                                )
+                                                .ok()
+                                                .and_then(|name| url.join(&name).ok())
                                             })
                                         {
                                             let file = http

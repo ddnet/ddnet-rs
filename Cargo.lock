@@ -822,6 +822,7 @@ dependencies = [
  "async-trait",
  "axum",
  "base",
+ "base-io",
  "base-io-traits",
  "bytes",
  "http 1.2.0",
@@ -845,6 +846,7 @@ dependencies = [
  "futures-lite",
  "hiarc",
  "tokio",
+ "urlencoding",
 ]
 
 [[package]]
@@ -1797,6 +1799,7 @@ dependencies = [
  "ui-base",
  "ui-generic",
  "url",
+ "urlencoding",
  "vanilla",
 ]
 
