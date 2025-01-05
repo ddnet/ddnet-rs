@@ -652,18 +652,18 @@ impl ClientNativeImpl {
                         match stage {
                             hashlink::lru_cache::Entry::Occupied(mut stage) => {
                                 let stage = stage.get_mut();
-                                for (id, local_char) in game
+                                for id in game
                                     .game_data
                                     .local
                                     .local_players
-                                    .iter()
-                                    .filter_map(|(id, local_char)| {
+                                    .keys()
+                                    .filter_map(|id| {
                                         character_infos.get(id).and_then(|char| {
-                                            char.stage_id.map(|stage_id| (id, stage_id, local_char))
+                                            char.stage_id.map(|stage_id| (id, stage_id))
                                         })
                                     })
-                                    .filter_map(|(id, find_stage_id, local_char)| {
-                                        (find_stage_id == stage_id).then_some((id, local_char))
+                                    .filter_map(|(id, find_stage_id)| {
+                                        (find_stage_id == stage_id).then_some(id)
                                     })
                                 {
                                     if let Some(mut char) = pred_stage.world.characters.remove(id) {
@@ -683,15 +683,6 @@ impl ClientNativeImpl {
                                                 char.lerped_hook = unpredicted_char.lerped_hook;
                                             }
                                         }
-                                        char.hook_collision =
-                                            char.hook_collision.map(|mut hook_col| {
-                                                let dir = hook_col.end - hook_col.start;
-                                                let dir_len = length(&dir);
-                                                let dir = normalize(&local_char.cursor_pos);
-                                                let dir = vec2::new(dir.x as f32, dir.y as f32);
-                                                hook_col.end = hook_col.start + dir * dir_len;
-                                                hook_col
-                                            });
                                         stage.world.characters.insert(*id, char);
                                     }
 
@@ -818,6 +809,15 @@ impl ClientNativeImpl {
                         player.lerped_cursor_pos = client_player.input.inp.cursor.to_vec2();
                         player.lerped_dyn_cam_offset =
                             client_player.input.inp.dyn_cam_offset.to_vec2();
+
+                        player.hook_collision = player.hook_collision.map(|mut hook_col| {
+                            let dir = hook_col.end - hook_col.start;
+                            let dir_len = length(&dir);
+                            let dir = normalize(&client_player.cursor_pos);
+                            let dir = vec2::new(dir.x as f32, dir.y as f32);
+                            hook_col.end = hook_col.start + dir * dir_len;
+                            hook_col
+                        });
                     }
 
                     // update freecam position
