@@ -22,6 +22,7 @@ use game_base::{
     server_browser::{ServerBrowserData, ServerBrowserInfo, ServerBrowserServer},
 };
 
+use game_base::local_server_info::LocalServerInfo;
 use game_config::config::{Config, ConfigGame};
 use graphics::{
     graphics::graphics::Graphics,
@@ -34,7 +35,6 @@ use graphics::{
     },
 };
 use master_server_types::{addr::Protocol, servers::BrowserServers};
-use game_base::local_server_info::LocalServerInfo;
 use sound::{scene_object::SceneObject, sound::SoundManager};
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
@@ -205,10 +205,13 @@ impl MainMenuUi {
             .spawn(async move {
                 Ok(http
                     .download_text(
-                        format!("https://info.ddnet.org/info?name={}", name)
-                            .as_str()
-                            .try_into()
-                            .unwrap(),
+                        format!(
+                            "https://info.ddnet.org/info?name={}",
+                            urlencoding::encode(&name)
+                        )
+                        .as_str()
+                        .try_into()
+                        .unwrap(),
                     )
                     .await?)
             })

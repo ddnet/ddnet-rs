@@ -16,7 +16,7 @@ use anyhow::anyhow;
 use base::hash::{fmt_hash, Hash};
 use base_io_traits::{fs_traits::FileSystemInterface, http_traits::HttpClientInterface};
 
-use base_io::{io::Io, runtime::IoRuntimeTask};
+use base_io::{io::Io, path_to_url::relative_path_to_url, runtime::IoRuntimeTask};
 use either::Either;
 use game_interface::types::resource_key::ResourceKey;
 use graphics::{
@@ -490,12 +490,10 @@ where
     ) {
         // try to download index
         if http_index.is_none() {
-            if let Some(download_url) = base_path.to_str().and_then(|base_path| {
-                resource_http_download_url
-                    .join(base_path)
-                    .and_then(|path| path.join("index.json"))
-                    .ok()
-            }) {
+            if let Some(download_url) = relative_path_to_url(&base_path.join("index.json"))
+                .ok()
+                .and_then(|name| resource_http_download_url.join(&name).ok())
+            {
                 let r = http
                     .download_text(download_url)
                     .await
@@ -626,11 +624,10 @@ where
             // if loading still failed, switch to http download
             if files.is_none() {
                 let name = format!("{}_{}.tar", key.name.as_str(), fmt_hash(&hash));
-                if let Some(game_server_http) = game_server_http
-                    .as_ref()
-                    .zip(base_path.to_str())
-                    .and_then(|(url, base_path)| url.join(base_path).ok()?.join(&name).ok())
-                {
+                if let Some(game_server_http) = game_server_http.as_ref().and_then(|url| {
+                    url.join(relative_path_to_url(&base_path.join(&name)).ok()?.as_str())
+                        .ok()
+                }) {
                     let _g = http_download_tasks.acquire().await?;
                     if let Ok(file) = http.download_binary(game_server_http, &hash).await {
                         if let Ok(tar_files) = read_tar(&file) {
@@ -660,11 +657,10 @@ where
             // Note: for now only try image files, doesn't seem worth it for sound files
             if files.is_none() {
                 let name = format!("{}_{}.png", key.name.as_str(), fmt_hash(&hash));
-                if let Some(game_server_http) = game_server_http
-                    .as_ref()
-                    .zip(base_path.to_str())
-                    .and_then(|(url, base_path)| url.join(base_path).ok()?.join(&name).ok())
-                {
+                if let Some(game_server_http) = game_server_http.as_ref().and_then(|url| {
+                    url.join(&relative_path_to_url(&base_path.join(&name)).ok()?)
+                        .ok()
+                }) {
                     let _g = http_download_tasks.acquire().await?;
                     if let Ok(file) = http.download_binary(game_server_http, &hash).await {
                         if Self::verify_resource("png", &name, &file) {
@@ -777,21 +773,18 @@ where
 
             // else try to load the entry from http (if active)
             if files.is_none() {
-                if let Some((url, name, hash, ty)) = http_entry.zip(base_path.to_str()).and_then(
-                    |((entry, download_url), base_path)| {
-                        let name = format!(
-                            "{}_{}.{}",
-                            key.name.as_str(),
-                            fmt_hash(&entry.hash),
-                            entry.ty
-                        );
-                        download_url
-                            .join(base_path)
-                            .and_then(|url| url.join(&name))
-                            .map(|url| (url, name, entry.hash, entry.ty))
-                            .ok()
-                    },
-                ) {
+                if let Some((url, name, hash, ty)) = http_entry.and_then(|(entry, download_url)| {
+                    let name = format!(
+                        "{}_{}.{}",
+                        key.name.as_str(),
+                        fmt_hash(&entry.hash),
+                        entry.ty
+                    );
+                    download_url
+                        .join(&relative_path_to_url(&base_path.join(&name)).ok()?)
+                        .map(|url| (url, name, entry.hash, entry.ty))
+                        .ok()
+                }) {
                     let res = {
                         let _g = http_download_tasks.acquire().await?;
                         http.download_binary(url, &hash).await

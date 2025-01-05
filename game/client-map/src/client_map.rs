@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, path::Path, rc::Rc, sync::Arc};
 
 use anyhow::anyhow;
-use base_io::{io::Io, runtime::IoRuntimeTask};
+use base_io::{io::Io, path_to_url::relative_path_to_url, runtime::IoRuntimeTask};
 use client_render_base::map::render_map_base::{ClientMapRender, RenderMapLoading};
 use client_render_game::render_game::{RenderGameCreateOptions, RenderGameInterface, RenderModTy};
 use config::config::ConfigDebug;
@@ -121,8 +121,9 @@ impl ClientMapLoadingFile {
                         // try to download file
                         if let Some(resource_download_server) = resource_download_server_thread
                             .and_then(|url| {
-                                url.join(download_map_file_name.as_os_str().to_str().unwrap_or(""))
+                                relative_path_to_url(&download_map_file_name)
                                     .ok()
+                                    .and_then(|name| url.join(&name).ok())
                             })
                         {
                             let file = http
@@ -189,7 +190,11 @@ impl ClientMapLoadingFile {
                                     // try to download file
                                     if let Some(resource_download_server) =
                                         resource_download_server_thread.and_then(|url| {
-                                            url.join(&download_game_mod_file_name).ok()
+                                            relative_path_to_url(
+                                                download_game_mod_file_name.as_ref(),
+                                            )
+                                            .ok()
+                                            .and_then(|name| url.join(&name).ok())
                                         })
                                     {
                                         let file = http

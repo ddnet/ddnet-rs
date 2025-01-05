@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use base_io::path_to_url::relative_path_to_url;
 use tokio::net::TcpSocket;
 use tower_http::services::ServeDir;
 
@@ -44,18 +45,13 @@ impl HttpDownloadServer {
 
                         for (name, served_file) in served_files {
                             let path: &Path = name.as_ref();
-                            if path.is_absolute() {
-                                log::warn!("Found file with unsupported absolute path: {name}");
-                                anyhow::bail!("Cannot serve file with absolute path: {name}");
-                            }
-                            let path: String = path
-                                .components()
-                                .map(|p| {
-                                    urlencoding::encode(&p.as_os_str().to_string_lossy())
-                                        .to_string()
-                                })
-                                .collect::<Vec<_>>()
-                                .join("/");
+                            let path = match relative_path_to_url(path) {
+                                Ok(path) => path,
+                                Err(err) => {
+                                    log::warn!("Found file with unsupported absolute path: {name}");
+                                    anyhow::bail!(err);
+                                }
+                            };
                             app = app.route(
                                 &format!("/{}", path),
                                 axum::routing::get(|| async move { served_file }),
