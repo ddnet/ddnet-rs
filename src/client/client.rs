@@ -2795,8 +2795,7 @@ impl FromNativeImpl for ClientNativeImpl {
                 }
 
                 let player = game.game_data.local.active_local_player();
-                let show_cursor = player
-                    .is_some_and(|(_, p)| p.emote_wheel_active || p.spectator_selection_active);
+                let show_cursor = player.is_some_and(|(_, p)| p.spectator_selection_active);
                 native.toggle_cursor(show_cursor);
 
                 self.inp_manager.set_last_known_cursor(
