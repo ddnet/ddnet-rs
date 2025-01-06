@@ -529,7 +529,7 @@ impl ClientNativeImpl {
                 mut local_predicted_game,
                 main_intra_tick_ratio,
                 predicted_intra_tick_ratio,
-            ) = if self.config.game.cl.anti_ping {
+            ) = if self.config.game.cl.anti_ping && !main_local_char_spec {
                 (game_state, None, intra_tick_ratio, intra_tick_ratio)
             } else {
                 let ticks_per_second = game_state.game_tick_speed();
