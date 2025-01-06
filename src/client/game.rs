@@ -20,6 +20,7 @@ use base_io::{io::Io, runtime::IoRuntimeTask};
 use client_accounts::accounts::Accounts;
 use client_console::console::remote_console::{RemoteConsole, RemoteConsoleBuilder};
 use client_map::client_map::{ClientMapFile, ClientMapLoading};
+use client_notifications::overlay::ClientNotifications;
 use client_render_game::render_game::{RenderGameCreateOptions, RenderModTy};
 use client_replay::replay::Replay;
 use client_types::console::ConsoleEntry;
@@ -70,10 +71,7 @@ use types::{
 use ui_base::ui::UiCreator;
 use url::Url;
 
-use super::{
-    overlays::notifications::ClientNotifications,
-    spatial_chat::spatial_chat::SpatialChatGameWorldTy,
-};
+use super::spatial_chat::spatial_chat::SpatialChatGameWorldTy;
 
 type ServerCertTask = IoRuntimeTask<(ServerCertMode, Option<(Vec<ServerBrowserServer>, Duration)>)>;
 pub struct PrepareConnectGame {

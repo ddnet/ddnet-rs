@@ -5,6 +5,7 @@ use base::{linked_hash_map_view::FxLinkedHashMap, system::SystemTimeInterface};
 use client_console::console::remote_console::RemoteConsole;
 use client_ghost::GhostViewer;
 use client_map::client_map::GameMap;
+use client_notifications::overlay::ClientNotifications;
 use client_render_game::render_game::{ObservedPlayer, RenderGameForPlayer};
 use client_replay::replay::Replay;
 use command_parser::parser::ParserCache;
@@ -45,7 +46,6 @@ use pool::{
 use url::Url;
 
 use crate::{
-    client::overlays::notifications::ClientNotifications,
     game::data::{ClientConnectedPlayer, SnapshotStorageItem},
     localplayer::{ClientPlayer, ServerInputForDiff},
     spatial_chat::spatial_chat::SpatialChatGameWorldTy,

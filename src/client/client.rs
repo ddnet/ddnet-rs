@@ -26,6 +26,7 @@ use client_containers::{
 };
 use client_demo::{DemoVideoEncodeProperties, DemoViewer, DemoViewerSettings, EncoderSettings};
 use client_map::client_map::{ClientMapFile, ClientMapLoading, GameMap};
+use client_notifications::overlay::ClientNotifications;
 use client_render_base::{
     map::{
         map::RenderMap,
@@ -159,10 +160,7 @@ use super::{
     game_events::{GameEventPipeline, GameEventsClient},
     input::input_handling::{InputEv, InputHandling, InputHandlingEvent},
     localplayer::ClientPlayerInputPerTick,
-    overlays::{
-        client_stats::{ClientStats, ClientStatsRenderPipe, DebugHudRenderPipe},
-        notifications::ClientNotifications,
-    },
+    overlays::client_stats::{ClientStats, ClientStatsRenderPipe, DebugHudRenderPipe},
     spatial_chat::spatial_chat::{self, SpatialChatGameWorldTy, SpatialChatGameWorldTyRef},
 };
 

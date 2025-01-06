@@ -1,0 +1,13 @@
+[package]
+name = "client-notifications"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base = { path = "../../lib/base" }
+ui-base = { path = "../../lib/ui-base" }
+ui-generic = { path = "../../lib/ui-generic" }
+graphics = { path = "../../lib/graphics" }
+
+egui = { version = "0.30.0", default-features = false, features = ["serde"] }
+egui-notify = { git = "https://github.com/ItsEthra/egui-notify", rev = "3a25512d43f04354686c796d1fd5295b3ca854e0" }
