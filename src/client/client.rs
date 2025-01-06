@@ -101,6 +101,7 @@ use game_interface::{
     },
     votes::{VoteIdentifierType, VoteType, Voted},
 };
+use game_server::{local_server::start_local_server, server::Server};
 use graphics_types::rendering::ColorRgba;
 use input_binds::binds::{BindKey, Binds};
 use math::math::{
@@ -121,7 +122,6 @@ use pool::{
     pool::Pool,
 };
 use rayon::ThreadPool;
-use server::{local_server::start_local_server, server::Server};
 use sound::{scene_object::SceneObject, sound::SoundManager};
 use sound_backend::sound_backend::SoundBackend;
 use steam::{init_steam, traits::SteamRaii};
@@ -181,11 +181,11 @@ pub fn ddnet_main(
         )
     });
 
-    let config_engine = config_fs::load(&io);
+    let config_engine = config_fs::load(&io).unwrap_or_default();
 
     let benchmark = Benchmark::new(config_engine.dbg.bench);
 
-    let config_game = game_config_fs::fs::load(&io);
+    let config_game = game_config_fs::fs::load(&io).unwrap_or_default();
     benchmark.bench("loading client config");
 
     let graphics_backend_io_loading = GraphicsBackendIoLoading::new(&config_engine.gfx, &io);

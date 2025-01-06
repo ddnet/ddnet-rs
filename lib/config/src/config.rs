@@ -235,13 +235,15 @@ impl ConfigEngine {
     }
 
     pub fn to_json_string(&self) -> anyhow::Result<String> {
-        let res = serde_json::to_string_pretty(self)?;
-        Ok(res)
+        Ok(serde_json::to_string_pretty(self)?)
     }
 
     pub fn from_json_string(json_str: &str) -> anyhow::Result<Self> {
-        let res = serde_json::from_str(json_str)?;
-        Ok(res)
+        Ok(serde_json::from_str(json_str)?)
+    }
+
+    pub fn from_json_slice(json: &[u8]) -> anyhow::Result<Self> {
+        Ok(serde_json::from_slice(json)?)
     }
 }
 

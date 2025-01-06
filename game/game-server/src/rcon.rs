@@ -63,5 +63,10 @@ pub enum ServerRconCommand {
     KickId,
     Status,
     ConfVariable,
+    /// Executes a command line like file
+    /// and parses it in the command chain.
+    Exec,
+    /// Loads server config from a specific path
+    Load,
     RecordDemo,
 }

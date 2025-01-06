@@ -1975,6 +1975,7 @@ dependencies = [
 name = "config-fs"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base-io",
  "config",
 ]
@@ -2722,6 +2723,7 @@ dependencies = [
  "game-config-fs",
  "game-interface",
  "game-network",
+ "game-server",
  "game-state-wasm",
  "ghost",
  "graphics",
@@ -2749,7 +2751,6 @@ dependencies = [
  "serde",
  "serde-value",
  "serde_json",
- "server",
  "sound",
  "sound-backend",
  "steam",
@@ -4041,6 +4042,7 @@ dependencies = [
 name = "game-config-fs"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base-io",
  "game-config",
 ]
@@ -4131,6 +4133,58 @@ dependencies = [
  "pool",
  "serde",
  "tokio",
+]
+
+[[package]]
+name = "game-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base",
+ "base-fs",
+ "base-http",
+ "base-io",
+ "base-io-traits",
+ "bin-patch",
+ "bincode",
+ "cache",
+ "chrono",
+ "command-parser",
+ "config",
+ "config-fs",
+ "ddnet-account-client-http-fs",
+ "ddnet-account-game-server",
+ "ddnet-accounts-shared",
+ "demo",
+ "difference",
+ "ed25519-dalek",
+ "either",
+ "futures",
+ "game-base",
+ "game-config",
+ "game-config-fs",
+ "game-database",
+ "game-database-backend",
+ "game-interface",
+ "game-network",
+ "game-state-wasm",
+ "http-accounts",
+ "log",
+ "map",
+ "map-convert-lib",
+ "master-server-types",
+ "network",
+ "pool",
+ "rand",
+ "rayon",
+ "rustc-hash 2.1.0",
+ "serde",
+ "serde_json",
+ "sql",
+ "thread-priority",
+ "vanilla",
+ "x509-cert",
 ]
 
 [[package]]
@@ -8504,66 +8558,13 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "async-trait",
  "base",
- "base-fs",
- "base-http",
- "base-io",
- "base-io-traits",
- "bin-patch",
- "bincode",
- "cache",
- "chrono",
- "command-parser",
- "config",
- "config-fs",
- "ddnet-account-client-http-fs",
- "ddnet-account-game-server",
- "ddnet-accounts-shared",
- "demo",
- "difference",
- "ed25519-dalek",
- "either",
- "futures",
- "game-base",
- "game-config",
- "game-config-fs",
- "game-database",
- "game-database-backend",
- "game-interface",
- "game-network",
- "game-state-wasm",
- "http-accounts",
- "log",
- "map",
- "map-convert-lib",
- "master-server-types",
- "network",
- "pool",
- "rand",
- "rayon",
- "rustc-hash 2.1.0",
- "serde",
- "serde_json",
- "sql",
- "thread-priority",
- "vanilla",
- "x509-cert",
-]
-
-[[package]]
-name = "server-bin"
-version = "0.1.0"
-dependencies = [
- "base",
- "clap 4.5.23",
  "env_logger",
  "game-base",
  "game-config",
+ "game-server",
  "network",
  "serde_json",
- "server",
 ]
 
 [[package]]

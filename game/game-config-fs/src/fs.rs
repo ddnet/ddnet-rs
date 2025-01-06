@@ -18,20 +18,16 @@ pub fn save(config: &ConfigGame, io: &Io) {
     }
 }
 
-pub fn load_in(io: &IoFileSys, path: &Path) -> ConfigGame {
+pub fn load_in(io: &IoFileSys, path: &Path) -> anyhow::Result<ConfigGame> {
     let fs = io.fs.clone();
     let path = path.to_path_buf();
     let config_file = io
         .rt
-        .spawn(async move { Ok(fs.read_file(path.as_ref()).await) });
-    let res = config_file.get_storage().unwrap();
-    match res {
-        Ok(file) => ConfigGame::from_json_string(String::from_utf8(file).unwrap().as_str())
-            .unwrap_or_default(),
-        Err(_) => ConfigGame::new(),
-    }
+        .spawn(async move { Ok(fs.read_file(path.as_ref()).await?) });
+    let res = config_file.get_storage()?;
+    ConfigGame::from_json_slice(&res)
 }
 
-pub fn load(io: &IoFileSys) -> ConfigGame {
+pub fn load(io: &IoFileSys) -> anyhow::Result<ConfigGame> {
     load_in(io, "cfg_game.json".as_ref())
 }

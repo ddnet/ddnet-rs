@@ -16,15 +16,11 @@ pub fn save(config: &ConfigEngine, io: &Io) {
     }
 }
 
-pub fn load(io: &IoFileSys) -> ConfigEngine {
+pub fn load(io: &IoFileSys) -> anyhow::Result<ConfigEngine> {
     let fs = io.fs.clone();
     let config_file = io
         .rt
-        .spawn(async move { Ok(fs.read_file("cfg_engine.json".as_ref()).await) });
+        .spawn(async move { Ok(fs.read_file("cfg_engine.json".as_ref()).await?) });
     let res = config_file.get_storage().unwrap();
-    match res {
-        Ok(file) => ConfigEngine::from_json_string(String::from_utf8(file).unwrap().as_str())
-            .unwrap_or_default(),
-        Err(_) => ConfigEngine::new(),
-    }
+    ConfigEngine::from_json_slice(&res)
 }
