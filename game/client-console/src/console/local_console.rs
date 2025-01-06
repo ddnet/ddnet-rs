@@ -50,6 +50,8 @@ pub enum LocalConsoleEvent {
     ChangeDummy {
         dummy_index: Option<usize>,
     },
+    /// Switch to the next dummy or the main player
+    ToggleDummy,
     ConfigVariable {
         name: String,
     },
@@ -677,6 +679,19 @@ impl LocalConsoleBuilder {
                 ty: CommandArgType::Number,
                 user_ty: None,
             }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "toggle_dummy".into(),
+            usage: "toggle_dummy".into(),
+            description: "Toggles between a dummy and the main player.".into(),
+            cmd: Rc::new(move |_, _, _| {
+                console_events_cmd.push(LocalConsoleEvent::ToggleDummy);
+                Ok("".to_string())
+            }),
+            args: Default::default(),
             allows_partial_cmds: false,
         }));
 
