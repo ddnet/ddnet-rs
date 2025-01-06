@@ -1,38 +1,22 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
 use base::system::System;
-use clap::{arg, command, Command};
-use game_config::config::ConfigGame;
-use network::network::utils::create_certifified_keys;
-use server::server::ddnet_server_main;
 use game_base::local_server_info::LocalServerInfo;
+use game_server::server::ddnet_server_main;
+use network::network::utils::create_certifified_keys;
 
 fn main() {
-    let matches = command!()
-        .subcommand(Command::new("default_config").about("Print the default config"))
-        .arg(
-            arg!(-c --config <cfg> "A relative path to a config file, used instead of cfg_game.json."),
-        )
-        .get_matches();
-
     let sys = System::new();
     if std::env::var("RUST_LOG").is_err() {
         unsafe { std::env::set_var("RUST_LOG", "info") };
     }
     env_logger::init();
 
-    if matches
-        .subcommand_name()
-        .is_some_and(|cmd| cmd == "default_config")
-    {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&ConfigGame::default()).unwrap()
-        );
-        return;
+    let mut args: Vec<_> = std::env::args().collect();
+    // TODO: don't rely on first arg being executable
+    if !args.is_empty() {
+        args.remove(0);
     }
-
-    let cfg_game = matches.get_one::<String>("config");
 
     let cert = create_certifified_keys();
 
@@ -47,7 +31,7 @@ fn main() {
         cert,
         server_is_open_clone,
         shared_info,
-        cfg_game.map(|p| p.as_ref()),
+        args,
         None,
     )
     .unwrap();

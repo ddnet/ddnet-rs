@@ -53,7 +53,7 @@ members = [
     "examples/wasm-modules/graphics",
     "examples/wasm-modules/mainmenu",
     "examples/wasm-modules/ingame_menu",
-    "src/server-bin",
+    "src/server",
     "src/emoticon-convert",
     "src/game-convert",
     "src/hud-convert",
@@ -67,7 +67,7 @@ members = [
     "game/client-types",
     "game/client-containers",
     "game/client-ui",
-    "game/server",
+    "game/game-server",
     "lib/game-database",
     "game/game-base",
     "game/vanilla",
@@ -166,7 +166,7 @@ client-demo = { path = "game/client-demo" }
 client-replay = { path = "game/client-replay" }
 ghost = { path = "game/ghost" }
 client-ghost = { path = "game/client-ghost" }
-server = { path = "game/server", default-features = false }
+game-server = { path = "game/game-server", default-features = false }
 game-base = { path = "game/game-base" }
 game-interface = { path = "game/game-interface" }
 game-network = { path = "game/game-network" }
@@ -231,7 +231,7 @@ opt-level = 3
 
 [features]
 bundled_data_dir = ["base-fs/bundled_data_dir"]
-legacy = ["server/legacy", "editor-wasm/legacy", "editor/legacy"]
+legacy = ["game-server/legacy", "editor-wasm/legacy", "editor/legacy"]
 enable_steam = ["steam/runtime"]
 microphone = ["microphone/cpal_opus"]
 ffmpeg = ["client-demo/ffmpeg"]

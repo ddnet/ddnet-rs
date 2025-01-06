@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 base-io = { path = "../base-io" }
 config = { path = "../config" }
+
+anyhow = { version = "1.0.95", features = ["backtrace"] }
