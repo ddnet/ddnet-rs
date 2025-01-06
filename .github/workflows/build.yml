@@ -89,7 +89,7 @@ jobs:
       id: x264-cache-compiled
       with:
         path: C:\build-x264
-        key: ${{ runner.os }}-build-${{ hashFiles('/c/x264') }}
+        key: ${{ runner.os }}-buildx264-${{ hashFiles('/c/x264') }}
 
     - name: Compile x264 (Windows)
       if: contains(matrix.os, 'windows') && steps.x264-cache-compiled.outputs.cache-hit != 'true'
@@ -105,7 +105,7 @@ jobs:
       if: contains(matrix.os, 'windows')
       run: |
         rm /mingw64/lib/libx264.dll.a
-        mv /c/build-x264/libx264.a /mingw64/lib/libx264.a
+        cp /c/build-x264/libx264.a /mingw64/lib/libx264.a
         rustup target add x86_64-pc-windows-gnu
         rustup update stable
         rustup set default-host x86_64-pc-windows-gnu
