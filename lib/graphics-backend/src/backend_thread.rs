@@ -40,6 +40,7 @@ use crate::{
             Options,
         },
     },
+    cache::get_backend_cache,
     window::{BackendDisplayRequirements, BackendWindow},
 };
 
@@ -154,10 +155,8 @@ impl Drop for FileWriterDrop {
         for (path, write_file) in std::mem::take(&mut *self.write_files.lock()) {
             let fs = self.io.fs.clone();
             self.io.rt.spawn_without_lifetime(async move {
-                if let Some(dir) = path.parent() {
-                    fs.create_dir(dir).await?;
-                }
-                fs.write_file(&path, write_file).await?;
+                let cache = get_backend_cache(&fs).await;
+                cache.write_named(&path, write_file).await?;
                 anyhow::Ok(())
             });
         }

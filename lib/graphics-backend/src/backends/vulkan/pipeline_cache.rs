@@ -3,13 +3,14 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use ash::vk;
 use base_io::{io::IoFileSys, runtime::IoRuntimeTask};
-use base_io_traits::fs_traits::{FileSystemPath, FileSystemType};
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
 
-use crate::backends::types::BackendWriteFiles;
+use crate::{backends::types::BackendWriteFiles, cache::get_backend_cache};
 
 use super::logical_device::LogicalDevice;
+
+const PIPELINE_CACHE: &str = "vulkan/pipeline.cache";
 
 #[derive(Debug, Hiarc)]
 pub struct PipelineCacheInner {
@@ -112,13 +113,8 @@ impl PipelineCache {
     pub fn load_previous_cache(io: &IoFileSys) -> IoRuntimeTask<Option<Vec<u8>>> {
         let fs = io.fs.clone();
         io.rt.spawn(async move {
-            let res = fs
-                .read_file_in(
-                    "cache/vulkan/pipeline.cache".as_ref(),
-                    FileSystemPath::OfType(FileSystemType::ReadWrite),
-                )
-                .await
-                .ok();
+            let cache = get_backend_cache(&fs).await;
+            let res = cache.read_named(PIPELINE_CACHE.as_ref()).await.ok();
             Ok(res)
         })
     }
@@ -142,9 +138,7 @@ impl Drop for PipelineCache {
                     },
                     bincode::config::standard(),
                 ) {
-                    self.write_files
-                        .lock()
-                        .insert("cache/vulkan/pipeline.cache".into(), cache);
+                    self.write_files.lock().insert(PIPELINE_CACHE.into(), cache);
                 }
             }
         };

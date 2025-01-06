@@ -17,6 +17,7 @@ pub mod backend;
 mod backend_mt;
 pub mod backend_thread;
 mod backends;
+pub mod cache;
 pub mod checker;
 pub mod window;
 
