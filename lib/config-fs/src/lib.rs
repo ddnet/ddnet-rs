@@ -21,6 +21,6 @@ pub fn load(io: &IoFileSys) -> anyhow::Result<ConfigEngine> {
     let config_file = io
         .rt
         .spawn(async move { Ok(fs.read_file("cfg_engine.json".as_ref()).await?) });
-    let res = config_file.get_storage().unwrap();
+    let res = config_file.get_storage()?;
     ConfigEngine::from_json_slice(&res)
 }
