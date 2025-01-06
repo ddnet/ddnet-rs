@@ -323,24 +323,22 @@ impl ActiveGame {
                 let monotonic_tick = game_monotonic_tick;
 
                 // prepare the unpredicted world if needed
-                if !pipe.config_game.cl.anti_ping {
-                    self.game_data.last_snaps.insert(
-                        game_monotonic_tick,
-                        std::mem::take(&mut *snapshot.clone().to_mut()),
-                    );
-                    while self
-                        .game_data
-                        .last_snaps
-                        .first_key_value()
-                        .is_some_and(|(tick, _)| {
-                            *tick
-                                <= game
-                                    .predicted_game_monotonic_tick
-                                    .saturating_sub(game.game_tick_speed().get() * 3)
-                        })
-                    {
-                        self.game_data.last_snaps.pop_first();
-                    }
+                self.game_data.last_snaps.insert(
+                    game_monotonic_tick,
+                    std::mem::take(&mut *snapshot.clone().to_mut()),
+                );
+                while self
+                    .game_data
+                    .last_snaps
+                    .first_key_value()
+                    .is_some_and(|(tick, _)| {
+                        *tick
+                            <= game
+                                .predicted_game_monotonic_tick
+                                .saturating_sub(game.game_tick_speed().get() * 3)
+                    })
+                {
+                    self.game_data.last_snaps.pop_first();
                 }
 
                 let mut prev_tick = game.predicted_game_monotonic_tick;
