@@ -106,7 +106,7 @@ members = [
     "lib/steam",
     "game/game-state-wasm", "lib/native-display", "src/assets-server", "game/assets-base", "src/community-server",
     "src/community-register-server",
-    "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm",
+    "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm", "game/client-notifications",
 ]
 
 [package]
@@ -166,6 +166,7 @@ client-demo = { path = "game/client-demo" }
 client-replay = { path = "game/client-replay" }
 ghost = { path = "game/ghost" }
 client-ghost = { path = "game/client-ghost" }
+client-notifications = { path = "game/client-notifications" }
 game-server = { path = "game/game-server", default-features = false }
 game-base = { path = "game/game-base" }
 game-interface = { path = "game/game-interface" }
@@ -204,7 +205,6 @@ x509-cert = { version = "0.2.5" }
 alloc-track = { version = "0.3.1", optional = true }
 crossbeam = "0.8.4"
 chrono = { version = "0.4.39", features = ["serde"] }
-egui-notify = { git = "https://github.com/ItsEthra/egui-notify", rev = "3a25512d43f04354686c796d1fd5295b3ca854e0" }
 
 # Better patches are always welcome
 #[target.'cfg(target_os = "windows")'.patch.crates-io]

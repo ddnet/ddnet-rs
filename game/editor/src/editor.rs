@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use anyhow::anyhow;
 use base::{
     hash::{fmt_hash, Hash},
     join_all,
@@ -17,6 +18,7 @@ use client_containers::{
     container::ContainerKey,
     entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
 };
+use client_notifications::overlay::ClientNotifications;
 use client_render_base::map::{
     map::{ForcedTexture, RenderMap},
     map_buffered::{
@@ -124,6 +126,12 @@ use crate::{
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum ReadFileTy {
+    Image,
+    Sound,
+}
+
 /// this is basically the editor client
 pub struct Editor {
     tabs: FxLinkedHashMap<String, EditorTab>,
@@ -150,6 +158,7 @@ pub struct Editor {
 
     // notifications
     notifications: EditorNotifications,
+    notifications_overlay: ClientNotifications,
 
     // graphics
     graphics_mt: GraphicsMultiThreaded,
@@ -170,6 +179,8 @@ pub struct Editor {
     // misc
     io: Io,
     thread_pool: Arc<rayon::ThreadPool>,
+
+    save_tasks: Vec<IoRuntimeTask<()>>,
 
     is_closed: bool,
 }
@@ -253,7 +264,6 @@ impl Editor {
         let mut res = Self {
             tabs: Default::default(),
             active_tab: "".into(),
-            sys,
 
             ui: EditorUiRender::new(graphics, tp.clone(), &ui_creator),
             ui_events: Default::default(),
@@ -297,6 +307,7 @@ impl Editor {
             last_time,
 
             notifications: Default::default(),
+            notifications_overlay: ClientNotifications::new(graphics, &sys, &ui_creator),
 
             graphics_mt,
             buffer_object_handle: graphics.buffer_object_handle.clone(),
@@ -314,6 +325,10 @@ impl Editor {
 
             io: io.clone(),
             thread_pool: tp.clone(),
+
+            save_tasks: Default::default(),
+
+            sys,
 
             is_closed: false,
         };
@@ -931,8 +946,12 @@ impl Editor {
     }
 
     #[cfg(feature = "legacy")]
-    pub fn load_legacy_map(&mut self, path: &Path) {
-        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+    pub fn load_legacy_map(&mut self, path: &Path) -> anyhow::Result<()> {
+        let name = path
+            .file_stem()
+            .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
+            .to_string_lossy()
+            .to_string();
 
         let tp = self.thread_pool.clone();
         let fs = self.io.fs.clone();
@@ -941,22 +960,18 @@ impl Editor {
             .io
             .rt
             .spawn(async move { read_file_editor(&fs, &path_buf).await })
-            .get_storage()
-            .unwrap();
+            .get_storage()?;
         let map = map_convert_lib::legacy_to_new::legacy_to_new_from_buf(
             map_file,
             path.file_stem()
-                .ok_or(anyhow::anyhow!("wrong file name"))
-                .unwrap()
+                .ok_or(anyhow::anyhow!("wrong file name"))?
                 .to_str()
-                .ok_or(anyhow::anyhow!("file name not utf8"))
-                .unwrap(),
+                .ok_or(anyhow::anyhow!("file name not utf8"))?,
             &self.io.clone().into(),
             &tp,
             true,
         )
-        .map_err(|err| anyhow::anyhow!("Loading legacy map loading failed: {err}"))
-        .unwrap();
+        .map_err(|err| anyhow::anyhow!("Loading legacy map loading failed: {err}"))?;
 
         let resources: HashMap<_, _> = map
             .resources
@@ -979,7 +994,7 @@ impl Editor {
             match &server.cert {
                 NetworkServerCertModeResult::Cert { cert } => {
                     NetworkClientCertCheckMode::CheckByCert {
-                        cert: cert.to_der().unwrap().into(),
+                        cert: cert.to_der()?.into(),
                     }
                 }
                 NetworkServerCertModeResult::PubKeyHash { hash } => {
@@ -1005,11 +1020,27 @@ impl Editor {
             },
         );
         self.active_tab = name;
+
+        Ok(())
     }
 
     #[cfg(not(feature = "legacy"))]
-    pub fn load_legacy_map(&mut self, _path: &Path) {
-        panic!("loading legacy maps is not supported");
+    pub fn load_legacy_map(&mut self, _path: &Path) -> anyhow::Result<()> {
+        Err(anyhow!("loading legacy maps is not supported"))
+    }
+
+    fn map_resource_path(ty: ReadFileTy, name: &str, meta: &MapResourceMetaData) -> String {
+        format!(
+            "map/resources/{}/{}_{}.{}",
+            if ty == ReadFileTy::Image {
+                "images"
+            } else {
+                "sounds"
+            },
+            name,
+            fmt_hash(&meta.blake3_hash),
+            meta.ty.as_str()
+        )
     }
 
     pub fn load_map_impl(
@@ -1018,8 +1049,12 @@ impl Editor {
         cert: Option<NetworkServerCertMode>,
         port: Option<u16>,
         password: Option<String>,
-    ) {
-        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+    ) -> anyhow::Result<()> {
+        let name = path
+            .file_stem()
+            .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
+            .to_string_lossy()
+            .to_string();
 
         let fs = self.io.fs.clone();
         let tp = self.thread_pool.clone();
@@ -1029,12 +1064,7 @@ impl Editor {
             .rt
             .spawn(async move {
                 let file = read_file_editor(&fs, &path).await?;
-                let map = Map::read(&file, &tp).unwrap();
-                #[derive(Debug, PartialEq, Clone, Copy)]
-                enum ReadFileTy {
-                    Image,
-                    Sound,
-                }
+                let map = Map::read(&file, &tp)?;
                 let mut resource_files: HashMap<Hash, Vec<u8>> = Default::default();
                 for (ty, i) in map
                     .resources
@@ -1059,22 +1089,20 @@ impl Editor {
                         if let std::collections::hash_map::Entry::Vacant(e) =
                             resource_files.entry(meta.blake3_hash)
                         {
-                            let file = read_file_editor(
-                                fs,
-                                format!(
-                                    "map/resources/{}/{}_{}.{}",
-                                    if ty == ReadFileTy::Image {
-                                        "images"
-                                    } else {
-                                        "sounds"
-                                    },
-                                    name,
-                                    fmt_hash(&meta.blake3_hash),
-                                    meta.ty.as_str()
-                                )
-                                .as_ref(),
-                            )
-                            .await?;
+                            let file_path = Editor::map_resource_path(ty, name, meta);
+                            let file = read_file_editor(fs, file_path.as_ref()).await;
+
+                            let file = match file {
+                                Ok(file) => file,
+                                Err(err) => {
+                                    // also try to download from downloaded folder
+                                    let downloaded: &Path = "downloaded".as_ref();
+                                    match read_file_editor(fs, &downloaded.join(file_path)).await {
+                                        Ok(file) => file,
+                                        Err(_) => anyhow::bail!(err),
+                                    }
+                                }
+                            };
 
                             e.insert(file);
                         }
@@ -1088,8 +1116,7 @@ impl Editor {
 
                 Ok((map, resource_files))
             })
-            .get_storage()
-            .unwrap();
+            .get_storage()?;
 
         let map = self.map_to_editor_map(map, resources);
 
@@ -1100,7 +1127,7 @@ impl Editor {
             match &server.cert {
                 NetworkServerCertModeResult::Cert { cert } => {
                     NetworkClientCertCheckMode::CheckByCert {
-                        cert: cert.to_der().unwrap().into(),
+                        cert: cert.to_der()?.into(),
                     }
                 }
                 NetworkServerCertModeResult::PubKeyHash { hash } => {
@@ -1126,45 +1153,83 @@ impl Editor {
             },
         );
         self.active_tab = name;
+
+        Ok(())
     }
 
     pub fn load_map(&mut self, path: &Path) {
-        if path.extension().is_some_and(|ext| ext == "map") {
-            self.load_legacy_map(path);
+        let res = if path.extension().is_some_and(|ext| ext == "map") {
+            self.load_legacy_map(path)
         } else {
-            self.load_map_impl(path, None, None, None);
+            self.load_map_impl(path, None, None, None)
+        };
+        if let Err(err) = res {
+            self.notifications_overlay
+                .add_err(err.to_string(), Duration::from_secs(10));
         }
     }
 
     #[cfg(feature = "legacy")]
-    pub fn save_map_legacy(&mut self, path: &Path) {
-        if self.tabs.get(&self.active_tab).is_some() {
-            let mut twmap_path = path.to_path_buf();
-            twmap_path.set_extension(".twmap");
-            let task = self.save_map(&twmap_path);
-            task.unwrap().get_storage().unwrap();
+    pub fn save_map_legacy(&mut self, path: &Path) -> anyhow::Result<()> {
+        use map::map::resources::MapResourceRef;
 
-            let map_legacy = map_convert_lib::new_to_legacy::new_to_legacy(
-                &twmap_path,
-                &self.io.clone().into(),
-                &self.thread_pool,
-            )
-            .unwrap();
+        if self.tabs.get(&self.active_tab).is_some() {
+            let (map, resources) = self.save_map_impl().ok_or_else(|| {
+                anyhow!(
+                    "Map was not saved, is \
+                    there any map active?"
+                )
+            })?;
+
+            let tp = self.thread_pool.clone();
             let fs = self.io.fs.clone();
             let path = path.to_path_buf();
-            self.io.rt.spawn_without_lifetime(async move {
+            self.save_tasks.push(self.io.rt.spawn(async move {
+                let mut file: Vec<u8> = Default::default();
+                map.write(&mut file, &tp)?;
+                let map_legacy = map_convert_lib::new_to_legacy::new_to_legacy_from_buf_async(
+                    &file,
+                    |map| {
+                        let map_resources = map.resources.clone();
+                        Box::pin(async move {
+                            let collect_resources = |res: &[MapResourceRef], ty: ReadFileTy| {
+                                res.iter()
+                                    .map(|r| {
+                                        resources
+                                            .get(&Self::map_resource_path(
+                                                ty,
+                                                r.name.as_str(),
+                                                &r.meta,
+                                            ))
+                                            .cloned()
+                                            .unwrap()
+                                    })
+                                    .collect()
+                            };
+                            Ok((
+                                collect_resources(&map_resources.images, ReadFileTy::Image),
+                                collect_resources(&map_resources.image_arrays, ReadFileTy::Image),
+                                collect_resources(&map_resources.sounds, ReadFileTy::Sound),
+                            ))
+                        })
+                    },
+                    &tp,
+                )
+                .await?;
+
                 fs.write_file(&path, map_legacy.map).await?;
                 Ok(())
-            })
+            }));
         }
+        Ok(())
     }
 
     #[cfg(not(feature = "legacy"))]
-    pub fn save_map_legacy(&mut self, _path: &Path) {
-        panic!("saving as legacy map is not supported");
+    pub fn save_map_legacy(&mut self, _path: &Path) -> anyhow::Result<()> {
+        Err(anyhow!("saving as legacy map is not supported"))
     }
 
-    pub fn save_map(&mut self, path: &Path) -> Option<IoRuntimeTask<()>> {
+    fn save_map_impl(&mut self) -> Option<(Map, HashMap<String, Vec<u8>>)> {
         if let Some(tab) = self.tabs.get(&self.active_tab) {
             let map: Map = tab.map.clone().into();
             let resources =
@@ -1251,10 +1316,18 @@ impl Editor {
                         .collect::<Vec<_>>()
                     }))
                     .collect::<HashMap<_, _>>();
+            Some((map, resources))
+        } else {
+            None
+        }
+    }
+
+    pub fn save_map(&mut self, path: &Path) -> Option<IoRuntimeTask<()>> {
+        self.save_map_impl().map(|(map, resources)| {
             let tp = self.thread_pool.clone();
             let fs = self.io.fs.clone();
             let path = path.to_path_buf();
-            Some(self.io.rt.spawn(async move {
+            self.io.rt.spawn(async move {
                 fs.create_dir("map/maps".as_ref()).await?;
                 fs.create_dir("map/resources/images".as_ref()).await?;
                 fs.create_dir("map/resources/sounds".as_ref()).await?;
@@ -1268,10 +1341,8 @@ impl Editor {
                     fs.write_file(path.as_ref(), resource).await?;
                 }
                 Ok(())
-            }))
-        } else {
-            None
-        }
+            })
+        })
     }
 
     fn update(&mut self) {
@@ -2070,7 +2141,9 @@ impl Editor {
             match ev {
                 EditorUiEvent::OpenFile { name } => self.load_map(&name),
                 EditorUiEvent::SaveFile { name } => {
-                    let _ = self.save_map(&name);
+                    if let Some(task) = self.save_map(&name) {
+                        self.save_tasks.push(task);
+                    }
                 }
                 EditorUiEvent::HostMap(host_map) => {
                     let EditorUiEventHostMap {
@@ -2080,14 +2153,17 @@ impl Editor {
                         cert,
                         private_key,
                     } = *host_map;
-                    self.load_map_impl(
+                    if let Err(err) = self.load_map_impl(
                         map_path.as_ref(),
                         Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
                             NetworkServerCertAndKey { cert, private_key },
                         ))),
                         Some(port),
                         Some(password),
-                    );
+                    ) {
+                        self.notifications_overlay
+                            .add_err(err.to_string(), Duration::from_secs(10));
+                    }
                 }
                 EditorUiEvent::Join {
                     ip_port,
@@ -2196,6 +2272,29 @@ impl EditorInterface for Editor {
         if !ui_output.copied_text.is_empty() {
             dbg!(&ui_output.copied_text);
         }
+
+        // handle save tasks
+        let mut unfinished_tasks = Vec::default();
+        for task in self.save_tasks.drain(..) {
+            if task.is_finished() {
+                match task.get_storage() {
+                    Ok(_) => {
+                        // ignore
+                    }
+                    Err(err) => {
+                        self.notifications_overlay
+                            .add_err(err.to_string(), Duration::from_secs(10));
+                    }
+                }
+            } else {
+                unfinished_tasks.push(task);
+            }
+        }
+        std::mem::swap(&mut self.save_tasks, &mut unfinished_tasks);
+
+        // render the overlay for notifications
+        self.notifications_overlay.render();
+
         if self.is_closed {
             EditorResult::Close
         } else {

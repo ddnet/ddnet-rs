@@ -1641,6 +1641,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "client-notifications"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "egui",
+ "egui-notify",
+ "graphics",
+ "ui-base",
+ "ui-generic",
+]
+
+[[package]]
 name = "client-render"
 version = "0.1.0"
 dependencies = [
@@ -2701,6 +2713,7 @@ dependencies = [
  "client-demo",
  "client-ghost",
  "client-map",
+ "client-notifications",
  "client-render",
  "client-render-base",
  "client-render-game",
@@ -2715,7 +2728,6 @@ dependencies = [
  "editor",
  "editor-wasm",
  "egui",
- "egui-notify",
  "egui-winit",
  "egui_extras",
  "emath",
@@ -3199,6 +3211,7 @@ dependencies = [
  "base-io-traits",
  "bincode",
  "client-containers",
+ "client-notifications",
  "client-render-base",
  "config",
  "ed25519-dalek",

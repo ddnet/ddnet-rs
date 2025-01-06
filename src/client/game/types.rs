@@ -8,6 +8,7 @@ use std::{
 
 use base::{hash::Hash, system::System};
 use base_io::io::Io;
+use client_notifications::overlay::ClientNotifications;
 use client_types::console::ConsoleEntry;
 use client_ui::ingame_menu::account_info::AccountInfo;
 use client_ui::{
@@ -17,19 +18,17 @@ use client_ui::{
 };
 use config::config::ConfigEngine;
 use egui::FontDefinitions;
+use game_base::{local_server_info::LocalServerInfo, server_browser::ServerBrowserData};
 use game_config::config::ConfigGame;
+use game_network::{game_event_generator::GameEventGenerator, messages::ServerToClientMessage};
 use graphics::graphics::graphics::Graphics;
 use graphics_backend::backend::GraphicsBackend;
 use network::network::quinn_network::QuinnNetwork;
 use pool::datatypes::StringPool;
-use game_base::{local_server_info::LocalServerInfo, server_browser::ServerBrowserData};
-use game_network::{game_event_generator::GameEventGenerator, messages::ServerToClientMessage};
 use sound::sound::SoundManager;
 use ui_base::types::UiState;
 
-use crate::{
-    client::overlays::notifications::ClientNotifications, spatial_chat::spatial_chat::SpatialChat,
-};
+use crate::spatial_chat::spatial_chat::SpatialChat;
 
 pub struct GameBase {
     pub graphics: Graphics,
