@@ -82,7 +82,7 @@ impl ReducedAsciiString {
     pub fn from_str_autoconvert(s: &str) -> Self {
         let s = s.to_lowercase();
 
-        let s: String = s
+        let mut s: String = s
             .chars()
             .map(|char| match char {
                 '!' => 'i',
@@ -104,6 +104,24 @@ impl ReducedAsciiString {
                 _ => char,
             })
             .collect();
+
+        if Self::is_dot_safe(s.as_str()).is_err() {
+            while s.contains("..") {
+                s = s.replace("..", ".");
+            }
+            if s.ends_with(".") {
+                s.truncate(s.len().saturating_sub(1));
+            }
+        }
+        if Self::is_hash_like(s.as_str()).is_err() {
+            s = s
+                .chars()
+                .rev()
+                .collect::<String>()
+                .split_once("_")
+                .map(|(_, rest)| rest.chars().rev().collect())
+                .unwrap_or_default();
+        }
 
         Self::from_str_lossy(&s)
     }

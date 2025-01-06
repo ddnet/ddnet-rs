@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::anyhow;
 use base::{
-    benchmark::Benchmark, join_all, linked_hash_map_view::FxLinkedHashMap,
+    benchmark::Benchmark, hash::Hash, join_all, linked_hash_map_view::FxLinkedHashMap,
     reduced_ascii_str::ReducedAsciiString,
 };
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
@@ -320,6 +320,27 @@ pub struct MapFileImageReadOptions {
 #[derive(Default)]
 pub struct MapFileSoundReadOptions {
     pub do_benchmark: bool,
+}
+
+#[derive(Debug)]
+pub struct LegacyMapToNewRes {
+    pub buf: Vec<u8>,
+    pub ty: String,
+    pub name: String,
+}
+
+#[derive(Debug)]
+pub struct LegacyMapToNewResources {
+    /// blake3 hash
+    pub images: HashMap<Hash, LegacyMapToNewRes>,
+    /// blake3 hash
+    pub sounds: HashMap<Hash, LegacyMapToNewRes>,
+}
+
+#[derive(Debug)]
+pub struct LegacyMapToNewOutput {
+    pub map: Map,
+    pub resources: LegacyMapToNewResources,
 }
 
 impl Default for CDatafileWrapper {
@@ -1421,7 +1442,10 @@ impl CDatafileWrapper {
     }
 
     /// images are external images
-    pub fn into_map(self, images: &[Vec<u8>]) -> anyhow::Result<Map> {
+    pub fn into_map(self, images: &[Vec<u8>]) -> anyhow::Result<LegacyMapToNewOutput> {
+        let mut image_resources: HashMap<Hash, LegacyMapToNewRes> = Default::default();
+        let mut sound_resources: HashMap<Hash, LegacyMapToNewRes> = Default::default();
+
         let mut map = Map {
             animations: Animations {
                 pos: Default::default(),
@@ -1552,14 +1576,23 @@ impl CDatafileWrapper {
         // resources
         for MapSound { name, def: _, data } in self.sounds.into_iter() {
             let data = data.ok_or(anyhow!("sound data not loaded"))?;
-            map.resources.sounds.push(MapResourceRef {
+            let res = MapResourceRef {
                 name: ReducedAsciiString::from_str_autoconvert(&name),
                 meta: MapResourceMetaData {
                     blake3_hash: Map::generate_hash_for(&data),
-                    ty: "ogg".try_into().unwrap(),
+                    ty: "opus".try_into().unwrap(),
                 },
                 hq_meta: None,
-            });
+            };
+            sound_resources.insert(
+                res.meta.blake3_hash,
+                LegacyMapToNewRes {
+                    buf: data,
+                    ty: "opus".to_string(),
+                    name: res.name.to_string(),
+                },
+            );
+            map.resources.sounds.push(res.clone());
         }
 
         let mut old_img_assign: HashMap<usize, usize> = Default::default();
@@ -1585,13 +1618,13 @@ impl CDatafileWrapper {
                 }
             }
 
-            let hash = if let Some(internal_img) = image.internal_img {
+            let (hash, png_data) = if let Some(internal_img) = image.internal_img {
                 let img = save_png_image(
                     &internal_img,
                     image.item_data.width as u32,
                     image.item_data.height as u32,
                 )?;
-                Map::generate_hash_for(&img)
+                (Map::generate_hash_for(&img), img)
             } else {
                 let img = images
                     .get({
@@ -1606,7 +1639,7 @@ impl CDatafileWrapper {
                     &mut img_data
                 })?;
                 let img = save_png_image(img.data, img.width as u32, img.height as u32)?;
-                Map::generate_hash_for(&img)
+                (Map::generate_hash_for(&img), img)
             };
             let res_ref = MapResourceRef {
                 name: ReducedAsciiString::from_str_autoconvert(&image.img_name),
@@ -1616,6 +1649,14 @@ impl CDatafileWrapper {
                 },
                 hq_meta: None,
             };
+            image_resources.insert(
+                res_ref.meta.blake3_hash,
+                LegacyMapToNewRes {
+                    buf: png_data,
+                    ty: "png".into(),
+                    name: res_ref.name.to_string(),
+                },
+            );
             if in_tile_layer {
                 old_img_array_assign.insert(img_index, map.resources.image_arrays.len());
                 map.resources.image_arrays.push(res_ref.clone());
@@ -2094,7 +2135,13 @@ impl CDatafileWrapper {
             }
         }
 
-        Ok(map)
+        Ok(LegacyMapToNewOutput {
+            map,
+            resources: LegacyMapToNewResources {
+                images: image_resources,
+                sounds: sound_resources,
+            },
+        })
     }
 
     /// returns a Vec containing the file ready to write to disk
