@@ -2336,7 +2336,10 @@ pub mod state {
                     self.handle_chat_commands(player_id, cmds);
                 }
                 ClientCommand::JoinStage(join_stage) => {
-                    if self.config.allow_stages {
+                    if self.config.allow_stages
+                        || (!Self::is_sided_from_conf(self.config.game_type)
+                            && matches!(join_stage, JoinStage::Default))
+                    {
                         let stage_id = match join_stage {
                             JoinStage::Default => self.stage_0_id,
                             JoinStage::Own { mut name, color } => {

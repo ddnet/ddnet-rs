@@ -55,7 +55,9 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                 .events
                                 .push(UiEvent::SwitchToFreeCam);
                         }
-                    } else if options.allow_stages && ui.button("Join game").clicked() {
+                    } else if (options.allow_stages || !options.use_vanilla_sides)
+                        && ui.button("Join game").clicked()
+                    {
                         pipe.user_data.browser_menu.events.push(UiEvent::JoinGame);
                     }
                     if options.allow_stages {
