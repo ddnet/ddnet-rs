@@ -18,15 +18,18 @@ jobs:
           features-debug: "bundled_data_dir,ffmpeg,microphone"
           features: "bundled_data_dir,ffmpeg,microphone"
           bin: ddnet-rs
+          server-bin: server
         - os: macOS-latest
           features-debug: "bundled_data_dir,ffmpeg,microphone"
           features: "bundled_data_dir,ffmpeg,microphone"
           bin: ddnet-rs
+          server-bin: server
         - os: windows-latest
           # ffmpeg takes years on win
           features-debug: "bundled_data_dir,microphone"
           features: "bundled_data_dir,ffmpeg,microphone"
           bin: ddnet-rs.exe
+          server-bin: server.exe
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -121,10 +124,14 @@ jobs:
     - name: Build release
       run: cargo build --release --verbose --features ${{ matrix.features }}
 
+    - name: Build server release
+      run: cargo build -p server --release --verbose --features bundled_data_dir
+
     - name: Prepare artifacts
       run: |
         mkdir bin-artifacts || true
         mv target/release/${{ matrix.bin }} bin-artifacts
+        mv target/release/${{ matrix.server-bin }} bin-artifacts
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4

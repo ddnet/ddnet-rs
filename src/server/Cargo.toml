@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 network = { path = "../../lib/network" }
 base = { path = "../../lib/base" }
+base-fs = { path = "../../lib/base-fs", default-features = false }
+
 game-server = { path = "../../game/game-server", default-features = false }
 game-base = { path = "../../game/game-base" }
 game-config = { path = "../../game/game-config" }
@@ -13,7 +15,12 @@ game-config = { path = "../../game/game-config" }
 serde_json = "1.0.134"
 env_logger = "0.11.6"
 
+# The dep is unused here, but used in a feature
+[package.metadata.cargo-machete]
+ignored = ["base-fs"]
+
 [features]
 legacy = ["game-server/legacy"]
+bundled_data_dir = ["base-fs/bundled_data_dir"]
 
 default = ["legacy"]
