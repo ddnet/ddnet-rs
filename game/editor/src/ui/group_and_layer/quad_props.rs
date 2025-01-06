@@ -334,31 +334,31 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             });
                             if let Some(color_anim) = anim_color {
                                 let mut color = [
-                                    (color_anim.value.r().to_num::<f32>() / 255.0) as u8,
-                                    (color_anim.value.g().to_num::<f32>() / 255.0) as u8,
-                                    (color_anim.value.b().to_num::<f32>() / 255.0) as u8,
-                                    (color_anim.value.a().to_num::<f32>() / 255.0) as u8,
+                                    (color_anim.value.r().to_num::<f32>() * 255.0) as u8,
+                                    (color_anim.value.g().to_num::<f32>() * 255.0) as u8,
+                                    (color_anim.value.b().to_num::<f32>() * 255.0) as u8,
+                                    (color_anim.value.a().to_num::<f32>() * 255.0) as u8,
                                 ];
                                 ui.color_edit_button_srgba_unmultiplied(&mut color);
                                 color_anim.value = nfvec4::new(
-                                    nffixed::from_num(color[0] as f32 * 255.0),
-                                    nffixed::from_num(color[1] as f32 * 255.0),
-                                    nffixed::from_num(color[2] as f32 * 255.0),
-                                    nffixed::from_num(color[3] as f32 * 255.0),
+                                    nffixed::from_num(color[0] as f32 / 255.0),
+                                    nffixed::from_num(color[1] as f32 / 255.0),
+                                    nffixed::from_num(color[2] as f32 / 255.0),
+                                    nffixed::from_num(color[3] as f32 / 255.0),
                                 );
                             } else {
                                 let mut color = [
-                                    (quad.colors[c].r().to_num::<f32>() / 255.0) as u8,
-                                    (quad.colors[c].g().to_num::<f32>() / 255.0) as u8,
-                                    (quad.colors[c].b().to_num::<f32>() / 255.0) as u8,
-                                    (quad.colors[c].a().to_num::<f32>() / 255.0) as u8,
+                                    (quad.colors[c].r().to_num::<f32>() * 255.0) as u8,
+                                    (quad.colors[c].g().to_num::<f32>() * 255.0) as u8,
+                                    (quad.colors[c].b().to_num::<f32>() * 255.0) as u8,
+                                    (quad.colors[c].a().to_num::<f32>() * 255.0) as u8,
                                 ];
                                 ui.color_edit_button_srgba_unmultiplied(&mut color);
                                 quad.colors[c] = nfvec4::new(
-                                    nffixed::from_num(color[0] as f32 * 255.0),
-                                    nffixed::from_num(color[1] as f32 * 255.0),
-                                    nffixed::from_num(color[2] as f32 * 255.0),
-                                    nffixed::from_num(color[3] as f32 * 255.0),
+                                    nffixed::from_num(color[0] as f32 / 255.0),
+                                    nffixed::from_num(color[1] as f32 / 255.0),
+                                    nffixed::from_num(color[2] as f32 / 255.0),
+                                    nffixed::from_num(color[3] as f32 / 255.0),
                                 );
                             }
                             ui.end_row();

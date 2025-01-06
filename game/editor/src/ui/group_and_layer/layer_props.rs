@@ -278,17 +278,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             );
                         });
                         let mut color = [
-                            (attr.color.r().to_num::<f32>() / 255.0) as u8,
-                            (attr.color.g().to_num::<f32>() / 255.0) as u8,
-                            (attr.color.b().to_num::<f32>() / 255.0) as u8,
-                            (attr.color.a().to_num::<f32>() / 255.0) as u8,
+                            (attr.color.r().to_num::<f32>() * 255.0) as u8,
+                            (attr.color.g().to_num::<f32>() * 255.0) as u8,
+                            (attr.color.b().to_num::<f32>() * 255.0) as u8,
+                            (attr.color.a().to_num::<f32>() * 255.0) as u8,
                         ];
                         ui.color_edit_button_srgba_unmultiplied(&mut color);
                         attr.color = nfvec4::new(
-                            nffixed::from_num(color[0] as f32 * 255.0),
-                            nffixed::from_num(color[1] as f32 * 255.0),
-                            nffixed::from_num(color[2] as f32 * 255.0),
-                            nffixed::from_num(color[3] as f32 * 255.0),
+                            nffixed::from_num(color[0] as f32 / 255.0),
+                            nffixed::from_num(color[1] as f32 / 255.0),
+                            nffixed::from_num(color[2] as f32 / 255.0),
+                            nffixed::from_num(color[3] as f32 / 255.0),
                         );
                         ui.end_row();
                         // color anim
