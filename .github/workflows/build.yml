@@ -81,23 +81,23 @@ jobs:
         pacman --noconfirm -S git make mingw-w64-x86_64-libx264 mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm mingw-w64-x86_64-opus
         # self compile for now
         # https://github.com/msys2/MINGW-packages/issues/8824
-        git clone --depth=1 https://github.com/mirror/x264 ~/x264
+        git clone --depth=1 https://github.com/mirror/x264 /c/x264
 
     - name: Setup cache for x264 (Windows)
       if: contains(matrix.os, 'windows')
       uses: actions/cache@v4
       id: x264-cache-compiled
       with:
-        path: ~/build-x264
-        key: ${{ runner.os }}-build-${{ hashFiles('~/x264') }}
+        path: C:\build-x264
+        key: ${{ runner.os }}-build-${{ hashFiles('/c/x264') }}
 
     - name: Compile x264 (Windows)
       if: contains(matrix.os, 'windows') && steps.x264-cache-compiled.outputs.cache-hit != 'true'
       run: |
         (
-          mkdir ~/build-x264
-          cd ~/build-x264
-          ../x264/configure --enable-static
+          mkdir /c/build-x264
+          cd /c/build-x264
+          /c/x264/configure --enable-static
           make -j$(nproc)
         )
 
@@ -105,7 +105,7 @@ jobs:
       if: contains(matrix.os, 'windows')
       run: |
         rm /mingw64/lib/libx264.dll.a
-        mv ~/build-x264/libx264.a /mingw64/lib/libx264.a
+        mv /c/build-x264/libx264.a /mingw64/lib/libx264.a
         rustup target add x86_64-pc-windows-gnu
         rustup update stable
         rustup set default-host x86_64-pc-windows-gnu
