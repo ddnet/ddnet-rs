@@ -5872,6 +5872,8 @@ dependencies = [
  "base-fs",
  "base-io",
  "clap 4.5.23",
+ "env_logger",
+ "log",
  "map",
  "map-convert-lib",
  "rayon",

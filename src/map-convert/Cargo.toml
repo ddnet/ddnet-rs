@@ -14,3 +14,5 @@ map-convert-lib = { path = "../../game/map-convert-lib" }
 clap = { version = "4.5.23", features = ["derive"] }
 rayon = "1.10.0"
 anyhow = { version = "1.0.95", features = ["backtrace"] }
+log = "0.4.22"
+env_logger = "0.11.6"
