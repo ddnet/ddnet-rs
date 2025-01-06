@@ -22,7 +22,7 @@ Example development of a wasm module with `cargo-watch`:
 On unix:
 
 ```
-cargo watch -x "build --target wasm32-unknown-unknown -p <proj> --release" -s "cp target/wasm32-unknown-unknown/release/<name>.wasm ~/.config/<ddnet-rs>/mods/ui/wasm/wasm.wasm"
+cargo watch -x "build --target wasm32-unknown-unknown -p <proj> --release" -s "mv target/wasm32-unknown-unknown/release/<name>.wasm ~/.config/<ddnet-rs>/mods/ui/wasm/wasm.wasm"
 ```
 
 On Windows:

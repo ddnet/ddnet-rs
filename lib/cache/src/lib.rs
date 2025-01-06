@@ -147,7 +147,7 @@ impl<const VERSION: usize> Cache<{ VERSION }> {
     }
 
     /// Puts a given file into the cache as is, returns the path of the cached file.
-    /// This can be used to simply cache a file against changes
+    /// This can be used to simply cache a file against changes.
     /// The file extension is kept.
     pub async fn archieve(
         &self,
@@ -174,5 +174,33 @@ impl<const VERSION: usize> Cache<{ VERSION }> {
         }
 
         Ok(file_path)
+    }
+
+    /// Returns the the full path of the named file
+    fn cache_named_file_path(cache: &CacheImpl, name_path: &Path) -> PathBuf {
+        let dir_name = Path::new("cache/named")
+            .join(Path::new(&cache.cache_name))
+            .join(Path::new(&format!("v{}", VERSION)));
+        dir_name.join(name_path)
+    }
+
+    /// Read a named files from the cache.
+    /// It's up to the caller how the file is cached exactly.
+    pub async fn read_named(&self, name_path: &Path) -> std::io::Result<Vec<u8>> {
+        FileSystem::read_file_in_fs(
+            &self.cache.cache_fs,
+            &Self::cache_named_file_path(&self.cache, name_path),
+        )
+        .await
+    }
+
+    /// Write a named files to the cache.
+    /// It's up to the caller how the file is cached exactly.
+    pub async fn write_named(&self, name_path: &Path, file: Vec<u8>) -> std::io::Result<()> {
+        let path = Self::cache_named_file_path(&self.cache, name_path);
+        if let Some(dir) = path.parent() {
+            FileSystem::create_dir_in_fs(&self.cache.cache_fs, dir).await?;
+        }
+        FileSystem::write_file_for_fs(&self.cache.cache_fs, &path, file).await
     }
 }
