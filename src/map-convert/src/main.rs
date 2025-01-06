@@ -30,6 +30,11 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    if std::env::var("RUST_LOG").is_err() {
+        unsafe { std::env::set_var("RUST_LOG", "info") };
+    }
+    env_logger::init();
+
     let io = IoFileSys::new(|rt| {
         Arc::new(
             FileSystem::new(rt, "org", "", "DDNet-Rs-Alpha", "DDNet-Accounts")
@@ -51,7 +56,7 @@ fn main() {
     let file_path: &Path = args.file.as_ref();
     let file_path = file_path.to_path_buf();
     // legacy to new
-    if file_path.extension().is_some_and(|e| e == "map") {
+    let task = if file_path.extension().is_some_and(|e| e == "map") {
         let output = legacy_to_new(args.file.as_ref(), &io, &thread_pool, args.optimize).unwrap();
 
         // write map
@@ -61,17 +66,18 @@ fn main() {
         benchmark.bench("serializing & compressing map");
         let fs = io.fs.clone();
         let output_dir = args.output.clone();
-        io.rt.spawn_without_lifetime(async move {
+        io.rt.spawn(async move {
             fs.create_dir(output_dir.as_ref()).await?;
             // write map
-            let mut map_path = PathBuf::from(&output_dir);
-            map_path.push("map/maps/");
+            let map_path = PathBuf::from(&output_dir).join("map/maps/");
             fs.create_dir(&map_path).await?;
-            map_path.push(format!(
+            let map_path = map_path.join(format!(
                 "{}.twmap",
                 file_path.file_stem().unwrap().to_str().unwrap(),
             ));
             fs.write_file(&map_path, file).await?;
+
+            log::info!("map file written to {output_dir}/map/maps/");
 
             // write resources
             let mut res_path = PathBuf::from(&output_dir);
@@ -102,10 +108,12 @@ fn main() {
                 fs.write_file(&res_path, sound.buf.clone()).await?;
             }
 
+            log::info!("map resources written to file written to {output_dir}/map/resources");
+
             Ok(())
-        });
+        })
     }
-    // new to legacy
+    // new to legacy or json
     else if file_path.extension().is_some_and(|e| e == "twmap") {
         if args.json {
             let fs = io.fs.clone();
@@ -124,37 +132,52 @@ fn main() {
             let map = map.get_storage().unwrap();
             let fs = io.fs.clone();
             let output_dir = args.output.clone();
-            io.rt.spawn_without_lifetime(async move {
+            io.rt.spawn(async move {
                 fs.create_dir(output_dir.as_ref()).await?;
                 // write map
-                let mut map_path = PathBuf::from(&output_dir);
-                map_path.push("json/");
+                let map_path = PathBuf::from(&output_dir).join("json/");
                 fs.create_dir(&map_path).await?;
-                map_path.push(format!(
+                let map_path = map_path.join(format!(
                     "{}.json",
                     file_path.file_stem().unwrap().to_str().unwrap(),
                 ));
                 fs.write_file(&map_path, map.as_json().as_bytes().to_vec())
                     .await?;
+
+                log::info!(
+                    "json map written to file written to {}",
+                    map_path.to_string_lossy()
+                );
+
                 Ok(())
-            });
+            })
         } else {
             let output = new_to_legacy(args.file.as_ref(), &io, &thread_pool).unwrap();
             let fs = io.fs.clone();
             let output_dir = args.output.clone();
-            io.rt.spawn_without_lifetime(async move {
+            io.rt.spawn(async move {
                 fs.create_dir(output_dir.as_ref()).await?;
                 // write map
-                let mut map_path = PathBuf::from(&output_dir);
-                map_path.push("legacy/maps/");
+                let map_path = PathBuf::from(&output_dir).join("legacy/maps/");
                 fs.create_dir(&map_path).await?;
-                map_path.push(format!(
+                let map_path = map_path.join(format!(
                     "{}.map",
                     file_path.file_stem().unwrap().to_str().unwrap(),
                 ));
                 fs.write_file(&map_path, output.map).await?;
+
+                log::info!(
+                    "legacy map written to file written to {}",
+                    map_path.to_string_lossy()
+                );
+
                 Ok(())
-            });
+            })
         }
+    } else {
+        panic!("Given file was neither a legacy map nor new map.");
+    };
+    if let Err(err) = task.get_storage() {
+        log::error!("{err}");
     }
 }
