@@ -2002,11 +2002,9 @@ impl ClientNativeImpl {
                 LocalConsoleEvent::Bind { was_player_profile }
                 | LocalConsoleEvent::Unbind { was_player_profile } => {
                     if let Game::Active(game) = &mut self.game {
-                        if let Some((_, local_player)) = if was_player_profile {
-                            game.game_data.local.active_local_player_mut()
-                        } else {
-                            game.game_data.local.first_inactive_local_players_mut()
-                        } {
+                        let dummy_copies_binds =
+                            self.config.game.profiles.dummy.copy_binds_from_main;
+                        let mut set_binds = |local_player: &mut ClientPlayer| {
                             // delete all previous binds
                             local_player.binds = Binds::default();
                             GameData::init_local_player_binds(
@@ -2016,6 +2014,22 @@ impl ClientNativeImpl {
                                 &self.local_console.entries,
                                 &mut game.parser_cache,
                             );
+                        };
+
+                        let local_player = if was_player_profile {
+                            game.game_data.local.active_local_player_mut()
+                        } else {
+                            game.game_data.local.first_inactive_local_players_mut()
+                        };
+                        if let Some((_, local_player)) = local_player {
+                            set_binds(local_player);
+                        }
+                        // make sure to also update the dummy settings (if wanted)
+                        if let Some((_, local_player)) = (was_player_profile && dummy_copies_binds)
+                            .then_some(game.game_data.local.first_inactive_local_players_mut())
+                            .flatten()
+                        {
+                            set_binds(local_player);
                         }
                     }
                 }
@@ -2044,6 +2058,33 @@ impl ClientNativeImpl {
                             )
                         {
                             game.game_data.local.active_local_player_id = *index;
+                        }
+                    }
+                }
+                LocalConsoleEvent::ToggleDummy => {
+                    if let Game::Active(game) = &mut self.game {
+                        if let Some(((&dummy_index, _), (&player_index, _))) = game
+                            .game_data
+                            .local
+                            .expected_local_players
+                            .iter()
+                            .find(|(_, p)| match p {
+                                ClientConnectedPlayer::Connecting { .. } => false,
+                                ClientConnectedPlayer::Connected { is_dummy, .. } => *is_dummy,
+                            })
+                            .zip(game.game_data.local.expected_local_players.iter().find(
+                                |(_, p)| match p {
+                                    ClientConnectedPlayer::Connecting { .. } => false,
+                                    ClientConnectedPlayer::Connected { is_dummy, .. } => !*is_dummy,
+                                },
+                            ))
+                        {
+                            let active_index = &mut game.game_data.local.active_local_player_id;
+                            if *active_index == player_index {
+                                *active_index = dummy_index;
+                            } else {
+                                *active_index = player_index;
+                            }
                         }
                     }
                 }
