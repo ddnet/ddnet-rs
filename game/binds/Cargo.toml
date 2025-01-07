@@ -7,6 +7,7 @@ edition = "2021"
 game-interface = { path = "../game-interface" }
 client-types = { path = "../client-types" }
 
+hiarc = { path = "../../lib/hiarc" }
 input-binds = { path = "../../lib/input-binds" }
 command-parser = { path = "../../lib/command-parser" }
 

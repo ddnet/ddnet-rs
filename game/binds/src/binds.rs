@@ -4,9 +4,10 @@ use anyhow::anyhow;
 use client_types::console::{entries_to_parser, ConsoleEntry};
 use command_parser::parser::{self, Command, CommandType, ParserCache, Syn};
 use game_interface::types::weapons::WeaponType;
+use hiarc::Hiarc;
 pub use input_binds::binds::{BindKey, KeyCode, PhysicalKey};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Hiarc, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BindActionsCharacter {
     MoveLeft,
     MoveRight,
@@ -18,7 +19,7 @@ pub enum BindActionsCharacter {
     Weapon(WeaponType),
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Hiarc, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BindActionsLocalPlayer {
     Character(BindActionsCharacter),
     Dummy(BindActionsCharacter),

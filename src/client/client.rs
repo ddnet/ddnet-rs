@@ -13,7 +13,7 @@ use base_fs::filesys::FileSystem;
 
 use base_http::http::HttpClient;
 use base_io::io::{Io, IoFileSys};
-use binds::binds::BindActionsHotkey;
+use binds::binds::{BindActionsHotkey, BindActionsLocalPlayer};
 use client_accounts::accounts::{Accounts, AccountsLoading};
 use client_console::console::{
     console::ConsoleRenderPipe,
@@ -2135,6 +2135,28 @@ impl ClientNativeImpl {
                         }
                         _ => {
                             // ignore
+                        }
+                    }
+                }
+                LocalConsoleEvent::LocalPlayerAction(action) => {
+                    if let Game::Active(game) = &self.game {
+                        // handle a few actions directly
+                        match action {
+                            BindActionsLocalPlayer::Kill => {
+                                if let Some((local_player_id, _)) =
+                                    game.game_data.local.active_local_player()
+                                {
+                                    game.network.send_unordered_to_server(
+                                        &ClientToServerMessage::PlayerMsg((
+                                            *local_player_id,
+                                            ClientToServerPlayerMessage::Kill,
+                                        )),
+                                    );
+                                }
+                            }
+                            _ => {
+                                // ignore
+                            }
                         }
                     }
                 }

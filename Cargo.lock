@@ -974,6 +974,7 @@ dependencies = [
  "client-types",
  "command-parser",
  "game-interface",
+ "hiarc",
  "input-binds",
  "log",
  "serde_json",
