@@ -15,7 +15,7 @@ target/             # Target directory for compiled artifacts
 
 # Other, cache, analysis
 .cache/             # Cache files
-artifacts/          # Artifact for memory analysis feature
+artifacts/          # Artifacts created by CI tests
 *.sqlite            # SQLite database files
 /trace.txt          # Trace output file
 /flamegraph.svg     # Flamegraph output file
