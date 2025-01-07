@@ -17,7 +17,7 @@ target/             # Target directory for compiled artifacts
 .cache/             # Cache files
 artifacts/          # Artifacts created by CI tests
 *.sqlite            # SQLite database files
-/trace.txt          # Trace output file
+/trace.txt          # Artifact for the memory analysis feature
 /flamegraph.svg     # Flamegraph output file
 /perf.data*         # Performance data files
 /callgrind.out.*    # Callgrind output files
