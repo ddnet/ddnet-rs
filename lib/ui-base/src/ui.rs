@@ -64,6 +64,30 @@ pub struct UiCachedOutput {
 
 pub type RepaintListeners = Arc<RwLock<HashMap<ViewportId, Arc<AtomicBool>>>>;
 
+fn load_proportional_fonts(egui_ctx: &egui::Context, font_definitions: &FontDefinitions) {
+    // by default only copy the proportional fonts
+    let mut apply_font_definitions = FontDefinitions::empty();
+    if let Some(font_names) = font_definitions
+        .families
+        .get(&egui::FontFamily::Proportional)
+    {
+        for font_name in font_names {
+            let Some(font) = font_definitions.font_data.get(font_name) else {
+                continue;
+            };
+            apply_font_definitions
+                .families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .push(font_name.clone());
+            apply_font_definitions
+                .font_data
+                .insert(font_name.clone(), font.clone());
+        }
+    }
+    egui_ctx.set_fonts(apply_font_definitions);
+}
+
 /// Helps to create UIs in efficient matter
 #[derive(Debug)]
 pub struct UiCreator {
@@ -72,6 +96,7 @@ pub struct UiCreator {
     pub id_gen: Cell<u64>,
     pub repaint_listeners: RepaintListeners,
     pub zoom_level: Rc<Cell<Option<f32>>>,
+    pub has_monospace_fonts: Rc<Cell<bool>>,
 }
 
 impl Default for UiCreator {
@@ -105,13 +130,14 @@ impl Default for UiCreator {
             id_gen: Default::default(),
             repaint_listeners,
             zoom_level: Default::default(),
+            has_monospace_fonts: Default::default(),
         }
     }
 }
 
 impl UiCreator {
     pub fn load_font(&mut self, font_definitions: &FontDefinitions) {
-        self.context.egui_ctx.set_fonts(font_definitions.clone());
+        load_proportional_fonts(&self.context.egui_ctx, font_definitions);
 
         self.font_definitions = Some(font_definitions.clone());
     }
@@ -143,6 +169,7 @@ pub struct UiContainer {
 
     /// The zoom level is shared with all UI that has the same context
     pub zoom_level: Rc<Cell<Option<f32>>>,
+    has_monospace_fonts: Rc<Cell<bool>>,
 
     pub font_definitions: Option<FontDefinitions>,
 }
@@ -184,7 +211,22 @@ impl UiContainer {
             should_tesselate_stencil: false,
 
             zoom_level: creator.zoom_level.clone(),
+            has_monospace_fonts: creator.has_monospace_fonts.clone(),
             font_definitions: creator.font_definitions.clone(),
+        }
+    }
+
+    /// If the implementation needs monofonts, it must call this function.
+    ///
+    /// This function can be called multiple times without additional performance
+    /// overhead.
+    pub fn load_monospace_fonts(&self) {
+        if self.has_monospace_fonts.get() {
+            return;
+        }
+        if let Some(font_definitions) = &self.font_definitions {
+            self.context.egui_ctx.set_fonts(font_definitions.clone());
+            self.has_monospace_fonts.set(true);
         }
     }
 
@@ -324,7 +366,14 @@ impl UiContainer {
             egui_ctx.input_mut(|i| {
                 i.pixels_per_point = 50.0;
             });
-            egui_ctx.set_fonts(self.font_definitions.clone().unwrap_or_default());
+            if self.has_monospace_fonts.get() {
+                egui_ctx.set_fonts(self.font_definitions.clone().unwrap_or_default());
+            } else {
+                load_proportional_fonts(
+                    egui_ctx,
+                    &self.font_definitions.clone().unwrap_or_default(),
+                );
+            }
             egui_ctx.input_mut(|i| {
                 i.pixels_per_point = zoom_level;
             });
