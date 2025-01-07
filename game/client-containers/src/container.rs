@@ -1065,6 +1065,26 @@ where
         }
     }
 
+    /// Returns `true` if the resource was loaded or failed to load (and will not be loaded),
+    /// `false` otherwise.
+    ///
+    /// This call is non-blocking.
+    pub fn is_loaded_or_failed<Q>(&mut self, name: &Q) -> bool
+    where
+        Q: Borrow<ContainerKey>,
+    {
+        self.failed_tasks.contains(name.borrow()) || {
+            let item_res = self.items.get(name.borrow());
+            if item_res.is_none() {
+                // try to load the resource
+                self.get_or_default(name);
+                false
+            } else {
+                true
+            }
+        }
+    }
+
     /// Blocking wait for the item to be finished.
     ///
     /// This is only useful for programs that don't run

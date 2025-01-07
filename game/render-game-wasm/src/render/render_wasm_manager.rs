@@ -143,8 +143,8 @@ impl RenderGameInterface for RenderGameWasmManager {
         self.state.as_mut().render(config_map, cur_time, input)
     }
 
-    fn continue_map_loading(&mut self) -> Result<bool, String> {
-        self.state.as_mut().continue_map_loading()
+    fn continue_loading(&mut self) -> Result<bool, String> {
+        self.state.as_mut().continue_loading()
     }
 
     fn set_chat_commands(&mut self, chat_commands: ChatCommands) {

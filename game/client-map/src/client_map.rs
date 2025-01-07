@@ -631,7 +631,7 @@ impl ClientMapLoading {
                                 }
                             }
                             GameLoading::Game(mut load_game) => {
-                                match load_game.continue_map_loading() {
+                                match load_game.continue_loading() {
                                     Ok(loaded) => {
                                         if loaded {
                                             match (

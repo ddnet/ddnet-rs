@@ -2377,6 +2377,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
                 sound_props: Default::default(),
                 render_mod: RenderModTy::Native,
                 required_resources: Default::default(),
+                client_local_infos: Default::default(),
             },
         );
         benchmark.bench("menu map");

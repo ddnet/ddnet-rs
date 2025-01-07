@@ -98,7 +98,7 @@ pub mod render_wasm {
         }
 
         #[wasm_func_auto_call]
-        fn continue_map_loading(&mut self) -> Result<bool, String> {}
+        fn continue_loading(&mut self) -> Result<bool, String> {}
 
         #[wasm_func_auto_call]
         fn set_chat_commands(&mut self, chat_commands: ChatCommands) {}

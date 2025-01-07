@@ -1859,7 +1859,8 @@ impl Server {
                                 account_db: None,
                                 config: self.game_server.game.info.config.clone(),
                             },
-                            required_resources: Default::default(), /* TODO: */
+                            required_resources: self.game_server.required_resources.clone(),
+                            client_local_infos: Default::default(),
                             physics_module: self.game_server.game_mod.clone(),
                             render_module: self.game_server.render_mod.clone(),
                             physics_group_name: self
