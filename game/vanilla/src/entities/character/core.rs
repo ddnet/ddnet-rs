@@ -2,6 +2,7 @@ pub mod character_core {
     use std::ops::{AddAssign, ControlFlow};
 
     use crate::reusable::{CloneWithCopyableElements, ReusableCore};
+    use game_base::mapdef_06::DdraceTileNum;
     use game_interface::{
         events::{
             GameCharacterEffectEvent, GameCharacterEventEffect, GameCharacterEventSound,
@@ -15,7 +16,6 @@ pub mod character_core {
     };
     use hiarc::Hiarc;
     use num::FromPrimitive;
-    use game_base::mapdef_06::DdraceTileNum;
 
     use crate::{
         collision::collision::{Collision, CollisionTile, CollisionTypes},
@@ -819,7 +819,11 @@ pub mod character_core {
                 );
 
                 if !do_break && matches!(hit, CollisionTile::Solid(_)) {
-                    color = HookCollisionLineColor::Hookable;
+                    if matches!(hit, CollisionTile::Solid(DdraceTileNum::NoHook)) {
+                        color = HookCollisionLineColor::Unhookable;
+                    } else {
+                        color = HookCollisionLineColor::Hookable;
+                    }
                 }
 
                 let col = GameWorld::intersect_character_id_on_line(
