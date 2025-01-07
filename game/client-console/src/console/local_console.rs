@@ -55,6 +55,7 @@ pub enum LocalConsoleEvent {
     ConfigVariable {
         name: String,
     },
+    LocalPlayerAction(BindActionsLocalPlayer),
     Quit,
 }
 
@@ -302,12 +303,16 @@ impl LocalConsoleBuilder {
         let actions_map = gen_local_player_action_hash_map();
         let actions_map_rev = gen_local_player_action_hash_map_rev();
 
-        for name in actions_map.keys() {
+        for (name, &action) in actions_map.iter() {
+            let events = console_events.clone();
             list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
                 name: name.to_string(),
                 usage: format!("triggers a player action: {}", name),
                 description: format!("Triggers the player action: {}", name),
-                cmd: Rc::new(move |_config_engine, _config_game, _path| Ok(String::default())),
+                cmd: Rc::new(move |_config_engine, _config_game, _path| {
+                    events.push(LocalConsoleEvent::LocalPlayerAction(action));
+                    Ok(String::default())
+                }),
                 args: vec![],
                 allows_partial_cmds: false,
             }));
