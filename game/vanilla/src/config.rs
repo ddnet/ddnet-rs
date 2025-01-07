@@ -51,4 +51,11 @@ pub mod config {
         /// this is false for vanilla
         pub allow_player_vote_cam: bool,
     }
+
+    /// Wraps vanilla config for the console chain
+    #[config_default]
+    #[derive(Debug, Clone, Serialize, Deserialize, ConfigInterface)]
+    pub struct ConfigVanillaWrapper {
+        pub vanilla: ConfigVanilla,
+    }
 }

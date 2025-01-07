@@ -13,6 +13,7 @@ pub mod state {
     use config::parsing::parse_conf_values_as_str_list;
     use config::traits::ConfigInterface;
     use ddnet_accounts_types::account_id::AccountId;
+    use game_base::config_helper::handle_config_variable_cmd;
     use game_database::traits::DbInterface;
     use game_interface::account_info::MAX_ACCOUNT_NAME_LEN;
     use game_interface::chat_commands::ChatCommands;
@@ -88,7 +89,7 @@ pub mod state {
 
     use crate::collision::collision::Tunings;
     use crate::command_chain::{Command, CommandChain};
-    use crate::config::config::{ConfigGameType, ConfigVanilla};
+    use crate::config::config::{ConfigGameType, ConfigVanilla, ConfigVanillaWrapper};
     use crate::entities::character::character::{self, CharacterPlayerTy};
     use crate::entities::character::core::character_core::Core;
     use crate::entities::character::player::player::{
@@ -136,6 +137,7 @@ pub mod state {
     pub enum VanillaRconCommand {
         Info,
         Cheats(VanillaRconCommandCheat),
+        ConfVariable,
     }
 
     pub struct Game {
@@ -203,7 +205,7 @@ pub mod state {
 
         // game
         pub(crate) game_options: GameOptions,
-        config: ConfigVanilla,
+        config: ConfigVanillaWrapper,
 
         pub(crate) chat_commands: ChatCommands,
         pub(crate) rcon_chain: CommandChain<VanillaRconCommand>,
@@ -332,77 +334,91 @@ pub mod state {
                     .collect(),
                 prefixes: vec!['/'],
             };
-            let rcon_chain = CommandChain::new(
-                vec![
-                    (
-                        "info".try_into().unwrap(),
-                        Command {
-                            rcon: RconCommand {
-                                args: Default::default(),
-                                description: "Prints information about this modification"
-                                    .try_into()
-                                    .unwrap(),
-                                usage: "".try_into().unwrap(),
-                            },
-                            cmd: VanillaRconCommand::Info,
-                        },
-                    ),
-                    (
-                        "cheats.all_weapons".try_into().unwrap(),
-                        Command {
-                            rcon: RconCommand {
-                                args: Default::default(),
-                                description: "Gives the player all weapons (cheat)"
-                                    .try_into()
-                                    .unwrap(),
-                                usage: "".try_into().unwrap(),
-                            },
-                            cmd: VanillaRconCommand::Cheats(VanillaRconCommandCheat::WeaponsAll),
-                        },
-                    ),
-                    (
-                        "cheats.tune".try_into().unwrap(),
-                        Command {
-                            rcon: RconCommand {
-                                description: "Tunes a physics value to a given value"
-                                    .try_into()
-                                    .unwrap(),
-                                usage: "<name> <val>".try_into().unwrap(),
-                                args: vec![
-                                    CommandArg {
-                                        ty: CommandArgType::TextFrom({
-                                            let mut names: Vec<NetworkString<65536>> =
-                                                Default::default();
 
-                                            parse_conf_values_as_str_list(
-                                                "".into(),
-                                                &mut |entry, _| {
-                                                    names.push(
-                                                        entry.name.as_str().try_into().unwrap(),
-                                                    );
-                                                },
-                                                Tunings::conf_value(),
-                                                "".into(),
-                                                Default::default(),
-                                            );
-
-                                            names
-                                        }),
-                                        user_ty: None,
-                                    },
-                                    CommandArg {
-                                        ty: CommandArgType::Float,
-                                        user_ty: None,
-                                    },
-                                ],
-                            },
-                            cmd: VanillaRconCommand::Cheats(VanillaRconCommandCheat::Tune),
+            let mut rcon_cmds = vec![
+                (
+                    "info".try_into().unwrap(),
+                    Command {
+                        rcon: RconCommand {
+                            args: Default::default(),
+                            description: "Prints information about this modification"
+                                .try_into()
+                                .unwrap(),
+                            usage: "".try_into().unwrap(),
                         },
-                    ),
-                ]
-                .into_iter()
-                .collect(),
+                        cmd: VanillaRconCommand::Info,
+                    },
+                ),
+                (
+                    "cheats.all_weapons".try_into().unwrap(),
+                    Command {
+                        rcon: RconCommand {
+                            args: Default::default(),
+                            description: "Gives the player all weapons (cheat)".try_into().unwrap(),
+                            usage: "".try_into().unwrap(),
+                        },
+                        cmd: VanillaRconCommand::Cheats(VanillaRconCommandCheat::WeaponsAll),
+                    },
+                ),
+                (
+                    "cheats.tune".try_into().unwrap(),
+                    Command {
+                        rcon: RconCommand {
+                            description: "Tunes a physics value to a given value"
+                                .try_into()
+                                .unwrap(),
+                            usage: "<name> <val>".try_into().unwrap(),
+                            args: vec![
+                                CommandArg {
+                                    ty: CommandArgType::TextFrom({
+                                        let mut names: Vec<NetworkString<65536>> =
+                                            Default::default();
+
+                                        parse_conf_values_as_str_list(
+                                            "".into(),
+                                            &mut |entry, _| {
+                                                names.push(entry.name.as_str().try_into().unwrap());
+                                            },
+                                            Tunings::conf_value(),
+                                            "".into(),
+                                            Default::default(),
+                                        );
+
+                                        names
+                                    }),
+                                    user_ty: None,
+                                },
+                                CommandArg {
+                                    ty: CommandArgType::Float,
+                                    user_ty: None,
+                                },
+                            ],
+                        },
+                        cmd: VanillaRconCommand::Cheats(VanillaRconCommandCheat::Tune),
+                    },
+                ),
+            ];
+            config::parsing::parse_conf_values_as_str_list(
+                "".into(),
+                &mut |add, _| {
+                    rcon_cmds.push((
+                        add.name.try_into().unwrap(),
+                        Command {
+                            rcon: RconCommand {
+                                args: add.args,
+                                usage: add.usage.as_str().try_into().unwrap(),
+                                description: add.description.as_str().try_into().unwrap(),
+                            },
+                            cmd: VanillaRconCommand::ConfVariable,
+                        },
+                    ));
+                },
+                ConfigVanillaWrapper::conf_value(),
+                "".into(),
+                Default::default(),
             );
+
+            let rcon_chain = CommandChain::new(rcon_cmds.into_iter().collect());
 
             let has_accounts = account_info.is_some();
 
@@ -466,7 +482,9 @@ pub mod state {
                     config.friendly_fire,
                     config.laser_hit_self,
                 ),
-                config: config.clone(),
+                config: ConfigVanillaWrapper {
+                    vanilla: config.clone(),
+                },
                 chat_commands: chat_commands.clone(),
                 rcon_chain,
                 cache: Default::default(),
@@ -1015,9 +1033,28 @@ pub mod state {
                                     }
                                 }
                             },
+                            VanillaRconCommand::ConfVariable => {
+                                handle_config_variable_cmd(&cmd, &mut self.config).map(|msg| {
+                                    format!("Updated value for {}: {}", cmd.cmd_text, msg)
+                                })
+                            }
                         }
                     }
-                    CommandType::Partial(res) => Err(anyhow!("{res}")),
+                    CommandType::Partial(cmd) => {
+                        let Some(cmd) = cmd.ref_cmd_partial() else {
+                            return Err(anyhow!("This command was invalid: {cmd}"));
+                        };
+                        let Some(chain_cmd) = self.rcon_chain.cmds.get(&cmd.ident) else {
+                            return Err(anyhow!("Command {} not found", cmd.ident));
+                        };
+
+                        if let VanillaRconCommand::ConfVariable = chain_cmd.cmd {
+                            handle_config_variable_cmd(cmd, &mut self.config)
+                                .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
+                        } else {
+                            Err(anyhow!("Failed to handle config variable: {cmd}"))
+                        }
+                    }
                 };
 
                 match handle_cmd() {
@@ -1991,7 +2028,7 @@ pub mod state {
                 .world
                 .characters
                 .len()
-                < self.config.max_ingame_players as usize
+                < self.config.vanilla.max_ingame_players as usize
             {
                 // spawn and send character info
                 let default_eyes = player_info.player_info.default_eyes;
@@ -2307,8 +2344,8 @@ pub mod state {
 
         fn settings(&self) -> GameStateSettings {
             GameStateSettings {
-                max_ingame_players: self.config.max_ingame_players,
-                tournament_mode: self.config.tournament_mode,
+                max_ingame_players: self.config.vanilla.max_ingame_players,
+                tournament_mode: self.config.vanilla.tournament_mode,
             }
         }
 
@@ -2336,8 +2373,8 @@ pub mod state {
                     self.handle_chat_commands(player_id, cmds);
                 }
                 ClientCommand::JoinStage(join_stage) => {
-                    if self.config.allow_stages
-                        || (!Self::is_sided_from_conf(self.config.game_type)
+                    if self.config.vanilla.allow_stages
+                        || (!Self::is_sided_from_conf(self.config.vanilla.game_type)
                             && matches!(join_stage, JoinStage::Default))
                     {
                         let stage_id = match join_stage {
@@ -2420,7 +2457,7 @@ pub mod state {
                     }
                 }
                 ClientCommand::JoinSide(side) => {
-                    if Self::is_sided_from_conf(self.config.game_type) {
+                    if Self::is_sided_from_conf(self.config.vanilla.game_type) {
                         if let Some(player) = self.game.players.player(player_id) {
                             let stage = self.game.stages.get_mut(&player.stage_id()).unwrap();
                             if let Some(character) = stage.world.characters.get_mut(player_id) {

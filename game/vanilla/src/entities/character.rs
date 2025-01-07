@@ -164,6 +164,7 @@ pub mod character {
             self.weapons.copy_clone_from(&other.weapons);
             self.buffs.copy_clone_from(&other.buffs);
             self.debuffs.copy_clone_from(&other.debuffs);
+            self.queued_emoticon.clone_from(&other.queued_emoticon);
             self.interactions.clone_from(&other.interactions);
         }
     }

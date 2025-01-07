@@ -8,6 +8,8 @@ math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
 image = { path = "../../lib/image" }
 graphics-types = { path = "../../lib/graphics-types" }
+config = { path = "../../lib/config" }
+command-parser = { path = "../../lib/command-parser" }
 pool = { path = "../../lib/pool" }
 hiarc = { path = "../../lib/hiarc", features = ["enable_time"] }
 
