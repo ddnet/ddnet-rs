@@ -13,10 +13,9 @@ target/             # Target directory for compiled artifacts
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb               # Program Database files for debugging
 
-# Other artifacts
+# Other, cache, analysis
 .cache/             # Cache files
-# Artifact for memory analysis feature
-artifacts/          # Build artifacts
+artifacts/          # Artifact for memory analysis feature
 *.sqlite            # SQLite database files
 /trace.txt          # Trace output file
 /flamegraph.svg     # Flamegraph output file
