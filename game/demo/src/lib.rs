@@ -11,16 +11,19 @@ use base::{
     hash::Hash,
     network_string::{NetworkReducedAsciiString, NetworkString},
 };
+use game_base::{
+    network::{
+        messages::{GameModification, RenderModification, RequiredResources},
+        types::chat::NetChatMsg,
+    },
+    types::ClientLocalInfos,
+};
 use game_interface::{
     events::GameEvents,
     interface::{GameStateCreateOptions, MAX_MAP_NAME_LEN, MAX_PHYSICS_GROUP_NAME_LEN},
     types::game::NonZeroGameTickType,
 };
 use serde::{Deserialize, Serialize};
-use game_base::network::{
-    messages::{GameModification, RenderModification, RequiredResources},
-    types::chat::NetChatMsg,
-};
 
 pub type DemoGameModification = GameModification;
 pub type DemoRenderModification = RenderModification;
@@ -61,6 +64,9 @@ pub struct DemoHeaderExt {
     /// the game/demo starts (e.g. because the game mod requires
     /// them for gameplay).
     pub required_resources: RequiredResources,
+    /// Resources the client most likely sees first
+    /// (e.g. as part of local player information).
+    pub client_local_infos: ClientLocalInfos,
     pub map: NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
     pub map_hash: Hash,
     pub ticks_per_second: NonZeroGameTickType,

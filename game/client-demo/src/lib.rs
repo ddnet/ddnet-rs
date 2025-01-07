@@ -31,6 +31,7 @@ use demo::{
     ChunkHeader, DemoEvent, DemoEvents, DemoHeader, DemoHeaderExt, DemoSnapshot, DemoTail,
 };
 use egui::{FontDefinitions, Rect};
+use game_base::{assets_url::HTTP_RESOURCE_URL, game_types::intra_tick_time_to_ratio};
 use game_config::config::{ConfigGame, ConfigMap, ConfigRender, ConfigSoundRender};
 use game_interface::{interface::GameStateInterface, types::game::GameTickType};
 use graphics::{
@@ -50,7 +51,6 @@ use pool::datatypes::{
 };
 use pool::mt_datatypes::PoolCow as MtPoolCow;
 use serde::de::DeserializeOwned;
-use game_base::{assets_url::HTTP_RESOURCE_URL, game_types::intra_tick_time_to_ratio};
 use sound::{
     commands::{SceneAirMode, SoundSceneCreateProps},
     sound::SoundManager,
@@ -787,6 +787,7 @@ impl DemoViewerImpl {
                                 map_hash: ext.map_hash,
                                 game_options: ext.game_options.clone(),
                                 required_resources: ext.required_resources.clone(),
+                                client_local_infos: ext.client_local_infos.clone(),
                                 physics_module: ext.physics_mod.clone(),
                                 render_module: ext.render_mod.clone(),
                                 physics_group_name: ext.physics_group_name.clone(),
@@ -1201,6 +1202,10 @@ impl DemoViewer {
                                 required_resources: demo_container
                                     .header_ext
                                     .required_resources
+                                    .clone(),
+                                client_local_infos: demo_container
+                                    .header_ext
+                                    .client_local_infos
                                     .clone(),
                             },
                         )

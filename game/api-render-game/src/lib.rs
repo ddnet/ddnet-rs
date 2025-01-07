@@ -90,7 +90,7 @@ impl RenderGameInterface for ApiRenderGame {
     }
 
     #[guest_func_call_from_host_auto(option)]
-    fn continue_map_loading(&mut self) -> Result<bool, String> {}
+    fn continue_loading(&mut self) -> Result<bool, String> {}
 
     #[guest_func_call_from_host_auto(option)]
     fn set_chat_commands(&mut self, chat_commands: ChatCommands) {}

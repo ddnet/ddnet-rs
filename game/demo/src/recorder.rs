@@ -11,13 +11,13 @@ use std::{
 use anyhow::anyhow;
 use base::{hash::Hash, network_string::NetworkReducedAsciiString};
 use base_io::io::Io;
+use game_base::{network::messages::RequiredResources, types::ClientLocalInfos};
 use game_interface::{
     interface::{GameStateCreateOptions, MAX_MAP_NAME_LEN, MAX_PHYSICS_GROUP_NAME_LEN},
     types::game::NonZeroGameTickType,
 };
 use itertools::Itertools;
 use serde::Serialize;
-use game_base::network::messages::RequiredResources;
 
 use crate::{
     ChunkHeader, DemoEvent, DemoEvents, DemoGameModification, DemoHeader, DemoHeaderExt,
@@ -38,6 +38,7 @@ pub struct DemoRecorderCreatePropsBase {
     pub map_hash: Hash,
     pub game_options: GameStateCreateOptions,
     pub required_resources: RequiredResources,
+    pub client_local_infos: ClientLocalInfos,
     pub physics_module: DemoGameModification,
     pub render_module: DemoRenderModification,
     pub physics_group_name: NetworkReducedAsciiString<MAX_PHYSICS_GROUP_NAME_LEN>,
@@ -95,6 +96,7 @@ impl DemoRecorder {
             physics_mod: base.physics_module,
             render_mod: base.render_module,
             required_resources: base.required_resources,
+            client_local_infos: base.client_local_infos,
             map: base.map,
             map_hash: base.map_hash,
             ticks_per_second,
