@@ -100,7 +100,7 @@ pub fn find_matches(
         cursor_byte_pos: usize,
     ) -> Option<(Range<usize>, bool)> {
         match err {
-            CommandParseResult::InvalidCommandIdent(range) => {
+            CommandParseResult::InvalidCommandIdent { range, .. } => {
                 if (range.start..=range.end).contains(&cursor_byte_pos) {
                     Some((range.clone(), true))
                 } else {
