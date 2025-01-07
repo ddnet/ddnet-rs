@@ -33,10 +33,8 @@ use graphics::{
 };
 use graphics_types::rendering::State;
 use math::math::{vector::vec2, Rng, RngSlice, PI};
-use vanilla::weapons::definitions::weapon_def::{
-    get_weapon_sprite_scale, get_weapon_visual_scale,
-};
 use ui_base::ui::UiCreator;
+use vanilla::weapons::definitions::weapon_def::{get_weapon_sprite_scale, get_weapon_visual_scale};
 
 const GRID_SIZE: f32 = 36.0;
 
@@ -812,8 +810,8 @@ impl RenderHud {
         state.map_canvas(
             0.0,
             0.0,
-            self.canvas_handle.canvas_width() / ppp,
-            self.canvas_handle.canvas_height() / ppp,
+            self.canvas_handle.window_width() as f32 / ppp,
+            self.canvas_handle.window_height() as f32 / ppp,
         );
 
         match pipe.local_player_render_info {
