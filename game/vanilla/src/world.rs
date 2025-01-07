@@ -1039,6 +1039,7 @@ pub mod world {
                                         }
                                     }
                                 }
+                                FlagEvent::Collect { .. } |
                                 FlagEvent::Capture { .. } => {
                                     // ignore
                                 }

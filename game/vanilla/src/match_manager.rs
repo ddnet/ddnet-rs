@@ -78,7 +78,18 @@ pub mod match_manager {
                                             else {
                                                 char.score.set(char.score.get() + 1);
                                                 if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
-                                                    scores[team as usize] += 1;
+                                                    match team {
+                                                        MatchSide::Red => {
+                                                            if world.red_flags.is_empty() {
+                                                                scores[team as usize] += 1;
+                                                            }
+                                                        }
+                                                        MatchSide::Blue => {
+                                                            if world.blue_flags.is_empty() {
+                                                                scores[team as usize] += 1;
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                             game_match.win_check(game_options, &world.scores, false);
@@ -96,6 +107,15 @@ pub mod match_manager {
                                             char.score.set(char.score.get() + 5);
                                             if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
                                                 scores[team as usize] += 100;
+                                            }
+                                            game_match.win_check(game_options, &world.scores, false);
+                                        }
+                                    },
+                                    FlagEvent::Collect { by } => {
+                                        if let Some(char) = world.characters.get_mut(by) {
+                                            char.score.set(char.score.get() + 1);
+                                            if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
+                                                scores[team as usize] += 1;
                                             }
                                             game_match.win_check(game_options, &world.scores, false);
                                         }
