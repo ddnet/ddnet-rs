@@ -178,7 +178,7 @@ pub fn render(
                                                 err.or(Some((range.clone(), Color32::LIGHT_GRAY))),
                                             )
                                         }
-                                        CommandParseResult::InvalidCommandIdent(_)
+                                        CommandParseResult::InvalidCommandIdent { .. }
                                         | CommandParseResult::InvalidQuoteParsing(_)
                                         | CommandParseResult::Other { .. } => (
                                             vec![(

@@ -5,7 +5,7 @@ use egui::{Color32, FontId, RichText};
 pub fn render(ui: &mut egui::Ui, msg: &str, cmds: &CommandsTyped) {
     fn find_err(res: &CommandParseResult) -> &CommandParseResult {
         match res {
-            CommandParseResult::InvalidCommandIdent(_)
+            CommandParseResult::InvalidCommandIdent { .. }
             | CommandParseResult::InvalidArg { .. }
             | CommandParseResult::InvalidQuoteParsing(_)
             | CommandParseResult::Other { .. } => res,

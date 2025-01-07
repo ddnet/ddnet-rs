@@ -514,12 +514,9 @@ impl Server {
     ) -> ReponsesAndCmds {
         let mut remaining_cmds = Vec::default();
         let mut responses = Vec::default();
-        if !lines.is_empty() {
-            let cmds = command_parser::parser::parse(
-                &lines.join(" "),
-                &rcon_chain.parser,
-                &mut Default::default(),
-            );
+        for line in lines {
+            let cmds =
+                command_parser::parser::parse(&line, &rcon_chain.parser, &mut Default::default());
 
             for cmd in cmds {
                 let handle_cmd = || match cmd {
@@ -530,7 +527,9 @@ impl Server {
 
                         match chain_cmd.cmd {
                             ServerRconCommand::ConfVariable => {
-                                Self::handle_config_variable_cmd(&cmd, config)
+                                Self::handle_config_variable_cmd(&cmd, config).map(|msg| {
+                                    format!("Updated value for {}: {}", cmd.cmd_text, msg)
+                                })
                             }
                             ServerRconCommand::Exec => {
                                 match Self::handle_exec(config, io, rcon_chain, cmd) {
@@ -559,8 +558,9 @@ impl Server {
 
                         if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
                             Self::handle_config_variable_cmd(cmd, config)
+                                .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
                         } else {
-                            Err(anyhow!("This command was invalid: {cmd}"))
+                            Err(anyhow!("Failed to handle config variable: {cmd}"))
                         }
                     }
                 };
@@ -1720,7 +1720,7 @@ impl Server {
             })
         }
         Ok(config.try_set_from_str(
-            cmd.ident.clone(),
+            cmd.cmd_text.clone(),
             None,
             syn_vec_to_config_val(&cmd.args),
             None,
@@ -1832,6 +1832,7 @@ impl Server {
             }
             ServerRconCommand::ConfVariable => {
                 Self::handle_config_variable_cmd(&cmd, &mut self.config_game)
+                    .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
             }
             ServerRconCommand::Exec => {
                 match Self::handle_exec(&mut self.config_game, &self.io, &self.rcon_chain, cmd) {
@@ -1906,6 +1907,7 @@ impl Server {
 
                 if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
                     Self::handle_config_variable_cmd(cmd, &mut self.config_game)
+                        .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
                 } else {
                     Err(anyhow!("This command was invalid: {cmd}"))
                 }
