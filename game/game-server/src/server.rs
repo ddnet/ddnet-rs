@@ -3231,11 +3231,22 @@ impl Server {
         }
     }
 
+    /// Reload the game server with a new map,
+    /// and from an optional snapshot.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the game server failed to be set.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the game server was successfully set, but an operation
+    /// afterwards failed.
     fn load_impl(
         &mut self,
         snapshot: Option<PoolCow<'static, [u8]>>,
         map: &NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
-    ) {
+    ) -> anyhow::Result<()> {
         // reload the whole game server, including the map
         let mod_name = Self::config_physics_mod_name(&self.config_game);
         let (render_mod_name, render_mod_hash, render_mod_required) =
@@ -3257,8 +3268,7 @@ impl Server {
             self.config_game.sv.spatial_chat,
             self.config_game.sv.download_server_port_v4,
             self.config_game.sv.download_server_port_v6,
-        )
-        .unwrap();
+        )?;
         if let Some(snapshot) = snapshot {
             self.game_server
                 .game
@@ -3301,19 +3311,25 @@ impl Server {
                     .send_unordered_to(&ServerToClientMessage::Load(server_info.clone()), net_id);
             });
         self.last_tick_time = self.sys.time_get();
+
+        Ok(())
     }
 
     fn reload(&mut self) {
         let snapshot = self.game_server.game.snapshot_for_hotreload();
-        self.load_impl(
+        if let Err(err) = self.load_impl(
             snapshot,
             &self.config_game.sv.map.as_str().try_into().unwrap(),
-        )
+        ) {
+            log::error!("Fatal error during reload: {err}");
+        }
     }
 
     fn load_map(&mut self, map: &NetworkReducedAsciiString<MAX_MAP_NAME_LEN>) {
         self.config_game.sv.map = map.to_string();
-        self.load_impl(None, map)
+        if let Err(err) = self.load_impl(None, map) {
+            log::error!("Fatal error during map load: {err}");
+        }
     }
 }
 
