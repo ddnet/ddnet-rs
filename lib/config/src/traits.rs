@@ -100,7 +100,9 @@ pub enum ConfigFromStrOperation {
 pub trait ConfigInterface {
     /// structs might overwrite certain values of
     /// the config values attributes
-    fn conf_value() -> ConfigValue;
+    fn conf_value() -> ConfigValue
+    where
+        Self: Sized;
 
     /// sets the config value from a string
     /// takes path. which is the full path separated by `.`

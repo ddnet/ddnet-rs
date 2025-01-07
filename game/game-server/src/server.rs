@@ -3,7 +3,6 @@ use std::{
     fmt::Debug,
     net::IpAddr,
     num::NonZeroUsize,
-    ops::Range,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Weak},
     time::Duration,
@@ -83,6 +82,7 @@ use crate::{
 };
 
 use game_base::{
+    config_helper::handle_config_variable_cmd,
     game_types::{is_next_tick, time_until_tick},
     local_server_info::{LocalServerConnectInfo, LocalServerInfo, LocalServerState, ServerDbgGame},
     network::{
@@ -527,7 +527,7 @@ impl Server {
 
                         match chain_cmd.cmd {
                             ServerRconCommand::ConfVariable => {
-                                Self::handle_config_variable_cmd(&cmd, config).map(|msg| {
+                                handle_config_variable_cmd(&cmd, config).map(|msg| {
                                     format!("Updated value for {}: {}", cmd.cmd_text, msg)
                                 })
                             }
@@ -557,8 +557,8 @@ impl Server {
                         };
 
                         if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
-                            Self::handle_config_variable_cmd(cmd, config)
-                                .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
+                            handle_config_variable_cmd(cmd, config)
+                                .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
                         } else {
                             Err(anyhow!("Failed to handle config variable: {cmd}"))
                         }
@@ -1701,33 +1701,6 @@ impl Server {
         );
     }
 
-    fn handle_config_variable_cmd(
-        cmd: &parser::Command,
-        config: &mut ConfigGame,
-    ) -> anyhow::Result<String> {
-        fn syn_vec_to_config_val(args: &[(Syn, Range<usize>)]) -> Option<String> {
-            args.first().map(|(arg, _)| match arg {
-                parser::Syn::Command(cmd) => cmd.cmd_text.clone(),
-                parser::Syn::Commands(cmds) => cmds
-                    .first()
-                    .map(|cmd| cmd.cmd_text.clone())
-                    .unwrap_or_default(),
-                parser::Syn::Text(text) => text.clone(),
-                parser::Syn::Number(num) => num.clone(),
-                parser::Syn::Float(num) => num.clone(),
-                parser::Syn::JsonObjectLike(obj) => obj.clone(),
-                parser::Syn::JsonArrayLike(obj) => obj.clone(),
-            })
-        }
-        Ok(config.try_set_from_str(
-            cmd.cmd_text.clone(),
-            None,
-            syn_vec_to_config_val(&cmd.args),
-            None,
-            config::traits::ConfigFromStrOperation::Set,
-        )?)
-    }
-
     fn handle_cmd_full(
         &mut self,
         cmd: parser::Command,
@@ -1831,7 +1804,7 @@ impl Server {
                 Ok(res.join("\n"))
             }
             ServerRconCommand::ConfVariable => {
-                Self::handle_config_variable_cmd(&cmd, &mut self.config_game)
+                handle_config_variable_cmd(&cmd, &mut self.config_game)
                     .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
             }
             ServerRconCommand::Exec => {
@@ -1907,8 +1880,8 @@ impl Server {
                 };
 
                 if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
-                    Self::handle_config_variable_cmd(cmd, &mut self.config_game)
-                        .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
+                    handle_config_variable_cmd(cmd, &mut self.config_game)
+                        .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
                 } else {
                     Err(anyhow!("This command was invalid: {cmd}"))
                 }
