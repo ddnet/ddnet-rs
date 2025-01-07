@@ -47,6 +47,9 @@ pub mod events {
             ty: FlagType,
             respawns_in_ticks: GameTickCooldown,
         },
+        Collect {
+            by: CharacterId,
+        },
         Capture {
             by: CharacterId,
             pos: vec2,

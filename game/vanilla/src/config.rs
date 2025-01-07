@@ -1,9 +1,11 @@
 pub mod config {
     use config::{config_default, ConfigInterface};
+    use hiarc::Hiarc;
     use serde::{Deserialize, Serialize};
 
     #[derive(
         Debug,
+        Hiarc,
         Default,
         Clone,
         Copy,
@@ -22,7 +24,7 @@ pub mod config {
     }
 
     #[config_default]
-    #[derive(Debug, Clone, Serialize, Deserialize, ConfigInterface)]
+    #[derive(Debug, Hiarc, Clone, Serialize, Deserialize, ConfigInterface)]
     pub struct ConfigVanilla {
         pub game_type: ConfigGameType,
         #[default = 100]
