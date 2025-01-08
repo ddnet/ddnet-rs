@@ -205,7 +205,7 @@ impl RenderTools {
         if !max_point_time.is_zero() {
             let time_diff = max_point_time.saturating_sub(*min_point_time);
             time_nanos = time::Duration::nanoseconds(
-                (time_nanos.whole_nanoseconds() % time_diff.as_nanos() as i128) as i64,
+                (time_nanos.whole_nanoseconds().abs() % time_diff.as_nanos() as i128) as i64,
             ) + *min_point_time;
         } else {
             time_nanos = time::Duration::nanoseconds(0);
