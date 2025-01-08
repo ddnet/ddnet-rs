@@ -21,7 +21,7 @@ use either::Either;
 use game_interface::types::resource_key::ResourceKey;
 use graphics::{
     graphics::graphics::Graphics, graphics_mt::GraphicsMultiThreaded,
-    handles::texture::texture::GraphicsTextureHandle, image::texture_2d_to_3d,
+    handles::texture::texture::GraphicsTextureHandle,
 };
 use graphics_types::{
     commands::TexFlags,
@@ -29,7 +29,10 @@ use graphics_types::{
 };
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
-use image::png::{is_png_image_valid, load_png_image, PngResultPersistent};
+use image::{
+    png::{is_png_image_valid, load_png_image_as_rgba, PngResultPersistent, PngValidatorOptions},
+    utils::texture_2d_to_3d,
+};
 use log::info;
 use sound::{
     ogg_vorbis::verify_ogg_vorbis, scene_object::SceneObject, sound::SoundManager,
@@ -415,10 +418,20 @@ where
     }
 
     /// Verifies a resource, prints warnings on error
-    fn verify_resource(file_ty: &str, file_name: &str, file: &[u8]) -> bool {
+    fn verify_resource(file_ty: &str, file_name: &str, file: &[u8], allow_hq_assets: bool) -> bool {
         match file_ty {
             "png" => {
-                if let Err(err) = is_png_image_valid(file, Default::default()) {
+                if let Err(err) = is_png_image_valid(
+                    file,
+                    if allow_hq_assets {
+                        PngValidatorOptions {
+                            max_width: 4096.try_into().unwrap(),
+                            max_height: 4096.try_into().unwrap(),
+                        }
+                    } else {
+                        Default::default()
+                    },
+                ) {
                     log::warn!(
                         "downloaded image resource (png) {}\
                         is not a valid png file: {}",
@@ -523,6 +536,8 @@ where
         game_server_http: Option<Url>,
         resource_http_download: HttpIndexAndUrl,
     ) -> anyhow::Result<ContainerLoadedItem> {
+        let allow_hq_assets = false;
+
         let read_tar = |file: &[u8]| {
             let mut file = tar::Archive::new(std::io::Cursor::new(file));
             match file.entries() {
@@ -637,6 +652,7 @@ where
                                     name.extension().and_then(|s| s.to_str()).unwrap_or(""),
                                     name.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
                                     file,
+                                    allow_hq_assets,
                                 ) {
                                     verified = false;
                                     break;
@@ -663,7 +679,7 @@ where
                 }) {
                     let _g = http_download_tasks.acquire().await?;
                     if let Ok(file) = http.download_binary(game_server_http, &hash).await {
-                        if Self::verify_resource("png", &name, &file) {
+                        if Self::verify_resource("png", &name, &file, allow_hq_assets) {
                             save_to_disk(&name, &file).await;
                             files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
                         }
@@ -799,6 +815,7 @@ where
                                             name.extension().and_then(|s| s.to_str()).unwrap_or(""),
                                             name.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
                                             file,
+                                            allow_hq_assets,
                                         ) {
                                             verified = false;
                                             break;
@@ -816,7 +833,7 @@ where
                                     false
                                 }
                             } else if ty == "png" {
-                                if Self::verify_resource("png", &name, &file) {
+                                if Self::verify_resource("png", &name, &file, allow_hq_assets) {
                                     files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
                                     true
                                 } else {
@@ -1372,7 +1389,7 @@ pub fn load_file_part_as_png_ex(
         allow_default,
     )?;
     let mut img_data = Vec::<u8>::new();
-    let part_img = load_png_image(file.data, |width, height, bytes_per_pixel| {
+    let part_img = load_png_image_as_rgba(file.data, |width, height, bytes_per_pixel| {
         img_data = vec![0; width * height * bytes_per_pixel];
         &mut img_data
     })?;
@@ -1548,7 +1565,7 @@ pub fn load_file_part_as_png_and_convert_3d(
         true,
     )?;
     let mut img_data = Vec::<u8>::new();
-    let part_img = load_png_image(file.data, |width, height, bytes_per_pixel| {
+    let part_img = load_png_image_as_rgba(file.data, |width, height, bytes_per_pixel| {
         img_data = vec![0; width * height * bytes_per_pixel];
         &mut img_data
     })?;

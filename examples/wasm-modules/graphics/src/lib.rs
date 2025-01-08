@@ -6,9 +6,7 @@ pub mod handles;
 pub mod graphics_mt {
     pub use ::graphics::graphics_mt::*;
 }
-pub mod image {
-    pub use ::graphics::image::*;
-}
+
 pub mod quad_container {
     pub use ::graphics::quad_container::*;
 }

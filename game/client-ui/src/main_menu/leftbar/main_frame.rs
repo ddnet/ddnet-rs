@@ -9,7 +9,7 @@ use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image::png::load_png_image;
+use image::png::load_png_image_as_rgba;
 use math::math::vector::vec2;
 use ui_base::{style::bg_frame_color, types::UiState};
 
@@ -39,7 +39,7 @@ fn update_communities(user_data: &mut UserData) {
                     let icon = http.download_binary_secure(url).await?.to_vec();
 
                     let mut img_mem = None;
-                    let img = load_png_image(&icon, |width, height, _| {
+                    let img = load_png_image_as_rgba(&icon, |width, height, _| {
                         img_mem = Some(graphics_mt.mem_alloc(
                             GraphicsMemoryAllocationType::TextureRgbaU8 {
                                 width: width.try_into().unwrap(),

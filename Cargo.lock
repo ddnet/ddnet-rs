@@ -3010,7 +3010,6 @@ name = "dilate"
 version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
- "graphics",
  "image 0.1.0",
  "oxipng",
  "rayon",
@@ -5211,7 +5210,9 @@ name = "image"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "image 0.25.5",
  "png",
+ "rayon",
 ]
 
 [[package]]

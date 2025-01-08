@@ -1,4 +1,6 @@
-use std::io;
+use std::{borrow::Cow, io, num::NonZeroU32};
+
+use image::RgbaImage;
 
 #[derive(Debug)]
 pub struct PngResultPersistentFast {
@@ -47,7 +49,7 @@ impl PngResult<'_> {
 }
 
 /// takes a closure of (width, height, color_channel_count)
-pub fn load_png_image<'a, T>(file: &[u8], alloc_mem: T) -> io::Result<PngResult<'a>>
+pub fn load_png_image_as_rgba<'a, T>(file: &[u8], alloc_mem: T) -> io::Result<PngResult<'a>>
 where
     T: FnOnce(usize, usize, usize) -> &'a mut [u8],
 {
@@ -97,7 +99,7 @@ where
             }
             img_data
         }
-        _ => unreachable!("uncovered color type"),
+        _ => return Err(io::Error::new(io::ErrorKind::Other, "uncovered color type")),
     };
 
     Ok(PngResult {
@@ -107,30 +109,30 @@ where
     })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PngValidatorOptions {
-    pub max_width: u32,
-    pub max_height: u32,
+    pub max_width: NonZeroU32,
+    pub max_height: NonZeroU32,
 }
 
 impl Default for PngValidatorOptions {
     fn default() -> Self {
         // 2048x2048 should be a safe limit for games
         Self {
-            max_width: 2048,
-            max_height: 2048,
+            max_width: 2048.try_into().unwrap(),
+            max_height: 2048.try_into().unwrap(),
         }
     }
 }
 
 pub fn is_png_image_valid(file: &[u8], options: PngValidatorOptions) -> anyhow::Result<()> {
     let mut mem = Vec::new();
-    let img = load_png_image(file, |w, h, ppp| {
+    let img = load_png_image_as_rgba(file, |w, h, ppp| {
         mem.resize(w * h * ppp, 0);
         &mut mem
     })?;
     anyhow::ensure!(
-        img.width <= options.max_width && img.height <= options.max_height,
+        img.width <= options.max_width.get() && img.height <= options.max_height.get(),
         "the maximum allowed width and height \
         for an image are currently: {} x {}",
         options.max_width,
@@ -168,4 +170,20 @@ pub fn save_png_image_ex(
 
 pub fn save_png_image(raw_bytes: &[u8], width: u32, height: u32) -> anyhow::Result<Vec<u8>> {
     save_png_image_ex(raw_bytes, width, height, false)
+}
+
+pub fn resize_rgba(
+    img: Cow<[u8]>,
+    width: u32,
+    height: u32,
+    new_width: u32,
+    new_height: u32,
+) -> Vec<u8> {
+    image::imageops::resize(
+        &RgbaImage::from_raw(width, height, img.into_owned()).unwrap(),
+        new_width,
+        new_height,
+        image::imageops::FilterType::Lanczos3,
+    )
+    .to_vec()
 }

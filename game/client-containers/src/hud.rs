@@ -95,7 +95,7 @@ impl LoadHud {
     fn load_full(files: &mut FxHashMap<PathBuf, Vec<u8>>, file: Vec<u8>) -> anyhow::Result<()> {
         let mut mem: Vec<u8> = Default::default();
         let img: image::png::PngResult<'_> =
-            image::png::load_png_image(&file, |width, height, bytes_per_pixel| {
+            image::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
                 mem.resize(width * height * bytes_per_pixel, Default::default());
                 &mut mem
             })?;
