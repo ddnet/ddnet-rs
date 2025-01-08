@@ -1583,12 +1583,12 @@ pub mod state {
                                 skin_info: match character_game_info.and_then(|side| side) {
                                     Some(side) => match side {
                                         MatchSide::Red => NetworkSkinInfo::Custom {
-                                            body_color: ubvec4::new(255, 0, 0, 255),
-                                            feet_color: ubvec4::new(255, 0, 0, 255),
+                                            body_color: ubvec4::new(255, 107, 107, 255),
+                                            feet_color: ubvec4::new(255, 107, 107, 255),
                                         },
                                         MatchSide::Blue => NetworkSkinInfo::Custom {
-                                            body_color: ubvec4::new(0, 0, 255, 255),
-                                            feet_color: ubvec4::new(0, 0, 255, 255),
+                                            body_color: ubvec4::new(107, 159, 255, 255),
+                                            feet_color: ubvec4::new(107, 159, 255, 255),
                                         },
                                     },
                                     None => {
