@@ -11,7 +11,7 @@ struct Args {
 }
 
 fn write_part(part: Skin06Part, output: &str, name: &str) {
-    let png = image::png::save_png_image(&part.data, part.width, part.height).unwrap();
+    let png = image_utils::png::save_png_image(&part.data, part.width, part.height).unwrap();
     std::fs::write(output.to_string() + "/" + name + ".png", png).unwrap();
 }
 
@@ -20,8 +20,8 @@ fn main() {
 
     let file = std::fs::read(args.file).unwrap();
     let mut mem: Vec<u8> = Default::default();
-    let img: image::png::PngResult<'_> =
-        image::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
+    let img: image_utils::png::PngResult<'_> =
+        image_utils::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
             mem.resize(width * height * bytes_per_pixel, Default::default());
             &mut mem
         })

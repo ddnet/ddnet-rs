@@ -14,7 +14,7 @@ math = { path = "../../../lib/math" }
 graphics-backend-traits = { path = "../../../lib/graphics-backend-traits" }
 graphics-types = { path = "../../../lib/graphics-types" }
 graphics-base-traits = { path = "../../../lib/graphics-base-traits" }
-image = { path = "../../../lib/image" }
+image-utils = { path = "../../../lib/image-utils" }
 pool = { path = "../../../lib/pool", features = ["enable_hiarc"] }
 hiarc = { path = "../../../lib/hiarc", features = ["derive"] }
 num-derive = "0.4.2"

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }
 graphics-types = { path = "../../lib/graphics-types" }
 config = { path = "../../lib/config" }
 command-parser = { path = "../../lib/command-parser" }

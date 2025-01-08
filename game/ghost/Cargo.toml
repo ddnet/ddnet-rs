@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-demo = { path = "../demo" }
+demo = { path = "../demo", features = ["recorder"] }
 game-interface = { path = "../game-interface" }
 
 pool = { path = "../../lib/pool" }

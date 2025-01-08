@@ -11,7 +11,7 @@ use graphics::{
     },
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
+use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::groups::layers::{
         design::{

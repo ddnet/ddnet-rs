@@ -23,7 +23,7 @@ config = { path = "../../lib/config" }
 ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
 math = { path = "../../lib/math" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
 graphics = { path = "../../lib/graphics" }

@@ -13,7 +13,7 @@ use graphics_types::{
     commands::TexFlags, rendering::ColorRgba, types::GraphicsMemoryAllocationType,
 };
 use hiarc::Hiarc;
-use image::png::PngResultPersistent;
+use image_utils::png::PngResultPersistent;
 use math::math::vector::vec3;
 use rustc_hash::FxHashMap;
 use sound::{
@@ -277,8 +277,8 @@ impl LoadSkinTexturesData {
         skin_extra_path: Option<&str>,
     ) -> anyhow::Result<()> {
         let mut mem: Vec<u8> = Default::default();
-        let img: image::png::PngResult<'_> =
-            image::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
+        let img: image_utils::png::PngResult<'_> =
+            image_utils::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
                 mem.resize(width * height * bytes_per_pixel, Default::default());
                 &mut mem
             })?;
@@ -290,7 +290,7 @@ impl LoadSkinTexturesData {
         };
         let mut insert_part =
             |name: &str, part: Skin06Part, copy_right: bool| -> anyhow::Result<()> {
-                let file = image::png::save_png_image(&part.data, part.width, part.height)?;
+                let file = image_utils::png::save_png_image(&part.data, part.width, part.height)?;
 
                 if copy_right {
                     files.insert(
