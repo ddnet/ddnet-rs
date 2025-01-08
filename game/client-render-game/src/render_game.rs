@@ -479,15 +479,19 @@ impl RenderGame {
             &scene,
         );
 
+        // Use own ui context for nameplates
+        let mut nameplats_creator = UiCreator::default();
+        nameplats_creator.load_font(&props.fonts);
+
+        let players = Players::new(graphics, &nameplats_creator);
+        let render = GameObjectsRender::new(graphics);
+        let cursor_render = RenderCursor::new(graphics);
+        let particles = ParticleManager::new(graphics, cur_time);
+
         let mut creator = UiCreator::default();
         creator.load_font(&props.fonts);
 
-        let players = Players::new(graphics, &creator);
-        let render = GameObjectsRender::new(graphics);
-        let cursor_render = RenderCursor::new(graphics);
         let hud = RenderHud::new(graphics, &creator);
-        let particles = ParticleManager::new(graphics, cur_time);
-
         let chat = ChatRender::new(graphics, &creator);
         let actionfeed = ActionfeedRender::new(graphics, &creator);
         let scoreboard = ScoreboardRender::new(graphics, &creator);

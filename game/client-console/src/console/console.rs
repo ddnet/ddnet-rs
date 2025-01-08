@@ -103,6 +103,8 @@ impl<E, T> ConsoleRender<E, T> {
         pipe: &mut ConsoleRenderPipe,
         can_change_client_config: bool,
     ) -> egui::PlatformOutput {
+        self.ui.load_monospace_fonts();
+
         let mut user_data = UserData {
             entries: &self.entries,
             msgs: pipe.msgs,
