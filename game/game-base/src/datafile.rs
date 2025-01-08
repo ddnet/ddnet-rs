@@ -597,7 +597,13 @@ impl CDatafileWrapper {
                         let item_size = size_of::<CMapItemInfoSettings>();
                         Self::get_type(&data_file, MapItemTypes::Info as i32, &mut start, &mut num);
                         for i in 0..num as usize {
-                            let data = &items[start as usize + i].data[0..item_size];
+                            let data = &items[start as usize + i].data;
+                            let item_size = if data.len() >= item_size {
+                                item_size
+                            } else {
+                                size_of::<CMapItemInfo>()
+                            };
+                            let data = &data[0..item_size];
                             let def = CMapItemInfoSettings::read_from_slice(data);
 
                             self.infos.push(MapInfo {
