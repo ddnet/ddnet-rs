@@ -1,4 +1,4 @@
-use egui::{Frame, Layout, Pos2, Rect, UiBuilder, Vec2};
+use egui::{vec2, Align2, Frame, Vec2, Window};
 
 use ui_base::{
     style::bg_frame_color,
@@ -15,8 +15,6 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
         ConnectModes::Connecting { addr } => {
             ui.vertical(|ui| {
                 ui.label(format!("Connecting to:\n{}", addr));
-            });
-            ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 if ui.button("Cancel").clicked() {
                     pipe.user_data.events.push(UiEvent::Disconnect);
                     pipe.user_data.config.engine.ui.path.route("");
@@ -30,8 +28,6 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     pipe.user_data.config.storage::<String>("server-addr"),
                     msg
                 ));
-            });
-            ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 if ui.button("Return").clicked() {
                     pipe.user_data.events.push(UiEvent::Disconnect);
                     pipe.user_data.config.engine.ui.path.route("");
@@ -45,8 +41,6 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     pipe.user_data.config.storage::<String>("server-addr")
                 ));
                 ui.label(format!("Waiting in queue: {}", msg));
-            });
-            ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 if ui.button("Cancel").clicked() {
                     pipe.user_data.events.push(UiEvent::Disconnect);
                     pipe.user_data.config.engine.ui.path.route("");
@@ -60,8 +54,6 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     pipe.user_data.config.storage::<String>("server-addr"),
                     msg
                 ));
-            });
-            ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 if ui.button("Return").clicked() {
                     pipe.user_data.events.push(UiEvent::Disconnect);
                     pipe.user_data.config.engine.ui.path.route("");
@@ -74,23 +66,19 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 /// top bar
 /// big square, rounded edges
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
-    let width = ui.available_width().min(200.0);
-    let height = ui.available_height().min(100.0);
-    let offset_x = (ui.available_width() / 2.0) - (width / 2.0);
-    let offset_y = (ui.available_height() / 2.0) - (height / 2.0);
-    let rect = Rect::from_min_size(Pos2::new(offset_x, offset_y), Vec2::new(width, height));
-    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
-        ui.set_width(rect.width());
-        ui.set_height(rect.height());
-
-        let res = Frame::default()
-            .fill(bg_frame_color())
-            .rounding(5.0)
-            .show(ui, |ui| {
-                ui.set_width(rect.width());
-                ui.set_height(rect.height());
-                add_margins(ui, |ui| render_modes(ui, pipe));
+    let res = Window::new("")
+        .resizable(false)
+        .title_bar(false)
+        .frame(Frame::default().fill(bg_frame_color()).rounding(5.0))
+        .anchor(Align2::CENTER_CENTER, Vec2::new(0.0, 0.0))
+        .default_size(vec2(200.0, 10.0))
+        .show(ui.ctx(), |ui| {
+            add_margins(ui, |ui| {
+                ui.style_mut().visuals.clip_rect_margin = 6.0;
+                render_modes(ui, pipe)
             });
+        });
+    if let Some(res) = res {
         ui_state.add_blur_rect(res.response.rect, 5.0);
-    });
+    }
 }
