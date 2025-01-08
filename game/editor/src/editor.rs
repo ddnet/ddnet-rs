@@ -41,11 +41,10 @@ use graphics::{
         stream::stream::GraphicsStreamHandle,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
-    image::texture_2d_to_3d,
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
 use hiarc::HiarcTrait;
-use image::png::load_png_image;
+use image::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::{
         animations::{AnimBase, AnimPointCurveType, AnimPointPos},
@@ -504,7 +503,7 @@ impl Editor {
                                     let file = resources.get(&meta.blake3_hash).unwrap();
 
                                     let mut mem = None;
-                                    let _ = load_png_image(file, |width, height, _| {
+                                    let _ = load_png_image_as_rgba(file, |width, height, _| {
                                         mem = Some(graphics_mt.mem_alloc(
                                             GraphicsMemoryAllocationType::TextureRgbaU8 {
                                                 width: width.try_into().unwrap(),
@@ -531,7 +530,7 @@ impl Editor {
                                     let file = resources.get(&meta.blake3_hash).unwrap();
 
                                     let mut png = Vec::new();
-                                    let img = load_png_image(
+                                    let img = load_png_image_as_rgba(
                                         file,
                                         |width, height, color_chanel_count| {
                                             png.resize(

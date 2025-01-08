@@ -1,7 +1,7 @@
 use std::{num::NonZeroUsize, path::PathBuf, sync::Arc};
 
 use clap::Parser;
-use graphics::image::dilate_image;
+use image::utils::dilate_image;
 use oxipng::optimize_from_memory;
 
 #[derive(Parser, Debug)]
@@ -34,7 +34,7 @@ async fn main() {
     let file = tokio::fs::read(&args.file).await.unwrap();
 
     let mut mem = Vec::new();
-    let img = image::png::load_png_image(&file, |w, h, bpp| {
+    let img = image::png::load_png_image_as_rgba(&file, |w, h, bpp| {
         assert!(bpp == 4, "png must be RGBA.");
         mem = vec![0; w * h * bpp];
         &mut mem

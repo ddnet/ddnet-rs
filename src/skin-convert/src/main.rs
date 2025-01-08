@@ -21,7 +21,7 @@ fn main() {
     let file = std::fs::read(args.file).unwrap();
     let mut mem: Vec<u8> = Default::default();
     let img: image::png::PngResult<'_> =
-        image::png::load_png_image(&file, |width, height, bytes_per_pixel| {
+        image::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
             mem.resize(width * height * bytes_per_pixel, Default::default());
             &mut mem
         })

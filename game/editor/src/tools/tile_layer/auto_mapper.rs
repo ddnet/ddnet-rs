@@ -5,7 +5,7 @@ use base::hash::{fmt_hash, Hash};
 use base_io::{io::IoFileSys, runtime::IoRuntimeTask};
 use egui::{vec2, ColorImage, Rect, TextBuffer, TextureHandle};
 use egui_file_dialog::FileDialog;
-use graphics::image::texture_2d_to_3d;
+use image::utils::texture_2d_to_3d;
 use map::map::groups::layers::tiles::{TileBase, TileFlags};
 use math::math::vector::{ivec2, vec2_base};
 use rand::SeedableRng;
@@ -393,50 +393,50 @@ impl TileLayerAutoMapper {
                     } else {
                         let image = load_task.image.unwrap();
                         let mut img_mem = Vec::new();
-                        if let Some(tile_textures) =
-                            image::png::load_png_image(&image, |w, h, color_channel_count| {
+                        if let Some(tile_textures) = image::png::load_png_image_as_rgba(
+                            &image,
+                            |w, h, color_channel_count| {
                                 img_mem.resize(w * h * color_channel_count, 0);
                                 img_mem.as_mut()
-                            })
-                            .ok()
-                            .and_then(|img| {
-                                let mut tex_3d =
-                                    vec![0; img.width as usize * img.height as usize * 4];
-                                let mut image_3d_width = 0;
-                                let mut image_3d_height = 0;
-                                if !texture_2d_to_3d(
-                                    &self.tp,
-                                    img.data,
-                                    img.width as usize,
-                                    img.height as usize,
-                                    4,
-                                    16,
-                                    16,
-                                    tex_3d.as_mut_slice(),
-                                    &mut image_3d_width,
-                                    &mut image_3d_height,
-                                ) {
-                                    None
-                                } else {
-                                    let tile_textures: Vec<_> = tex_3d
-                                        .chunks_exact(image_3d_width * image_3d_height * 4)
-                                        .map(|chunk| {
-                                            load_task.ctx.load_texture(
-                                                name.clone(),
-                                                egui::ImageData::Color(Arc::new(
-                                                    ColorImage::from_rgba_unmultiplied(
-                                                        [image_3d_width, image_3d_height],
-                                                        chunk,
-                                                    ),
-                                                )),
-                                                Default::default(),
-                                            )
-                                        })
-                                        .collect::<_>();
-                                    Some(tile_textures)
-                                }
-                            })
-                        {
+                            },
+                        )
+                        .ok()
+                        .and_then(|img| {
+                            let mut tex_3d = vec![0; img.width as usize * img.height as usize * 4];
+                            let mut image_3d_width = 0;
+                            let mut image_3d_height = 0;
+                            if !texture_2d_to_3d(
+                                &self.tp,
+                                img.data,
+                                img.width as usize,
+                                img.height as usize,
+                                4,
+                                16,
+                                16,
+                                tex_3d.as_mut_slice(),
+                                &mut image_3d_width,
+                                &mut image_3d_height,
+                            ) {
+                                None
+                            } else {
+                                let tile_textures: Vec<_> = tex_3d
+                                    .chunks_exact(image_3d_width * image_3d_height * 4)
+                                    .map(|chunk| {
+                                        load_task.ctx.load_texture(
+                                            name.clone(),
+                                            egui::ImageData::Color(Arc::new(
+                                                ColorImage::from_rgba_unmultiplied(
+                                                    [image_3d_width, image_3d_height],
+                                                    chunk,
+                                                ),
+                                            )),
+                                            Default::default(),
+                                        )
+                                    })
+                                    .collect::<_>();
+                                Some(tile_textures)
+                            }
+                        }) {
                             if let Some(Ok(mut rule_base)) = load_task.rule.map(|rule| {
                                 serde_json::from_str::<TileLayerAutoMapperRule>(
                                     String::from_utf8_lossy(&rule).as_str(),

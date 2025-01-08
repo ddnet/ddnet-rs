@@ -114,7 +114,7 @@ pub async fn legacy_to_new_from_buf_async(
     let benchmark = Benchmark::new(true);
 
     benchmark.bench("encoding images to png");
-    let mut map_output = map_legacy.into_map(&images)?;
+    let mut map_output = map_legacy.into_map(thread_pool, &images, Default::default(), true)?;
     benchmark.bench("converting map");
 
     if optimize {
@@ -143,7 +143,7 @@ pub async fn legacy_to_new_from_buf_async(
                 });
 
             anyhow::Ok(())
-        })?
+        })?;
     }
 
     thread_pool.install(|| {

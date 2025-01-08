@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::HashMap,
     ffi::{CStr, CString},
     io::{Read, Write},
@@ -14,7 +15,10 @@ use base::{
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
-use image::png::{load_png_image, save_png_image};
+use image::{
+    png::{load_png_image_as_rgba, resize_rgba, save_png_image, PngValidatorOptions},
+    utils,
+};
 use math::math::{
     f2fx, fx2f,
     vector::{ffixed, fvec2, fvec3, ivec2, ivec4, nffixed, nfvec4, uffixed, ufvec2, vec1_base},
@@ -1442,7 +1446,13 @@ impl CDatafileWrapper {
     }
 
     /// images are external images
-    pub fn into_map(self, images: &[Vec<u8>]) -> anyhow::Result<LegacyMapToNewOutput> {
+    pub fn into_map(
+        self,
+        thread_pool: &rayon::ThreadPool,
+        images: &[Vec<u8>],
+        png_validation: PngValidatorOptions,
+        dilate: bool,
+    ) -> anyhow::Result<LegacyMapToNewOutput> {
         let mut image_resources: HashMap<Hash, LegacyMapToNewRes> = Default::default();
         let mut sound_resources: HashMap<Hash, LegacyMapToNewRes> = Default::default();
 
@@ -1618,12 +1628,77 @@ impl CDatafileWrapper {
                 }
             }
 
+            fn check_size_and_dilate<'a>(
+                thread_pool: &rayon::ThreadPool,
+                img: Cow<'a, [u8]>,
+                mut width: u32,
+                mut height: u32,
+                png_validation: PngValidatorOptions,
+                dilate: bool,
+                in_tile_layer_only: bool,
+            ) -> (Cow<'a, [u8]>, u32, u32) {
+                let mut res = img;
+                if width > png_validation.max_width.get()
+                    || height > png_validation.max_height.get()
+                {
+                    let width_ratio =
+                        (width as f64 / png_validation.max_width.get() as f64).clamp(1.0, f64::MAX);
+                    let height_ratio = (height as f64 / png_validation.max_height.get() as f64)
+                        .clamp(1.0, f64::MAX);
+
+                    let ratio = width_ratio.max(height_ratio);
+
+                    let new_width = ((width as f64 / ratio) as u32).clamp(1, u32::MAX);
+                    let new_height = ((height as f64 / ratio) as u32).clamp(1, u32::MAX);
+
+                    res = resize_rgba(res, width, height, new_width, new_height).into();
+
+                    width = new_width;
+                    height = new_height;
+                }
+                if dilate {
+                    if in_tile_layer_only && width % 16 == 0 && height % 16 == 0 {
+                        let sub_width = width / 16;
+                        let sub_height = height / 16;
+                        for y in 0..16 {
+                            for x in 0..16 {
+                                utils::dilate_image_sub(
+                                    thread_pool,
+                                    res.to_mut(),
+                                    width as usize,
+                                    height as usize,
+                                    4,
+                                    x * sub_width as usize,
+                                    y * sub_height as usize,
+                                    sub_width as usize,
+                                    sub_height as usize,
+                                );
+                            }
+                        }
+                    } else {
+                        utils::dilate_image(
+                            thread_pool,
+                            res.to_mut(),
+                            width as usize,
+                            height as usize,
+                            4,
+                        );
+                    }
+                }
+                (res, width, height)
+            }
+
             let (hash, png_data) = if let Some(internal_img) = image.internal_img {
-                let img = save_png_image(
-                    &internal_img,
+                let (internal_img, width, height) = check_size_and_dilate(
+                    thread_pool,
+                    internal_img.into(),
                     image.item_data.width as u32,
                     image.item_data.height as u32,
-                )?;
+                    png_validation,
+                    dilate,
+                    in_tile_layer && !in_quad_layer,
+                );
+                let img = save_png_image(&internal_img, width, height)?;
                 (Map::generate_hash_for(&img), img)
             } else {
                 let img = images
@@ -1634,11 +1709,20 @@ impl CDatafileWrapper {
                     })
                     .ok_or_else(|| anyhow!("image with name {} was not loaded", image.img_name))?;
                 let mut img_data: Vec<u8> = Vec::new();
-                let img = load_png_image(img, |width, height, color_channel_count| {
+                let img = load_png_image_as_rgba(img, |width, height, color_channel_count| {
                     img_data.resize(width * height * color_channel_count, Default::default());
                     &mut img_data
                 })?;
-                let img = save_png_image(img.data, img.width as u32, img.height as u32)?;
+                let (img_data, width, height) = check_size_and_dilate(
+                    thread_pool,
+                    img.data.into(),
+                    img.width as u32,
+                    img.height as u32,
+                    png_validation,
+                    dilate,
+                    in_tile_layer && !in_quad_layer,
+                );
+                let img = save_png_image(&img_data, width, height)?;
                 (Map::generate_hash_for(&img), img)
             };
             let res_ref = MapResourceRef {
@@ -2337,7 +2421,7 @@ impl CDatafileWrapper {
                     .push(data_items.len() as i32);
 
                 let mut img_data: Vec<u8> = Vec::new();
-                let img = load_png_image(
+                let img = load_png_image_as_rgba(
                     images.get(index).unwrap_or_else(|| {
                         panic!("did not find image with name: {}", image.name.as_str())
                     }),
@@ -2395,7 +2479,7 @@ impl CDatafileWrapper {
                     .push(data_items.len() as i32);
 
                 let mut img_data: Vec<u8> = Vec::new();
-                let img = load_png_image(
+                let img = load_png_image_as_rgba(
                     image_arrays.get(index).unwrap_or_else(|| {
                         panic!("did not find image with name: {}", image.name.as_str())
                     }),

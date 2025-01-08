@@ -9,10 +9,9 @@ use graphics::{
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         texture::texture::GraphicsTextureHandle,
     },
-    image::texture_2d_to_3d,
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image::png::load_png_image;
+use image::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::groups::layers::{
         design::{
@@ -628,7 +627,7 @@ pub fn do_action(
                 act.base.index
             );
             let mut img_mem = None;
-            let _ = load_png_image(&act.base.file, |width, height, _| {
+            let _ = load_png_image_as_rgba(&act.base.file, |width, height, _| {
                 img_mem = Some(backend_handle.mem_alloc(
                     GraphicsMemoryAllocationType::TextureRgbaU8 {
                         width: width.try_into().unwrap(),
@@ -658,7 +657,7 @@ pub fn do_action(
                 act.base.index
             );
             let mut png = Vec::new();
-            let img = load_png_image(&act.base.file, |width, height, _| {
+            let img = load_png_image_as_rgba(&act.base.file, |width, height, _| {
                 png = vec![0; width * height * 4];
                 &mut png
             })?;

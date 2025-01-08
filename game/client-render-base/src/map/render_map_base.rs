@@ -29,10 +29,12 @@ use graphics::{
         stream::stream::GraphicsStreamHandle,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
-    image::{highest_bit, resize, texture_2d_to_3d},
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image::png::{is_png_image_valid, load_png_image};
+use image::{
+    png::{is_png_image_valid, load_png_image_as_rgba, resize_rgba, PngValidatorOptions},
+    utils::{highest_bit, texture_2d_to_3d},
+};
 use map::map::Map;
 use math::math::vector::vec2;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -195,6 +197,7 @@ impl RenderMapLoading {
                                                 file_ty.as_str(),
                                                 file_name.as_str(),
                                                 &file,
+                                                load_hq_assets,
                                             )?;
                                             let file_path: &Path = read_file_path.as_ref();
                                             if let Some(dir) = file_path.parent() {
@@ -254,19 +257,23 @@ impl RenderMapLoading {
                         || convert_height == 0
                         || (convert_height % 16) != 0
                     {
-                        // TODO sys.log("image").msg("3D/2D array texture was resized");
                         let new_width =
                             std::cmp::max(highest_bit(convert_width as u32) as usize, 16);
                         let new_height =
                             std::cmp::max(highest_bit(convert_height as u32) as usize, 16);
-                        conv_data = resize(
-                            &runtime_tp,
-                            upload_data,
+                        conv_data = resize_rgba(
+                            upload_data.into(),
+                            convert_width as u32,
+                            convert_height as u32,
+                            new_width as u32,
+                            new_height as u32,
+                        );
+                        log::warn!(
+                            "3D/2D array texture had to be resized, {}x{} to {}x{}",
                             convert_width,
                             convert_height,
                             new_width,
-                            new_height,
-                            image_color_channels,
+                            new_height
                         );
 
                         convert_width = new_width;
@@ -314,7 +321,7 @@ impl RenderMapLoading {
                                 .into_par_iter()
                                 .map(|(hash, file)| {
                                     let mut img_data: Vec<u8> = Default::default();
-                                    let img = load_png_image(
+                                    let img = load_png_image_as_rgba(
                                         &file,
                                         |width, height, color_channel_count| {
                                             img_data.resize(
@@ -456,10 +463,25 @@ impl RenderMapLoading {
         }
     }
 
-    fn verify_resource(file_ty: &str, file_name: &str, file: &[u8]) -> anyhow::Result<()> {
+    fn verify_resource(
+        file_ty: &str,
+        file_name: &str,
+        file: &[u8],
+        allow_hq_assets: bool,
+    ) -> anyhow::Result<()> {
         match file_ty {
             "png" => {
-                if let Err(err) = is_png_image_valid(file, Default::default()) {
+                if let Err(err) = is_png_image_valid(
+                    file,
+                    if allow_hq_assets {
+                        PngValidatorOptions {
+                            max_width: 4096.try_into().unwrap(),
+                            max_height: 4096.try_into().unwrap(),
+                        }
+                    } else {
+                        Default::default()
+                    },
+                ) {
                     return Err(anyhow!(
                         "downloaded image resource (png) {}\
                         is not a valid png file: {}",
