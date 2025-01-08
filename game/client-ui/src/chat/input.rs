@@ -104,6 +104,7 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
                         if (matches!(pipe.user_data.mode, ChatMode::Whisper(Some(_)))
                             || !matches!(pipe.user_data.mode, ChatMode::Whisper(_)))
                             && !pipe.user_data.msg.is_empty()
+                            && !is_escape
                         {
                             pipe.user_data.chat_events.push(ChatEvent::MsgSend {
                                 msg: pipe.user_data.msg.clone(),
