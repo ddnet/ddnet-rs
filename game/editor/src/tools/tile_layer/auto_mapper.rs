@@ -5,7 +5,7 @@ use base::hash::{fmt_hash, Hash};
 use base_io::{io::IoFileSys, runtime::IoRuntimeTask};
 use egui::{vec2, ColorImage, Rect, TextBuffer, TextureHandle};
 use egui_file_dialog::FileDialog;
-use image::utils::texture_2d_to_3d;
+use image_utils::utils::texture_2d_to_3d;
 use map::map::groups::layers::tiles::{TileBase, TileFlags};
 use math::math::vector::{ivec2, vec2_base};
 use rand::SeedableRng;
@@ -393,7 +393,7 @@ impl TileLayerAutoMapper {
                     } else {
                         let image = load_task.image.unwrap();
                         let mut img_mem = Vec::new();
-                        if let Some(tile_textures) = image::png::load_png_image_as_rgba(
+                        if let Some(tile_textures) = image_utils::png::load_png_image_as_rgba(
                             &image,
                             |w, h, color_channel_count| {
                                 img_mem.resize(w * h * color_channel_count, 0);

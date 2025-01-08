@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
-hiarc = { path = "../../lib/hiarc", features = ["enable_time", "enable_hashlink"] }
+hiarc = { path = "../../lib/hiarc", features = ["enable_time", "enable_hashlink", "enable_rustc_hash"] }
 rayon = "1.10.0"
 bincode = { features = ["serde"], version = "2.0.0-rc.3" }
 zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }

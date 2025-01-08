@@ -29,7 +29,7 @@ use graphics_types::{
 };
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
-use image::{
+use image_utils::{
     png::{is_png_image_valid, load_png_image_as_rgba, PngResultPersistent, PngValidatorOptions},
     utils::texture_2d_to_3d,
 };

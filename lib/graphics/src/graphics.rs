@@ -12,7 +12,7 @@ pub mod graphics {
     };
     use graphics_base_traits::traits::GraphicsStreamedData;
     use hiarc::Hiarc;
-    use image::png::save_png_image;
+    use image_utils::png::save_png_image;
 
     use crate::{
         graphics_mt::GraphicsMultiThreaded,

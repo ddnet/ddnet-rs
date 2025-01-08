@@ -7,7 +7,7 @@ edition = "2021"
 base = { path = "../base" }
 sound = { path = "../sound" }
 wasm-runtime-types = { path = "../wasm-runtime-types" }
-hiarc = { path = "../hiarc", features = ["derive"] }
+hiarc = { path = "../hiarc", features = ["derive", "enable_hashlink", "enable_rustc_hash"] }
 wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 sendable = "0.6.1"

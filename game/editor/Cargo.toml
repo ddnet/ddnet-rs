@@ -12,7 +12,7 @@ ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
 base-io = { path = "../../lib/base-io" }
 base-io-traits = { path = "../../lib/base-io-traits" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }
 graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }

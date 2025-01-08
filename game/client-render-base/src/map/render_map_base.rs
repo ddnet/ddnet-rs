@@ -31,7 +31,7 @@ use graphics::{
     },
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image::{
+use image_utils::{
     png::{is_png_image_valid, load_png_image_as_rgba, resize_rgba, PngValidatorOptions},
     utils::{highest_bit, texture_2d_to_3d},
 };

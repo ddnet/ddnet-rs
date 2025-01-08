@@ -15,7 +15,7 @@ use base::{
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
-use image::{
+use image_utils::{
     png::{load_png_image_as_rgba, resize_rgba, save_png_image, PngValidatorOptions},
     utils,
 };

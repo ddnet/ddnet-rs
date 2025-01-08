@@ -14,7 +14,7 @@ graphics-types = { path = "../../lib/graphics-types" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }
 
 client-containers = { path = "../client-containers" }
 game-base = { path = "../game-base" }

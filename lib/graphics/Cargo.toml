@@ -8,7 +8,7 @@ math = { path = "../math" }
 graphics-backend-traits = { path = "../graphics-backend-traits" }
 graphics-types = { path = "../graphics-types" }
 graphics-base-traits = { path = "../graphics-base-traits" }
-image = { path = "../image" }
+image-utils = { path = "../image-utils" }
 pool = { path = "../pool", features = ["enable_hiarc"] }
 hiarc = { path = "../hiarc", features = ["derive"] }
 rayon = "1.10.0"

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }
 game-base = { path = "../../game/game-base" }
 map = { path = "../../game/map" }
 rayon = "1.10.0"

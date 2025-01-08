@@ -1540,7 +1540,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "log",
  "math",
  "num-traits",
@@ -1693,7 +1693,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "log",
  "map",
  "math",
@@ -1797,7 +1797,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "log",
  "master-server-types",
  "math",
@@ -2749,7 +2749,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "input-binds",
  "log",
  "map",
@@ -3010,7 +3010,7 @@ name = "dilate"
 version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
- "image 0.1.0",
+ "image-utils",
  "oxipng",
  "rayon",
  "tokio",
@@ -3226,7 +3226,7 @@ dependencies = [
  "graphics",
  "graphics-types",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "map",
  "map-convert-lib",
  "math",
@@ -3403,7 +3403,7 @@ dependencies = [
  "ahash 0.8.11",
  "egui",
  "enum-map",
- "image 0.25.5",
+ "image",
  "log",
  "mime_guess2",
  "profiling",
@@ -3498,7 +3498,7 @@ version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
  "client-extra",
- "image 0.1.0",
+ "image-utils",
  "tar",
 ]
 
@@ -4030,7 +4030,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "indexmap 2.7.0",
  "map",
  "math",
@@ -4071,7 +4071,7 @@ version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
  "client-extra",
- "image 0.1.0",
+ "image-utils",
  "tar",
 ]
 
@@ -4378,7 +4378,7 @@ dependencies = [
  "graphics-base-traits",
  "graphics-types",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "math",
  "pool",
  "rayon",
@@ -4469,7 +4469,7 @@ dependencies = [
  "graphics-base-traits",
  "graphics-types",
  "hiarc",
- "image 0.1.0",
+ "image-utils",
  "math",
  "num-derive",
  "num-traits",
@@ -4869,7 +4869,7 @@ version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
  "client-extra",
- "image 0.1.0",
+ "image-utils",
  "tar",
 ]
 
@@ -5207,16 +5207,6 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "image 0.25.5",
- "png",
- "rayon",
-]
-
-[[package]]
-name = "image"
 version = "0.25.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd6f44aed642f18953a158afeb30206f4d50da59fbc66ecb53c66488de73563b"
@@ -5224,6 +5214,16 @@ dependencies = [
  "bytemuck",
  "byteorder-lite",
  "num-traits",
+]
+
+[[package]]
+name = "image-utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "image",
+ "png",
+ "rayon",
 ]
 
 [[package]]
@@ -5907,7 +5907,7 @@ dependencies = [
  "base-io",
  "difference",
  "game-base",
- "image 0.1.0",
+ "image-utils",
  "map",
  "ogg-opus",
  "oxipng",
@@ -7021,7 +7021,7 @@ version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
  "client-extra",
- "image 0.1.0",
+ "image-utils",
  "tar",
 ]
 
@@ -8668,7 +8668,7 @@ version = "0.1.0"
 dependencies = [
  "clap 4.5.23",
  "client-extra",
- "image 0.1.0",
+ "image-utils",
 ]
 
 [[package]]

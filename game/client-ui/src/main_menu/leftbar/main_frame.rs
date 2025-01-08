@@ -9,7 +9,7 @@ use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image::png::load_png_image_as_rgba;
+use image_utils::png::load_png_image_as_rgba;
 use math::math::vector::vec2;
 use ui_base::{style::bg_frame_color, types::UiState};
 

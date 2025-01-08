@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 math = { path = "../math" }
-hiarc = { path = "../hiarc", features = ["derive", "enable_kira", "enable_mint"] }
+hiarc = { path = "../hiarc", features = ["derive", "enable_kira", "enable_hashlink", "enable_rustc_hash", "enable_mint"] }
 sound = { path = "../sound" }
 config = { path = "../config" }
 kira = "0.9.6"

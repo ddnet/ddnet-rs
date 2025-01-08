@@ -8,7 +8,7 @@ base = { path = "../base" }
 pool = { path = "../pool" }
 hiarc = { path = "../hiarc", features = ["enable_winit"] }
 serde = { version = "1.0.217", features = ["derive"] }
-winit = { version = "0.30.8", default-features = false, features = ["serde"] }
+winit = { version = "0.30.8", default-features = false, features = ["serde", "rwh_06", "android-native-activity", "x11", "wayland"] }
 
 [dev-dependencies]
 serde_json = "1.0.134"

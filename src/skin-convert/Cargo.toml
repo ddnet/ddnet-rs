@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
 client-extra = { path = "../../game/client-extra" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }

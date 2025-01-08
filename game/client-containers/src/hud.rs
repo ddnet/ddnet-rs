@@ -94,8 +94,8 @@ pub struct LoadHud {
 impl LoadHud {
     fn load_full(files: &mut FxHashMap<PathBuf, Vec<u8>>, file: Vec<u8>) -> anyhow::Result<()> {
         let mut mem: Vec<u8> = Default::default();
-        let img: image::png::PngResult<'_> =
-            image::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
+        let img: image_utils::png::PngResult<'_> =
+            image_utils::png::load_png_image_as_rgba(&file, |width, height, bytes_per_pixel| {
                 mem.resize(width * height * bytes_per_pixel, Default::default());
                 &mut mem
             })?;
@@ -103,7 +103,7 @@ impl LoadHud {
             client_extra::ddrace_hud_split::split_ddrace_hud(img.data, img.width, img.height)?;
 
         let mut insert_part = |name: &str, part: DdraceHudPart| -> anyhow::Result<()> {
-            let file = image::png::save_png_image(&part.data, part.width, part.height)?;
+            let file = image_utils::png::save_png_image(&part.data, part.width, part.height)?;
 
             files.insert(format!("{}.png", name).into(), file);
             Ok(())

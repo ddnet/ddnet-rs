@@ -30,7 +30,7 @@ members = [
     "lib/api-wasm-macros",
     "lib/api-macros",
     "lib/api-ui",
-    "lib/image",
+    "lib/image-utils",
     "lib/pool",
     "lib/sound",
     "lib/sql",
@@ -140,7 +140,7 @@ config-fs = { path = "lib/config-fs" }
 graphics = { path = "lib/graphics" }
 graphics-backend = { path = "lib/graphics-backend" }
 graphics-types = { path = "lib/graphics-types" }
-image = { path = "lib/image" }
+image-utils = { path = "lib/image-utils" }
 sound = { path = "lib/sound" }
 sound-backend = { path = "lib/sound-backend" }
 microphone = { path = "lib/microphone" }

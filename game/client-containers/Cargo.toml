@@ -10,7 +10,7 @@ base-io = { path = "../../lib/base-io" }
 graphics-types = { path = "../../lib/graphics-types" }
 graphics = { path = "../../lib/graphics" }
 sound = { path = "../../lib/sound" }
-image = { path = "../../lib/image" }
+image-utils = { path = "../../lib/image-utils" }
 hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_rayon", "enable_rustc_hash", "enable_url", "enable_fixed", "enable_either"] }
 math = { path = "../../lib/math" }
 
