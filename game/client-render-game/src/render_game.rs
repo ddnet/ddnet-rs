@@ -377,6 +377,10 @@ impl RenderGameSettings {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RenderGameInput {
     pub players: PoolFxLinkedHashMap<PlayerId, RenderGameForPlayer>,
+    /// Players currently not controlled by a human player
+    /// (and thus not interesting for rendering).
+    #[doc(alias = "inactive_players")]
+    #[doc(alias = "uncontrolled_players")]
     pub dummies: PoolFxLinkedHashSet<PlayerId>,
     /// The bool indicates if the events were generated on the client (`true`) or
     /// from the server.

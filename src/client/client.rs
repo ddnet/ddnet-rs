@@ -993,12 +993,12 @@ impl ClientNativeImpl {
                     .players
                     .insert(player_id, render_for_player);
             });
-            let dummies = game
+            let inactive_players = game
                 .game_data
                 .local
                 .inactive_local_players()
-                .filter_map(|(&id, player)| player.is_dummy.then_some(id));
-            render_game_input.dummies.extend(dummies);
+                .map(|(id, _)| id);
+            render_game_input.dummies.extend(inactive_players);
 
             // set the dummy's potential cursor position for hammering
             if !render_game_input.dummies.is_empty() {
