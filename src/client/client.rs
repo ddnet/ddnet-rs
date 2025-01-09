@@ -1,8 +1,9 @@
 use std::{
-    borrow::Borrow, cell::RefCell, net::SocketAddr, num::NonZeroUsize, rc::Rc, sync::Arc,
-    time::Duration,
+    borrow::Borrow, cell::RefCell, net::SocketAddr, num::NonZeroUsize, path::PathBuf, rc::Rc,
+    sync::Arc, time::Duration,
 };
 
+use anyhow::anyhow;
 use base::{
     benchmark::Benchmark,
     linked_hash_map_view::FxLinkedHashMap,
@@ -40,12 +41,14 @@ use client_render_game::render_game::{
     RenderGameCreateOptions, RenderGameForPlayer, RenderGameInput, RenderGameInterface,
     RenderGameSettings, RenderModTy, RenderPlayerCameraMode,
 };
+use client_types::console::entries_to_parser;
 use client_ui::{
     chat::user_data::{ChatEvent, ChatMode},
     connect::{
         page::ConnectingUi,
         user_data::{ConnectMode, ConnectModes},
     },
+    console::utils::run_commands,
     events::{UiEvent, UiEvents},
     ingame_menu::{
         account_info::AccountInfo,
@@ -1868,7 +1871,7 @@ impl ClientNativeImpl {
         }
 
         // handle the console events
-        self.handle_console_events(native, self.local_console.get_events());
+        self.handle_console_events(native);
         if let Game::Active(game) = &mut self.game {
             let events = game.remote_console.get_events();
             for event in events {
@@ -1958,10 +1961,76 @@ impl ClientNativeImpl {
         .unwrap();
     }
 
-    fn handle_console_events(
+    fn handle_exec(&mut self, file_path: PathBuf) {
+        let fs = self.io.fs.clone();
+        let cmds_file = match self
+            .io
+            .rt
+            .spawn(async move {
+                fs.read_file(&file_path)
+                    .await
+                    .map_err(|err| {
+                        anyhow!(
+                            "failed to read config file: {file_path:?} in {:?}: {err}",
+                            fs.get_save_path()
+                        )
+                    })
+                    .and_then(|file| {
+                        String::from_utf8(file).map_err(|err| {
+                            anyhow!(
+                                "failed to read config file: {file_path:?} in {:?}: {err}",
+                                fs.get_save_path()
+                            )
+                        })
+                    })
+            })
+            .get_storage()
+        {
+            Ok(cmds_file) => cmds_file,
+            Err(err) => {
+                self.notifications
+                    .add_err(err.to_string(), Duration::from_secs(10));
+                return;
+            }
+        };
+
+        let mut cmds_succeeded = true;
+        let parser_entries = entries_to_parser(&self.local_console.entries);
+        for line in cmds_file.lines().filter(|l| !l.is_empty()) {
+            let cmds = command_parser::parser::parse(
+                line,
+                &parser_entries,
+                &mut self.local_console.user.borrow_mut(),
+            );
+            let mut res = String::default();
+            let cur_cmds_succeeded = run_commands(
+                &cmds,
+                &self.local_console.entries,
+                &mut self.config.engine,
+                &mut self.config.game,
+                &mut res,
+                true,
+            );
+            log::debug!("{}", res);
+            if !cur_cmds_succeeded {
+                self.console_logs.push_str(&res);
+            }
+            cmds_succeeded &= cur_cmds_succeeded;
+        }
+        if !cmds_succeeded {
+            self.notifications.add_err(
+                "At least one command failed to be executed, \
+                see local console for more info.",
+                Duration::from_secs(5),
+            );
+        }
+    }
+
+    fn handle_console_events_impl(
         &mut self,
         native: &mut dyn NativeImpl,
         events: Vec<LocalConsoleEvent>,
+        depth: usize,
     ) {
         for event in events {
             match event {
@@ -2030,6 +2099,10 @@ impl ClientNativeImpl {
                             set_binds(local_player);
                         }
                     }
+                }
+                LocalConsoleEvent::Exec { file_path } => self.handle_exec(file_path),
+                LocalConsoleEvent::Echo { text } => {
+                    self.notifications.add_info(text, Duration::from_secs(2));
                 }
                 LocalConsoleEvent::ChangeDummy { dummy_index } => {
                     if let Game::Active(game) = &mut self.game {
@@ -2162,6 +2235,27 @@ impl ClientNativeImpl {
                 }
             }
         }
+
+        let events = self.local_console.get_events();
+        let max_depth_reached = depth >= 16;
+        if !events.is_empty()
+            && events
+                .iter()
+                .any(|e| matches!(e, LocalConsoleEvent::Exec { .. }))
+            && !max_depth_reached
+        {
+            self.handle_console_events_impl(native, events, depth + 1);
+        } else if max_depth_reached {
+            self.notifications.add_err(
+                "Max recursion limit for processing console events reached.",
+                Duration::from_secs(5),
+            );
+        }
+    }
+
+    fn handle_console_events(&mut self, native: &mut dyn NativeImpl) {
+        let events = self.local_console.get_events();
+        self.handle_console_events_impl(native, events, 0);
     }
 }
 
@@ -2607,8 +2701,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             string_pool: Pool::with_sized(256, || String::with_capacity(256)), // TODO: random values rn
         };
 
-        let events = client.local_console.get_events();
-        client.handle_console_events(native, events);
+        client.handle_console_events(native);
         benchmark.bench("finish init of client");
 
         Ok(client)

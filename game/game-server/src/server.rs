@@ -514,7 +514,7 @@ impl Server {
     ) -> ReponsesAndCmds {
         let mut remaining_cmds = Vec::default();
         let mut responses = Vec::default();
-        for line in lines {
+        for line in lines.into_iter().filter(|l| !l.is_empty()) {
             let cmds =
                 command_parser::parser::parse(&line, &rcon_chain.parser, &mut Default::default());
 

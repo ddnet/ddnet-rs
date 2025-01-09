@@ -373,16 +373,14 @@ impl InputHandling {
                     BindAction::TriggerCommand(cmd) => {
                         if let Some(action) = bind_cmds.get(cmd.ident.as_str()) {
                             handle_action(action);
-                        } else {
-                            let mut msgs = Default::default();
-                            run_command(
-                                CommandTypeRef::Full(cmd),
-                                entries,
-                                config_engine,
-                                config_game,
-                                &mut msgs,
-                                true,
-                            );
+                        } else if let Err(err) = run_command(
+                            CommandTypeRef::Full(cmd),
+                            entries,
+                            config_engine,
+                            config_game,
+                            true,
+                        ) {
+                            log::debug!("{err}");
                         }
                     }
                 }
@@ -433,16 +431,14 @@ impl InputHandling {
                     BindAction::Command(cmd) | BindAction::TriggerCommand(cmd) => {
                         if let Some(action) = bind_cmds.get(cmd.ident.as_str()) {
                             handle_action(action);
-                        } else {
-                            let mut msgs = Default::default();
-                            run_command(
-                                CommandTypeRef::Full(cmd),
-                                entries,
-                                config_engine,
-                                config_game,
-                                &mut msgs,
-                                true,
-                            );
+                        } else if let Err(err) = run_command(
+                            CommandTypeRef::Full(cmd),
+                            entries,
+                            config_engine,
+                            config_game,
+                            true,
+                        ) {
+                            log::debug!("{err}");
                         }
                     }
                 }

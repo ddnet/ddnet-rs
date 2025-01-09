@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     net::{SocketAddr, ToSocketAddrs},
     ops::Range,
+    path::PathBuf,
     rc::Rc,
 };
 
@@ -46,6 +47,12 @@ pub enum LocalConsoleEvent {
         // The bind was added to the player's profile
         was_player_profile: bool,
     },
+    Exec {
+        file_path: PathBuf,
+    },
+    Echo {
+        text: String,
+    },
     /// Switch to an dummy or the main player
     ChangeDummy {
         dummy_index: Option<usize>,
@@ -84,13 +91,17 @@ impl super::console::ConsoleEvents<LocalConsoleEvent> for LocalConsoleEvents {
     }
 }
 
-pub type LocalConsole = ConsoleRender<LocalConsoleEvent, ()>;
+pub type LocalConsole = ConsoleRender<LocalConsoleEvent, Rc<RefCell<ParserCache>>>;
 
 #[derive(Debug, Default)]
 pub struct LocalConsoleBuilder {}
 
 impl LocalConsoleBuilder {
-    fn register_commands(console_events: LocalConsoleEvents, list: &mut Vec<ConsoleEntry>) {
+    fn register_commands(
+        console_events: LocalConsoleEvents,
+        list: &mut Vec<ConsoleEntry>,
+        parser_cache: Rc<RefCell<ParserCache>>,
+    ) {
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "push".into(),
             usage: "push <var>".into(),
@@ -517,8 +528,7 @@ impl LocalConsoleBuilder {
         }
         // bind for player
         let events = console_events.clone();
-        let cache_shared = Rc::new(RefCell::new(ParserCache::default()));
-        let cache = cache_shared.clone();
+        let cache = parser_cache.clone();
         let keys_arg_cmd = keys_arg.clone();
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "bind".into(),
@@ -550,7 +560,7 @@ impl LocalConsoleBuilder {
         let actions_map = gen_local_player_action_hash_map();
         let actions_map_rev = gen_local_player_action_hash_map_rev();
         let events = console_events.clone();
-        let cache = cache_shared.clone();
+        let cache = parser_cache.clone();
         let keys_arg_cmd = keys_arg.clone();
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "bind_dummy".into(),
@@ -582,7 +592,7 @@ impl LocalConsoleBuilder {
 
         let keys_arg_cmd = keys_arg.clone();
         // unbind for player
-        let cache = cache_shared.clone();
+        let cache = parser_cache.clone();
         let events = console_events.clone();
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "unbind".into(),
@@ -604,7 +614,7 @@ impl LocalConsoleBuilder {
             allows_partial_cmds: false,
         }));
         let keys_arg_cmd = keys_arg.clone();
-        let cache = cache_shared.clone();
+        let cache = parser_cache.clone();
         let events = console_events.clone();
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "unbind_dummy".into(),
@@ -624,6 +634,46 @@ impl LocalConsoleBuilder {
                 .map(unbindes_to_str)
             }),
             args: vec![keys_arg],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "exec".into(),
+            usage: "exec <file_path>".into(),
+            description: "Executes a file of command lines.".into(),
+            cmd: Rc::new(move |_, _, path| {
+                let Syn::Text(file_path_str) = &path[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+                let file_path: PathBuf = file_path_str.into();
+                console_events_cmd.push(LocalConsoleEvent::Exec { file_path });
+                Ok("".into())
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "echo".into(),
+            usage: "echo <text>".into(),
+            description: "Echos text to the console and a client component.".into(),
+            cmd: Rc::new(move |_, _, path| {
+                let Syn::Text(text) = &path[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+
+                console_events_cmd.push(LocalConsoleEvent::Echo { text: text.clone() });
+                Ok(format!("Echo: {text}"))
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
             allows_partial_cmds: false,
         }));
 
@@ -754,13 +804,14 @@ impl LocalConsoleBuilder {
             "".into(),
             Default::default(),
         );
-        Self::register_commands(console_events.clone(), &mut entries);
+        let parser_cache = Rc::new(RefCell::new(ParserCache::default()));
+        Self::register_commands(console_events.clone(), &mut entries, parser_cache.clone());
         ConsoleRender::new(
             creator,
             entries,
             Box::new(console_events),
             Color32::from_rgba_unmultiplied(0, 0, 0, 150),
-            (),
+            parser_cache,
         )
     }
 }

@@ -498,14 +498,14 @@ pub fn try_apply_config_val(
         })
 }
 
+/// Returns `false` if the command was considered partially or fully failed.
 pub fn run_command(
     cmd: CommandTypeRef<'_>,
     entries: &[ConsoleEntry],
     config_engine: &mut ConfigEngine,
     config_game: &mut ConfigGame,
-    msgs: &mut String,
     can_change_config: bool,
-) {
+) -> anyhow::Result<String, String> {
     if let Some(entry_cmd) = entries
         .iter()
         .filter_map(|e| match e {
@@ -528,14 +528,8 @@ pub fn run_command(
     {
         let cmd = cmd.unwrap_full_or_partial_cmd_ref();
         match (entry_cmd.cmd)(config_engine, config_game, &cmd.args) {
-            Ok(msg) => {
-                if !msg.is_empty() {
-                    msgs.push_str(&format!("{msg}\n"));
-                }
-            }
-            Err(err) => {
-                msgs.push_str(&format!("Parsing error: {}\n", err));
-            }
+            Ok(msg) => Ok(msg),
+            Err(err) => Err(format!("Parsing error: {}\n", err)),
         }
     } else {
         let Some((args, cmd_text)) = (match cmd {
@@ -548,7 +542,7 @@ pub fn run_command(
                 }
             }
         }) else {
-            return;
+            return Err(format!("Invalid argument: {:?}", cmd));
         };
 
         let set_val = syn_vec_to_config_val(&args);
@@ -557,10 +551,6 @@ pub fn run_command(
             match try_apply_config_val(cmd_text, &args, config_engine, config_game) {
                 Ok(cur_val) => {
                     if set_val.is_some() {
-                        msgs.push_str(&format!(
-                            "Updated value for \"{}\": {}\n",
-                            cmd_text, cur_val
-                        ));
                         if let Some(var) = entries
                             .iter()
                             .filter_map(|cmd| {
@@ -574,21 +564,20 @@ pub fn run_command(
                         {
                             (var.on_set)(cmd_text);
                         }
+                        Ok(format!("Updated value for \"{}\": {}\n", cmd_text, cur_val))
                     } else {
-                        msgs.push_str(&format!(
-                            "Current value for \"{}\": {}\n",
-                            cmd_text, cur_val
-                        ));
+                        Ok(format!("Current value for \"{}\": {}\n", cmd_text, cur_val))
                     }
                 }
-                Err(err) => {
-                    msgs.push_str(&err);
-                }
+                Err(err) => Err(err),
             }
+        } else {
+            Err(format!("Failed to apply command: {:?}", cmd))
         }
     }
 }
 
+/// Returns `false` if at least one command failed.
 pub fn run_commands(
     cmds: &CommandsTyped,
     entries: &[ConsoleEntry],
@@ -596,15 +585,25 @@ pub fn run_commands(
     config_game: &mut ConfigGame,
     msgs: &mut String,
     can_change_config: bool,
-) {
+) -> bool {
+    let mut res = true;
     for cmd in cmds {
-        run_command(
+        let msg = match run_command(
             cmd.as_ref(),
             entries,
             config_engine,
             config_game,
-            msgs,
             can_change_config,
-        );
+        ) {
+            Ok(msg) => msg,
+            Err(msg) => {
+                res = false;
+                msg
+            }
+        };
+        if !msg.is_empty() {
+            msgs.push_str(&format!("{msg}\n"));
+        }
     }
+    res
 }
