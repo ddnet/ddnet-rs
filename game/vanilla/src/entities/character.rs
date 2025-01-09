@@ -1154,7 +1154,7 @@ pub mod character {
                         pos: *self.pos.pos(),
                         dir: direction,
                         energy: pipe.collision.get_tune_at(self.pos.pos()).laser_reach,
-                        can_hit_own: self.game_options.laser_hit_self,
+                        can_hit_own: self.game_options.laser_hit_self(),
                     });
                     self.push_sound(
                         *self.pos.pos(),
@@ -1636,7 +1636,7 @@ pub mod character {
             self.get(char_id).and_then(|c| c.core.side)
         }
         fn does_friendly_fire(&self, char_id: &CharacterId) -> Option<bool> {
-            self.get(char_id).map(|c| c.game_options.friendly_fire)
+            self.get(char_id).map(|c| c.game_options.friendly_fire())
         }
     }
 
@@ -1665,7 +1665,7 @@ pub mod character {
                     &*self.1 .1
                 }
                 .game_options
-                .friendly_fire,
+                .friendly_fire(),
             )
         }
     }

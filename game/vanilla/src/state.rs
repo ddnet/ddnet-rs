@@ -205,7 +205,6 @@ pub mod state {
 
         // game
         pub(crate) game_options: GameOptions,
-        config: ConfigVanillaWrapper,
 
         pub(crate) chat_commands: ChatCommands,
         pub(crate) rcon_chain: CommandChain<VanillaRconCommand>,
@@ -228,7 +227,7 @@ pub mod state {
     impl GameState {
         fn get_game_type_from_conf(conf: ConfigGameType) -> GameType {
             match conf {
-                ConfigGameType::Ctf => GameType::Team,
+                ConfigGameType::Ctf => GameType::Sided,
                 ConfigGameType::Dm => GameType::Solo,
             }
         }
@@ -466,25 +465,7 @@ pub mod state {
                 }),
 
                 // game
-                game_options: GameOptions::new(
-                    game_type,
-                    config.score_limit,
-                    if config.time_limit_secs > 0 {
-                        Some(Duration::from_secs(config.time_limit_secs))
-                    } else {
-                        None
-                    },
-                    if config.auto_side_balance_secs > 0 {
-                        Some(Duration::from_secs(config.auto_side_balance_secs))
-                    } else {
-                        None
-                    },
-                    config.friendly_fire,
-                    config.laser_hit_self,
-                ),
-                config: ConfigVanillaWrapper {
-                    vanilla: config.clone(),
-                },
+                game_options: GameOptions::new(game_type, config.clone()),
                 chat_commands: chat_commands.clone(),
                 rcon_chain,
                 cache: Default::default(),
@@ -1034,9 +1015,18 @@ pub mod state {
                                 }
                             },
                             VanillaRconCommand::ConfVariable => {
-                                handle_config_variable_cmd(&cmd, &mut self.config).map(|msg| {
+                                let mut config = ConfigVanillaWrapper {
+                                    vanilla: self.game_options.config_clone(),
+                                };
+                                match handle_config_variable_cmd(&cmd, &mut config).map(|msg| {
                                     format!("Updated value for {}: {}", cmd.cmd_text, msg)
-                                })
+                                }) {
+                                    Ok(res) => {
+                                        self.game_options.replace_conf(config.vanilla);
+                                        Ok(res)
+                                    }
+                                    Err(err) => Err(err),
+                                }
                             }
                         }
                     }
@@ -1049,8 +1039,18 @@ pub mod state {
                         };
 
                         if let VanillaRconCommand::ConfVariable = chain_cmd.cmd {
-                            handle_config_variable_cmd(cmd, &mut self.config)
+                            let mut config = ConfigVanillaWrapper {
+                                vanilla: self.game_options.config_clone(),
+                            };
+                            match handle_config_variable_cmd(cmd, &mut config)
                                 .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
+                            {
+                                Ok(res) => {
+                                    self.game_options.replace_conf(config.vanilla);
+                                    Ok(res)
+                                }
+                                Err(err) => Err(err),
+                            }
                         } else {
                             Err(anyhow!("Failed to handle config variable: {cmd}"))
                         }
@@ -1792,7 +1792,7 @@ pub mod state {
                 stage.characters.sort_by_key(|c| std::cmp::Reverse(c.score));
             }
 
-            let ty = self.game_options.ty;
+            let ty = self.game_options.ty();
             Scoreboard {
                 game: match ty {
                     GameType::Solo => ScoreboardGameType::SoloPlay {
@@ -1800,7 +1800,7 @@ pub mod state {
                         ignore_stage: self.stage_0_id,
                         spectator_players: spectator_scoreboard_infos,
                     },
-                    GameType::Team => ScoreboardGameType::SidedPlay {
+                    GameType::Sided => ScoreboardGameType::SidedPlay {
                         red_stages: red_or_solo_stage_infos,
                         blue_stages: blue_stage_infos,
                         ignore_stage: self.stage_0_id,
@@ -1825,8 +1825,8 @@ pub mod state {
                         name
                     },
                     ty: ScoreboardGameTypeOptions::Match {
-                        score_limit: self.game_options.score_limit,
-                        time_limit: self.game_options.time_limit,
+                        score_limit: self.game_options.score_limit(),
+                        time_limit: self.game_options.time_limit(),
                     },
                 },
             }
@@ -1909,7 +1909,7 @@ pub mod state {
                                 .game_match
                                 .state
                                 .round_ticks_left(&prev_stage.world, &self.game_pools),
-                            unbalanced: self.game_options.sided_balance_time.is_some()
+                            unbalanced: self.game_options.sided_balance_time().is_some()
                                 && MatchManager::needs_sided_balance(&prev_stage.world),
                         },
                         game_ticks_passed: prev_stage.match_manager.game_match.state.passed_ticks(),
@@ -2028,7 +2028,7 @@ pub mod state {
                 .world
                 .characters
                 .len()
-                < self.config.vanilla.max_ingame_players as usize
+                < self.game_options.max_ingame_players() as usize
             {
                 // spawn and send character info
                 let default_eyes = player_info.player_info.default_eyes;
@@ -2344,8 +2344,8 @@ pub mod state {
 
         fn settings(&self) -> GameStateSettings {
             GameStateSettings {
-                max_ingame_players: self.config.vanilla.max_ingame_players,
-                tournament_mode: self.config.vanilla.tournament_mode,
+                max_ingame_players: self.game_options.max_ingame_players(),
+                tournament_mode: self.game_options.tournament_mode(),
             }
         }
 
@@ -2373,8 +2373,8 @@ pub mod state {
                     self.handle_chat_commands(player_id, cmds);
                 }
                 ClientCommand::JoinStage(join_stage) => {
-                    if self.config.vanilla.allow_stages
-                        || (!Self::is_sided_from_conf(self.config.vanilla.game_type)
+                    if self.game_options.allow_stages()
+                        || (!Self::is_sided_from_conf(self.game_options.game_ty())
                             && matches!(join_stage, JoinStage::Default))
                     {
                         let stage_id = match join_stage {
@@ -2457,7 +2457,7 @@ pub mod state {
                     }
                 }
                 ClientCommand::JoinSide(side) => {
-                    if Self::is_sided_from_conf(self.config.vanilla.game_type) {
+                    if Self::is_sided_from_conf(self.game_options.game_ty()) {
                         if let Some(player) = self.game.players.player(player_id) {
                             let stage = self.game.stages.get_mut(&player.stage_id()).unwrap();
                             if let Some(character) = stage.world.characters.get_mut(player_id) {

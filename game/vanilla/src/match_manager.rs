@@ -6,6 +6,7 @@ pub mod match_manager {
     use hiarc::{hi_closure, Hiarc};
 
     use crate::{
+        config::config::ConfigGameType,
         events::events::{CharacterEvent, CharacterEventMod, FlagEvent},
         match_state::match_state::{Match, MatchState, MatchType},
         simulation_pipe::simulation_pipe::{
@@ -28,16 +29,16 @@ pub mod match_manager {
         pub fn new(game_options: GameOptions, simulation_events: &SimulationStageEvents) -> Self {
             Self {
                 game_match: Match {
-                    ty: match game_options.ty {
+                    ty: match game_options.ty() {
                         GameType::Solo => MatchType::Solo,
-                        GameType::Team => MatchType::Sided {
+                        GameType::Sided => MatchType::Sided {
                             scores: Default::default(),
                         },
                     },
                     state: MatchState::Running {
                         round_ticks_passed: Default::default(),
                         round_ticks_left: game_options
-                            .time_limit
+                            .time_limit()
                             .map(|time| {
                                 ((time.as_micros() * TICKS_PER_SECOND as u128)
                                     / Duration::from_secs(1).as_micros())
@@ -61,6 +62,14 @@ pub mod match_manager {
         ) {
         }
 
+        /// How much points does one side get if a player
+        /// kills a player from the other side.
+        fn side_score_player_kill(game_options: &GameOptions) -> i64 {
+            match game_options.game_ty() {
+                ConfigGameType::Dm | ConfigGameType::Ctf => 0,
+            }
+        }
+
         fn handle_events(&mut self, world: &mut GameWorld) {
             let game_match = &mut self.game_match;
             let game_options = &self.game_options;
@@ -77,8 +86,8 @@ pub mod match_manager {
                                             }
                                             else {
                                                 char.score.set(char.score.get() + 1);
-                                                if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
-                                                    scores[team as usize] += 1;
+                                                if let (MatchType::Sided { scores }, Some(score)) = (&mut game_match.ty, char.core.side) {
+                                                    scores[score as usize] += MatchManager::side_score_player_kill(game_options);
                                                 }
                                             }
                                             game_match.win_check(game_options, &world.scores, false);
@@ -94,8 +103,17 @@ pub mod match_manager {
                                     FlagEvent::Capture { by, .. } => {
                                         if let Some(char) = world.characters.get_mut(by) {
                                             char.score.set(char.score.get() + 5);
-                                            if let (MatchType::Sided { scores }, Some(team)) = (&mut game_match.ty, char.core.side) {
-                                                scores[team as usize] += 100;
+                                            if let (MatchType::Sided { scores }, Some(score)) = (&mut game_match.ty, char.core.side) {
+                                                scores[score as usize] += 100;
+                                            }
+                                            game_match.win_check(game_options, &world.scores, false);
+                                        }
+                                    },
+                                    FlagEvent::Collect { by } => {
+                                        if let Some(char) = world.characters.get_mut(by) {
+                                            char.score.set(char.score.get() + 1);
+                                            if let (MatchType::Sided { scores }, Some(side)) = (&mut game_match.ty, char.core.side) {
+                                                scores[side as usize] += 1;
                                             }
                                             game_match.win_check(game_options, &world.scores, false);
                                         }
@@ -126,7 +144,7 @@ pub mod match_manager {
                 if self.game_match.balance_tick.is_none() {
                     self.game_match.balance_tick = self
                         .game_options
-                        .sided_balance_time
+                        .sided_balance_time()
                         .map(|time| {
                             ((time.as_micros() * TICKS_PER_SECOND as u128)
                                 / Duration::from_secs(1).as_micros())
@@ -173,7 +191,7 @@ pub mod match_manager {
                         round_ticks_passed: Default::default(),
                         round_ticks_left: self
                             .game_options
-                            .time_limit
+                            .time_limit()
                             .map(|time| {
                                 ((time.as_micros() * TICKS_PER_SECOND as u128)
                                     / Duration::from_secs(1).as_micros())

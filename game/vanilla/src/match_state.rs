@@ -196,7 +196,7 @@ pub mod match_state {
                     if let Some((leading_characters, score)) = scores.leading_characters() {
                         // check if the character has hit a specific score
                         if let Some(leading_characters) = ((score >= 0
-                            && score as u64 >= game_options.score_limit)
+                            && score as u64 >= game_options.score_limit())
                             || round_time_limit_reached)
                             .then_some(leading_characters)
                         {
@@ -227,7 +227,7 @@ pub mod match_state {
                     };
 
                     if let Some(side) = leading_side.and_then(|(score, side)| {
-                        ((score >= 0 && score as u64 >= game_options.score_limit)
+                        ((score >= 0 && score as u64 >= game_options.score_limit())
                             || round_time_limit_reached)
                             .then_some(side)
                     }) {

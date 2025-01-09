@@ -290,7 +290,7 @@ pub mod world {
                         ),
                     );
                 };
-                if matches!(game_options.ty, GameType::Team) {
+                if matches!(game_options.ty(), GameType::Sided) {
                     for flag in &game_object_definitions.pickups.red_flags {
                         add_flag(&mut red_flags, flag, FlagType::Red)
                     }
@@ -1039,6 +1039,7 @@ pub mod world {
                                         }
                                     }
                                 }
+                                FlagEvent::Collect { .. } |
                                 FlagEvent::Capture { .. } => {
                                     // ignore
                                 }
