@@ -278,7 +278,9 @@ fn bind_keys_str_to_bind_keys(bind_keys_str: &str) -> anyhow::Result<Vec<BindKey
         let bind_key_str = format!("\"{cap_bind_key_str}\"");
         if let Ok(key_code) = serde_json::from_str::<KeyCode>(&bind_key_str) {
             bind_keys.push(BindKey::Key(PhysicalKey::Code(key_code)));
-        } else if let Ok(key_code) = serde_json::from_str::<_>(&bind_key_str) {
+        } else if let Ok(key_code) =
+            serde_json::from_str::<_>(&bind_key_str.replacen("\"Mouse", "\"", 1))
+        {
             bind_keys.push(BindKey::Mouse(key_code));
         } else if let Ok(key_code) = serde_json::from_str::<_>(&bind_key_str) {
             bind_keys.push(BindKey::Extra(key_code));
@@ -374,13 +376,13 @@ pub fn bind_keys_to_str(bind_keys: &[BindKey]) -> String {
                 }
             },
             BindKey::Mouse(btn) => {
-                res.push_str(
+                res.push_str(&format!(
+                    "mouse_{}",
                     replace_inner_upper_with_underscore(
                         &serde_json::to_string(btn).unwrap().replace('"', ""),
                     )
                     .to_lowercase()
-                    .as_str(),
-                );
+                ));
             }
             BindKey::Extra(ext) => {
                 res.push_str(
