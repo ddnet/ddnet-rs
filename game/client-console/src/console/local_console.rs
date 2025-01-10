@@ -333,6 +333,8 @@ impl LocalConsoleBuilder {
             ty: CommandArgType::TextArrayFrom {
                 from: {
                     let mut res = vec![];
+
+                    // keyboard
                     for i in 'a'..='z' {
                         res.push(i.to_string());
                     }
@@ -350,6 +352,8 @@ impl LocalConsoleBuilder {
                     res.push("numpad_add".to_string());
                     res.push("numpad_multiply".to_string());
                     res.push("numpad_divide".to_string());
+                    res.push("numpad_comma".to_string());
+                    res.push("numpad_enter".to_string());
 
                     for i in 0..=9 {
                         res.push(format!("digit{}", i));
@@ -363,9 +367,16 @@ impl LocalConsoleBuilder {
 
                     res.push("pause".to_string());
 
-                    res.push("left".to_string());
-                    res.push("right".to_string());
-                    res.push("middle".to_string());
+                    res.push("equal".to_string());
+                    res.push("minus".to_string());
+                    res.push("period".to_string());
+                    res.push("quote".to_string());
+                    res.push("semicolon".to_string());
+                    res.push("slash".to_string());
+
+                    res.push("backspace".to_string());
+
+                    res.push("caps_lock".to_string());
 
                     res.push("arrow_left".to_string());
                     res.push("arrow_right".to_string());
@@ -381,12 +392,42 @@ impl LocalConsoleBuilder {
                     res.push("alt_left".to_string());
                     res.push("alt_right".to_string());
 
+                    res.push("print_screen".to_string());
+
+                    // TODO: are these useful?
+                    // res.push("context_menu".to_string());
+                    // res.push("super_left".to_string());
+                    // res.push("super_right".to_string());
+                    // res.push("num_lock".to_string());
+
                     res.push("space".to_string());
                     res.push("tab".to_string());
 
+                    res.push("delete".to_string());
+                    res.push("end".to_string());
+
+                    res.push("home".to_string());
+                    res.push("insert".to_string());
+
+                    res.push("backquote".to_string());
+                    res.push("backslash".to_string());
+
+                    res.push("bracket_left".to_string());
+                    res.push("bracket_right".to_string());
+
+                    res.push("comma".to_string());
+
+                    // mouse
+                    res.push("mouse_left".to_string());
+                    res.push("mouse_right".to_string());
+                    res.push("mouse_middle".to_string());
+                    res.push("mouse_back".to_string());
+                    res.push("mouse_forward".to_string());
+
+                    // mouse wheel
                     res.push("wheel_down".to_string());
                     res.push("wheel_up".to_string());
-                    // TODO: add lot more
+
                     res.into_iter().map(|s| s.try_into().unwrap()).collect()
                 },
                 separator: '+',
