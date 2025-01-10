@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    path::Path,
     sync::Arc,
 };
 
@@ -30,9 +31,12 @@ pub struct MapVotes {
 }
 
 impl MapVotes {
-    pub async fn new(fs: &Arc<dyn FileSystemInterface>) -> anyhow::Result<Self> {
+    pub async fn new(
+        fs: &Arc<dyn FileSystemInterface>,
+        map_votes_file_path: &Path,
+    ) -> anyhow::Result<Self> {
         let votes_file: MapVotesFile =
-            serde_json::from_slice(&fs.read_file("map_votes.json".as_ref()).await?)?;
+            serde_json::from_slice(&fs.read_file(map_votes_file_path).await?)?;
         Ok(Self {
             votes: ServerMapVotes {
                 categories: votes_file

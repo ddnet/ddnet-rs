@@ -4,7 +4,7 @@ use base::network_string::NetworkString;
 use client_types::console::{ConsoleEntry, ConsoleEntryCmd};
 use command_parser::parser::{format_args, CommandArg, CommandArgType};
 use egui::Color32;
-use game_interface::rcon_commands::RconCommand;
+use game_interface::rcon_entries::RconEntry;
 use hiarc::{hiarc_safer_rc_refcell, Hiarc};
 use ui_base::ui::UiCreator;
 
@@ -12,7 +12,12 @@ use super::console::ConsoleRender;
 
 #[derive(Debug, Hiarc)]
 pub enum RemoteConsoleEvent {
-    Exec { name: String, args: String },
+    Exec {
+        /// The raw ident text (with all modifiers as is)
+        ident_text: String,
+        /// The args of the command
+        args: String,
+    },
 }
 
 #[hiarc_safer_rc_refcell]
@@ -71,11 +76,14 @@ impl RemoteConsole {
         usage
     }
 
-    pub fn fill_entries(&mut self, cmds: HashMap<NetworkString<65536>, RconCommand>) {
+    pub fn fill_entries(
+        &mut self,
+        cmds: HashMap<NetworkString<65536>, RconEntry>,
+        vars: HashMap<NetworkString<65536>, RconEntry>,
+    ) {
         self.entries.clear();
-        for (name, cmd) in cmds {
+        for (name, cmd) in cmds.into_iter().chain(vars.into_iter()) {
             let cmds = self.user.clone();
-            let name_clone = name.clone();
             self.entries.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
                 name: name.to_string(),
                 usage: if cmd.usage.is_empty() {
@@ -84,12 +92,12 @@ impl RemoteConsole {
                     cmd.usage.to_string()
                 },
                 description: cmd.description.to_string(),
-                cmd: Rc::new(move |_config_engine, _config_game, path| {
+                cmd: Rc::new(move |_config_engine, _config_game, ident_text, path| {
                     cmds.push(RemoteConsoleEvent::Exec {
-                        name: name_clone.to_string(),
+                        ident_text: ident_text.to_string(),
                         args: format_args(path),
                     });
-                    Ok(format!("{name_clone} {}", format_args(path)))
+                    Ok(format!("{ident_text} {}", format_args(path)))
                 }),
                 args: cmd.args,
                 allows_partial_cmds: true,

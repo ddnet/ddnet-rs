@@ -5,11 +5,15 @@ use std::{
 };
 
 use base::network_string::{NetworkReducedAsciiString, NetworkString};
+use game_base::network::messages::{
+    MsgClAddLocalPlayer, MsgClChatMsg, MsgClInputs, MsgClLoadVotes, MsgClReady, MsgClReadyResponse,
+    MsgClSnapshotAck, MsgSvAddLocalPlayerResponse, MsgSvChatMsg, MsgSvServerInfo,
+};
 use game_interface::{
     account_info::{AccountInfo, MAX_ACCOUNT_NAME_LEN},
     client_commands::{ClientCameraMode, JoinStage},
     events::GameEvents,
-    rcon_commands::RconCommands,
+    rcon_entries::RconEntries,
     types::{
         character_info::NetworkCharacterInfo,
         emoticons::EmoticonType,
@@ -25,10 +29,6 @@ use game_interface::{
 };
 use pool::mt_datatypes::PoolCow;
 use serde::{Deserialize, Serialize};
-use game_base::network::messages::{
-    MsgClAddLocalPlayer, MsgClChatMsg, MsgClInputs, MsgClLoadVotes, MsgClReady, MsgClReadyResponse,
-    MsgClSnapshotAck, MsgSvAddLocalPlayerResponse, MsgSvChatMsg, MsgSvServerInfo,
-};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct MsgSvInputAck {
@@ -50,6 +50,13 @@ pub enum MsgSvLoadVotes {
     Misc {
         votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MiscVoteKey, MiscVote>>,
     },
+}
+
+/// Type of votes to reset.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum MsgSvResetVotes {
+    Map,
+    Misc,
 }
 
 /// Vote result of vote started by a client.
@@ -127,12 +134,13 @@ pub enum ServerToClientMessage<'a> {
     /// A value of `None` must be interpreted as no vote active.
     StartVoteRes(MsgSvStartVoteResult),
     Vote(Option<VoteState>),
-    LoadVote(MsgSvLoadVotes),
-    RconCommands(RconCommands),
+    LoadVotes(MsgSvLoadVotes),
+    ResetVotes(MsgSvResetVotes),
+    RconEntries(RconEntries),
     RconExecResult {
-        /// Since multiple commands could have been executed,
-        /// this returns a list of strings
-        results: Vec<NetworkString<65536>>,
+        /// Since multiple commands or confi vars could have been executed/changed,
+        /// this returns a list of strings.
+        results: Vec<Result<NetworkString<65536>, NetworkString<65536>>>,
     },
     /// If `Ok` returns the new name.
     AccountRenameRes(Result<NetworkReducedAsciiString<32>, NetworkString<1024>>),
@@ -165,7 +173,9 @@ pub enum ClientToServerPlayerMessage<'a> {
         info: Box<NetworkCharacterInfo>,
     },
     RconExec {
-        name: NetworkString<65536>,
+        /// The raw ident text (with all modifiers as is)
+        ident_text: NetworkString<65536>,
+        /// The input args
         args: NetworkString<65536>,
     },
 }

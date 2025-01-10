@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use base_io::io::Io;
 use game_interface::{
-    rcon_commands::AuthLevel,
+    rcon_entries::AuthLevel,
     types::player_info::{AccountId, PlayerUniqueId},
 };
 use rand::Rng;
@@ -57,7 +57,7 @@ impl Rcon {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ServerRconCommand {
     BanId,
     KickId,
@@ -68,5 +68,7 @@ pub enum ServerRconCommand {
     Exec,
     /// Loads server config from a specific path
     Load,
+    AddMiscVote,
+    RemoveMiscVote,
     RecordDemo,
 }

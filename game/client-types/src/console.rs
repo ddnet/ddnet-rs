@@ -28,8 +28,16 @@ impl Debug for ConsoleEntryVariable {
     }
 }
 
+/// A function that takes the config vars,
+/// the raw & unparsed ident (so with all modifiers)
+/// and the arguments and their range.
 pub type ConsoleCmdCb = Rc<
-    dyn Fn(&mut ConfigEngine, &mut ConfigGame, &[(Syn, Range<usize>)]) -> anyhow::Result<String>,
+    dyn Fn(
+        &mut ConfigEngine,
+        &mut ConfigGame,
+        &str,
+        &[(Syn, Range<usize>)],
+    ) -> anyhow::Result<String>,
 >;
 
 #[derive(Clone)]

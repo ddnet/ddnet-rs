@@ -19,7 +19,7 @@ use game_interface::interface::{
     GameStateCreate, GameStateCreateOptions, GameStateServerOptions, GameStateStaticInfo,
     MAX_MAP_NAME_LEN,
 };
-use game_interface::rcon_commands::ExecRconCommand;
+use game_interface::rcon_entries::ExecRconInput;
 use game_interface::settings::GameStateSettings;
 use game_interface::tick_result::TickResult;
 use game_interface::types::character_info::NetworkCharacterInfo;
@@ -140,6 +140,8 @@ impl GameStateWasmManager {
                     mod_name: "unknown".try_into().unwrap(),
                     version: "".try_into().unwrap(),
                     options: GameStateServerOptions::default(),
+
+                    initial_rcon_response: Default::default(),
                 };
                 let state = StateWasm::new(
                     map,
@@ -261,8 +263,8 @@ impl GameStateInterface for GameStateWasmManager {
     fn rcon_command(
         &mut self,
         player_id: Option<PlayerId>,
-        cmd: ExecRconCommand,
-    ) -> Vec<NetworkString<65536>> {
+        cmd: ExecRconInput,
+    ) -> Vec<Result<NetworkString<65536>, NetworkString<65536>>> {
         self.state.as_mut().rcon_command(player_id, cmd)
     }
 

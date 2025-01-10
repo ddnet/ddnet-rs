@@ -50,7 +50,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         "Map" => super::map::render(ui, pipe, ui_state),
                         "Player" => super::players::render(ui, pipe),
                         // Misc
-                        _ => {}
+                        _ => {
+                            super::misc::render(ui, pipe);
+                        }
                     }
                 },
             );

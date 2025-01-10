@@ -668,6 +668,9 @@ pub struct ConfigServer {
     /// and local servers).
     #[default = false]
     pub auto_map_votes: bool,
+    /// Path to the map votes file.
+    #[default = "map_votes.json"]
+    pub map_votes_path: String,
     /// Whether to allow spatial chat on this server.
     /// Note that spatial chat causes lot of network
     /// traffic.

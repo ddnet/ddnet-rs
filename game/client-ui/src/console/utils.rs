@@ -527,7 +527,7 @@ pub fn run_command(
         })
     {
         let cmd = cmd.unwrap_full_or_partial_cmd_ref();
-        match (entry_cmd.cmd)(config_engine, config_game, &cmd.args) {
+        match (entry_cmd.cmd)(config_engine, config_game, &cmd.cmd_text, &cmd.args) {
             Ok(msg) => Ok(msg),
             Err(err) => Err(format!("Parsing error: {}\n", err)),
         }
