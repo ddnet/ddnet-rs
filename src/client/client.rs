@@ -499,6 +499,7 @@ impl ClientNativeImpl {
     }
 
     fn render_game(&mut self, native: &mut dyn NativeImpl) {
+        let remote_console_open = self.game.remote_console_open();
         if let Game::Active(game) = &mut self.game {
             // prepare input
             let events = std::mem::replace(&mut game.events, game.events_pool.new());
@@ -508,7 +509,11 @@ impl ClientNativeImpl {
                 game: game_state,
                 unpredicted_game,
             } = &mut game.map;
-            let is_menu_open = self.ui_manager.ui.ui_state.is_ui_open;
+            let is_menu_open = self.ui_manager.ui.ui_state.is_ui_open
+                || self.local_console.ui.ui_state.is_ui_open
+                || remote_console_open
+                || self.editor.is_some()
+                || self.demo_player.is_some();
 
             let intra_tick_ratio = intra_tick_time_to_ratio(
                 game.game_data.intra_tick_time,
@@ -871,14 +876,16 @@ impl ClientNativeImpl {
                         player_id,
                         RenderGameForPlayer {
                             render_for_player: RenderForPlayer {
-                                chat_info: if let Some(chat_mode) = (!is_menu_open)
-                                    .then_some(client_player.chat_input_active)
-                                    .flatten()
+                                chat_info: if let Some(chat_mode) = client_player.chat_input_active
                                 {
                                     Some((
                                         chat_mode,
                                         std::mem::take(&mut client_player.chat_msg),
-                                        self.inp_manager.clone_inp().egui,
+                                        if is_menu_open {
+                                            Default::default()
+                                        } else {
+                                            self.inp_manager.clone_inp().egui
+                                        },
                                     ))
                                 } else {
                                     None
