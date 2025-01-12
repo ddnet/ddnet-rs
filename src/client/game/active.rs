@@ -32,7 +32,8 @@ use game_interface::{
     },
 };
 use game_network::messages::{
-    ClientToServerMessage, MsgSvLoadVotes, MsgSvStartVoteResult, ServerToClientMessage,
+    ClientToServerMessage, MsgSvLoadVotes, MsgSvResetVotes, MsgSvStartVoteResult,
+    ServerToClientMessage,
 };
 use game_server::server::Server;
 use game_state_wasm::game::state_wasm_manager::GameStateWasmManager;
@@ -77,6 +78,7 @@ pub struct ActiveGame {
     pub events: PoolBTreeMap<(GameTickType, bool), GameEvents>,
 
     pub map_votes_loaded: bool,
+    pub misc_votes_loaded: bool,
 
     pub render_players_pool: Pool<FxLinkedHashMap<PlayerId, RenderGameForPlayer>>,
     pub render_observers_pool: Pool<Vec<ObservedPlayer>>,
@@ -678,7 +680,7 @@ impl ActiveGame {
                 self.game_data.vote =
                     vote_state.map(|v| (PoolRc::from_item_without_pool(v), voted, *timestamp));
             }
-            ServerToClientMessage::LoadVote(votes) => match votes {
+            ServerToClientMessage::LoadVotes(votes) => match votes {
                 MsgSvLoadVotes::Map {
                     categories,
                     has_unfinished_map_votes,
@@ -690,12 +692,33 @@ impl ActiveGame {
                     self.game_data.misc_votes = votes;
                 }
             },
-            ServerToClientMessage::RconCommands(cmds) => {
-                self.remote_console.fill_entries(cmds.cmds);
+            ServerToClientMessage::ResetVotes(votes) => match votes {
+                MsgSvResetVotes::Map => {
+                    self.game_data.map_votes.clear();
+                    self.game_data.has_unfinished_map_votes = false;
+                    self.map_votes_loaded = false;
+                }
+                MsgSvResetVotes::Misc => {
+                    self.game_data.misc_votes.clear();
+                    self.misc_votes_loaded = false;
+                }
+            },
+            ServerToClientMessage::RconEntries(cmds) => {
+                self.remote_console.fill_entries(cmds.cmds, cmds.vars);
             }
             ServerToClientMessage::RconExecResult { results } => {
-                self.remote_console_logs.push_str(&results.join("\n"));
-                if !results.is_empty() {
+                let has_results = !results.is_empty();
+                self.remote_console_logs.push_str(
+                    &results
+                        .into_iter()
+                        .map(|r| match r {
+                            Ok(r) => r.into(),
+                            Err(err) => err.into(),
+                        })
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                );
+                if has_results {
                     self.remote_console_logs.push('\n');
                 }
             }

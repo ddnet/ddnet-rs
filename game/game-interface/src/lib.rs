@@ -8,7 +8,7 @@ pub mod events;
 pub mod ghosts;
 pub mod interface;
 pub mod pooling;
-pub mod rcon_commands;
+pub mod rcon_entries;
 pub mod settings;
 pub mod tick_result;
 pub mod types;

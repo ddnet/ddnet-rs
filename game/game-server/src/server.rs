@@ -104,7 +104,7 @@ use game_interface::{
     client_commands::ClientCommand,
     events::EventClientInfo,
     interface::{GameStateCreateOptions, GameStateInterface, MAX_MAP_NAME_LEN},
-    rcon_commands::{AuthLevel, ExecRconCommand, RconCommand, RconCommands},
+    rcon_entries::{AuthLevel, ExecRconInput, RconEntries, RconEntry},
     tick_result::TickEvent,
     types::{
         game::{GameEntityId, GameTickType},
@@ -128,7 +128,7 @@ use game_network::{
     game_event_generator::{GameEventGenerator, GameEvents},
     messages::{
         ClientToServerMessage, ClientToServerPlayerMessage, MsgSvInputAck, MsgSvLoadVotes,
-        MsgSvStartVoteResult, ServerToClientMessage,
+        MsgSvResetVotes, MsgSvStartVoteResult, ServerToClientMessage,
     },
 };
 
@@ -165,7 +165,7 @@ enum GameServerDb {
     Account(GameServerDbAccount),
 }
 
-type ReponsesAndCmds = (Vec<Result<String, String>>, Vec<parser::Command>);
+type ReponsesAndSkipped = (Vec<Result<String, String>>, Vec<String>);
 
 pub struct Server {
     pub clients: Clients,
@@ -220,7 +220,7 @@ pub struct Server {
     map_votes: ServerMapVotes,
     map_votes_hash: Hash,
     misc_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MiscVoteKey, MiscVote>>,
-    misc_votes_hash: Hash,
+    misc_votes_hash: Option<Hash>,
 
     // database
     db: Option<Arc<Database>>,
@@ -355,16 +355,19 @@ impl Server {
     }
 
     fn new_rcon_cmd_chain() -> CommandChain<ServerRconCommand> {
-        let mut rcon_cmds = vec![
+        let rcon_cmds = vec![
             (
                 "ban_id".try_into().unwrap(),
                 Command {
-                    rcon: RconCommand {
+                    rcon: RconEntry {
                         args: vec![CommandArg {
                             ty: CommandArgType::Number,
                             user_ty: Some("PLAYER_ID".try_into().unwrap()),
                         }],
-                        description: "Ban a user with the given player id".try_into().unwrap(),
+                        description: "Ban a user with \
+                            the given player id"
+                            .try_into()
+                            .unwrap(),
                         usage: "ban_id <player_id>".try_into().unwrap(),
                     },
                     cmd: ServerRconCommand::BanId,
@@ -373,12 +376,15 @@ impl Server {
             (
                 "kick_id".try_into().unwrap(),
                 Command {
-                    rcon: RconCommand {
+                    rcon: RconEntry {
                         args: vec![CommandArg {
                             ty: CommandArgType::Number,
                             user_ty: Some("PLAYER_ID".try_into().unwrap()),
                         }],
-                        description: "Kick a user with the given player id".try_into().unwrap(),
+                        description: "Kick a user with \
+                            the given player id"
+                            .try_into()
+                            .unwrap(),
                         usage: "kick_id <player_id>".try_into().unwrap(),
                     },
                     cmd: ServerRconCommand::KickId,
@@ -387,12 +393,12 @@ impl Server {
             (
                 "status".try_into().unwrap(),
                 Command {
-                    rcon: RconCommand {
+                    rcon: RconEntry {
                         args: Default::default(),
-                        description:
-                            "List information about this player such as the connected clients"
-                                .try_into()
-                                .unwrap(),
+                        description: "List information about this player \
+                            such as the connected clients"
+                            .try_into()
+                            .unwrap(),
                         usage: "status".try_into().unwrap(),
                     },
                     cmd: ServerRconCommand::Status,
@@ -401,7 +407,7 @@ impl Server {
             (
                 "record_demo".try_into().unwrap(),
                 Command {
-                    rcon: RconCommand {
+                    rcon: RconEntry {
                         args: Default::default(),
                         description: "Start to record a server side demo.".try_into().unwrap(),
                         usage: "record_demo".try_into().unwrap(),
@@ -412,7 +418,7 @@ impl Server {
             (
                 "exec".try_into().unwrap(),
                 Command {
-                    rcon: RconCommand {
+                    rcon: RconEntry {
                         args: vec![CommandArg {
                             ty: CommandArgType::Text,
                             user_ty: None,
@@ -426,7 +432,7 @@ impl Server {
             (
                 "load".try_into().unwrap(),
                 Command {
-                    rcon: RconCommand {
+                    rcon: RconEntry {
                         args: vec![CommandArg {
                             ty: CommandArgType::Text,
                             user_ty: None,
@@ -437,15 +443,66 @@ impl Server {
                     cmd: ServerRconCommand::Load,
                 },
             ),
+            (
+                "add_vote".try_into().unwrap(),
+                Command {
+                    rcon: RconEntry {
+                        args: vec![
+                            CommandArg {
+                                ty: CommandArgType::Text,
+                                user_ty: None,
+                            },
+                            CommandArg {
+                                ty: CommandArgType::Text,
+                                user_ty: None,
+                            },
+                            CommandArg {
+                                ty: CommandArgType::Text,
+                                user_ty: None,
+                            },
+                        ],
+                        description: "Adds a vote to the misc votes taking a \
+                            category & name, aswell as a rcon command."
+                            .try_into()
+                            .unwrap(),
+                        usage: "add_vote <category> <name> <cmd>".try_into().unwrap(),
+                    },
+                    cmd: ServerRconCommand::AddMiscVote,
+                },
+            ),
+            (
+                "rem_vote".try_into().unwrap(),
+                Command {
+                    rcon: RconEntry {
+                        args: vec![
+                            CommandArg {
+                                ty: CommandArgType::Text,
+                                user_ty: None,
+                            },
+                            CommandArg {
+                                ty: CommandArgType::Text,
+                                user_ty: None,
+                            },
+                        ],
+                        description: "Removes a vote from the misc votes \
+                            taking a category & name."
+                            .try_into()
+                            .unwrap(),
+                        usage: "rem_vote <category> <name>".try_into().unwrap(),
+                    },
+                    cmd: ServerRconCommand::RemoveMiscVote,
+                },
+            ),
         ];
 
+        let mut rcon_vars: Vec<_> = Default::default();
         config::parsing::parse_conf_values_as_str_list(
             "sv".into(),
             &mut |add, _| {
-                rcon_cmds.push((
+                rcon_vars.push((
                     add.name.try_into().unwrap(),
                     Command {
-                        rcon: RconCommand {
+                        rcon: RconEntry {
                             args: add.args,
                             usage: add.usage.as_str().try_into().unwrap(),
                             description: add.description.as_str().try_into().unwrap(),
@@ -459,7 +516,10 @@ impl Server {
             Default::default(),
         );
 
-        CommandChain::new(rcon_cmds.into_iter().collect())
+        CommandChain::new(
+            rcon_cmds.into_iter().collect(),
+            rcon_vars.into_iter().collect(),
+        )
     }
 
     fn handle_load_config(
@@ -478,8 +538,9 @@ impl Server {
         config: &mut ConfigGame,
         io: &Io,
         rcon_chain: &CommandChain<ServerRconCommand>,
+        cache: &mut ParserCache,
         cmd: parser::Command,
-    ) -> anyhow::Result<ReponsesAndCmds> {
+    ) -> anyhow::Result<ReponsesAndSkipped> {
         let Syn::Text(file_path) = &cmd.args[0].0 else {
             panic!("Command parser returned a non requested command arg");
         };
@@ -499,77 +560,78 @@ impl Server {
             config,
             io,
             rcon_chain,
+            cache,
             cmds_file.lines().map(|s| s.to_string()).collect(),
         ))
     }
 
     /// Handles config variable from the cmd lines.
     /// Returns the reponses of the cmds and
-    /// returns all cmds that are not related to config variables.
+    /// returns all lines that are not directly related to
+    /// __applying__ config variable values.
     fn handle_config_cmd_lines(
         config: &mut ConfigGame,
         io: &Io,
         rcon_chain: &CommandChain<ServerRconCommand>,
+        cache: &mut ParserCache,
         lines: Vec<String>,
-    ) -> ReponsesAndCmds {
-        let mut remaining_cmds = Vec::default();
+    ) -> ReponsesAndSkipped {
+        let mut skipped_lines = Vec::default();
         let mut responses = Vec::default();
         for line in lines.into_iter().filter(|l| !l.is_empty()) {
-            let cmds =
-                command_parser::parser::parse(&line, &rcon_chain.parser, &mut Default::default());
+            let cmds = command_parser::parser::parse(&line, &rcon_chain.parser, cache);
 
-            for cmd in cmds {
-                let handle_cmd = || match cmd {
-                    CommandType::Full(cmd) => {
-                        let Some(chain_cmd) = rcon_chain.cmds.get(&cmd.ident) else {
-                            return Err(anyhow!("Command {} not found", cmd.ident));
-                        };
+            if cmds
+                .iter()
+                .any(|cmd| matches!(cmd, CommandType::Partial(_)))
+            {
+                // Partial commands are not allowed during intial command arguments
+                skipped_lines.push(line);
+            } else {
+                for cmd in cmds {
+                    let handle_cmd = || match cmd {
+                        CommandType::Full(cmd) => {
+                            let Some(chain_cmd) = rcon_chain.by_ident(&cmd.ident) else {
+                                return Err(anyhow!("Command {} not found", cmd.ident));
+                            };
 
-                        match chain_cmd.cmd {
-                            ServerRconCommand::ConfVariable => {
-                                handle_config_variable_cmd(&cmd, config).map(|msg| {
-                                    format!("Updated value for {}: {}", cmd.cmd_text, msg)
-                                })
-                            }
-                            ServerRconCommand::Exec => {
-                                match Self::handle_exec(config, io, rcon_chain, cmd) {
-                                    Ok((mut res, mut res_remaining_cmds)) => {
-                                        responses.append(&mut res);
-                                        remaining_cmds.append(&mut res_remaining_cmds);
-                                        Ok("".to_string())
+                            match chain_cmd.cmd {
+                                ServerRconCommand::ConfVariable => {
+                                    handle_config_variable_cmd(&cmd, config).map(|msg| {
+                                        format!("Updated value for {}: {}", cmd.cmd_text, msg)
+                                    })
+                                }
+                                ServerRconCommand::Exec => {
+                                    match Self::handle_exec(config, io, rcon_chain, cache, cmd) {
+                                        Ok((mut res, mut res_skipped_lines)) => {
+                                            responses.append(&mut res);
+                                            skipped_lines.append(&mut res_skipped_lines);
+                                            Ok("".to_string())
+                                        }
+                                        Err(err) => Err(err),
                                     }
-                                    Err(err) => Err(err),
+                                }
+                                ServerRconCommand::Load => {
+                                    Self::handle_load_config(config, io, cmd)
+                                }
+                                _ => {
+                                    skipped_lines.push(cmd.to_string());
+                                    Ok("".to_string())
                                 }
                             }
-                            ServerRconCommand::Load => Self::handle_load_config(config, io, cmd),
-                            _ => {
-                                remaining_cmds.push(cmd);
-                                Ok("".to_string())
-                            }
                         }
-                    }
-                    CommandType::Partial(cmd) => {
-                        let Some(cmd) = cmd.ref_cmd_partial() else {
-                            return Err(anyhow!("This command was invalid: {cmd}"));
-                        };
-                        let Some(chain_cmd) = rcon_chain.cmds.get(&cmd.ident) else {
-                            return Err(anyhow!("Command {} not found", cmd.ident));
-                        };
-
-                        if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
-                            handle_config_variable_cmd(cmd, config)
-                                .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
-                        } else {
-                            Err(anyhow!("Failed to handle config variable: {cmd}"))
+                        CommandType::Partial(_) => {
+                            // cannot happen, bcs of above check
+                            unreachable!();
                         }
-                    }
-                };
+                    };
 
-                let cmd_res = handle_cmd();
-                responses.push(cmd_res.map_err(|err| err.to_string()));
+                    let cmd_res = handle_cmd();
+                    responses.push(cmd_res.map_err(|err| err.to_string()));
+                }
             }
         }
-        (responses, remaining_cmds)
+        (responses, skipped_lines)
     }
 
     pub fn new(
@@ -584,6 +646,8 @@ impl Server {
         thread_pool: Arc<rayon::ThreadPool>,
         io: Io,
         rcon_chain: CommandChain<ServerRconCommand>,
+        cache: ParserCache,
+        raw_rcon_input: &[String],
     ) -> anyhow::Result<Self> {
         let config_db = config_game.sv.db.clone();
         let accounts_enabled = !config_db.enable_accounts.is_empty();
@@ -593,9 +657,12 @@ impl Server {
                 let fs = io.fs.clone();
                 io.rt.spawn(async move { AutoMapVotes::new(&fs).await })
             });
+
+        let map_votes_file_path = config_game.sv.map_votes_path.clone();
         let map_votes_file = {
             let fs = io.fs.clone();
-            io.rt.spawn(async move { MapVotes::new(&fs).await })
+            io.rt
+                .spawn(async move { MapVotes::new(&fs, map_votes_file_path.as_ref()).await })
         };
 
         let fs = io.fs.clone();
@@ -825,7 +892,7 @@ impl Server {
             max_players_all_clients: config_game.sv.max_players as usize,
 
             rcon_chain,
-            cache: Default::default(),
+            cache,
 
             network: network_server,
             connection_bans,
@@ -841,11 +908,21 @@ impl Server {
                 &render_mod_name,
                 &render_mod_hash.try_into().unwrap_or_default(),
                 render_mod_required,
-                config_mod,
+                GameStateCreateOptions {
+                    hint_max_characters: Some(config_game.sv.max_players as usize),
+                    config: config_mod,
+                    initial_rcon_input: raw_rcon_input
+                        .iter()
+                        .map(|line| ExecRconInput {
+                            raw: NetworkString::new_lossy(line),
+                            auth_level: AuthLevel::Admin,
+                        })
+                        .collect(),
+                    account_db: accounts.as_ref().map(|a| a.kind),
+                },
                 &thread_pool,
                 &io,
                 &game_db,
-                accounts.as_ref().map(|a| a.kind),
                 config_game.sv.spatial_chat,
                 config_game.sv.download_server_port_v4,
                 config_game.sv.download_server_port_v6,
@@ -875,7 +952,7 @@ impl Server {
             map_votes,
             map_votes_hash,
             misc_votes: Default::default(),
-            misc_votes_hash: generate_hash_for(&[]),
+            misc_votes_hash: None,
 
             // database
             db,
@@ -1111,14 +1188,27 @@ impl Server {
         None
     }
 
+    fn broadcast_in_order_filtered(
+        &self,
+        packet: ServerToClientMessage<'_>,
+        channel: NetworkInOrderChannel,
+        f: impl Fn(&(&NetworkConnectionId, &ServerClient)) -> bool,
+    ) {
+        self.clients
+            .clients
+            .iter()
+            .filter(f)
+            .for_each(|(send_con_id, _)| {
+                self.network.send_in_order_to(&packet, send_con_id, channel);
+            });
+    }
+
     fn broadcast_in_order(
         &self,
         packet: ServerToClientMessage<'_>,
         channel: NetworkInOrderChannel,
     ) {
-        self.clients.clients.keys().for_each(|send_con_id| {
-            self.network.send_in_order_to(&packet, send_con_id, channel);
-        });
+        self.broadcast_in_order_filtered(packet, channel, |_| true);
     }
 
     fn send_vote(&self, vote_state: Option<VoteState>, start_time: Duration) {
@@ -1604,36 +1694,15 @@ impl Server {
                             .game
                             .try_overwrite_player_character_info(player_id, &info, version);
                     }
-                    ClientToServerPlayerMessage::RconExec { name, args } => {
+                    ClientToServerPlayerMessage::RconExec { ident_text, args } => {
                         let auth_level = player.auth.level;
                         if matches!(auth_level, AuthLevel::Moderator | AuthLevel::Admin) {
-                            let res = if self
-                                .game_server
-                                .game
-                                .info
-                                .rcon_commands
-                                .cmds
-                                .contains_key(name.as_str())
-                            {
-                                self.game_server.game.rcon_command(
-                                    Some(*player_id),
-                                    ExecRconCommand {
-                                        raw: format!("{} {}", name.as_str(), args.as_str())
-                                            .as_str()
-                                            .try_into()
-                                            .unwrap(),
-                                        auth_level,
-                                    },
-                                )
-                            } else {
-                                // if not a mod rcon, try to execute it inside the server
-                                let cmds = command_parser::parser::parse(
-                                    &format!("{} {}", name.as_str(), args.as_str()),
-                                    &self.rcon_chain.parser,
-                                    &mut self.cache,
-                                );
-                                self.handle_rcon_commands(Some(player_id), auth_level, cmds)
-                            };
+                            let res = self.handle_rcon_commands(
+                                Some(player_id),
+                                auth_level,
+                                &format!("{} {}", ident_text.as_str(), args.as_str()),
+                                false,
+                            );
                             self.network.send_in_order_to(
                                 &ServerToClientMessage::RconExecResult { results: res },
                                 con_id,
@@ -1680,20 +1749,33 @@ impl Server {
     }
 
     fn send_rcon_commands(&self, con_id: &NetworkConnectionId) {
-        let mut rcon_commands = RconCommands {
-            cmds: self
+        // Server variables have highest prio
+        let mut rcon_entries = RconEntries {
+            vars: self
                 .rcon_chain
-                .cmds
+                .var_list()
                 .iter()
                 .map(|(name, cmd)| (name.clone(), cmd.rcon.clone()))
                 .collect(),
+            cmds: Default::default(),
         };
-        // mod rcon commands have higher prio
-        rcon_commands
+        // Mod rcon variables & commands next
+        rcon_entries
+            .vars
+            .extend(self.game_server.game.info.rcon_commands.vars.clone());
+        rcon_entries
             .cmds
             .extend(self.game_server.game.info.rcon_commands.cmds.clone());
+        // Then server commands
+        rcon_entries.cmds.extend(
+            self.rcon_chain
+                .cmd_list()
+                .iter()
+                .map(|(name, cmd)| (name.clone(), cmd.rcon.clone())),
+        );
+
         self.network.send_in_order_to(
-            &ServerToClientMessage::RconCommands(rcon_commands),
+            &ServerToClientMessage::RconEntries(rcon_entries),
             con_id,
             NetworkInOrderChannel::Custom(
                 7302, // reads as "rcon"
@@ -1704,161 +1786,275 @@ impl Server {
     fn handle_cmd_full(
         &mut self,
         cmd: parser::Command,
+        player_id: Option<&PlayerId>,
+        auth: AuthLevel,
         responses: &mut Vec<Result<String, String>>,
-        remaining_cmds: &mut Vec<parser::Command>,
+        skipped_lines: &mut Vec<String>,
+        ignore_mod_cmds: bool,
     ) -> anyhow::Result<String> {
-        let Some(chain_cmd) = self.rcon_chain.cmds.get(&cmd.ident) else {
-            return Err(anyhow!("Command {} not found", cmd.ident));
-        };
-
-        fn ban_or_kick(
-            cmd: &parser::Command,
-            game_server: &ServerGame,
-            clients: &mut Clients,
-            process: impl FnOnce(&mut ServerClient, NetworkConnectionId),
-        ) -> anyhow::Result<()> {
-            let Syn::Number(num) = &cmd.args[0].0 else {
-                panic!("Command parser returned a non requested command arg");
-            };
-            let ban_id: GameEntityId = num.parse()?;
-            let ban_id: PlayerId = ban_id.into();
-            if let Some((client, network_id)) =
-                game_server.players.get(&ban_id).and_then(|player| {
-                    clients
-                        .clients
-                        .get_mut(&player.network_id)
-                        .map(|c| (c, player.network_id))
-                })
-            {
-                process(client, network_id);
-            }
-
-            Ok(())
-        }
-
-        match chain_cmd.cmd {
-            ServerRconCommand::BanId => {
-                let mut res = String::new();
-                ban_or_kick(&cmd, &self.game_server, &mut self.clients, |client, _| {
-                    let ty = BanType::Admin;
-                    let until = None;
-
-                    client.drop_reason = Some(PlayerDropReason::Banned {
-                        reason: PlayerBanReason::Rcon,
-                        until,
-                    });
-
-                    // ban the player
-                    let ids = self.connection_bans.ban_ip(client.ip, ty.clone(), until);
-                    for id in &ids {
-                        self.network.kick(
-                            id,
-                            KickType::Ban(Banned {
-                                msg: ty.clone(),
-                                until,
-                            }),
-                        );
-                    }
-                    let text: String = ids
+        if self
+            .game_server
+            .game
+            .info
+            .rcon_commands
+            .cmds
+            .contains_key(&cmd.ident)
+            || self
+                .game_server
+                .game
+                .info
+                .rcon_commands
+                .vars
+                .contains_key(&cmd.ident)
+        {
+            // This _if_ is purposely after the ident check,
+            // because the server commands with same ident
+            // should be ignored too.
+            if !ignore_mod_cmds {
+                responses.extend(
+                    self.game_server
+                        .game
+                        .rcon_command(
+                            player_id.copied(),
+                            ExecRconInput {
+                                raw: NetworkString::new_lossy(cmd.to_string()),
+                                auth_level: auth,
+                            },
+                        )
                         .into_iter()
-                        .map(|id| id.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    res = format!("Banned the following id(s): {}", text);
-                })?;
-                anyhow::Ok(res)
+                        .map(|r| match r {
+                            Ok(r) => Ok(r.into()),
+                            Err(err) => Err(err.into()),
+                        }),
+                );
             }
-            ServerRconCommand::KickId => {
-                let mut res = String::new();
-                ban_or_kick(
-                    &cmd,
-                    &self.game_server,
-                    &mut self.clients,
-                    |c, network_id| {
-                        c.drop_reason = Some(PlayerDropReason::Kicked(PlayerKickReason::Rcon));
+            Ok("".into())
+        } else {
+            let Some(chain_cmd) = self.rcon_chain.by_ident(&cmd.ident) else {
+                return Err(anyhow!("Command {} not found", cmd.ident));
+            };
 
-                        self.network
-                            .kick(&network_id, KickType::Kick("by admin".to_string()));
-                        let text: String = c
-                            .players
-                            .keys()
+            fn ban_or_kick(
+                cmd: &parser::Command,
+                game_server: &ServerGame,
+                clients: &mut Clients,
+                process: impl FnOnce(&mut ServerClient, NetworkConnectionId),
+            ) -> anyhow::Result<()> {
+                let Syn::Number(num) = &cmd.args[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+                let ban_id: GameEntityId = num.parse()?;
+                let ban_id: PlayerId = ban_id.into();
+                if let Some((client, network_id)) =
+                    game_server.players.get(&ban_id).and_then(|player| {
+                        clients
+                            .clients
+                            .get_mut(&player.network_id)
+                            .map(|c| (c, player.network_id))
+                    })
+                {
+                    process(client, network_id);
+                }
+
+                Ok(())
+            }
+
+            match chain_cmd.cmd {
+                ServerRconCommand::BanId => {
+                    let mut res = String::new();
+                    ban_or_kick(&cmd, &self.game_server, &mut self.clients, |client, _| {
+                        let ty = BanType::Admin;
+                        let until = None;
+
+                        client.drop_reason = Some(PlayerDropReason::Banned {
+                            reason: PlayerBanReason::Rcon,
+                            until,
+                        });
+
+                        // ban the player
+                        let ids = self.connection_bans.ban_ip(client.ip, ty.clone(), until);
+                        for id in &ids {
+                            self.network.kick(
+                                id,
+                                KickType::Ban(Banned {
+                                    msg: ty.clone(),
+                                    until,
+                                }),
+                            );
+                        }
+                        let text: String = ids
+                            .into_iter()
                             .map(|id| id.to_string())
                             .collect::<Vec<_>>()
                             .join(", ");
-                        res = format!("Kicked the following id(s): {}", text);
-                    },
-                )?;
-                anyhow::Ok(res)
-            }
-            ServerRconCommand::Status => {
-                let mut res: Vec<String> = Default::default();
-                for client in self.clients.clients.values() {
-                    res.push(format!("client ip: {}", client.ip));
-                    for (player_id, player) in client.players.iter() {
-                        res.push(format!(
-                            "    player_id: {}, client_id: {}",
-                            player_id, player.id
-                        ));
-                    }
+                        res = format!("Banned the following id(s): {}", text);
+                    })?;
+                    anyhow::Ok(res)
                 }
-                Ok(res.join("\n"))
-            }
-            ServerRconCommand::ConfVariable => {
-                handle_config_variable_cmd(&cmd, &mut self.config_game)
-                    .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
-            }
-            ServerRconCommand::Exec => {
-                match Self::handle_exec(&mut self.config_game, &self.io, &self.rcon_chain, cmd) {
-                    Ok((mut res, mut res_remaining_cmds)) => {
-                        responses.append(&mut res);
-                        remaining_cmds.append(&mut res_remaining_cmds);
-                        Ok("".to_string())
-                    }
-                    Err(err) => Err(err),
-                }
-            }
-            ServerRconCommand::Load => {
-                Self::handle_load_config(&mut self.config_game, &self.io, cmd)
-            }
-            ServerRconCommand::RecordDemo => {
-                let had_demo_recorder = self.demo_recorder.is_some();
-                self.demo_recorder = Some(DemoRecorder::new(
-                    DemoRecorderCreateProps {
-                        base: DemoRecorderCreatePropsBase {
-                            map: self.game_server.map.name.as_str().try_into().unwrap(),
-                            map_hash: generate_hash_for(&self.game_server.map.map_file),
-                            game_options: GameStateCreateOptions {
-                                hint_max_characters: Some(self.config_game.sv.max_players as usize),
-                                account_db: None,
-                                config: self.game_server.game.info.config.clone(),
-                            },
-                            required_resources: self.game_server.required_resources.clone(),
-                            client_local_infos: Default::default(),
-                            physics_module: self.game_server.game_mod.clone(),
-                            render_module: self.game_server.render_mod.clone(),
-                            physics_group_name: self
-                                .game_server
-                                .game
-                                .info
-                                .options
-                                .physics_group_name
-                                .clone(),
+                ServerRconCommand::KickId => {
+                    let mut res = String::new();
+                    ban_or_kick(
+                        &cmd,
+                        &self.game_server,
+                        &mut self.clients,
+                        |c, network_id| {
+                            c.drop_reason = Some(PlayerDropReason::Kicked(PlayerKickReason::Rcon));
+
+                            self.network
+                                .kick(&network_id, KickType::Kick("by admin".to_string()));
+                            let text: String = c
+                                .players
+                                .keys()
+                                .map(|id| id.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            res = format!("Kicked the following id(s): {}", text);
                         },
-                        io: self.io.clone(),
-                        in_memory: None,
-                    },
-                    self.game_server.game.info.ticks_in_a_second,
-                    Some("server_demos".as_ref()),
-                    None,
-                ));
-                Ok(format!(
-                    "Started demo recording.{}",
-                    if had_demo_recorder {
-                        "\nA previous recording was stopped in that process."
-                    } else {
-                        ""
+                    )?;
+                    anyhow::Ok(res)
+                }
+                ServerRconCommand::Status => {
+                    let mut res: Vec<String> = Default::default();
+                    for client in self.clients.clients.values() {
+                        res.push(format!("client ip: {}", client.ip));
+                        for (player_id, player) in client.players.iter() {
+                            res.push(format!(
+                                "    player_id: {}, client_id: {}",
+                                player_id, player.id
+                            ));
+                        }
                     }
-                ))
+                    Ok(res.join("\n"))
+                }
+                ServerRconCommand::ConfVariable => {
+                    handle_config_variable_cmd(&cmd, &mut self.config_game)
+                        .map(|msg| format!("Updated value for {}: {}", cmd.cmd_text, msg))
+                }
+                ServerRconCommand::Exec => {
+                    match Self::handle_exec(
+                        &mut self.config_game,
+                        &self.io,
+                        &self.rcon_chain,
+                        &mut self.cache,
+                        cmd,
+                    ) {
+                        Ok((mut res, mut res_skipped_lines)) => {
+                            responses.append(&mut res);
+                            skipped_lines.append(&mut res_skipped_lines);
+                            Ok("".to_string())
+                        }
+                        Err(err) => Err(err),
+                    }
+                }
+                ServerRconCommand::Load => {
+                    Self::handle_load_config(&mut self.config_game, &self.io, cmd)
+                }
+                ServerRconCommand::AddMiscVote => {
+                    let Syn::Text(category) = &cmd.args[0].0 else {
+                        panic!("Command parser returned a non requested command arg");
+                    };
+                    let Syn::Text(name) = &cmd.args[1].0 else {
+                        panic!("Command parser returned a non requested command arg");
+                    };
+                    let Syn::Text(cmd) = &cmd.args[2].0 else {
+                        panic!("Command parser returned a non requested command arg");
+                    };
+                    let category = category.as_str().try_into()?;
+                    let display_name = name.as_str().try_into()?;
+                    let command = cmd.as_str().try_into()?;
+                    let res = format!("Added vote {name} in {category}");
+                    self.misc_votes
+                        .entry(category)
+                        .or_default()
+                        .insert(MiscVoteKey { display_name }, MiscVote { command });
+                    self.misc_votes_hash = None;
+
+                    self.broadcast_in_order_filtered(
+                        ServerToClientMessage::ResetVotes(MsgSvResetVotes::Misc),
+                        NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
+                        |(_, client)| client.loaded_misc_votes,
+                    );
+                    self.clients
+                        .clients
+                        .values_mut()
+                        .for_each(|c| c.loaded_misc_votes = false);
+                    Ok(res)
+                }
+                ServerRconCommand::RemoveMiscVote => {
+                    let Syn::Text(category) = &cmd.args[0].0 else {
+                        panic!("Command parser returned a non requested command arg");
+                    };
+                    let Syn::Text(name) = &cmd.args[1].0 else {
+                        panic!("Command parser returned a non requested command arg");
+                    };
+
+                    let display_name = name.as_str().try_into()?;
+
+                    let res = format!("Remove vote {name} from {category}");
+                    if let Some(votes) = self.misc_votes.get_mut(category) {
+                        votes.remove(&MiscVoteKey { display_name });
+
+                        if votes.is_empty() {
+                            self.misc_votes.remove(category);
+                        }
+                    }
+
+                    self.misc_votes_hash = None;
+
+                    self.broadcast_in_order_filtered(
+                        ServerToClientMessage::ResetVotes(MsgSvResetVotes::Misc),
+                        NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
+                        |(_, client)| client.loaded_misc_votes,
+                    );
+                    self.clients
+                        .clients
+                        .values_mut()
+                        .for_each(|c| c.loaded_misc_votes = false);
+                    Ok(res)
+                }
+                ServerRconCommand::RecordDemo => {
+                    let had_demo_recorder = self.demo_recorder.is_some();
+                    self.demo_recorder = Some(DemoRecorder::new(
+                        DemoRecorderCreateProps {
+                            base: DemoRecorderCreatePropsBase {
+                                map: self.game_server.map.name.as_str().try_into().unwrap(),
+                                map_hash: generate_hash_for(&self.game_server.map.map_file),
+                                game_options: GameStateCreateOptions {
+                                    hint_max_characters: Some(
+                                        self.config_game.sv.max_players as usize,
+                                    ),
+                                    account_db: None,
+                                    config: self.game_server.game.info.config.clone(),
+                                    initial_rcon_input: Default::default(),
+                                },
+                                required_resources: self.game_server.required_resources.clone(),
+                                client_local_infos: Default::default(),
+                                physics_module: self.game_server.game_mod.clone(),
+                                render_module: self.game_server.render_mod.clone(),
+                                physics_group_name: self
+                                    .game_server
+                                    .game
+                                    .info
+                                    .options
+                                    .physics_group_name
+                                    .clone(),
+                            },
+                            io: self.io.clone(),
+                            in_memory: None,
+                        },
+                        self.game_server.game.info.ticks_in_a_second,
+                        Some("server_demos".as_ref()),
+                        None,
+                    ));
+                    Ok(format!(
+                        "Started demo recording.{}",
+                        if had_demo_recorder {
+                            "\nA previous recording was stopped in that process."
+                        } else {
+                            ""
+                        }
+                    ))
+                }
             }
         }
     }
@@ -1866,61 +2062,151 @@ impl Server {
     fn handle_cmd(
         &mut self,
         cmd: parser::CommandType,
+        player_id: Option<&PlayerId>,
+        auth: AuthLevel,
         responses: &mut Vec<Result<String, String>>,
-        remaining_cmds: &mut Vec<parser::Command>,
+        skipped_lines: &mut Vec<String>,
+        ignore_mod_cmds: bool,
     ) -> anyhow::Result<String> {
         match cmd {
-            CommandType::Full(cmd) => self.handle_cmd_full(cmd, responses, remaining_cmds),
+            CommandType::Full(cmd) => self.handle_cmd_full(
+                cmd,
+                player_id,
+                auth,
+                responses,
+                skipped_lines,
+                ignore_mod_cmds,
+            ),
             CommandType::Partial(cmd) => {
                 let Some(cmd) = cmd.ref_cmd_partial() else {
                     return Err(anyhow!("This command was invalid: {cmd}"));
                 };
-                let Some(chain_cmd) = self.rcon_chain.cmds.get(&cmd.ident) else {
-                    return Err(anyhow!("Command {} not found", cmd.ident));
-                };
-
-                if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
-                    handle_config_variable_cmd(cmd, &mut self.config_game)
-                        .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
+                if self
+                    .game_server
+                    .game
+                    .info
+                    .rcon_commands
+                    .cmds
+                    .contains_key(&cmd.ident)
+                    || self
+                        .game_server
+                        .game
+                        .info
+                        .rcon_commands
+                        .vars
+                        .contains_key(&cmd.ident)
+                {
+                    // This _if_ is purposely after the ident check,
+                    // because the server commands with same ident
+                    // should be ignored too.
+                    if !ignore_mod_cmds {
+                        responses.extend(
+                            self.game_server
+                                .game
+                                .rcon_command(
+                                    player_id.copied(),
+                                    ExecRconInput {
+                                        raw: NetworkString::new_lossy(cmd.to_string()),
+                                        auth_level: auth,
+                                    },
+                                )
+                                .into_iter()
+                                .map(|r| match r {
+                                    Ok(r) => Ok(r.into()),
+                                    Err(err) => Err(err.into()),
+                                }),
+                        );
+                    }
+                    Ok("".into())
                 } else {
-                    Err(anyhow!("This command was invalid: {cmd}"))
+                    let Some(chain_cmd) = self.rcon_chain.by_ident(&cmd.ident) else {
+                        return Err(anyhow!("Command {} not found", cmd.ident));
+                    };
+
+                    if let ServerRconCommand::ConfVariable = chain_cmd.cmd {
+                        handle_config_variable_cmd(cmd, &mut self.config_game)
+                            .map(|msg| format!("Current value for {}: {}", cmd.cmd_text, msg))
+                    } else {
+                        Err(anyhow!("This command was invalid: {cmd}"))
+                    }
                 }
             }
         }
     }
 
+    /// Returns the responses of the executed commands
     fn handle_rcon_commands(
         &mut self,
-        _player_id: Option<&PlayerId>,
-        _auth: AuthLevel,
-        cmds: Vec<CommandType>,
-    ) -> Vec<NetworkString<65536>> {
-        let mut remaining_cmds = Vec::default();
+        player_id: Option<&PlayerId>,
+        auth: AuthLevel,
+        line: &str,
+        ignore_mod_cmds: bool,
+    ) -> Vec<Result<NetworkString<65536>, NetworkString<65536>>> {
+        let parser_entries = self.game_server.parser.get_or_insert_with(|| {
+            self.rcon_chain
+                .cmd_list()
+                .clone()
+                .into_iter()
+                .map(|(key, val)| (key, val.rcon.args))
+                .chain(
+                    self.game_server
+                        .game
+                        .info
+                        .rcon_commands
+                        .cmds
+                        .clone()
+                        .into_iter()
+                        .map(|(key, val)| (key, val.args))
+                        .chain(
+                            self.game_server
+                                .game
+                                .info
+                                .rcon_commands
+                                .vars
+                                .clone()
+                                .into_iter()
+                                .map(|(key, val)| (key, val.args)),
+                        ),
+                )
+                .chain(
+                    self.rcon_chain
+                        .var_list()
+                        .clone()
+                        .into_iter()
+                        .map(|(key, val)| (key, val.rcon.args)),
+                )
+                .collect()
+        });
+        let cmds = command_parser::parser::parse(line, parser_entries, &mut self.cache);
+        let mut skipped_lines = Vec::default();
         let mut responses = Vec::default();
-        let mut res: Vec<NetworkString<65536>> = Default::default();
+        let mut res: Vec<Result<NetworkString<65536>, NetworkString<65536>>> = Default::default();
         for cmd in cmds {
-            match self.handle_cmd(cmd, &mut responses, &mut remaining_cmds) {
+            match self.handle_cmd(
+                cmd,
+                player_id,
+                auth,
+                &mut responses,
+                &mut skipped_lines,
+                ignore_mod_cmds,
+            ) {
                 Ok(msg) => {
-                    res.push(NetworkString::new_lossy(msg));
+                    res.push(Ok(NetworkString::new_lossy(msg)));
                 }
                 Err(err) => {
-                    res.push(NetworkString::new_lossy(err.to_string()));
+                    res.push(Err(NetworkString::new_lossy(err.to_string())));
                 }
             }
             // directly add the current reponses after command handling
-            res.extend(responses.drain(..).map(|s| {
-                NetworkString::new_lossy(match s {
-                    Ok(s) => s,
-                    Err(s) => s,
-                })
+            res.extend(responses.drain(..).map(|s| match s {
+                Ok(s) => Ok(NetworkString::new_lossy(s)),
+                Err(s) => Err(NetworkString::new_lossy(s)),
             }));
         }
-        if !remaining_cmds.is_empty() {
-            res.append(&mut self.handle_rcon_commands(
-                _player_id,
-                _auth,
-                remaining_cmds.into_iter().map(CommandType::Full).collect(),
-            ));
+        if !skipped_lines.is_empty() {
+            for line in skipped_lines {
+                res.append(&mut self.handle_rcon_commands(player_id, auth, &line, ignore_mod_cmds));
+            }
         }
         res
     }
@@ -2221,7 +2507,7 @@ impl Server {
 
                                 if cached_votes.is_none_or(|hash| hash != self.map_votes_hash) {
                                     self.network.send_unordered_to(
-                                        &ServerToClientMessage::LoadVote(MsgSvLoadVotes::Map {
+                                        &ServerToClientMessage::LoadVotes(MsgSvLoadVotes::Map {
                                             categories: self.map_votes.categories.clone(),
                                             has_unfinished_map_votes: self
                                                 .map_votes
@@ -2236,9 +2522,21 @@ impl Server {
                             if !client.loaded_misc_votes {
                                 client.loaded_misc_votes = true;
 
-                                if cached_votes.is_none_or(|hash| hash != self.misc_votes_hash) {
+                                if self.misc_votes_hash.is_none() {
+                                    self.misc_votes_hash = Some(generate_hash_for(
+                                        &bincode::serde::encode_to_vec(
+                                            &self.misc_votes,
+                                            bincode::config::standard(),
+                                        )
+                                        .unwrap(),
+                                    ));
+                                }
+
+                                if cached_votes
+                                    .is_none_or(|hash| Some(hash) != self.misc_votes_hash)
+                                {
                                     self.network.send_unordered_to(
-                                        &ServerToClientMessage::LoadVote(MsgSvLoadVotes::Misc {
+                                        &ServerToClientMessage::LoadVotes(MsgSvLoadVotes::Misc {
                                             votes: self.misc_votes.clone(),
                                         }),
                                         con_id,
@@ -3236,11 +3534,15 @@ impl Server {
             &render_mod_name,
             &render_mod_hash.try_into().unwrap_or_default(),
             render_mod_required,
-            config,
+            GameStateCreateOptions {
+                hint_max_characters: Some(self.config_game.sv.max_players as usize),
+                config,
+                initial_rcon_input: Default::default(),
+                account_db: self.accounts.as_ref().map(|a| a.kind),
+            },
             &self.thread_pool,
             &self.io,
             &self.game_db,
-            self.accounts.as_ref().map(|a| a.kind),
             self.config_game.sv.spatial_chat,
             self.config_game.sv.download_server_port_v4,
             self.config_game.sv.download_server_port_v6,
@@ -3369,12 +3671,21 @@ pub fn ddnet_server_main<const IS_INTERNAL_SERVER: bool>(
 
     let rcon_chain = Server::new_rcon_cmd_chain();
 
-    let (msgs, remaining_cmds) =
-        Server::handle_config_cmd_lines(&mut config_game, &io, &rcon_chain, args);
+    let mut cache: ParserCache = Default::default();
+    let (msgs, skipped_lines) =
+        Server::handle_config_cmd_lines(&mut config_game, &io, &rcon_chain, &mut cache, args);
     for msg in msgs {
         match msg {
-            Ok(msg) => log::info!("{msg}"),
-            Err(err) => log::error!("{err}"),
+            Ok(msg) => {
+                if !msg.is_empty() {
+                    log::info!("{msg}");
+                }
+            }
+            Err(err) => {
+                if !err.is_empty() {
+                    log::error!("{err}");
+                }
+            }
         }
     }
 
@@ -3399,13 +3710,39 @@ pub fn ddnet_server_main<const IS_INTERNAL_SERVER: bool>(
         thread_pool,
         io,
         rcon_chain,
+        cache,
+        &skipped_lines,
     )?;
 
     // Handle remaining args after the server started.
-    for cmd in remaining_cmds {
-        match server.handle_cmd_full(cmd, &mut Default::default(), &mut Default::default()) {
-            Ok(res) => log::info!("{res}"),
-            Err(err) => log::error!("{err}"),
+    for line in skipped_lines {
+        for res in server.handle_rcon_commands(None, AuthLevel::Admin, &line, true) {
+            match res {
+                Ok(res) => {
+                    if !res.is_empty() {
+                        log::info!("{res}");
+                    }
+                }
+                Err(err) => {
+                    if !err.is_empty() {
+                        log::error!("{err}");
+                    }
+                }
+            }
+        }
+    }
+    for msg in &server.game_server.game.info.initial_rcon_response {
+        match msg {
+            Ok(res) => {
+                if !res.is_empty() {
+                    log::info!("{res}");
+                }
+            }
+            Err(err) => {
+                if !err.is_empty() {
+                    log::error!("{err}");
+                }
+            }
         }
     }
 

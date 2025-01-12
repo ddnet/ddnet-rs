@@ -7,13 +7,14 @@ use anyhow::anyhow;
 use base::{
     hash::{fmt_hash, name_and_hash, Hash},
     linked_hash_map_view::FxLinkedHashMap,
-    network_string::NetworkReducedAsciiString,
+    network_string::{NetworkReducedAsciiString, NetworkString},
 };
 use base_http::http_server::HttpDownloadServer;
 use base_io::io::Io;
 use base_io_traits::fs_traits::FileSystemWatcherItemInterface;
 use cache::Cache;
-use game_database::traits::{DbInterface, DbKind};
+use command_parser::parser::CommandArg;
+use game_database::traits::DbInterface;
 
 use game_state_wasm::game::state_wasm_manager::{
     GameStateMod, GameStateWasmManager, STATE_MODS_PATH,
@@ -22,9 +23,13 @@ use map::map::{resources::MapResourceMetaData, Map};
 use network::network::connection::NetworkConnectionId;
 use pool::{datatypes::PoolFxLinkedHashMap, pool::Pool};
 
+use game_base::{
+    network::messages::{GameModification, RenderModification, RequiredResources},
+    player_input::PlayerInput,
+};
 use game_interface::{
     interface::{GameStateCreateOptions, GameStateInterface, MAX_MAP_NAME_LEN},
-    rcon_commands::AuthLevel,
+    rcon_entries::AuthLevel,
     types::{
         emoticons::EmoticonType,
         game::GameTickType,
@@ -34,10 +39,6 @@ use game_interface::{
         render::character::{CharacterInfo, TeeEye},
     },
     votes::{VoteState, Voted},
-};
-use game_base::{
-    network::messages::{GameModification, RenderModification, RequiredResources},
-    player_input::PlayerInput,
 };
 
 use crate::spatial_chat::SpatialWorld;
@@ -385,6 +386,9 @@ pub struct ServerGame {
 
     pub cached_character_infos: PoolFxLinkedHashMap<CharacterId, CharacterInfo>,
 
+    // command parsing
+    pub parser: Option<HashMap<NetworkString<65536>, Vec<CommandArg>>>,
+
     // pools
     pub(crate) inps_pool: Pool<FxLinkedHashMap<PlayerId, CharacterInputInfo>>,
 }
@@ -396,11 +400,10 @@ impl ServerGame {
         render_mod: &str,
         render_mod_hash: &[u8; 32],
         render_mod_required: bool,
-        config: Option<Vec<u8>>,
+        create_options: GameStateCreateOptions,
         runtime_thread_pool: &Arc<rayon::ThreadPool>,
         io: &Io,
         db: &Arc<dyn DbInterface>,
-        account_db: Option<DbKind>,
         spatial_chat: bool,
         download_server_port_v4: u16,
         download_server_port_v6: u16,
@@ -461,11 +464,7 @@ impl ServerGame {
             game_state_mod,
             map.map_file.clone(),
             map.name.clone(),
-            GameStateCreateOptions {
-                hint_max_characters: None, // TODO:
-                config,
-                account_db,
-            },
+            create_options,
             io,
             db.clone(),
         )?;
@@ -559,6 +558,8 @@ impl ServerGame {
             queued_inputs: Default::default(),
 
             spatial_world: spatial_chat.then(SpatialWorld::default),
+
+            parser: None,
 
             cached_character_infos: PoolFxLinkedHashMap::new_without_pool(),
 

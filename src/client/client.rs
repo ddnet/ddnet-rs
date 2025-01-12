@@ -1883,15 +1883,15 @@ impl ClientNativeImpl {
             let events = game.remote_console.get_events();
             for event in events {
                 match event {
-                    RemoteConsoleEvent::Exec { name, args } => {
+                    RemoteConsoleEvent::Exec { ident_text, args } => {
                         if let Some((player_id, _)) = game.game_data.local.active_local_player() {
-                            if let (Ok(name), Ok(args)) =
-                                (name.as_str().try_into(), args.as_str().try_into())
+                            if let (Ok(ident_text), Ok(args)) =
+                                (ident_text.as_str().try_into(), args.as_str().try_into())
                             {
                                 game.network.send_in_order_to_server(
                                     &ClientToServerMessage::PlayerMsg((
                                         *player_id,
-                                        ClientToServerPlayerMessage::RconExec { name, args },
+                                        ClientToServerPlayerMessage::RconExec { ident_text, args },
                                     )),
                                     NetworkInOrderChannel::Custom(
                                         7302, // reads as "rcon"
@@ -2878,6 +2878,17 @@ impl FromNativeImpl for ClientNativeImpl {
                 self.votes.set_thumbnail_server_resource_download_url(
                     game.resource_download_server.clone(),
                 );
+            }
+            if self.votes.needs_misc_votes() {
+                if !game.misc_votes_loaded {
+                    game.misc_votes_loaded = true;
+                    game.network
+                        .send_unordered_to_server(&ClientToServerMessage::LoadVotes(
+                            MsgClLoadVotes::Misc { cached_votes: None },
+                        ));
+                }
+                self.votes
+                    .fill_misc_votes(game.game_data.misc_votes.clone());
             }
 
             if has_input {

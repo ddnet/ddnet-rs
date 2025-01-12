@@ -16,7 +16,7 @@ use game_interface::ghosts::GhostResult;
 use game_interface::interface::{
     GameStateCreate, GameStateCreateOptions, GameStateStaticInfo, MAX_MAP_NAME_LEN,
 };
-use game_interface::rcon_commands::ExecRconCommand;
+use game_interface::rcon_entries::ExecRconInput;
 use game_interface::settings::GameStateSettings;
 use game_interface::tick_result::TickResult;
 use game_interface::types::character_info::NetworkCharacterInfo;
@@ -148,8 +148,8 @@ impl GameStateInterface for ApiState {
     fn rcon_command(
         &mut self,
         player_id: Option<PlayerId>,
-        cmd: ExecRconCommand,
-    ) -> Vec<NetworkString<65536>> {
+        cmd: ExecRconInput,
+    ) -> Vec<Result<NetworkString<65536>, NetworkString<65536>>> {
     }
 
     #[guest_func_call_from_host_auto(option)]

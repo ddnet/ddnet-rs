@@ -22,7 +22,7 @@ use crate::{
     client_commands::ClientCommand,
     events::{EventClientInfo, GameEvents},
     ghosts::GhostResult,
-    rcon_commands::{ExecRconCommand, RconCommands},
+    rcon_entries::{ExecRconInput, RconEntries},
     settings::GameStateSettings,
     tick_result::TickResult,
     types::{
@@ -60,6 +60,15 @@ pub struct GameStateCreateOptions {
     /// information over [`GameStateStaticInfo::config`].
     /// If `None`, then no config was found.
     pub config: Option<Vec<u8>>,
+
+    /// Since the server also takes arguments on startup,
+    /// these are the initial rcon input that _can_ be handled
+    /// by the mod.
+    ///
+    /// The evaluation priority of [`RconEntries`] is the same.
+    ///
+    /// The implementation should automatically skip invalid input without failing.
+    pub initial_rcon_input: Vec<ExecRconInput>,
 
     /// Which kind of database holds the account information
     pub account_db: Option<DbKind>,
@@ -125,7 +134,7 @@ pub struct GameStateStaticInfo {
     /// Chat commands supported by the mod
     pub chat_commands: ChatCommands,
     /// Rcon commands supported by the mod
-    pub rcon_commands: RconCommands,
+    pub rcon_commands: RconEntries,
 
     /// A config file for this mod.
     /// On a server this config is sent to all clients,
@@ -134,6 +143,10 @@ pub struct GameStateStaticInfo {
     /// If no config is needed or no default config
     /// should be written to disk, leave this `None`.
     pub config: Option<Vec<u8>>,
+
+    /// The response of executing the
+    /// [`GameStateCreateOptions::initial_rcon_input`], if any.
+    pub initial_rcon_response: Vec<Result<NetworkString<65536>, NetworkString<65536>>>,
 
     /// The name of the mod (this name is usually used inside the server browser/info)
     pub mod_name: NetworkString<MAX_PHYSICS_GAME_TYPE_NAME_LEN>,
@@ -284,8 +297,8 @@ pub trait GameStateInterface: GameStateCreate {
     fn rcon_command(
         &mut self,
         player_id: Option<PlayerId>,
-        cmd: ExecRconCommand,
-    ) -> Vec<NetworkString<65536>>;
+        cmd: ExecRconInput,
+    ) -> Vec<Result<NetworkString<65536>, NetworkString<65536>>>;
 
     /// The result of a vote that the game implementation should be aware of.
     fn vote_command(&mut self, cmd: VoteCommand) -> VoteCommandResult;

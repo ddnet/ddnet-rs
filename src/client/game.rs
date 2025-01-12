@@ -677,6 +677,7 @@ impl Game {
 
                         events: events_pool.new(),
                         map_votes_loaded: Default::default(),
+                        misc_votes_loaded: Default::default(),
 
                         render_players_pool: Pool::with_capacity(64),
                         render_observers_pool: Pool::with_capacity(2),
@@ -816,6 +817,7 @@ impl Game {
                             hint_max_characters: None, // TODO: get from server
                             config: info.mod_config,
                             account_db: None,
+                            initial_rcon_input: Default::default(),
                         },
                         render_props,
                         info.spatial_chat
@@ -911,6 +913,7 @@ impl Game {
                             hint_max_characters: None, // TODO: get from server
                             config: info.mod_config,
                             account_db: None,
+                            initial_rcon_input: Default::default(),
                         },
                         render_props,
                         info.spatial_chat
