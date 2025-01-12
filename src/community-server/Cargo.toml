@@ -22,8 +22,8 @@ serde_json = "1.0.134"
 x509-cert = { version = "0.2.5" }
 log = "0.4.22"
 
-ddnet-account-client-http-fs = { version = "0.2.0" }
-ddnet-account-client-reqwest = "0.2.0"
+ddnet-account-client-http-fs = { version = "0.3.0" }
+ddnet-account-client-reqwest = "0.3.0"
 ddnet-accounts-shared = { version = "0.2.0" }
 ddnet-accounts-types = { version = "0.1.0" }
 ddnet-account-game-server = { version = "0.3.0" }

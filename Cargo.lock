@@ -2593,9 +2593,9 @@ dependencies = [
 
 [[package]]
 name = "ddnet-account-client-http-fs"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9eb10f67107b4b13dd29cec53fbb85c1929bb74bf0d09553a8e70284feed358"
+checksum = "9004caaafde669225232a14ade28e7f972a9f42ed2d044e6b6ee1243a167d25d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2617,9 +2617,9 @@ dependencies = [
 
 [[package]]
 name = "ddnet-account-client-reqwest"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6603dcf4551e39428598ab96ffe5dc9612a1c55da1645725c338207838c81411"
+checksum = "bc5b16d118b5a2f4f83b6827972fb12d22e104d5c786e716ef450cbba4b66685"
 dependencies = [
  "anyhow",
  "async-trait",
