@@ -37,7 +37,7 @@ map-convert-lib = { path = "../map-convert-lib", optional = true }
 
 ddnet-account-game-server = { version = "0.3.0", features = ["sqlite"] }
 ddnet-accounts-shared = { version = "0.2.0" }
-ddnet-account-client-http-fs = { version = "0.2.0" }
+ddnet-account-client-http-fs = { version = "0.3.0" }
 
 rayon = "1.10.0"
 anyhow = { version = "1.0.95", features = ["backtrace"] }

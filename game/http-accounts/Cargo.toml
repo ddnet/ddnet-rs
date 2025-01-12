@@ -10,4 +10,4 @@ url = { version = "2.5.4", features = ["serde"] }
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 
 ddnet-account-client = { version = "0.2.0" }
-ddnet-account-client-http-fs = { version = "0.2.0" }
+ddnet-account-client-http-fs = { version = "0.3.0" }
