@@ -10,7 +10,7 @@ use ddnet_account_sql::{
 };
 use game_database::{
     statement::{QueryProperties, StatementDriverProps},
-    traits::{DbInterface, DbKind},
+    traits::{DbInterface, DbKind, SqlText},
     types::{DbType, UnixUtcTimestamp},
 };
 use parking_lot::Mutex;
@@ -47,6 +47,7 @@ impl GameDbBackend {
         args: &'a [DbType],
     ) -> anyhow::Result<AnyQuery<'a>> {
         Ok(match stmt.stmt.as_ref() {
+            #[cfg(feature = "mysql")]
             AnyStatement::MySql(stmt) => {
                 let mut qry = stmt.query();
                 for arg in args.iter() {
@@ -72,6 +73,7 @@ impl GameDbBackend {
                 }
                 AnyQuery::MySql(qry)
             }
+            #[cfg(feature = "sqlite")]
             AnyStatement::Sqlite(stmt) => {
                 let mut qry = stmt.query();
                 for arg in args.iter() {
@@ -110,6 +112,7 @@ impl GameDbBackend {
                 .iter()
                 .map(|(name, ty)| {
                     let val = match &row {
+                        #[cfg(feature = "mysql")]
                         AnyRow::MySql(row) => match ty {
                             DbType::I16(_) => DbType::I16(row.try_get::<i16, _>(name.as_str())?),
                             DbType::I32(_) => DbType::I32(row.try_get::<i32, _>(name.as_str())?),
@@ -133,6 +136,7 @@ impl GameDbBackend {
                                 })
                             }
                         },
+                        #[cfg(feature = "sqlite")]
                         AnyRow::Sqlite(row) => match ty {
                             DbType::I16(_) => DbType::I16(row.try_get::<i16, _>(name.as_str())?),
                             DbType::I32(_) => DbType::I32(row.try_get::<i32, _>(name.as_str())?),
@@ -176,32 +180,17 @@ impl DbInterface for GameDbBackend {
     async fn setup(
         &self,
         version_name: &str,
-        versioned_stmts: BTreeMap<i64, Vec<u64>>,
+        versioned_stmts: BTreeMap<i64, HashMap<DbKind, Vec<SqlText>>>,
     ) -> anyhow::Result<()> {
-        let versioned_stmts = {
-            let prepared_stmts = self.statements.lock();
-            versioned_stmts
-                .into_iter()
-                .map(|(version, stmts)| {
-                    stmts
-                        .into_iter()
-                        .map(|stmt| prepared_stmts.get(&stmt).map(|s| (s.kind, s.stmt.clone())))
-                        .collect::<Option<Vec<_>>>()
-                        .map(|stmts| (version, stmts))
-                })
-                .collect::<Option<BTreeMap<_, _>>>()
-                .ok_or_else(|| anyhow!("at least one of the statements was not prepared."))?
-        };
-
         let mut stmts_per_kind: HashMap<DbKind, BTreeMap<_, Vec<_>>> = Default::default();
         versioned_stmts.into_iter().for_each(|(version, stmts)| {
-            for (kind, stmt) in stmts {
+            for (kind, mut stmt) in stmts {
                 stmts_per_kind
                     .entry(kind)
                     .or_default()
                     .entry(version)
                     .or_default()
-                    .push(stmt);
+                    .append(&mut stmt);
             }
         });
 
@@ -218,13 +207,11 @@ impl DbInterface for GameDbBackend {
                             for (stmts_version, stmts) in versioned_stmts {
                                 if version < stmts_version {
                                     for s in stmts {
-                                        let qry = match s.as_ref() {
-                                            AnyStatement::MySql(stmt) => {
-                                                AnyQuery::MySql(stmt.query())
-                                            }
-                                            AnyStatement::Sqlite(stmt) => {
-                                                AnyQuery::Sqlite(stmt.query())
-                                            }
+                                        let qry = match kind {
+                                            #[cfg(feature = "mysql")]
+                                            DbKind::MySql(_) => AnyQuery::MySql(sqlx::query(&s)),
+                                            #[cfg(feature = "sqlite")]
+                                            DbKind::Sqlite(_) => AnyQuery::Sqlite(sqlx::query(&s)),
                                         };
                                         qry.execute(&mut con.con()).await?;
                                     }
@@ -259,9 +246,11 @@ impl DbInterface for GameDbBackend {
         let connection = connection.acquire().await?;
 
         let stm = match connection {
+            #[cfg(feature = "mysql")]
             AnyConnection::MySql(con) => AnyStatement::MySql(sqlx::Statement::to_owned(
                 &con.prepare(&driver_props.sql).await?,
             )),
+            #[cfg(feature = "sqlite")]
             AnyConnection::Sqlite(con) => AnyStatement::Sqlite(sqlx::Statement::to_owned(
                 &con.prepare(&driver_props.sql).await?,
             )),

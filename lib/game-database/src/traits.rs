@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap, HashSet},
+};
 
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
@@ -20,9 +23,13 @@ pub enum DbKindExtra {
     Debug, Hiarc, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
 pub enum DbKind {
+    #[cfg(feature = "mysql")]
     MySql(DbKindExtra),
+    #[cfg(feature = "sqlite")]
     Sqlite(DbKindExtra),
 }
+
+pub type SqlText = Cow<'static, str>;
 
 #[async_trait::async_trait]
 pub trait DbInterface: Sync + Send {
@@ -36,7 +43,7 @@ pub trait DbInterface: Sync + Send {
     async fn setup(
         &self,
         version_name: &str,
-        versioned_stmts: BTreeMap<i64, Vec<u64>>,
+        versioned_stmts: BTreeMap<i64, HashMap<DbKind, Vec<SqlText>>>,
     ) -> anyhow::Result<()>;
 
     /// Prepare a new statement.

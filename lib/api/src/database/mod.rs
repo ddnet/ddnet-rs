@@ -8,7 +8,7 @@ use anyhow::anyhow;
 use base_io::yield_now;
 use game_database::{
     statement::{QueryProperties, StatementDriverProps},
-    traits::{DbInterface, DbKind},
+    traits::{DbInterface, DbKind, SqlText},
     types::DbType,
 };
 
@@ -38,7 +38,7 @@ impl DbInterface for GameDbBackend {
     async fn setup(
         &self,
         version_name: &str,
-        versioned_stmts: BTreeMap<i64, Vec<u64>>,
+        versioned_stmts: BTreeMap<i64, HashMap<DbKind, Vec<SqlText>>>,
     ) -> anyhow::Result<()> {
         let mut res;
         let id = self.id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
