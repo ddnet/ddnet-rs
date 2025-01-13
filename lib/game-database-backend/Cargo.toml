@@ -9,6 +9,9 @@ game-database = { path = "../../lib/game-database", default-features = false }
 
 ddnet-account-sql = { version = "0.3.0", default-features = false }
 
+# when updating to the next major version check if
+# https://github.com/launchbadge/sqlx/issues/3387 is fixed
+# and remove the workaround in the code
 sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "chrono"] }
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 async-trait = "0.1.83"
