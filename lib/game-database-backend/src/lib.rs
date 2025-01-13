@@ -121,7 +121,15 @@ impl GameDbBackend {
                             DbType::F64(_) => DbType::F64(row.try_get::<f64, _>(name.as_str())?),
                             DbType::Bool(_) => DbType::Bool(row.try_get::<bool, _>(name.as_str())?),
                             DbType::String(_) => {
-                                DbType::String(row.try_get::<String, _>(name.as_str())?)
+                                DbType::String(row.try_get::<String, _>(name.as_str()).or_else(
+                                    |_| {
+                                        // workaround for strings with binary collation
+                                        // https://github.com/launchbadge/sqlx/issues/3387
+                                        anyhow::Ok(String::from_utf8(
+                                            row.try_get::<Vec<u8>, _>(name.as_str())?,
+                                        )?)
+                                    },
+                                )?)
                             }
                             DbType::Vec(_) => {
                                 DbType::Vec(row.try_get::<Vec<u8>, _>(name.as_str())?)
