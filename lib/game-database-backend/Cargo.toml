@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sql = { path = "../../lib/sql" }
-game-database = { path = "../../lib/game-database" }
+sql = { path = "../../lib/sql", default-features = false }
+game-database = { path = "../../lib/game-database", default-features = false }
 
-ddnet-account-sql = { version = "0.3.0", features = ["sqlite"] }
+ddnet-account-sql = { version = "0.3.0", default-features = false }
 
-sqlx = { version = "0.8.2", features = ["mysql", "sqlite", "any", "runtime-tokio-rustls", "chrono"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "chrono"] }
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 async-trait = "0.1.83"
 parking_lot = "0.12.3"
@@ -20,3 +20,9 @@ base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 
 tokio = { version = "1.42.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+
+[features]
+mysql = ["ddnet-account-sql/mysql", "sql/mysql", "game-database/mysql", "sqlx/mysql"]
+sqlite = ["ddnet-account-sql/sqlite", "sql/sqlite", "game-database/sqlite", "sqlx/sqlite"]
+
+default = ["mysql", "sqlite"]

@@ -8,9 +8,9 @@ community = { path = "../../game/community" }
 
 base = { path = "../../lib/base" }
 network = { path = "../../lib/network" }
-sql = { path = "../../lib/sql" }
-game-database = { path = "../../lib/game-database" }
-game-database-backend = { path = "../../lib/game-database-backend" }
+sql = { path = "../../lib/sql", default-features = false, features = ["mysql"] }
+game-database = { path = "../../lib/game-database", default-features = false, features = ["mysql"] }
+game-database-backend = { path = "../../lib/game-database-backend", default-features = false, features = ["mysql"] }
 
 tokio = { version = "1.42.0", features = ["rt-multi-thread", "sync", "fs", "net", "time", "macros"] }
 anyhow = { version = "1.0.95", features = ["backtrace"] }

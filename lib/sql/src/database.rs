@@ -4,9 +4,7 @@ use ddnet_account_sql::any::AnyPool;
 use game_database::traits::DbKind;
 use sqlx::{
     any::{AnyArguments, AnyRow},
-    mysql::{MySqlConnectOptions, MySqlPoolOptions},
     query::QueryAs,
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     Any, FromRow,
 };
 
@@ -34,11 +32,12 @@ impl Database {
                 || connection_details.host == "127.0.0.1"
                 || connection_details.host == "::1";
             let pool = match ty {
+                #[cfg(feature = "mysql")]
                 DbKind::MySql(_) => AnyPool::MySql(
-                    MySqlPoolOptions::new()
+                    sqlx::mysql::MySqlPoolOptions::new()
                         .max_connections(connection_details.connection_count as u32)
                         .connect_with(
-                            MySqlConnectOptions::new()
+                            sqlx::mysql::MySqlConnectOptions::new()
                                 .charset("utf8mb4")
                                 .host(&connection_details.host)
                                 .port(connection_details.port)
@@ -54,11 +53,12 @@ impl Database {
                         )
                         .await?,
                 ),
+                #[cfg(feature = "sqlite")]
                 DbKind::Sqlite(_) => AnyPool::Sqlite(
-                    SqlitePoolOptions::new()
+                    sqlx::sqlite::SqlitePoolOptions::new()
                         .max_connections(connection_details.connection_count as u32)
                         .connect_with(
-                            SqliteConnectOptions::new()
+                            sqlx::sqlite::SqliteConnectOptions::new()
                                 .filename(connection_details.database)
                                 .create_if_missing(true),
                         )

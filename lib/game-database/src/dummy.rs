@@ -4,7 +4,7 @@ use anyhow::anyhow;
 
 use crate::{
     statement::{QueryProperties, StatementDriverProps},
-    traits::{DbInterface, DbKind},
+    traits::{DbInterface, DbKind, SqlText},
     types::DbType,
 };
 
@@ -20,7 +20,7 @@ impl DbInterface for DummyDb {
     async fn setup(
         &self,
         _version_name: &str,
-        _versioned_stmts: BTreeMap<i64, Vec<u64>>,
+        _versioned_stmts: BTreeMap<i64, HashMap<DbKind, Vec<SqlText>>>,
     ) -> anyhow::Result<()> {
         Err(anyhow!("not implemented for the dummy database"))
     }

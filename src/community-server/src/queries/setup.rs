@@ -1,26 +1,20 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use game_database::{
-    statement::{Statement, StatementBuilder},
-    traits::{DbInterface, DbKind, DbKindExtra},
-};
+use game_database::traits::{DbInterface, DbKind, DbKindExtra, SqlText};
 
 #[derive(Clone)]
 pub struct SetupFriendList {
-    stmts: Vec<Arc<Statement<(), ()>>>,
+    stmts: HashMap<DbKind, Vec<SqlText>>,
 }
 
 impl SetupFriendList {
-    pub async fn new(db: Arc<dyn DbInterface>) -> anyhow::Result<Self> {
-        let mut stmts = Vec::new();
+    pub async fn new(_db: Arc<dyn DbInterface>) -> anyhow::Result<Self> {
+        let mut stmts: HashMap<DbKind, Vec<SqlText>> = Default::default();
 
-        let builder = StatementBuilder::<_, (), ()>::new(
-            DbKind::MySql(DbKindExtra::Main),
-            include_str!("mysql/friend_list.sql"),
-            |_| vec![],
-        );
-        let stmt = Arc::new(Statement::new(db.clone(), builder).await?);
-        stmts.push(stmt.clone());
+        stmts
+            .entry(DbKind::MySql(DbKindExtra::Main))
+            .or_default()
+            .push(include_str!("mysql/friend_list.sql").into());
 
         Ok(Self { stmts })
     }
@@ -31,16 +25,7 @@ pub async fn setup(db: Arc<dyn DbInterface>) -> anyhow::Result<()> {
 
     db.setup(
         "friend-list",
-        vec![(
-            1,
-            setup_friend_list
-                .stmts
-                .iter()
-                .map(|s| s.unique_id)
-                .collect(),
-        )]
-        .into_iter()
-        .collect(),
+        vec![(1, setup_friend_list.stmts)].into_iter().collect(),
     )
     .await
 }

@@ -1,37 +1,28 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use game_database::{
-    statement::{Statement, StatementBuilder},
-    traits::{DbInterface, DbKind, DbKindExtra},
-};
+use game_database::traits::{DbInterface, DbKind, DbKindExtra, SqlText};
 
 #[derive(Clone)]
 pub struct SetupSaves {
-    stmts: Vec<Arc<Statement<(), ()>>>,
+    stmts: HashMap<DbKind, Vec<SqlText>>,
 }
 
 impl SetupSaves {
     pub async fn new(db: Arc<dyn DbInterface>) -> anyhow::Result<Self> {
-        let mut stmts = Vec::new();
+        let mut stmts: HashMap<_, Vec<_>> = Default::default();
         let kinds = db.kinds();
 
         if kinds.contains(&DbKind::MySql(DbKindExtra::Main)) {
-            let builder = StatementBuilder::<_, (), ()>::new(
-                DbKind::MySql(DbKindExtra::Main),
-                include_str!("mysql/save/saves.sql"),
-                |_| vec![],
-            );
-            let stmt = Arc::new(Statement::new(db.clone(), builder).await?);
-            stmts.push(stmt.clone());
+            stmts
+                .entry(DbKind::MySql(DbKindExtra::Main))
+                .or_default()
+                .push(include_str!("mysql/save/saves.sql").into());
         }
         if kinds.contains(&DbKind::Sqlite(DbKindExtra::Main)) {
-            let builder = StatementBuilder::<_, (), ()>::new(
-                DbKind::Sqlite(DbKindExtra::Main),
-                include_str!("sqlite/save/saves.sql"),
-                |_| vec![],
-            );
-            let stmt = Arc::new(Statement::new(db.clone(), builder).await?);
-            stmts.push(stmt.clone());
+            stmts
+                .entry(DbKind::Sqlite(DbKindExtra::Main))
+                .or_default()
+                .push(include_str!("sqlite/save/saves.sql").into());
         }
 
         Ok(Self { stmts })
@@ -43,9 +34,7 @@ pub async fn setup(db: Arc<dyn DbInterface>) -> anyhow::Result<()> {
 
     db.setup(
         "game-server-vanilla",
-        vec![(1, setup_saves.stmts.iter().map(|s| s.unique_id).collect())]
-            .into_iter()
-            .collect(),
+        vec![(1, setup_saves.stmts)].into_iter().collect(),
     )
     .await
 }

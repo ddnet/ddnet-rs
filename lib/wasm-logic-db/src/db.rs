@@ -4,6 +4,7 @@ use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use base_io::runtime::{IoRuntime, IoRuntimeTask};
 use game_database::statement::StatementDriverProps;
+use game_database::traits::SqlText;
 use game_database::{statement::QueryProperties, traits::DbInterface};
 use game_database::{traits::DbKind, types::DbType};
 use sendable::SendOption;
@@ -46,7 +47,7 @@ impl WasmDatabaseLogicImpl {
         &self,
         id: u64,
         version_name: String,
-        versioned_stmts: BTreeMap<i64, Vec<u64>>,
+        versioned_stmts: BTreeMap<i64, HashMap<DbKind, Vec<SqlText>>>,
     ) -> Option<Result<(), String>> {
         let mut tasks = self.setup_tasks.borrow_mut();
         match tasks.get(&id) {
@@ -249,7 +250,7 @@ impl WasmDatabaseLogic {
                 &mut param0,
                 1,
             );
-            let versioned_stmts: BTreeMap<i64, Vec<u64>> = read_param(
+            let versioned_stmts: BTreeMap<i64, HashMap<DbKind, Vec<SqlText>>> = read_param(
                 instance.as_ref().unwrap(),
                 &store.as_store_ref(),
                 &mut param0,
