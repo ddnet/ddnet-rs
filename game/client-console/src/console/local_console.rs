@@ -93,8 +93,66 @@ impl super::console::ConsoleEvents<LocalConsoleEvent> for LocalConsoleEvents {
 
 pub type LocalConsole = ConsoleRender<LocalConsoleEvent, Rc<RefCell<ParserCache>>>;
 
-#[derive(Debug, Default)]
-pub struct LocalConsoleBuilder {}
+#[derive(Debug)]
+pub struct LocalConsoleBuilder {
+    pub entries: Vec<ConsoleEntry>,
+    pub console_events: LocalConsoleEvents,
+    pub parser_cache: Rc<RefCell<ParserCache>>,
+}
+
+impl Default for LocalConsoleBuilder {
+    fn default() -> Self {
+        let console_events: LocalConsoleEvents = Default::default();
+        let mut entries: Vec<ConsoleEntry> = Vec::new();
+
+        let val = ConfigEngine::conf_value();
+        let events_var = console_events.clone();
+        let var_on_set = Rc::new(move |name: &str| {
+            events_var.push(LocalConsoleEvent::ConfigVariable {
+                name: name.to_string(),
+            });
+        });
+        parse_conf_values_as_str_list(
+            "".to_string(),
+            &mut |entry, _| {
+                entries.push(ConsoleEntry::Var(ConsoleEntryVariable {
+                    full_name: entry.name,
+                    usage: entry.usage,
+                    description: entry.description,
+                    args: entry.args,
+                    on_set: var_on_set.clone(),
+                }));
+            },
+            val,
+            "".into(),
+            Default::default(),
+        );
+        let val = ConfigGame::conf_value();
+        parse_conf_values_as_str_list(
+            "".to_string(),
+            &mut |entry, _| {
+                entries.push(ConsoleEntry::Var(ConsoleEntryVariable {
+                    full_name: entry.name,
+                    usage: entry.usage,
+                    description: entry.description,
+                    args: entry.args,
+                    on_set: var_on_set.clone(),
+                }));
+            },
+            val,
+            "".into(),
+            Default::default(),
+        );
+        let parser_cache = Rc::new(RefCell::new(ParserCache::default()));
+        Self::register_commands(console_events.clone(), &mut entries, parser_cache.clone());
+
+        Self {
+            console_events,
+            entries,
+            parser_cache,
+        }
+    }
+}
 
 impl LocalConsoleBuilder {
     fn register_commands(
@@ -804,55 +862,13 @@ impl LocalConsoleBuilder {
         }));
     }
 
-    pub fn build(creator: &UiCreator) -> LocalConsole {
-        let console_events: LocalConsoleEvents = Default::default();
-        let mut entries: Vec<ConsoleEntry> = Vec::new();
-        let val = ConfigEngine::conf_value();
-        let events_var = console_events.clone();
-        let var_on_set = Rc::new(move |name: &str| {
-            events_var.push(LocalConsoleEvent::ConfigVariable {
-                name: name.to_string(),
-            });
-        });
-        parse_conf_values_as_str_list(
-            "".to_string(),
-            &mut |entry, _| {
-                entries.push(ConsoleEntry::Var(ConsoleEntryVariable {
-                    full_name: entry.name,
-                    usage: entry.usage,
-                    description: entry.description,
-                    args: entry.args,
-                    on_set: var_on_set.clone(),
-                }));
-            },
-            val,
-            "".into(),
-            Default::default(),
-        );
-        let val = ConfigGame::conf_value();
-        parse_conf_values_as_str_list(
-            "".to_string(),
-            &mut |entry, _| {
-                entries.push(ConsoleEntry::Var(ConsoleEntryVariable {
-                    full_name: entry.name,
-                    usage: entry.usage,
-                    description: entry.description,
-                    args: entry.args,
-                    on_set: var_on_set.clone(),
-                }));
-            },
-            val,
-            "".into(),
-            Default::default(),
-        );
-        let parser_cache = Rc::new(RefCell::new(ParserCache::default()));
-        Self::register_commands(console_events.clone(), &mut entries, parser_cache.clone());
+    pub fn build(self, creator: &UiCreator) -> LocalConsole {
         ConsoleRender::new(
             creator,
-            entries,
-            Box::new(console_events),
+            self.entries,
+            Box::new(self.console_events),
             Color32::from_rgba_unmultiplied(0, 0, 0, 150),
-            parser_cache,
+            self.parser_cache,
         )
     }
 }
