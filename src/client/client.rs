@@ -17,7 +17,7 @@ use base_io::io::{Io, IoFileSys};
 use binds::binds::{BindActionsHotkey, BindActionsLocalPlayer};
 use client_accounts::accounts::{Accounts, AccountsLoading};
 use client_console::console::{
-    console::ConsoleRenderPipe,
+    console::{ConsoleEvents, ConsoleRenderPipe},
     local_console::{LocalConsole, LocalConsoleBuilder, LocalConsoleEvent},
     remote_console::RemoteConsoleEvent,
 };
@@ -41,7 +41,7 @@ use client_render_game::render_game::{
     RenderGameCreateOptions, RenderGameForPlayer, RenderGameInput, RenderGameInterface,
     RenderGameSettings, RenderModTy, RenderPlayerCameraMode,
 };
-use client_types::console::entries_to_parser;
+use client_types::console::{entries_to_parser, ConsoleEntry};
 use client_ui::{
     chat::user_data::{ChatEvent, ChatMode},
     connect::{
@@ -69,6 +69,7 @@ use client_ui::{
     spectator_selection::user_data::SpectatorSelectionEvent,
     utils::render_tee_for_ui,
 };
+use command_parser::parser::ParserCache;
 use config::config::{ConfigEngine, ConfigMonitor};
 use demo::recorder::DemoRecorder;
 use editor::editor::{EditorInterface, EditorResult};
@@ -182,12 +183,80 @@ pub fn ddnet_main(
         )
     });
 
-    let config_engine = config_fs::load(&io).unwrap_or_default();
+    let mut config_engine = config_fs::load(&io).unwrap_or_default();
 
     let benchmark = Benchmark::new(config_engine.dbg.bench);
 
-    let config_game = game_config_fs::fs::load(&io).unwrap_or_default();
+    let mut config_game = game_config_fs::fs::load(&io).unwrap_or_default();
     benchmark.bench("loading client config");
+
+    let mut has_startup_errors = false;
+    let local_console_builder = if !start_arguments.is_empty() {
+        let local_console_builder = LocalConsoleBuilder::default();
+        let parser_entries = entries_to_parser(&local_console_builder.entries);
+        for line in start_arguments.iter().filter(|l| !l.is_empty()) {
+            let cmds = command_parser::parser::parse(
+                line,
+                &parser_entries,
+                &mut local_console_builder.parser_cache.borrow_mut(),
+            );
+            let mut res = String::default();
+            let cur_cmds_succeeded = run_commands(
+                &cmds,
+                &local_console_builder.entries,
+                &mut config_engine,
+                &mut config_game,
+                &mut res,
+                true,
+            );
+            log::debug!("{}", res);
+            if !cur_cmds_succeeded {
+                log::error!("{}", res);
+            }
+            let mut has_events = true;
+            let mut count = 0;
+            while has_events {
+                has_events = false;
+                let events = local_console_builder.console_events.take();
+                for ev in events {
+                    if let LocalConsoleEvent::Exec { file_path } = &ev {
+                        ClientNativeImpl::handle_exec(
+                            &io,
+                            file_path.clone(),
+                            &mut config_engine,
+                            &mut config_game,
+                            &local_console_builder.entries,
+                            &mut local_console_builder.parser_cache.borrow_mut(),
+                            |err| {
+                                log::error!("{}", err);
+                                has_startup_errors = true;
+                            },
+                            |msg| {
+                                log::info!("{}", msg);
+                            },
+                        );
+
+                        has_events = true;
+                    } else {
+                        local_console_builder.console_events.push(ev);
+                    }
+                }
+
+                count += 1;
+
+                if count >= 16 {
+                    has_startup_errors = true;
+                    log::error!("Exec recursion count reached 16, which is the upper limit.");
+                    break;
+                }
+            }
+            has_startup_errors |= !cur_cmds_succeeded;
+        }
+        benchmark.bench("parsing start arguments");
+        Some(local_console_builder)
+    } else {
+        None
+    };
 
     let graphics_backend_io_loading = GraphicsBackendIoLoading::new(&config_engine.gfx, &io);
     // first prepare all io tasks of all components
@@ -207,6 +276,8 @@ pub fn ddnet_main(
         config_game,
         graphics_backend_io_loading,
         graphics_backend_loading: None,
+        local_console_builder,
+        has_startup_errors,
     };
     Native::run_loop::<ClientNativeImpl, _>(
         client,
@@ -278,6 +349,9 @@ struct ClientNativeLoadingImpl {
     config_game: ConfigGame,
     graphics_backend_io_loading: GraphicsBackendIoLoading,
     graphics_backend_loading: Option<GraphicsBackendLoading>,
+
+    local_console_builder: Option<LocalConsoleBuilder>,
+    has_startup_errors: bool,
 }
 
 struct ClientNativeImpl {
@@ -1968,10 +2042,19 @@ impl ClientNativeImpl {
         .unwrap();
     }
 
-    fn handle_exec(&mut self, file_path: PathBuf) {
-        let fs = self.io.fs.clone();
-        let cmds_file = match self
-            .io
+    fn handle_exec(
+        io: &IoFileSys,
+        file_path: PathBuf,
+        config_engine: &mut ConfigEngine,
+        config_game: &mut ConfigGame,
+
+        entries: &[ConsoleEntry],
+        parser_cache: &mut ParserCache,
+        mut on_err: impl FnMut(String),
+        mut on_log: impl FnMut(String),
+    ) {
+        let fs = io.fs.clone();
+        let cmds_file = match io
             .rt
             .spawn(async move {
                 fs.read_file(&file_path)
@@ -1995,40 +2078,29 @@ impl ClientNativeImpl {
         {
             Ok(cmds_file) => cmds_file,
             Err(err) => {
-                self.notifications
-                    .add_err(err.to_string(), Duration::from_secs(10));
+                on_err(err.to_string());
                 return;
             }
         };
 
         let mut cmds_succeeded = true;
-        let parser_entries = entries_to_parser(&self.local_console.entries);
+        let parser_entries = entries_to_parser(entries);
         for line in cmds_file.lines().filter(|l| !l.is_empty()) {
-            let cmds = command_parser::parser::parse(
-                line,
-                &parser_entries,
-                &mut self.local_console.user.borrow_mut(),
-            );
+            let cmds = command_parser::parser::parse(line, &parser_entries, parser_cache);
             let mut res = String::default();
-            let cur_cmds_succeeded = run_commands(
-                &cmds,
-                &self.local_console.entries,
-                &mut self.config.engine,
-                &mut self.config.game,
-                &mut res,
-                true,
-            );
+            let cur_cmds_succeeded =
+                run_commands(&cmds, entries, config_engine, config_game, &mut res, true);
             log::debug!("{}", res);
             if !cur_cmds_succeeded {
-                self.console_logs.push_str(&res);
+                on_log(res);
             }
             cmds_succeeded &= cur_cmds_succeeded;
         }
         if !cmds_succeeded {
-            self.notifications.add_err(
+            on_err(
                 "At least one command failed to be executed, \
-                see local console for more info.",
-                Duration::from_secs(5),
+                see local console for more info."
+                    .to_string(),
             );
         }
     }
@@ -2107,7 +2179,20 @@ impl ClientNativeImpl {
                         }
                     }
                 }
-                LocalConsoleEvent::Exec { file_path } => self.handle_exec(file_path),
+                LocalConsoleEvent::Exec { file_path } => Self::handle_exec(
+                    &self.io.clone().into(),
+                    file_path,
+                    &mut self.config.engine,
+                    &mut self.config.game,
+                    &self.local_console.entries,
+                    &mut self.local_console.user.borrow_mut(),
+                    |err| {
+                        self.notifications.add_err(err, Duration::from_secs(10));
+                    },
+                    |msg| {
+                        self.console_logs.push_str(&msg);
+                    },
+                ),
                 LocalConsoleEvent::Echo { text } => {
                     self.notifications.add_info(text, Duration::from_secs(2));
                 }
@@ -2398,7 +2483,11 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         ui_creator.load_font(&font_data);
         benchmark.bench("loading font");
 
-        let mut local_console = LocalConsoleBuilder::build(&ui_creator);
+        let mut local_console = loading
+            .local_console_builder
+            .take()
+            .unwrap_or_default()
+            .build(&ui_creator);
         benchmark.bench("local console");
 
         // then prepare components allocations etc.
@@ -2493,7 +2582,14 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             graphics_memory_usage.staging_memory_usage,
             &ui_creator,
         );
-        let notifications = ClientNotifications::new(&graphics, &loading.sys, &ui_creator);
+        let mut notifications = ClientNotifications::new(&graphics, &loading.sys, &ui_creator);
+        if loading.has_startup_errors {
+            notifications.add_err(
+                "Some startup commands failed to be parsed, \
+                please read the logs for more information.",
+                Duration::from_secs(5),
+            );
+        }
 
         let loading_page = Box::new(LoadingPage::new());
         let page_err = UiWasmManagerErrorPageErr::default();
@@ -2639,15 +2735,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         );
         benchmark.bench("global binds");
 
-        let start_cmd = native.start_arguments().join(" ");
-        local_console.parse_cmd(
-            &start_cmd,
-            &mut loading.config_game,
-            &mut loading.config_engine,
-        );
-
         local_console.ui.ui_state.is_ui_open = false;
-        benchmark.bench("parsing start args");
 
         let mut client = Self {
             menu_map,

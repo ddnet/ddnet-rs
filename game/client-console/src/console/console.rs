@@ -3,12 +3,11 @@ use std::collections::VecDeque;
 use base::system::{self, SystemTimeInterface};
 use client_containers::skins::SkinContainer;
 use client_render_base::render::tee::RenderTee;
-use client_types::console::{entries_to_parser, ConsoleEntry};
+use client_types::console::ConsoleEntry;
 use client_ui::console::{page::ConsoleUi, user_data::UserData};
-use command_parser::parser::{parse, ParserCache};
-use config::config::ConfigEngine;
+use command_parser::parser::ParserCache;
 use egui::Color32;
-use game_config::config::{Config, ConfigGame};
+use game_config::config::Config;
 use graphics::graphics::graphics::Graphics;
 use ui_base::{
     types::{UiRenderPipe, UiState},
@@ -74,25 +73,6 @@ impl<E, T> ConsoleRender<E, T> {
             user,
 
             cache: Default::default(),
-        }
-    }
-
-    pub fn parse_cmd(
-        &mut self,
-        cmd: &str,
-        config_game: &mut ConfigGame,
-        config_engine: &mut ConfigEngine,
-    ) {
-        if !cmd.is_empty() {
-            let cmds = parse(cmd, &entries_to_parser(&self.entries), &mut self.cache);
-            client_ui::console::utils::run_commands(
-                &cmds,
-                &self.entries,
-                config_engine,
-                config_game,
-                &mut String::new(),
-                true,
-            );
         }
     }
 
