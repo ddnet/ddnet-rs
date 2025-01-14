@@ -191,7 +191,7 @@ impl InputHandling {
             }
         }
         self.last_known_cursor = Some(platform_output.cursor_icon);
-        native.toggle_cursor(!matches!(platform_output.cursor_icon, CursorIcon::None));
+        native.relative_mouse(matches!(platform_output.cursor_icon, CursorIcon::None));
         self.state
             .handle_platform_output(native.borrow_window(), platform_output);
     }
