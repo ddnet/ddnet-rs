@@ -23,15 +23,31 @@ pub use winit::{
 };
 
 pub trait NativeImpl {
-    /// Grabs the mouse.
-    /// If a direct grab fails, it queues the grab to a later cycle.
-    /// This function chaches the grab mode and can safely be called
+    /// If `true`: confines the mouse to the window rect (if supported).
+    /// If `false`: the mouse can be moved out of the current window.
+    ///
+    /// If the operation fails, it queues the opeartion to a later cycle.
+    ///
+    /// This function caches the confine mode and can safely be called
     /// every frame.
-    fn mouse_grab(&mut self);
-    /// Show or hide the cursor.
-    /// This function chaches the cursor state and can safely be called
+    ///
+    /// # Important
+    ///
+    /// If unsupported, then the mouse will not be confined!
+    fn confine_mouse(&mut self, confined: bool);
+    /// If `true`: hides the cursor and locks the absolute mouse to the current position.
+    /// If `false`: shows the cursor, the absolute mouse can be moved freely
+    /// (as free as specified in [`NativeImpl::confine_mouse`]).
+    ///
+    /// This function caches the cursor state and can safely be called
     /// every frame.
-    fn toggle_cursor(&mut self, show: bool);
+    ///
+    /// # Important
+    ///
+    /// If unsupported, then the absolute mouse might still move around, but is _tried_
+    /// to be confined to the current window and later teleported back to the locked
+    /// position!
+    fn relative_mouse(&mut self, relative: bool);
     /// Change the window config.
     /// Automatically only applies _actual_ changes.
     fn set_window_config(&mut self, wnd: NativeWindowOptions) -> anyhow::Result<()>;

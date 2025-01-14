@@ -1,7 +1,7 @@
-use std::cell::Cell;
+use std::{cell::Cell, collections::VecDeque};
 
 use anyhow::anyhow;
-use base::{benchmark::Benchmark, linked_hash_map_view::FxLinkedHashSet};
+use base::benchmark::Benchmark;
 use native_display::{get_native_display_backend, NativeDisplayBackend};
 use raw_window_handle::HasDisplayHandle;
 use winit::{
@@ -20,13 +20,36 @@ use super::{
     NativeWindowMonitorDetails, NativeWindowOptions,
 };
 
+#[derive(Debug)]
+enum GrabModeResultInternal {
+    /// Applied or ignored because same mode
+    Applied,
+    NotSupported,
+    ShouldQueue(GrabMode),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum GrabModeResult {
+    /// Applied or ignored because same mode
+    Applied,
+    NotSupported,
+    Queued,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GrabMode {
+    mode: CursorGrabMode,
+    /// fallback mode if the grab mode is not supported.
+    fallback: Option<CursorGrabMode>,
+}
+
 struct WindowMouse {
-    last_user_mouse_mode_request: CursorGrabMode,
-    last_user_mouse_cursor_mode: bool,
-    last_mouse_mode: CursorGrabMode,
-    last_mouse_cursor_mode: bool,
+    cur_grab_mode: CursorGrabMode,
+    user_requested_is_confined: bool,
+    cur_relative_cursor: bool,
     last_mouse_cursor_pos: (f64, f64),
-    last_mouse_cursor_locked: bool,
+
+    internal_events: VecDeque<InternalEvent>,
 
     cursor_main_pos: (f64, f64),
 
@@ -34,22 +57,44 @@ struct WindowMouse {
 }
 
 impl WindowMouse {
-    fn toggle_cursor_internal(&mut self, show: bool, window: &Window) -> bool {
-        if self.last_mouse_cursor_mode != show && !self.dbg_mode {
-            self.last_mouse_cursor_mode = show;
-            window.set_cursor_visible(show);
-            if !show {
-                self.last_mouse_cursor_locked =
-                    self.mouse_grab_internal(CursorGrabMode::Locked, window, None);
+    fn toggle_relative_cursor_internal(&mut self, relative: bool, window: &Window) -> bool {
+        if self.cur_relative_cursor != relative && !self.dbg_mode {
+            self.cur_relative_cursor = relative;
+            window.set_cursor_visible(!relative);
+            if relative {
+                self.mouse_grab_internal(
+                    GrabMode {
+                        mode: CursorGrabMode::Locked,
+                        fallback: Some(CursorGrabMode::Confined),
+                    },
+                    window,
+                );
 
-                self.last_mouse_cursor_pos = self.cursor_main_pos
-            } else if self.last_mouse_cursor_locked {
-                let _ = self.try_set_mouse_grab(window);
-            } else if let Err(err) = window.set_cursor_position(PhysicalPosition::new(
-                self.last_mouse_cursor_pos.0,
-                self.last_mouse_cursor_pos.1,
-            )) {
-                log::info!("Failed to set cursor position: {err}");
+                self.last_mouse_cursor_pos = self.cursor_main_pos;
+            } else {
+                let is_locked = self.cur_grab_mode == CursorGrabMode::Locked;
+                let _ = self.mouse_grab_internal(
+                    if self.user_requested_is_confined {
+                        GrabMode {
+                            mode: CursorGrabMode::Confined,
+                            fallback: Some(CursorGrabMode::None),
+                        }
+                    } else {
+                        GrabMode {
+                            mode: CursorGrabMode::None,
+                            fallback: None,
+                        }
+                    },
+                    window,
+                );
+                if !is_locked {
+                    if let Err(err) = window.set_cursor_position(PhysicalPosition::new(
+                        self.last_mouse_cursor_pos.0,
+                        self.last_mouse_cursor_pos.1,
+                    )) {
+                        log::info!("Failed to set cursor position: {err}");
+                    }
+                }
             }
 
             true
@@ -57,41 +102,52 @@ impl WindowMouse {
             true
         }
     }
-    fn mouse_grab_internal(
+    fn mouse_grab_apply_internal(
         &mut self,
-        mode: CursorGrabMode,
+        mode: GrabMode,
         window: &Window,
-        internal_events: Option<&mut FxLinkedHashSet<InternalEvent>>,
-    ) -> bool {
-        if self.last_mouse_mode != mode && !self.dbg_mode {
-            match window.set_cursor_grab(mode) {
+    ) -> GrabModeResultInternal {
+        if self.cur_grab_mode != mode.mode && !self.dbg_mode {
+            match window.set_cursor_grab(mode.mode) {
                 Ok(_) => {
-                    self.last_mouse_mode = mode;
-                    true
+                    self.cur_grab_mode = mode.mode;
+                    GrabModeResultInternal::Applied
                 }
                 Err(err) => {
                     if !matches!(err, ExternalError::NotSupported(_)) {
-                        if let Some(internal_events) = internal_events {
-                            internal_events.insert(InternalEvent::MouseGrabWrong);
-                        }
+                        GrabModeResultInternal::ShouldQueue(mode)
+                    } else if let Some(mode) = mode.fallback {
+                        self.mouse_grab_apply_internal(
+                            GrabMode {
+                                mode,
+                                fallback: None,
+                            },
+                            window,
+                        )
+                    } else {
+                        GrabModeResultInternal::NotSupported
                     }
-                    false
                 }
             }
         } else {
-            true
+            GrabModeResultInternal::Applied
         }
     }
-
-    fn try_set_mouse_grab(&mut self, window: &Window) -> anyhow::Result<()> {
-        if self.last_mouse_mode != self.last_user_mouse_mode_request {
-            if self.mouse_grab_internal(self.last_user_mouse_mode_request, window, None) {
-                Ok(())
-            } else {
-                Err(anyhow!("mouse grab failed immediatelly."))
-            }
+    fn mouse_grab_internal(&mut self, mode: GrabMode, window: &Window) -> GrabModeResult {
+        if !self.internal_events.is_empty() && !self.dbg_mode {
+            self.internal_events
+                .push_back(InternalEvent::MouseGrabWrong(mode));
+            GrabModeResult::Queued
         } else {
-            Ok(())
+            match self.mouse_grab_apply_internal(mode, window) {
+                GrabModeResultInternal::Applied => GrabModeResult::Applied,
+                GrabModeResultInternal::NotSupported => GrabModeResult::NotSupported,
+                GrabModeResultInternal::ShouldQueue(mode) => {
+                    self.internal_events
+                        .push_back(InternalEvent::MouseGrabWrong(mode));
+                    GrabModeResult::Queued
+                }
+            }
         }
     }
 }
@@ -100,7 +156,6 @@ pub(crate) struct WinitWindowWrapper {
     window: Window,
 
     mouse: WindowMouse,
-    internal_events: FxLinkedHashSet<InternalEvent>,
 
     destroy: Cell<bool>,
     start_arguments: Vec<String>,
@@ -195,17 +250,31 @@ impl WinitWindowWrapper {
 }
 
 impl NativeImpl for WinitWindowWrapper {
-    fn mouse_grab(&mut self) {
-        self.mouse.last_user_mouse_mode_request = CursorGrabMode::Confined;
-        self.mouse.mouse_grab_internal(
-            CursorGrabMode::Confined,
-            &self.window,
-            Some(&mut self.internal_events),
-        );
+    fn confine_mouse(&mut self, confined: bool) {
+        if !self.mouse.cur_relative_cursor && self.mouse.user_requested_is_confined != confined {
+            if confined {
+                self.mouse.mouse_grab_internal(
+                    GrabMode {
+                        mode: CursorGrabMode::Confined,
+                        fallback: Some(CursorGrabMode::None),
+                    },
+                    &self.window,
+                );
+            } else if !confined {
+                self.mouse.mouse_grab_internal(
+                    GrabMode {
+                        mode: CursorGrabMode::None,
+                        fallback: None,
+                    },
+                    &self.window,
+                );
+            }
+        }
+        self.mouse.user_requested_is_confined = confined;
     }
-    fn toggle_cursor(&mut self, show: bool) {
-        self.mouse.last_user_mouse_cursor_mode = show;
-        self.mouse.toggle_cursor_internal(show, &self.window);
+    fn relative_mouse(&mut self, relative: bool) {
+        self.mouse
+            .toggle_relative_cursor_internal(relative, &self.window);
     }
     fn set_window_config(&mut self, wnd: NativeWindowOptions) -> anyhow::Result<()> {
         let (monitor, video_mode) = WinitWindowWrapper::find_monitor_and_video_mode(
@@ -280,9 +349,9 @@ impl NativeImpl for WinitWindowWrapper {
     }
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Debug)]
 enum InternalEvent {
-    MouseGrabWrong,
+    MouseGrabWrong(GrabMode),
 }
 
 pub(crate) struct WinitWrapper {}
@@ -468,17 +537,15 @@ impl WinitWrapper {
                         let mut window = WinitWindowWrapper {
                             window,
                             mouse: WindowMouse {
-                                last_user_mouse_mode_request: CursorGrabMode::None,
-                                last_user_mouse_cursor_mode: true,
-                                last_mouse_mode: CursorGrabMode::None,
-                                last_mouse_cursor_mode: true,
+                                cur_grab_mode: CursorGrabMode::None,
+                                user_requested_is_confined: false,
+                                cur_relative_cursor: false,
                                 last_mouse_cursor_pos: Default::default(),
-                                last_mouse_cursor_locked: false,
                                 cursor_main_pos: Default::default(),
 
                                 dbg_mode: native_options.dbg_input,
+                                internal_events: Default::default(),
                             },
-                            internal_events: Default::default(),
                             destroy: Default::default(),
                             start_arguments: native_options.start_arguments,
                             suspended: false,
@@ -550,15 +617,31 @@ impl WinitWrapper {
                             winit::event::WindowEvent::Focused(has_focus) => {
                                 if !has_focus {
                                     window.mouse.mouse_grab_internal(
-                                        CursorGrabMode::None,
+                                        GrabMode {
+                                            mode: CursorGrabMode::None,
+                                            fallback: None,
+                                        },
                                         &window.window,
-                                        Some(&mut window.internal_events),
                                     );
                                 } else {
                                     window.mouse.mouse_grab_internal(
-                                        window.mouse.last_user_mouse_mode_request,
+                                        if window.mouse.cur_relative_cursor {
+                                            GrabMode {
+                                                mode: CursorGrabMode::Locked,
+                                                fallback: Some(CursorGrabMode::Confined),
+                                            }
+                                        } else if window.mouse.user_requested_is_confined {
+                                            GrabMode {
+                                                mode: CursorGrabMode::Confined,
+                                                fallback: Some(CursorGrabMode::None),
+                                            }
+                                        } else {
+                                            GrabMode {
+                                                mode: CursorGrabMode::None,
+                                                fallback: None,
+                                            }
+                                        },
                                         &window.window,
-                                        Some(&mut window.internal_events),
                                     );
                                 }
                                 native_user.window_options_changed(window.window_options());
@@ -696,11 +779,26 @@ impl WinitWrapper {
                                 }
 
                                 // check internal events
-                                window.internal_events.retain_with_order(|ev| match ev {
-                                    InternalEvent::MouseGrabWrong => {
-                                        window.mouse.try_set_mouse_grab(&window.window).is_err()
+                                if let Some(ev) = window.mouse.internal_events.pop_front() {
+                                    match ev {
+                                        InternalEvent::MouseGrabWrong(mode) => {
+                                            match window
+                                                .mouse
+                                                .mouse_grab_apply_internal(mode, &window.window)
+                                            {
+                                                GrabModeResultInternal::Applied
+                                                | GrabModeResultInternal::NotSupported => {
+                                                    // ignore -> drop event
+                                                }
+                                                GrabModeResultInternal::ShouldQueue(mode) => {
+                                                    window.mouse.internal_events.push_front(
+                                                        InternalEvent::MouseGrabWrong(mode),
+                                                    );
+                                                }
+                                            }
+                                        }
                                     }
-                                });
+                                }
                             }
                             winit::event::WindowEvent::PinchGesture { .. } => {
                                 todo!("should be implemented for macos support")

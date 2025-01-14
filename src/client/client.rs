@@ -2602,7 +2602,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         let cur_time = loading.sys.time_get();
         let last_refresh_rate_time = cur_time;
 
-        native.mouse_grab();
+        native.confine_mouse(true);
         benchmark.bench("mouse grab");
 
         let mut global_binds = Binds::default();
@@ -2968,12 +2968,12 @@ impl FromNativeImpl for ClientNativeImpl {
                 }
 
                 let player = game.game_data.local.active_local_player();
-                let show_cursor = player.is_some_and(|(_, p)| p.spectator_selection_active);
-                native.toggle_cursor(show_cursor);
+                let needs_abs_cursor = player.is_some_and(|(_, p)| p.spectator_selection_active);
+                native.relative_mouse(!needs_abs_cursor);
 
                 self.inp_manager.set_last_known_cursor(
                     &self.config.engine,
-                    if show_cursor {
+                    if needs_abs_cursor {
                         CursorIcon::Default
                     } else {
                         CursorIcon::None
