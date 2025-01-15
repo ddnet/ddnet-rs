@@ -95,7 +95,7 @@ impl EditorWasmManager {
             });
             let name = name_task.get_storage();
             if let Ok(name) = name {
-                let lib_path = io.fs.get_save_path().join(name);
+                let lib_path = io.fs.get_cache_path().join(name);
                 if let Ok(lib) = unsafe { libloading::Library::new(&lib_path) } {
                     EditorWrapper::NativeLib(EditorLib::new(sound, graphics, io, font_data, lib))
                 } else {

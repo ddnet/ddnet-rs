@@ -1553,9 +1553,8 @@ impl Editor {
 
     fn render_group_clip(&self, map: &EditorMap, attr: MapGroupAttr) {
         let MapGroupAttr {
-            offset,
-            parallax,
             clipping: Some(clip),
+            ..
         } = attr
         else {
             return;
@@ -1576,8 +1575,8 @@ impl Editor {
             map,
             rect,
             color,
-            &vec2::new(parallax.x.to_num(), parallax.y.to_num()),
-            &vec2::new(offset.x.to_num(), offset.y.to_num()),
+            &vec2::new(100.0, 100.0),
+            &vec2::new(0.0, 0.0),
         );
     }
 
