@@ -106,7 +106,9 @@ impl EditorClient {
                         EditorEvent::Command(_) => {
                             // ignore
                         }
-                        EditorEvent::Error(err) => todo!("{}", err),
+                        EditorEvent::Error(err) => {
+                            self.notifications.push(EditorNotification::Error(err));
+                        }
                         EditorEvent::Auth { .. } => {
                             // ignore
                         }
