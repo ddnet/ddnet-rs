@@ -198,6 +198,12 @@ fn configure_client(options: &NetworkClientInitOptions) -> anyhow::Result<Client
     if let Some(stream_receive_window) = options.base.stream_receive_window {
         transport_config.stream_receive_window(stream_receive_window.into());
     }
+    if let Some(receive_window) = options.base.receive_window {
+        transport_config.receive_window(receive_window.into());
+    }
+    if let Some(send_window) = options.base.send_window {
+        transport_config.send_window(send_window.into());
+    }
     if options
         .base
         .timeout
@@ -380,6 +386,12 @@ fn configure_server(
         transport.stream_receive_window(stream_receive_window.into());
     } else {
         transport.stream_receive_window((1024u32 * 64u32).into());
+    }
+    if let Some(receive_window) = options.base.receive_window {
+        transport.receive_window(receive_window.into());
+    }
+    if let Some(send_window) = options.base.send_window {
+        transport.send_window(send_window.into());
     }
     if let Some(max_reorder) = options.base.packet_reorder_threshold {
         transport.packet_threshold(max_reorder.clamp(3, u32::MAX));

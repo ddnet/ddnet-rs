@@ -4,12 +4,13 @@ use base::system::System;
 use network::network::{
     connection::NetworkConnectionId,
     event::NetworkEvent,
+    packet_compressor::{types::DecompressionByteLimit, DefaultNetworkPacketCompressor},
+    plugins::NetworkPlugins,
     quinn_network::QuinnNetwork,
-    types::NetworkInOrderChannel,
     types::{
         NetworkClientCertCheckMode, NetworkClientCertMode, NetworkClientInitOptions,
-        NetworkServerCertAndKey, NetworkServerCertMode, NetworkServerCertModeResult,
-        NetworkServerInitOptions,
+        NetworkInOrderChannel, NetworkServerCertAndKey, NetworkServerCertMode,
+        NetworkServerCertModeResult, NetworkServerInitOptions,
     },
     utils::create_certifified_keys,
 };
@@ -46,8 +47,16 @@ impl EditorNetwork {
             NetworkServerInitOptions::new()
                 .with_max_thread_count(6)
                 .with_timeout(Duration::from_secs(120))
-                .with_stream_receive_window(1024 * 1024 * 1024),
-            Default::default(),
+                .with_stream_receive_window(1024 * 1024 * 1024)
+                .with_receive_window(1024 * 1024 * 1024)
+                .with_send_window(1024 * 1024 * 1024),
+            NetworkPlugins {
+                packet_plugins: Arc::new(vec![Arc::new(
+                    DefaultNetworkPacketCompressor::new()
+                        .with_limit(DecompressionByteLimit::OneGigaByte),
+                )]),
+                ..Default::default()
+            },
         )
         .unwrap();
         let port = addr.port();
@@ -80,8 +89,17 @@ impl EditorNetwork {
                     private_key: client_private_key,
                 },
             )
-            .with_timeout(Duration::from_secs(120)),
-            Default::default(),
+            .with_timeout(Duration::from_secs(120))
+            .with_stream_receive_window(1024 * 1024 * 1024)
+            .with_receive_window(1024 * 1024 * 1024)
+            .with_send_window(1024 * 1024 * 1024),
+            NetworkPlugins {
+                packet_plugins: Arc::new(vec![Arc::new(
+                    DefaultNetworkPacketCompressor::new()
+                        .with_limit(DecompressionByteLimit::OneGigaByte),
+                )]),
+                ..Default::default()
+            },
             server_addr,
         )
         .unwrap()

@@ -149,6 +149,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         mut recv_stream: Vec<u8>,
         debug_printing: bool,
         packet_plugins: &Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
+        stream_receive_window: Option<u32>,
     ) {
         let timestamp = sys.time_get();
 
@@ -161,10 +162,24 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
             }
         }
 
-        let res_packet = bincode::serde::decode_from_slice::<NetworkPacket, _>(
-            recv_stream.as_slice(),
-            bincode::config::standard().with_limit::<{ 1024 * 1024 * 4 }>(),
-        );
+        let stream_window = stream_receive_window.unwrap_or(1024 * 1024 * 4) as usize;
+        let res_packet = if stream_window > 1024 * 1024 * 128 {
+            bincode::serde::decode_from_slice::<NetworkPacket, _>(
+                recv_stream.as_slice(),
+                bincode::config::standard().with_limit::<{ 1024 * 1024 * 1024 }>(),
+            )
+        } else if stream_window > 1024 * 1024 * 4 {
+            bincode::serde::decode_from_slice::<NetworkPacket, _>(
+                recv_stream.as_slice(),
+                bincode::config::standard().with_limit::<{ 1024 * 1024 * 128 }>(),
+            )
+        } else {
+            bincode::serde::decode_from_slice::<NetworkPacket, _>(
+                recv_stream.as_slice(),
+                bincode::config::standard().with_limit::<{ 1024 * 1024 * 4 }>(),
+            )
+        };
+
         if let Ok((res_packet, handled_size)) = res_packet {
             let remaining_size = recv_stream.len() - handled_size;
             if remaining_size > 0 && debug_printing {
@@ -187,6 +202,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         sys: Arc<SystemTime>,
         debug_printing: bool,
         packet_plugins: Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
+        stream_receive_window: Option<u32>,
     ) -> anyhow::Result<()> {
         'conn_loop: loop {
             let connection = &connection_async.conn;
@@ -200,6 +216,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                         recv_stream,
                         debug_printing,
                         &packet_plugins,
+                        stream_receive_window,
                     )
                     .await;
                 }
@@ -221,6 +238,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         sys: Arc<SystemTime>,
         debug_printing: bool,
         packet_plugins: Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
+        stream_receive_window: Option<u32>,
     ) -> anyhow::Result<()> {
         'conn_loop: loop {
             let game_ev_gen_clone = game_event_generator.clone();
@@ -239,6 +257,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                                     data,
                                     debug_printing,
                                     &packet_plugins,
+                                    stream_receive_window,
                                 )
                                 .await;
                             }
@@ -273,6 +292,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         sys: Arc<SystemTime>,
         debug_printing: bool,
         packet_plugins: Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
+        stream_receive_window: Option<u32>,
     ) -> anyhow::Result<()> {
         'conn_loop: loop {
             let game_ev_gen_clone = game_event_generator.clone();
@@ -294,6 +314,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                                     data,
                                     debug_printing,
                                     &packet_plugins,
+                                    stream_receive_window,
                                 )
                                 .await;
                             }
@@ -358,6 +379,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         debug_printing: bool,
         packet_plugins: &Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
         connection_plugins: &Arc<Vec<Arc<dyn NetworkPluginConnection>>>,
+        stream_receive_window: Option<u32>,
     ) -> tokio::task::JoinHandle<()> {
         let remote_addr = conn.remote_addr();
         log::debug!("handling connecting request for {:?}", remote_addr);
@@ -513,12 +535,12 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                 let res = tokio::select! {
                     res = Self::handle_connection_recv_unordered_reliable(
                         connection.clone(), game_event_generator_clone.clone(), connection_identifier, sys.clone(),
-                        debug_printing,  packet_plugins.clone()) => {res}
+                        debug_printing,  packet_plugins.clone(), stream_receive_window) => {res}
                     res = Self::handle_connection_recv_ordered_reliable(
                         connection.clone(), game_event_generator_clone.clone(), connection_identifier, sys.clone(),
-                        debug_printing, packet_plugins.clone()) => {res}
+                        debug_printing, packet_plugins.clone(), stream_receive_window) => {res}
                     res = Self::handle_connection_recv_unordered_unreliable(connection.clone(), game_event_generator_clone.clone(),
-                    connection_identifier, sys.clone(), debug_printing, packet_plugins.clone()) => {res}
+                    connection_identifier, sys.clone(), debug_printing, packet_plugins.clone(), stream_receive_window) => {res}
                     res = Self::ping(sys.clone(), game_event_generator_clone.clone(), connection.clone(), &connection_identifier, &mut ping_interval) => {res}
                 };
 

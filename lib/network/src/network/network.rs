@@ -250,6 +250,9 @@ where
                 sys: sys.time.clone(),
                 is_debug: debug_printing,
                 packet_pool: pool.clone(),
+
+                stream_receive_window: options.base.stream_receive_window,
+
                 plugins,
 
                 _z: PhantomData,
@@ -295,6 +298,9 @@ where
                 let is_debug = network_thread.is_debug;
                 let packet_plugins = network_thread.plugins.packet_plugins.clone();
                 let connection_plugins = network_thread.plugins.connection_plugins.clone();
+
+                let stream_receive_window = network_thread.stream_receive_window;
+
                 if is_server {
                     tokio::spawn(async move {
                         log::debug!("server: starting to accept connections");
@@ -321,6 +327,7 @@ where
                                     is_debug,
                                     &packet_plugins,
                                     &connection_plugins,
+                                    stream_receive_window,
                                 )
                                 .await;
                             }

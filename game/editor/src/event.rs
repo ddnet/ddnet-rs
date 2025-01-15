@@ -81,7 +81,7 @@ impl NetworkEventToGameEventGenerator for EditorEventGenerator {
     ) {
         let msg = bincode::serde::decode_from_slice::<EditorEvent, _>(
             bytes,
-            bincode::config::standard().with_limit::<{ 1024 * 1024 * 4 }>(),
+            bincode::config::standard().with_limit::<{ 1024 * 1024 * 1024 }>(),
         );
         if let Ok((msg, _)) = msg {
             self.events
