@@ -926,6 +926,11 @@ impl Server {
                 config_game.sv.spatial_chat,
                 config_game.sv.download_server_port_v4,
                 config_game.sv.download_server_port_v6,
+                if !config_game.sv.provided_assets_path.is_empty() {
+                    Some(config_game.sv.provided_assets_path.as_ref())
+                } else {
+                    None
+                },
             )?,
 
             last_tick_time: sys.time_get(),
@@ -3546,6 +3551,11 @@ impl Server {
             self.config_game.sv.spatial_chat,
             self.config_game.sv.download_server_port_v4,
             self.config_game.sv.download_server_port_v6,
+            if !self.config_game.sv.provided_assets_path.is_empty() {
+                Some(self.config_game.sv.provided_assets_path.as_ref())
+            } else {
+                None
+            },
         )?;
         if let Some(snapshot) = snapshot {
             self.game_server

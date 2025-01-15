@@ -407,6 +407,7 @@ impl ServerGame {
         spatial_chat: bool,
         download_server_port_v4: u16,
         download_server_port_v6: u16,
+        server_provided_assets_path: Option<&Path>,
     ) -> anyhow::Result<Self> {
         let fs = io.fs.clone();
         let required_resources = io.rt.spawn(async move {
@@ -505,6 +506,19 @@ impl ServerGame {
             }
         };
 
+        let mut served_dirs: HashMap<_, _> = [(
+            "thumbnails".to_string(),
+            io.fs.get_save_path().join("thumbnails"),
+        )]
+        .into_iter()
+        .collect();
+
+        // serve server provided assets in the same dictionary structure as
+        // the data dir.
+        if let Some(path) = server_provided_assets_path {
+            served_dirs.insert("".into(), io.fs.get_save_path().join(path));
+        }
+
         Ok(Self {
             http_server: {
                 Some(HttpDownloadServer::new(
@@ -530,12 +544,7 @@ impl ServerGame {
                             .into_iter(),
                     )
                     .collect(),
-                    [(
-                        "thumbnails".to_string(),
-                        io.fs.get_save_path().join("thumbnails"),
-                    )]
-                    .into_iter()
-                    .collect(),
+                    served_dirs,
                     download_server_port_v4,
                     download_server_port_v6,
                 )?)

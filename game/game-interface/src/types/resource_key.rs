@@ -110,12 +110,10 @@ impl<const MAX_LENGTH: usize> NetworkResourceKey<MAX_LENGTH> {
     pub fn new(
         s: impl TryInto<ReducedAsciiString, Error = ReducedAsciiStringError>,
     ) -> Result<Self, NetworkAsciiStringError> {
-        Ok(Self {
-            key: ResourceKeyBase {
-                name: NetworkReducedAsciiString::<MAX_LENGTH>::new(s)?.into(),
-                hash: None,
-            },
-        })
+        let s: ReducedAsciiString = s
+            .try_into()
+            .map_err(NetworkAsciiStringError::ReducedAsciiStrErr)?;
+        Self::try_from(s)
     }
 
     pub fn from_str_lossy(s: &str) -> Self {
@@ -146,7 +144,23 @@ impl<const MAX_LENGTH: usize> TryFrom<ReducedAsciiString> for NetworkResourceKey
     type Error = NetworkAsciiStringError;
 
     fn try_from(value: ReducedAsciiString) -> Result<Self, Self::Error> {
-        Self::new(value.as_str())
+        Self::try_from(ResourceKeyBase {
+            name: value,
+            hash: None,
+        })
+    }
+}
+
+impl<const MAX_LENGTH: usize> TryFrom<ResourceKeyBase> for NetworkResourceKey<MAX_LENGTH> {
+    type Error = NetworkAsciiStringError;
+
+    fn try_from(value: ResourceKeyBase) -> Result<Self, Self::Error> {
+        Ok(Self {
+            key: ResourceKeyBase {
+                name: NetworkReducedAsciiString::<MAX_LENGTH>::try_from(value.name)?.into(),
+                hash: value.hash,
+            },
+        })
     }
 }
 
