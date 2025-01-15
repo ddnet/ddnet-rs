@@ -1250,6 +1250,8 @@ impl CMapItemEnvelope {
             0
         };
 
+        let synchronized = if version < 2 { 1 } else { synchronized };
+
         Self {
             version,
             channels,
