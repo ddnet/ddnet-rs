@@ -7,6 +7,7 @@ pub mod left_panel;
 pub mod main_frame;
 pub mod page;
 pub mod top_menu;
+pub mod top_tabs;
 pub mod top_toolbar;
 pub mod user_data;
 pub mod utils;

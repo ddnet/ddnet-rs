@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
+use base::linked_hash_map_view::FxLinkedHashMap;
 use base_io::io::Io;
 use config::config::ConfigEngine;
 use ed25519_dalek::SigningKey;
@@ -139,10 +140,21 @@ impl EditorMenuDialogMode {
     }
 }
 
+pub struct EditorTabsRefMut<'a> {
+    pub tabs: &'a mut FxLinkedHashMap<String, EditorTab>,
+    pub active_tab: &'a mut String,
+}
+
+impl EditorTabsRefMut<'_> {
+    pub fn active_tab(&mut self) -> Option<&mut EditorTab> {
+        self.tabs.get_mut(self.active_tab)
+    }
+}
+
 pub struct UserData<'a> {
     pub ui_events: &'a mut Vec<EditorUiEvent>,
     pub config: &'a ConfigEngine,
-    pub editor_tab: Option<&'a mut EditorTab>,
+    pub editor_tabs: EditorTabsRefMut<'a>,
     pub canvas_handle: &'a GraphicsCanvasHandle,
     pub stream_handle: &'a GraphicsStreamHandle,
     pub unused_rect: &'a mut Option<egui::Rect>,

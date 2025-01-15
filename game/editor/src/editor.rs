@@ -122,7 +122,7 @@ use crate::{
         },
         utils::{render_rect, render_rect_from_state, render_rect_state},
     },
-    ui::user_data::{EditorUiEvent, EditorUiEventHostMap},
+    ui::user_data::{EditorTabsRefMut, EditorUiEvent, EditorUiEventHostMap},
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
@@ -2214,7 +2214,6 @@ impl Editor {
         Option<UiCanvasSize>,
         egui::PlatformOutput,
     ) {
-        let active_tab = self.tabs.get_mut(&self.active_tab);
         let mut unused_rect: Option<egui::Rect> = None;
         let mut input_state: Option<InputState> = None;
         let mut ui_canvas: Option<UiCanvasSize> = None;
@@ -2222,7 +2221,10 @@ impl Editor {
             cur_time: self.sys.time_get(),
             config,
             inp: input,
-            editor_tab: active_tab,
+            editor_tabs: EditorTabsRefMut {
+                tabs: &mut self.tabs,
+                active_tab: &mut self.active_tab,
+            },
             ui_events: &mut self.ui_events,
             unused_rect: &mut unused_rect,
             input_state: &mut input_state,

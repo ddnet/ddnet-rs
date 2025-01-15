@@ -57,7 +57,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         {
                             pipe.user_data.auto_mapper.active = !pipe.user_data.auto_mapper.active;
                         }
-                        if let Some(tab) = &mut pipe.user_data.editor_tab {
+                        if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
                             if ui
                                 .add(Button::new("Auto-Saver").selected(tab.auto_saver.active))
                                 .clicked()
@@ -67,7 +67,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         }
                     });
 
-                    if let Some(tab) = &mut pipe.user_data.editor_tab {
+                    if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
                         ui.menu_button("\u{f013}", |ui| {
                             let btn = Button::new("Disable animations panel + properties")
                                 .selected(tab.map.user.options.no_animations_with_properties);
@@ -302,7 +302,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     crate::ui::auto_mapper::auto_mapper::render(pipe, ui);
                 }
 
-                if let Some(tab) = pipe.user_data.editor_tab.as_deref_mut() {
+                if let Some(tab) = pipe.user_data.editor_tabs.active_tab() {
                     if tab.auto_saver.active {
                         crate::ui::auto_saver::render(
                             pipe.cur_time,
