@@ -37,6 +37,8 @@ pub struct NetworkAsync<E, C: Send + Sync, Z, I, const TY: u32> {
     pub(crate) is_debug: bool,
     pub(crate) packet_pool: Pool<Vec<u8>>,
 
+    pub(crate) stream_receive_window: Option<u32>,
+
     // plugins
     pub(crate) plugins: NetworkPlugins,
 
@@ -109,6 +111,9 @@ where
             sys: sys.time.clone(),
             is_debug: debug_printing,
             packet_pool: pool.clone(),
+
+            stream_receive_window: options.base.stream_receive_window,
+
             plugins,
 
             _z: PhantomData,
@@ -134,6 +139,7 @@ where
                 let is_debug = self.is_debug;
                 let packet_plugins = self.plugins.packet_plugins.clone();
                 let connection_plugins = self.plugins.connection_plugins.clone();
+                let stream_receive_window = self.stream_receive_window;
                 // handle the connect sync (since it's client side only)
                 if let Err(err) =
                     tokio::runtime::Handle::current().block_on(tokio::spawn(async move {
@@ -148,6 +154,7 @@ where
                                 is_debug,
                                 &packet_plugins,
                                 &connection_plugins,
+                                stream_receive_window
                             )
                             .await => Err(anyhow!("{:?}", res)),
                             res = async move {

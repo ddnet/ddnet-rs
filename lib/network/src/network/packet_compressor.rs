@@ -4,11 +4,13 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use header::CompressHeader;
 use pool::mt_pool::Pool;
+use types::DecompressionByteLimit;
 
 #[cfg(feature = "brotli")]
 pub mod brotli;
 
 pub mod header;
+pub mod types;
 
 use super::{connection::NetworkConnectionId, plugins::NetworkPluginPacket};
 
@@ -20,6 +22,8 @@ pub struct ZstdNetworkPacketCompressor {
 
     send_dict: Option<Vec<u8>>,
     recv_dict: Option<Vec<u8>>,
+
+    limit: DecompressionByteLimit,
 }
 
 impl Default for ZstdNetworkPacketCompressor {
@@ -37,6 +41,8 @@ impl ZstdNetworkPacketCompressor {
                 .build(),
             send_dict: None,
             recv_dict: None,
+
+            limit: Default::default(),
         }
     }
 
@@ -48,7 +54,14 @@ impl ZstdNetworkPacketCompressor {
                 .build(),
             send_dict: Some(send_dict),
             recv_dict: Some(recv_dict),
+
+            limit: Default::default(),
         }
+    }
+
+    pub fn with_limit(mut self, limit: DecompressionByteLimit) -> Self {
+        self.limit = limit;
+        self
     }
 }
 
@@ -93,10 +106,22 @@ impl NetworkPluginPacket for ZstdNetworkPacketCompressor {
         _id: &NetworkConnectionId,
         buffer: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
-        let (header, read_size) = bincode::serde::decode_from_slice::<CompressHeader, _>(
-            buffer,
-            bincode::config::standard().with_limit::<{ 1024 * 1024 * 4 }>(),
-        )?;
+        let (header, read_size) = match self.limit {
+            DecompressionByteLimit::FourMegaBytes => {
+                bincode::serde::decode_from_slice::<CompressHeader, _>(
+                    buffer,
+                    // use a high limit, since the packet size is already limited by the stream window
+                    bincode::config::standard().with_limit::<{ 1024 * 1024 * 4 }>(),
+                )?
+            }
+            DecompressionByteLimit::OneGigaByte => {
+                bincode::serde::decode_from_slice::<CompressHeader, _>(
+                    buffer,
+                    // use a high limit, since the packet size is already limited by the stream window
+                    bincode::config::standard().with_limit::<{ 1024 * 1024 * 1024 }>(),
+                )?
+            }
+        };
 
         if header.is_compressed {
             let mut helper = self.helper_pool.new();

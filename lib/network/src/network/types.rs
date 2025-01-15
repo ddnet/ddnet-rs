@@ -108,6 +108,11 @@ pub struct NetworkSharedInitOptions {
     /// The size in bytes of the receive window
     /// per stream.
     pub stream_receive_window: Option<u32>,
+    /// The size in bytes of the receive window
+    /// of all streams.
+    pub receive_window: Option<u32>,
+    /// Maximum number of bytes to transmit to a peer without acknowledgment.
+    pub send_window: Option<u32>,
     /// Max reordering of packets before it's considered lost.
     /// Should not be less than 3, per RFC5681.
     /// Note: ignored if not supported.
@@ -197,6 +202,16 @@ impl NetworkServerInitOptions {
         self
     }
 
+    pub fn with_receive_window(mut self, receive_window: u32) -> Self {
+        self.base.receive_window = Some(receive_window);
+        self
+    }
+
+    pub fn with_send_window(mut self, send_window: u32) -> Self {
+        self.base.send_window = Some(send_window);
+        self
+    }
+
     pub fn with_debug_priting(mut self, debug_printing: bool) -> Self {
         self.base = self.base.with_debug_priting(debug_printing);
         self
@@ -254,6 +269,21 @@ impl<'a> NetworkClientInitOptions<'a> {
 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.base = self.base.with_timeout(timeout);
+        self
+    }
+
+    pub fn with_stream_receive_window(mut self, stream_receive_window: u32) -> Self {
+        self.base.stream_receive_window = Some(stream_receive_window);
+        self
+    }
+
+    pub fn with_receive_window(mut self, receive_window: u32) -> Self {
+        self.base.receive_window = Some(receive_window);
+        self
+    }
+
+    pub fn with_send_window(mut self, send_window: u32) -> Self {
+        self.base.send_window = Some(send_window);
         self
     }
 
