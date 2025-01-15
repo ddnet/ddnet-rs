@@ -1575,7 +1575,7 @@ pub mod state {
             }
         }
 
-        fn chech_player_info(
+        fn check_player_info(
             &self,
             mut info: NetworkCharacterInfo,
             player_id: Option<PlayerId>,
@@ -2069,7 +2069,7 @@ pub mod state {
             let player_id = self.id_generator.next_id();
             let stage_0_id = self.stage_0_id;
 
-            let character_info = self.chech_player_info(client_player_info.info.clone(), None);
+            let character_info = self.check_player_info(client_player_info.info.clone(), None);
 
             self.game
                 .stages
@@ -2223,7 +2223,7 @@ pub mod state {
             version: NonZeroU64,
         ) {
             let old_info = &mut None;
-            let new_info = self.chech_player_info(info.clone(), Some(*id));
+            let new_info = self.check_player_info(info.clone(), Some(*id));
             let mut stage_id = self.stage_0_id;
             if let Some(player) = self.game.players.player(id) {
                 stage_id = player.stage_id();
