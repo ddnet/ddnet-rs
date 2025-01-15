@@ -131,6 +131,13 @@ enum ReadFileTy {
     Sound,
 }
 
+#[derive(Debug, Default)]
+struct MapLoadOptions {
+    cert: Option<NetworkServerCertMode>,
+    port: Option<u16>,
+    password: Option<String>,
+}
+
 /// this is basically the editor client
 pub struct Editor {
     tabs: FxLinkedHashMap<String, EditorTab>,
@@ -331,7 +338,7 @@ impl Editor {
 
             is_closed: false,
         };
-        res.load_map("map/maps/ctf1.twmap".as_ref());
+        res.load_map("map/maps/ctf1.twmap".as_ref(), Default::default());
         res
     }
 
@@ -945,7 +952,7 @@ impl Editor {
     }
 
     #[cfg(feature = "legacy")]
-    pub fn load_legacy_map(&mut self, path: &Path) -> anyhow::Result<()> {
+    fn load_legacy_map(&mut self, path: &Path, options: MapLoadOptions) -> anyhow::Result<()> {
         let name = path
             .file_stem()
             .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
@@ -986,7 +993,12 @@ impl Editor {
             .collect();
         let map = self.map_to_editor_map(map.map, resources);
 
-        let server = EditorServer::new(&self.sys, None, None, "".into());
+        let server = EditorServer::new(
+            &self.sys,
+            options.cert,
+            options.port,
+            options.password.clone().unwrap_or_default(),
+        );
         let client = EditorClient::new(
             &self.sys,
             &format!("127.0.0.1:{}", server.port),
@@ -1001,7 +1013,7 @@ impl Editor {
                 }
             },
             self.notifications.clone(),
-            "".into(),
+            options.password.unwrap_or_default(),
             true,
         );
 
@@ -1024,7 +1036,7 @@ impl Editor {
     }
 
     #[cfg(not(feature = "legacy"))]
-    pub fn load_legacy_map(&mut self, _path: &Path) -> anyhow::Result<()> {
+    fn load_legacy_map(&mut self, _path: &Path, _options: MapLoadOptions) -> anyhow::Result<()> {
         Err(anyhow!("loading legacy maps is not supported"))
     }
 
@@ -1042,13 +1054,7 @@ impl Editor {
         )
     }
 
-    pub fn load_map_impl(
-        &mut self,
-        path: &Path,
-        cert: Option<NetworkServerCertMode>,
-        port: Option<u16>,
-        password: Option<String>,
-    ) -> anyhow::Result<()> {
+    fn load_map_impl(&mut self, path: &Path, options: MapLoadOptions) -> anyhow::Result<()> {
         let name = path
             .file_stem()
             .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
@@ -1119,7 +1125,12 @@ impl Editor {
 
         let map = self.map_to_editor_map(map, resources);
 
-        let server = EditorServer::new(&self.sys, cert, port, password.clone().unwrap_or_default());
+        let server = EditorServer::new(
+            &self.sys,
+            options.cert,
+            options.port,
+            options.password.clone().unwrap_or_default(),
+        );
         let client = EditorClient::new(
             &self.sys,
             &format!("127.0.0.1:{}", server.port),
@@ -1134,7 +1145,7 @@ impl Editor {
                 }
             },
             self.notifications.clone(),
-            password.unwrap_or_default(),
+            options.password.unwrap_or_default(),
             true,
         );
 
@@ -1156,11 +1167,12 @@ impl Editor {
         Ok(())
     }
 
-    pub fn load_map(&mut self, path: &Path) {
+    /// Loads either a legacy or new map based on the file extension.
+    fn load_map(&mut self, path: &Path, options: MapLoadOptions) {
         let res = if path.extension().is_some_and(|ext| ext == "map") {
-            self.load_legacy_map(path)
+            self.load_legacy_map(path, options)
         } else {
-            self.load_map_impl(path, None, None, None)
+            self.load_map_impl(path, options)
         };
         if let Err(err) = res {
             self.notifications_overlay
@@ -1169,7 +1181,7 @@ impl Editor {
     }
 
     #[cfg(feature = "legacy")]
-    pub fn save_map_legacy(&mut self, path: &Path) -> anyhow::Result<()> {
+    pub fn save_map_legacy(&mut self, path: &Path) -> anyhow::Result<IoRuntimeTask<()>> {
         use map::map::resources::MapResourceRef;
 
         if self.tabs.get(&self.active_tab).is_some() {
@@ -1183,7 +1195,7 @@ impl Editor {
             let tp = self.thread_pool.clone();
             let fs = self.io.fs.clone();
             let path = path.to_path_buf();
-            self.save_tasks.push(self.io.rt.spawn(async move {
+            Ok(self.io.rt.spawn(async move {
                 let mut file: Vec<u8> = Default::default();
                 map.write(&mut file, &tp)?;
                 let map_legacy = map_convert_lib::new_to_legacy::new_to_legacy_from_buf_async(
@@ -1218,9 +1230,10 @@ impl Editor {
 
                 fs.write_file(&path, map_legacy.map).await?;
                 Ok(())
-            }));
+            }))
+        } else {
+            Err(anyhow!("No map was loaded."))
         }
-        Ok(())
     }
 
     #[cfg(not(feature = "legacy"))]
@@ -1321,8 +1334,18 @@ impl Editor {
         }
     }
 
-    pub fn save_map(&mut self, path: &Path) -> Option<IoRuntimeTask<()>> {
-        self.save_map_impl().map(|(map, resources)| {
+    pub fn save_map(&mut self, path: &Path) {
+        if path.extension().is_some_and(|ext| ext == "map") {
+            match self.save_map_legacy(path) {
+                Ok(task) => {
+                    self.save_tasks.push(task);
+                }
+                Err(err) => {
+                    self.notifications_overlay
+                        .add_err(err.to_string(), Duration::from_secs(10));
+                }
+            }
+        } else if let Some(task) = self.save_map_impl().map(|(map, resources)| {
             let tp = self.thread_pool.clone();
             let fs = self.io.fs.clone();
             let path = path.to_path_buf();
@@ -1341,7 +1364,12 @@ impl Editor {
                 }
                 Ok(())
             })
-        })
+        }) {
+            self.save_tasks.push(task);
+        } else {
+            self.notifications_overlay
+                .add_err("No map was loaded to be saved.", Duration::from_secs(10));
+        }
     }
 
     fn update(&mut self) {
@@ -2138,11 +2166,9 @@ impl Editor {
         // handle ui events
         for ev in std::mem::take(&mut self.ui_events) {
             match ev {
-                EditorUiEvent::OpenFile { name } => self.load_map(&name),
+                EditorUiEvent::OpenFile { name } => self.load_map(&name, Default::default()),
                 EditorUiEvent::SaveFile { name } => {
-                    if let Some(task) = self.save_map(&name) {
-                        self.save_tasks.push(task);
-                    }
+                    self.save_map(&name);
                 }
                 EditorUiEvent::HostMap(host_map) => {
                     let EditorUiEventHostMap {
@@ -2152,17 +2178,16 @@ impl Editor {
                         cert,
                         private_key,
                     } = *host_map;
-                    if let Err(err) = self.load_map_impl(
+                    self.load_map(
                         map_path.as_ref(),
-                        Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
-                            NetworkServerCertAndKey { cert, private_key },
-                        ))),
-                        Some(port),
-                        Some(password),
-                    ) {
-                        self.notifications_overlay
-                            .add_err(err.to_string(), Duration::from_secs(10));
-                    }
+                        MapLoadOptions {
+                            cert: Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
+                                NetworkServerCertAndKey { cert, private_key },
+                            ))),
+                            port: Some(port),
+                            password: Some(password),
+                        },
+                    );
                 }
                 EditorUiEvent::Join {
                     ip_port,
