@@ -27,6 +27,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
                 ui.horizontal(|ui| {
                     ui.menu_button("File", |ui| {
+                        if ui.button("New map").clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::NewMap);
+                        }
                         if ui.button("Open map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::open(pipe.user_data.io);
                         }
@@ -45,8 +48,22 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     });
 
                     ui.menu_button("Tools", |ui| {
-                        if ui.button("Automapper-Creator").clicked() {
-                            pipe.user_data.auto_mapper.active = true;
+                        if ui
+                            .add(
+                                Button::new("Automapper-Creator")
+                                    .selected(pipe.user_data.auto_mapper.active),
+                            )
+                            .clicked()
+                        {
+                            pipe.user_data.auto_mapper.active = !pipe.user_data.auto_mapper.active;
+                        }
+                        if let Some(tab) = &mut pipe.user_data.editor_tab {
+                            if ui
+                                .add(Button::new("Auto-Saver").selected(tab.auto_saver.active))
+                                .clicked()
+                            {
+                                tab.auto_saver.active = !tab.auto_saver.active;
+                            }
                         }
                     });
 
@@ -283,6 +300,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
                 if pipe.user_data.auto_mapper.active {
                     crate::ui::auto_mapper::auto_mapper::render(pipe, ui);
+                }
+
+                if let Some(tab) = pipe.user_data.editor_tab.as_deref_mut() {
+                    if tab.auto_saver.active {
+                        crate::ui::auto_saver::render(
+                            pipe.cur_time,
+                            tab,
+                            pipe.user_data.pointer_is_used,
+                            ui,
+                        );
+                    }
+                }
+
+                if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S)) {
+                    pipe.user_data.ui_events.push(EditorUiEvent::SaveCurMap);
                 }
             });
         });

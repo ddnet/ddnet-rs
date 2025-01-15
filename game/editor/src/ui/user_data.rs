@@ -31,12 +31,14 @@ pub struct EditorUiEventHostMap {
 
 #[derive(Debug)]
 pub enum EditorUiEvent {
+    NewMap,
     OpenFile {
         name: PathBuf,
     },
     SaveFile {
         name: PathBuf,
     },
+    SaveCurMap,
     HostMap(Box<EditorUiEventHostMap>),
     Join {
         ip_port: String,

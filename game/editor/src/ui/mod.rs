@@ -1,5 +1,6 @@
 pub mod animation_panel;
 pub mod auto_mapper;
+pub mod auto_saver;
 pub mod bottom_panel;
 pub mod group_and_layer;
 pub mod left_panel;
