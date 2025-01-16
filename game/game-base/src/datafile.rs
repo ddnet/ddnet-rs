@@ -60,13 +60,13 @@ use map::{
 };
 
 use crate::mapdef_06::{
-    read_i32_le, read_u32_le, CEnvPoint, CMapItemEnvelope, CMapItemGroup, CMapItemImage,
-    CMapItemInfo, CMapItemInfoSettings, CMapItemLayer, CMapItemLayerQuads, CMapItemLayerSounds,
-    CMapItemLayerSoundsVer, CMapItemLayerTilemap, CMapItemSound, CMapItemVersion, CQuad,
-    CSoundShape, CSoundSource, CSpeedupTile, CSwitchTile, CTeleTile, CTile, CTuneTile, CurveType,
-    LayerFlag, MapImage, MapInfo, MapItemTypes, MapLayer, MapLayerQuad, MapLayerTile,
-    MapLayerTypes, MapSound, MapTileLayerDetail, ReadFromSliceWriteToVec, SoundShapeTy,
-    TilesLayerFlag,
+    read_i32_le, read_u32_le, CEnvPoint, CMapItemEnvelope, CMapItemEnvelopeVer, CMapItemGroup,
+    CMapItemImage, CMapItemInfo, CMapItemInfoSettings, CMapItemLayer, CMapItemLayerQuads,
+    CMapItemLayerSounds, CMapItemLayerSoundsVer, CMapItemLayerTilemap, CMapItemSound,
+    CMapItemVersion, CQuad, CSoundShape, CSoundSource, CSpeedupTile, CSwitchTile, CTeleTile, CTile,
+    CTuneTile, CurveType, LayerFlag, MapImage, MapInfo, MapItemTypes, MapLayer, MapLayerQuad,
+    MapLayerTile, MapLayerTypes, MapSound, MapTileLayerDetail, ReadFromSliceWriteToVec,
+    SoundShapeTy, TilesLayerFlag,
 };
 
 enum UuidOffset {
@@ -1516,7 +1516,7 @@ impl CDatafileWrapper {
                     old_env_assign.insert(index, map.animations.sound.len());
                     map.animations.sound.push(SoundAnimation {
                         name: env_name,
-                        synchronized: env.synchronized != 0 || env.version < 2,
+                        synchronized: env.synchronized != 0,
                         points: self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])[env
                             .start_point
                             as usize
@@ -1539,7 +1539,7 @@ impl CDatafileWrapper {
                     old_env_assign.insert(index, map.animations.pos.len());
                     map.animations.pos.push(PosAnimation {
                         name: env_name,
-                        synchronized: env.synchronized != 0 || env.version < 2,
+                        synchronized: env.synchronized != 0,
                         points: self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])[env
                             .start_point
                             as usize
@@ -1564,7 +1564,7 @@ impl CDatafileWrapper {
                     old_env_assign.insert(index, map.animations.color.len());
                     map.animations.color.push(ColorAnimation {
                         name: env_name,
-                        synchronized: env.synchronized != 0 || env.version < 2,
+                        synchronized: env.synchronized != 0,
                         points: self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])[env
                             .start_point
                             as usize
@@ -2309,7 +2309,7 @@ impl CDatafileWrapper {
                     ],
                 }));
                 let mut env = CMapItemEnvelope {
-                    version: 3,
+                    version: CMapItemEnvelopeVer::CurVersion as i32,
                     channels: 3,
                     start_point: start_index as i32,
                     num_points: (env_points.len() - start_index) as i32,
@@ -2328,7 +2328,7 @@ impl CDatafileWrapper {
                     values: [f2fx(p.value.x.to_num()), 0, 0, 0],
                 }));
                 let mut env = CMapItemEnvelope {
-                    version: 3,
+                    version: CMapItemEnvelopeVer::CurVersion as i32,
                     channels: 1,
                     start_point: start_index as i32,
                     num_points: (env_points.len() - start_index) as i32,
@@ -2352,7 +2352,7 @@ impl CDatafileWrapper {
                     ],
                 }));
                 let mut env = CMapItemEnvelope {
-                    version: 3,
+                    version: CMapItemEnvelopeVer::CurVersion as i32,
                     channels: 4,
                     start_point: start_index as i32,
                     num_points: (env_points.len() - start_index) as i32,
@@ -3217,14 +3217,18 @@ impl CDatafileWrapper {
                         let src = src.as_bytes();
                         author[0..src.len().min(32)].copy_from_slice(&src[0..src.len().min(32)]);
                         *author.last_mut().unwrap() = 0;
-                        let data_offset = data_compressed_data.len() as i32;
-                        let uncompressed_size = author.len();
-                        let compressed_data = Self::compress_data(&author);
-                        data_compressed_data.extend(compressed_data);
-                        let data_index = res.data_file.info.data_offsets.len();
-                        res.data_file.info.data_offsets.push(data_offset);
-                        res.data_file.info.data_sizes.push(uncompressed_size as i32);
-                        data_index as i32
+                        if author[0] != 0 {
+                            let data_offset = data_compressed_data.len() as i32;
+                            let uncompressed_size = author.len();
+                            let compressed_data = Self::compress_data(&author);
+                            data_compressed_data.extend(compressed_data);
+                            let data_index = res.data_file.info.data_offsets.len();
+                            res.data_file.info.data_offsets.push(data_offset);
+                            res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                            data_index as i32
+                        } else {
+                            -1
+                        }
                     },
                     map_version: {
                         let mut map_version: [u8; 16] = Default::default();
@@ -3232,28 +3236,36 @@ impl CDatafileWrapper {
                         map_version[0..src.len().min(16)]
                             .copy_from_slice(&src[0..src.len().min(16)]);
                         *map_version.last_mut().unwrap() = 0;
-                        let data_offset = data_compressed_data.len() as i32;
-                        let uncompressed_size = map_version.len();
-                        let compressed_data = Self::compress_data(&map_version);
-                        data_compressed_data.extend(compressed_data);
-                        let data_index = res.data_file.info.data_offsets.len();
-                        res.data_file.info.data_offsets.push(data_offset);
-                        res.data_file.info.data_sizes.push(uncompressed_size as i32);
-                        data_index as i32
+                        if map_version[0] != 0 {
+                            let data_offset = data_compressed_data.len() as i32;
+                            let uncompressed_size = map_version.len();
+                            let compressed_data = Self::compress_data(&map_version);
+                            data_compressed_data.extend(compressed_data);
+                            let data_index = res.data_file.info.data_offsets.len();
+                            res.data_file.info.data_offsets.push(data_offset);
+                            res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                            data_index as i32
+                        } else {
+                            -1
+                        }
                     },
                     credits: {
                         let mut credits: [u8; 128] = vec![0; 128].try_into().unwrap();
                         let src = map.meta.credits.as_bytes();
                         credits[0..src.len().min(128)].copy_from_slice(&src[0..src.len().min(128)]);
                         *credits.last_mut().unwrap() = 0;
-                        let data_offset = data_compressed_data.len() as i32;
-                        let uncompressed_size = credits.len();
-                        let compressed_data = Self::compress_data(&credits);
-                        data_compressed_data.extend(compressed_data);
-                        let data_index = res.data_file.info.data_offsets.len();
-                        res.data_file.info.data_offsets.push(data_offset);
-                        res.data_file.info.data_sizes.push(uncompressed_size as i32);
-                        data_index as i32
+                        if credits[0] != 0 {
+                            let data_offset = data_compressed_data.len() as i32;
+                            let uncompressed_size = credits.len();
+                            let compressed_data = Self::compress_data(&credits);
+                            data_compressed_data.extend(compressed_data);
+                            let data_index = res.data_file.info.data_offsets.len();
+                            res.data_file.info.data_offsets.push(data_offset);
+                            res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                            data_index as i32
+                        } else {
+                            -1
+                        }
                     },
                     license: {
                         let mut license: [u8; 32] = Default::default();
@@ -3261,14 +3273,18 @@ impl CDatafileWrapper {
                         let src = src.as_bytes();
                         license[0..src.len().min(32)].copy_from_slice(&src[0..src.len().min(32)]);
                         *license.last_mut().unwrap() = 0;
-                        let data_offset = data_compressed_data.len() as i32;
-                        let uncompressed_size = license.len();
-                        let compressed_data = Self::compress_data(&license);
-                        data_compressed_data.extend(compressed_data);
-                        let data_index = res.data_file.info.data_offsets.len();
-                        res.data_file.info.data_offsets.push(data_offset);
-                        res.data_file.info.data_sizes.push(uncompressed_size as i32);
-                        data_index as i32
+                        if license[0] != 0 {
+                            let data_offset = data_compressed_data.len() as i32;
+                            let uncompressed_size = license.len();
+                            let compressed_data = Self::compress_data(&license);
+                            data_compressed_data.extend(compressed_data);
+                            let data_index = res.data_file.info.data_offsets.len();
+                            res.data_file.info.data_offsets.push(data_offset);
+                            res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                            data_index as i32
+                        } else {
+                            -1
+                        }
                     },
                 },
                 settings: {

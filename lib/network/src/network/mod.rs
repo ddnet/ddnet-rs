@@ -23,6 +23,7 @@ pub mod utils;
 #[cfg(test)]
 pub mod tests {
     use std::{
+        borrow::Cow,
         num::NonZeroUsize,
         sync::{
             atomic::{AtomicBool, AtomicUsize},
@@ -339,7 +340,7 @@ pub mod tests {
             &sys,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByPubKeyHash {
-                    hash: &server_pub_key_hash,
+                    hash: Cow::Borrowed(&server_pub_key_hash),
                 },
                 NetworkClientCertMode::FromCertAndPrivateKey {
                     cert: client_cert,
@@ -823,7 +824,7 @@ pub mod tests {
             &sys,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByPubKeyHash {
-                    hash: &server_pub_key_hash,
+                    hash: Cow::Borrowed(&server_pub_key_hash),
                 },
                 NetworkClientCertMode::FromCertAndPrivateKey {
                     cert: client_cert,

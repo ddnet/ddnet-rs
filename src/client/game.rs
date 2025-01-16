@@ -3,6 +3,7 @@ pub mod data;
 pub mod types;
 
 use std::{
+    borrow::Cow,
     net::SocketAddr,
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
@@ -251,7 +252,9 @@ impl Game {
                             NetworkClientCertCheckMode::CheckByCert { cert: cert.into() }
                         }
                         ServerCertMode::Hash(hash) => {
-                            NetworkClientCertCheckMode::CheckByPubKeyHash { hash }
+                            NetworkClientCertCheckMode::CheckByPubKeyHash {
+                                hash: Cow::Borrowed(hash),
+                            }
                         }
                         ServerCertMode::Unknown => {
                             return Self::Err(anyhow!(

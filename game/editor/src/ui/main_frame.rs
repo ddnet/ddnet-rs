@@ -3,10 +3,17 @@ use ui_base::types::{UiRenderPipe, UiState};
 use super::user_data::{UserData, UserDataWithTab};
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
+    super::mapper_cursors::main_frame::render(
+        ui,
+        pipe.user_data.canvas_handle,
+        &mut pipe.user_data.editor_tabs,
+    );
+
     super::top_menu::menu::render(ui, pipe);
+    super::top_tabs::main_frame::render(ui, pipe);
 
     // groups & layers attr
-    if let Some(tab) = pipe.user_data.editor_tab.as_deref_mut() {
+    if let Some(tab) = pipe.user_data.editor_tabs.active_tab() {
         let mut user_data = UserDataWithTab {
             ui_events: pipe.user_data.ui_events,
             config: pipe.user_data.config,

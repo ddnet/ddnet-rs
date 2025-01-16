@@ -552,8 +552,8 @@ pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
     }
 
     while actions.len() > 1 {
-        let act1 = actions.pop();
         let act2 = actions.pop();
+        let act1 = actions.pop();
 
         if let (Some(act1), Some(act2)) = (act1, act2) {
             let (act1, act2) = merge_actions_group(act1, act2)?;
@@ -562,6 +562,8 @@ pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
                 actions.push(act2);
                 break;
             }
+        } else {
+            unreachable!();
         }
     }
 

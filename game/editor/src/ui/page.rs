@@ -28,6 +28,7 @@ impl EditorUi {
         style.visuals.panel_fill = Color32::from_rgba_unmultiplied(clr[0], clr[1], clr[2], 225);
         style.interaction.show_tooltips_only_when_still = false;
         style.interaction.tooltip_delay = 0.0;
+        style.visuals.clip_rect_margin = 6.0;
         ui.ctx().set_style(style);
         ui.reset_style();
     }

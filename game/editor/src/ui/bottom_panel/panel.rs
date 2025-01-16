@@ -3,7 +3,10 @@ use egui_extras::Size;
 use math::math::vector::vec2;
 use ui_base::types::{UiRenderPipe, UiState};
 
-use crate::{ui::user_data::UserDataWithTab, utils::ui_pos_to_world_pos};
+use crate::{
+    ui::user_data::{EditorUiEvent, UserDataWithTab},
+    utils::ui_pos_to_world_pos,
+};
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let editor_tab = &mut *pipe.user_data.editor_tab;
@@ -146,6 +149,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                     egui::TextFormat::default(),
                                                 );
                                                 ui.label(layout);
+
+                                                pipe.user_data
+                                                    .ui_events
+                                                    .push(EditorUiEvent::CursorWorldPos { pos });
                                             }
                                         });
                                     });

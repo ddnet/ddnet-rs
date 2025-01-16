@@ -6,6 +6,7 @@ use std::{
 
 use async_trait::async_trait;
 use base::hash::Hash;
+use math::math::vector::vec2;
 use network::network::{
     connection::NetworkConnectionId, event::NetworkEvent,
     event_generator::NetworkEventToGameEventGenerator,
@@ -22,30 +23,62 @@ use crate::actions::actions::EditorActionGroup;
 /// undo the last action.
 /// It's basically the logic of the editor ui which does not diretly affect
 /// the state of the map.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum EditorCommand {
     Undo,
     Redo,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditorEventOverwriteMap {
     pub map: Vec<u8>,
     pub resources: HashMap<Hash, Vec<u8>>,
 }
 
+/// The client props the server knows about.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct ClientProps {
+    pub mapper_name: String,
+    pub color: [u8; 3],
+
+    /// Cursor position in the world coordinates
+    pub cursor_world: vec2,
+
+    /// unique id on the server
+    pub server_id: u64,
+}
+
 /// editor events are a collection of either actions or commands
-#[derive(Debug, Serialize, Deserialize)]
-pub enum EditorEvent {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEventClientToServer {
     Action(EditorActionGroup),
-    Command(EditorCommand),
-    Error(String),
     Auth {
         password: String,
         // if not local user
         is_local_client: bool,
+        mapper_name: String,
+        color: [u8; 3],
     },
+    Command(EditorCommand),
+    Info(ClientProps),
+}
+
+/// editor events are a collection of either actions or commands
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEventServerToClient {
+    DoAction(EditorActionGroup),
+    UndoAction(EditorActionGroup),
+    Error(String),
     Map(EditorEventOverwriteMap),
+    Infos(Vec<ClientProps>),
+    Info { server_id: u64 },
+}
+
+/// editor events are a collection of either actions or commands
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEvent {
+    Client(EditorEventClientToServer),
+    Server(EditorEventServerToClient),
 }
 
 pub enum EditorNetEvent {

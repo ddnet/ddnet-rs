@@ -20,11 +20,10 @@ use ui_base::{
 use ui_generic::generic_ui_renderer;
 
 use crate::{
-    tab::EditorTab,
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     ui::{
         page::EditorUi,
-        user_data::{EditorMenuDialogMode, EditorUiEvent, UserData},
+        user_data::{EditorMenuDialogMode, EditorTabsRefMut, EditorUiEvent, UserData},
     },
     utils::UiCanvasSize,
 };
@@ -33,7 +32,7 @@ pub struct EditorUiRenderPipe<'a> {
     pub cur_time: Duration,
     pub config: &'a ConfigEngine,
     pub inp: egui::RawInput,
-    pub editor_tab: Option<&'a mut EditorTab>,
+    pub editor_tabs: EditorTabsRefMut<'a>,
     pub ui_events: &'a mut Vec<EditorUiEvent>,
     pub unused_rect: &'a mut Option<egui::Rect>,
     pub input_state: &'a mut Option<InputState>,
@@ -94,7 +93,7 @@ impl EditorUiRender {
                 pipe.cur_time,
                 &mut UserData {
                     config: pipe.config,
-                    editor_tab: pipe.editor_tab,
+                    editor_tabs: pipe.editor_tabs,
                     ui_events: pipe.ui_events,
 
                     canvas_handle: &self.canvas_handle,

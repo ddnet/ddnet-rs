@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
+use base::linked_hash_map_view::FxLinkedHashMap;
 use base_io::io::Io;
 use config::config::ConfigEngine;
 use ed25519_dalek::SigningKey;
@@ -13,6 +14,7 @@ use graphics::{
         canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
     },
 };
+use math::math::vector::vec2;
 
 use crate::{
     tab::EditorTab,
@@ -27,23 +29,35 @@ pub struct EditorUiEventHostMap {
     pub password: String,
     pub cert: x509_cert::Certificate,
     pub private_key: SigningKey,
+
+    pub mapper_name: String,
+    pub color: [u8; 3],
 }
 
 #[derive(Debug)]
 pub enum EditorUiEvent {
+    NewMap,
     OpenFile {
         name: PathBuf,
     },
     SaveFile {
         name: PathBuf,
     },
+    SaveCurMap,
     HostMap(Box<EditorUiEventHostMap>),
     Join {
         ip_port: String,
         cert_hash: String,
         password: String,
+        mapper_name: String,
+        color: [u8; 3],
     },
     Close,
+    Undo,
+    Redo,
+    CursorWorldPos {
+        pos: vec2,
+    },
 }
 
 pub struct EditorMenuHostNetworkOptions {
@@ -52,6 +66,8 @@ pub struct EditorMenuHostNetworkOptions {
     pub password: String,
     pub cert: x509_cert::Certificate,
     pub private_key: SigningKey,
+    pub mapper_name: String,
+    pub color: [u8; 3],
 }
 
 pub enum EditorMenuHostDialogMode {
@@ -74,6 +90,8 @@ pub enum EditorMenuDialogMode {
         ip_port: String,
         cert_hash: String,
         password: String,
+        mapper_name: String,
+        color: [u8; 3],
     },
 }
 
@@ -133,14 +151,27 @@ impl EditorMenuDialogMode {
             ip_port: Default::default(),
             cert_hash: Default::default(),
             password: Default::default(),
+            mapper_name: "nameless mapper".to_string(),
+            color: [255, 255, 255],
         }
+    }
+}
+
+pub struct EditorTabsRefMut<'a> {
+    pub tabs: &'a mut FxLinkedHashMap<String, EditorTab>,
+    pub active_tab: &'a mut String,
+}
+
+impl EditorTabsRefMut<'_> {
+    pub fn active_tab(&mut self) -> Option<&mut EditorTab> {
+        self.tabs.get_mut(self.active_tab)
     }
 }
 
 pub struct UserData<'a> {
     pub ui_events: &'a mut Vec<EditorUiEvent>,
     pub config: &'a ConfigEngine,
-    pub editor_tab: Option<&'a mut EditorTab>,
+    pub editor_tabs: EditorTabsRefMut<'a>,
     pub canvas_handle: &'a GraphicsCanvasHandle,
     pub stream_handle: &'a GraphicsStreamHandle,
     pub unused_rect: &'a mut Option<egui::Rect>,

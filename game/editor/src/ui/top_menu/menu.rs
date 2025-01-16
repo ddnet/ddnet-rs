@@ -27,6 +27,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
                 ui.horizontal(|ui| {
                     ui.menu_button("File", |ui| {
+                        if ui.button("New map").clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::NewMap);
+                        }
                         if ui.button("Open map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::open(pipe.user_data.io);
                         }
@@ -44,13 +47,36 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         }
                     });
 
-                    ui.menu_button("Tools", |ui| {
-                        if ui.button("Automapper-Creator").clicked() {
-                            pipe.user_data.auto_mapper.active = true;
+                    ui.menu_button("Edit", |ui| {
+                        if ui.add(Button::new("Undo")).clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::Undo);
+                        }
+                        if ui.add(Button::new("Redo")).clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                         }
                     });
 
-                    if let Some(tab) = &mut pipe.user_data.editor_tab {
+                    ui.menu_button("Tools", |ui| {
+                        if ui
+                            .add(
+                                Button::new("Automapper-Creator")
+                                    .selected(pipe.user_data.auto_mapper.active),
+                            )
+                            .clicked()
+                        {
+                            pipe.user_data.auto_mapper.active = !pipe.user_data.auto_mapper.active;
+                        }
+                        if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
+                            if ui
+                                .add(Button::new("Auto-Saver").selected(tab.auto_saver.active))
+                                .clicked()
+                            {
+                                tab.auto_saver.active = !tab.auto_saver.active;
+                            }
+                        }
+                    });
+
+                    if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
                         ui.menu_button("\u{f013}", |ui| {
                             let btn = Button::new("Disable animations panel + properties")
                                 .selected(tab.map.user.options.no_animations_with_properties);
@@ -117,6 +143,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                         password: Default::default(),
                                         cert,
                                         private_key,
+                                        mapper_name: "hoster".to_string(),
+                                        color: [255, 255, 255],
                                     },
                                 ));
                             }
@@ -132,6 +160,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         port,
                         password,
                         cert,
+                        mapper_name,
+                        color,
                         ..
                     } = mode.as_mut();
                     let window = egui::Window::new("Host map network options")
@@ -155,12 +185,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
                         ui.label("Password:");
                         ui.text_edit_singleline(password);
+                        ui.label("Name:");
+                        ui.text_edit_singleline(mapper_name);
+                        ui.label("Color:");
+                        let color_open = ui.color_edit_button_srgb(color).enabled();
                         if ui.button("Host").clicked() {
                             host = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
+                        color_open
                     });
 
                     if host {
@@ -176,6 +211,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             map_path,
                             cert,
                             private_key,
+                            mapper_name,
+                            color,
                         } = *mode;
                         pipe.user_data
                             .ui_events
@@ -185,6 +222,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 password,
                                 cert,
                                 private_key,
+                                mapper_name,
+                                color,
                             })));
                     } else if cancel {
                         *menu_dialog_mode = EditorMenuDialogMode::None;
@@ -205,7 +244,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 None
                             }
                         });
-                        if intersected.is_some_and(|(outside, clicked)| outside && clicked) {
+                        if intersected.is_some_and(|(outside, clicked)| outside && clicked)
+                            && !window_res.inner.unwrap_or_default()
+                        {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
                         intersected.is_some_and(|(outside, _)| !outside)
@@ -216,6 +257,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     ip_port,
                     cert_hash,
                     password,
+                    mapper_name,
+                    color,
                 } = menu_dialog_mode
                 {
                     let window = egui::Window::new("Join map network options")
@@ -231,12 +274,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.text_edit_singleline(cert_hash);
                         ui.label("Password:");
                         ui.text_edit_singleline(password);
+                        ui.label("Name:");
+                        ui.text_edit_singleline(mapper_name);
+                        ui.label("Color:");
+                        let is_open = ui.color_edit_button_srgb(color).enabled();
                         if ui.button("Join").clicked() {
                             join = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
+                        is_open
                     });
 
                     if join {
@@ -244,6 +292,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             ip_port,
                             cert_hash,
                             password,
+                            mapper_name,
+                            color,
                         } = std::mem::replace(menu_dialog_mode, EditorMenuDialogMode::None)
                         else {
                             return;
@@ -252,6 +302,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             ip_port,
                             cert_hash,
                             password,
+                            mapper_name,
+                            color,
                         });
                     } else if cancel {
                         *menu_dialog_mode = EditorMenuDialogMode::None;
@@ -272,7 +324,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 None
                             }
                         });
-                        if intersected.is_some_and(|(outside, clicked)| outside && clicked) {
+                        if intersected.is_some_and(|(outside, clicked)| outside && clicked)
+                            && !window_res.inner.unwrap_or_default()
+                        {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
                         intersected.is_some_and(|(outside, _)| !outside)
@@ -283,6 +337,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
                 if pipe.user_data.auto_mapper.active {
                     crate::ui::auto_mapper::auto_mapper::render(pipe, ui);
+                }
+
+                if let Some(tab) = pipe.user_data.editor_tabs.active_tab() {
+                    if tab.auto_saver.active {
+                        crate::ui::auto_saver::render(
+                            pipe.cur_time,
+                            tab,
+                            pipe.user_data.pointer_is_used,
+                            ui,
+                        );
+                    }
+                }
+
+                if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S)) {
+                    pipe.user_data.ui_events.push(EditorUiEvent::SaveCurMap);
                 }
             });
         });
