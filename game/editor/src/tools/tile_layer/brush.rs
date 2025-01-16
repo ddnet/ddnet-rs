@@ -1569,7 +1569,7 @@ impl TileBrush {
             render_filled_rect_from_state(
                 stream_handle,
                 render_rect,
-                ubvec4::new(0, 0, 0, 255),
+                ubvec4::new(255, 255, 255, 255),
                 state,
                 false,
             );
