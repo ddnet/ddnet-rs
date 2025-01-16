@@ -14,6 +14,7 @@ use game_interface::types::{
     player_info::PlayerUniqueId,
     render::character::CharacterInfo,
 };
+use game_network::messages::{ClientToServerMessage, MsgSvSpatialChatOfEntitity};
 use math::math::vector::vec2;
 use microphone::{
     stream::MicrophoneStream,
@@ -24,7 +25,6 @@ use microphone::{
 };
 use network::network::quinn_network::QuinnNetwork;
 use pool::datatypes::PoolFxLinkedHashMap;
-use game_network::messages::{ClientToServerMessage, MsgSvSpatialChatOfEntitity};
 use sound::{
     scene_object::SceneObject, sound_listener::SoundListener, stream_object::StreamObject,
     types::StreamPlayProps,

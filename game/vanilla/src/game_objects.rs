@@ -1,9 +1,9 @@
 pub mod game_objects {
+    use game_base::mapdef_06::EEntityTiles;
     use game_interface::types::{emoticons::EnumCount, weapons::WeaponType};
     use hiarc::Hiarc;
     use map::map::groups::layers::tiles::TileBase;
     use math::math::vector::ivec2;
-    use game_base::mapdef_06::EEntityTiles;
 
     #[derive(Debug, Hiarc, Default)]
     pub struct GameObjectsPickupDefinitions<V> {

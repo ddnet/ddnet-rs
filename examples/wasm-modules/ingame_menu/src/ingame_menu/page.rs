@@ -33,6 +33,9 @@ use client_ui::{
     },
     thumbnail_container::{ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH},
 };
+use game_base::server_browser::{
+    ServerBrowserData, ServerBrowserInfo, ServerBrowserInfoMap, ServerBrowserServer,
+};
 use game_config::config::Config;
 use game_interface::{
     types::{character_info::NetworkCharacterInfo, id_gen::IdGenerator},
@@ -49,9 +52,6 @@ use graphics::{
     },
 };
 use math::math::Rng;
-use game_base::server_browser::{
-    ServerBrowserData, ServerBrowserInfo, ServerBrowserInfoMap, ServerBrowserServer,
-};
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
 

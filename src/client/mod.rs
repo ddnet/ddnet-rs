@@ -9,12 +9,12 @@ pub mod ui;
 
 #[cfg(test)]
 mod test {
+    use game_base::network::messages::{MsgClInputPlayerChain, PlayerInputChainable};
     use network::network::{
         connections::NetworkConnectionIdCounter, packet_compressor::ZstdNetworkPacketCompressor,
         plugins::NetworkPluginPacket,
     };
     use pool::mt_datatypes::PoolVec;
-    use game_base::network::messages::{MsgClInputPlayerChain, PlayerInputChainable};
 
     #[tokio::test]
     async fn input() {

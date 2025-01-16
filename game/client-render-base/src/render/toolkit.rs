@@ -6,6 +6,7 @@ use client_containers::{
     ninja::Ninja,
     weapons::Weapons,
 };
+use game_base::game_types::intra_tick_time_to_ratio;
 use game_interface::types::{
     emoticons::{EnumCount, IntoEnumIterator},
     game::NonZeroGameTickType,
@@ -33,7 +34,6 @@ use math::math::{
     vector::{dvec2, ubvec4, vec2},
     Rng, RngSlice, PI, PI_F64,
 };
-use game_base::game_types::intra_tick_time_to_ratio;
 use vanilla::weapons::definitions::weapon_def::{
     get_ninja_sprite_scale, get_scale, get_weapon_sprite_scale, get_weapon_visual_scale,
     NINJA_PICKUP_VISUAL_SIZE, NINJA_WEAPON_VISUAL_SIZE,

@@ -2,6 +2,7 @@ pub mod collision {
     use anyhow::anyhow;
     use bitflags::bitflags;
     use config::{traits::ConfigInterface, ConfigInterface};
+    use game_base::mapdef_06::DdraceTileNum;
     use hiarc::Hiarc;
     use map::map::groups::{
         layers::{
@@ -15,7 +16,6 @@ pub mod collision {
     };
     use num::FromPrimitive;
     use serde::{Deserialize, Serialize};
-    use game_base::mapdef_06::DdraceTileNum;
 
     use math::math::{
         distance, dot, mix, round_to_int,

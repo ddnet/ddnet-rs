@@ -2,8 +2,8 @@ use client_types::actionfeed::ActionKill;
 use egui::{Color32, Layout, Rect};
 use game_interface::{events::GameWorldActionKillWeapon, types::render::character::TeeEye};
 use math::math::vector::vec2;
-use vanilla::weapons::definitions::weapon_def::get_weapon_visual_scale;
 use ui_base::types::{UiRenderPipe, UiState};
+use vanilla::weapons::definitions::weapon_def::get_weapon_visual_scale;
 
 use crate::{
     actionfeed::shared::entry_frame,

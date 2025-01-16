@@ -1,6 +1,6 @@
 use egui_extras::TableRow;
-use game_config::config::Config;
 use game_base::server_browser::{SortDir, TableSort};
+use game_config::config::Config;
 
 pub fn sortable_header(
     header: &mut TableRow<'_, '_>,

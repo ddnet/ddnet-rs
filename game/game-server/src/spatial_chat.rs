@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use game_interface::types::{id_types::PlayerId, player_info::PlayerUniqueId};
-use network::network::{connection::NetworkConnectionId, quinn_network::QuinnNetworks};
 use game_network::messages::{MsgSvSpatialChatOfEntitity, ServerToClientMessage};
+use network::network::{connection::NetworkConnectionId, quinn_network::QuinnNetworks};
 
 const MAX_ID_REORDER: u64 = 2;
 

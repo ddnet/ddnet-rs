@@ -1,9 +1,9 @@
 use std::borrow::Borrow;
 
 use egui_extras::TableRow;
+use game_base::browser_favorite_player::FavoritePlayer;
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;
-use game_base::browser_favorite_player::FavoritePlayer;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
