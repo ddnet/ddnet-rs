@@ -3260,6 +3260,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "editor-server"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "base-fs",
+ "base-http",
+ "base-io",
+ "clap 4.5.23",
+ "config",
+ "editor",
+ "env_logger",
+ "graphics",
+ "graphics-backend",
+ "graphics-base-traits",
+ "graphics-types",
+ "log",
+ "rayon",
+ "sound",
+ "sound-backend",
+]
+
+[[package]]
 name = "editor-wasm"
 version = "0.1.0"
 dependencies = [

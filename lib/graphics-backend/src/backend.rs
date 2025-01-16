@@ -60,8 +60,9 @@ impl GraphicsBackendIoLoading {
     pub fn new(config_gfx: &ConfigGfx, io: &IoFileSys) -> Self {
         Self {
             backend_io: match config_gfx.backend.to_ascii_lowercase().as_str() {
-                "vulkan" => GraphicsBackendLoadingIoType::Vulkan(VulkanBackendLoadingIo::new(io)),
-                _ => GraphicsBackendLoadingIoType::Null,
+                "null" => GraphicsBackendLoadingIoType::Null,
+                // "vulkan"
+                _ => GraphicsBackendLoadingIoType::Vulkan(VulkanBackendLoadingIo::new(io)),
             },
         }
     }

@@ -106,7 +106,7 @@ members = [
     "lib/steam",
     "game/game-state-wasm", "lib/native-display", "src/assets-server", "game/assets-base", "src/community-server",
     "src/community-register-server",
-    "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm", "game/client-notifications",
+    "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm", "game/client-notifications", "src/editor-server",
 ]
 
 [package]

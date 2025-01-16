@@ -76,9 +76,12 @@ use map::{
     types::NonZeroU16MinusOne,
 };
 use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
-use network::network::types::{
-    NetworkClientCertCheckMode, NetworkServerCertAndKey, NetworkServerCertMode,
-    NetworkServerCertModeResult,
+use network::network::{
+    types::{
+        NetworkClientCertCheckMode, NetworkServerCertAndKey, NetworkServerCertMode,
+        NetworkServerCertModeResult,
+    },
+    utils::create_certifified_keys,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -2404,6 +2407,33 @@ impl Editor {
             }
         }
         (unused_rect, input_state, ui_canvas, egui_output)
+    }
+
+    pub fn host_map(&mut self, path: &Path, port: u16, password: String) -> anyhow::Result<Hash> {
+        let (cert, key) = create_certifified_keys();
+        let hash = cert
+            .tbs_certificate
+            .subject_public_key_info
+            .fingerprint_bytes()?;
+        self.load_map(
+            path,
+            MapLoadWithServerOptions {
+                cert: Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
+                    NetworkServerCertAndKey {
+                        cert,
+                        private_key: key,
+                    },
+                ))),
+                port: Some(port),
+                password: Some(password),
+                mapper_name: Some("server".to_string()),
+                color: None,
+            },
+        );
+        self.tabs
+            .values_mut()
+            .for_each(|tab| tab.client.update_info(vec2::new(-10000.0, -10000.0)));
+        Ok(hash)
     }
 }
 

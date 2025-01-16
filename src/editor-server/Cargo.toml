@@ -1,0 +1,24 @@
+[package]
+name = "editor-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+config = { path = "../../lib/config" }
+base = { path = "../../lib/base" }
+base-io = { path = "../../lib/base-io" }
+base-fs = { path = "../../lib/base-fs" }
+base-http = { path = "../../lib/base-http" }
+graphics = { path = "../../lib/graphics" }
+graphics-backend = { path = "../../lib/graphics-backend" }
+graphics-types = { path = "../../lib/graphics-types" }
+graphics-base-traits = { path = "../../lib/graphics-base-traits" }
+sound = { path = "../../lib/sound" }
+sound-backend = { path = "../../lib/sound-backend" }
+
+editor = { path = "../../game/editor" }
+
+clap = { version = "4.5.23", features = ["derive"] }
+rayon = "1.10.0"
+env_logger = "0.11.6"
+log = "0.4.22"
