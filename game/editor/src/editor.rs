@@ -1517,6 +1517,7 @@ impl Editor {
                     &self.backend_handle,
                     &self.texture_handle,
                     &mut tab.map,
+                    &mut self.notifications_overlay,
                 );
             }
 

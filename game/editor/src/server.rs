@@ -1,9 +1,11 @@
 use std::{
     collections::HashMap,
     sync::{atomic::AtomicBool, Arc},
+    time::Duration,
 };
 
 use base::system::System;
+use client_notifications::overlay::ClientNotifications;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -21,7 +23,7 @@ use network::network::{
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::{do_action, undo_action},
+    action_logic::{do_action, merge_actions, undo_action},
     actions::actions::EditorActionGroup,
     event::{
         ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
@@ -95,6 +97,7 @@ impl EditorServer {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        notifications: &mut ClientNotifications,
     ) {
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
             let events = self.event_generator.take();
@@ -205,11 +208,15 @@ impl EditorServer {
                                             .last_mut()
                                             .is_some_and(|group| group.identifier == act.identifier)
                                         {
-                                            self.action_groups
-                                                .last_mut()
-                                                .unwrap()
-                                                .actions
-                                                .append(&mut act.actions.clone());
+                                            let group = self.action_groups.last_mut().unwrap();
+                                            group.actions.append(&mut act.actions.clone());
+
+                                            if let Err(err) = merge_actions(&mut group.actions) {
+                                                notifications.add_err(
+                                                    err.to_string(),
+                                                    Duration::from_secs(10),
+                                                );
+                                            }
                                         } else {
                                             let new_index = self.action_groups.len();
                                             self.action_groups.push(act.clone());
@@ -306,6 +313,8 @@ impl EditorServer {
                                                             {err}",
                                                             if is_undo { "undo" } else { "redo" }
                                                         );
+                                                        notifications
+                                                            .add_err(&err, Duration::from_secs(10));
                                                         self.network.send_to(
                                                             &id,
                                                             EditorEvent::Server(
