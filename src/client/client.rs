@@ -2284,10 +2284,10 @@ impl ClientNativeImpl {
 
                     match name.as_str() {
                         "gl.vsync" => {
+                            // update vsync val in backend
                             self.on_vsync_change();
                         }
                         "gl.clear_color" => {
-                            // update vsync val in backend
                             self.graphics.backend_handle.update_clear_color(ColorRgba {
                                 r: self.config.engine.gl.clear_color.r as f32 / 255.0,
                                 g: self.config.engine.gl.clear_color.g as f32 / 255.0,

@@ -190,7 +190,7 @@ pub struct ConfigBackend {
     #[default = false]
     pub vsync: bool,
     /// Default clear color
-    #[default = ConfRgb::black()]
+    #[default = ConfRgb::grey()]
     pub clear_color: ConfRgb,
     #[default = "auto"]
     pub gpu: String,
