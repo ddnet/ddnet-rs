@@ -10,6 +10,7 @@ use graphics::{
         texture::texture::GraphicsTextureHandle,
     },
 };
+use math::math::vector::vec2;
 use network::network::types::NetworkClientCertCheckMode;
 use sound::sound_mt::SoundMultiThreaded;
 
@@ -36,8 +37,10 @@ pub struct EditorClient {
     local_client: bool,
 
     pub(crate) clients: Vec<ClientProps>,
+    pub(crate) server_id: u64,
 
     mapper_name: String,
+    color: [u8; 3],
 }
 
 impl EditorClient {
@@ -49,6 +52,7 @@ impl EditorClient {
         server_password: String,
         local_client: bool,
         mapper_name: Option<String>,
+        color: Option<[u8; 3]>,
     ) -> Self {
         let has_events: Arc<AtomicBool> = Default::default();
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
@@ -66,8 +70,10 @@ impl EditorClient {
             local_client,
 
             clients: Default::default(),
+            server_id: Default::default(),
 
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
+            color: color.unwrap_or([255, 255, 255]),
         };
 
         res.network
@@ -75,6 +81,7 @@ impl EditorClient {
                 password: server_password,
                 is_local_client: local_client,
                 mapper_name: res.mapper_name.clone(),
+                color: res.color,
             }));
 
         res
@@ -145,6 +152,9 @@ impl EditorClient {
                         EditorEventServerToClient::Infos(infos) => {
                             self.clients = infos;
                         }
+                        EditorEventServerToClient::Info { server_id } => {
+                            self.server_id = server_id;
+                        }
                     },
 
                     EditorNetEvent::Editor(EditorEvent::Client(_)) => {
@@ -186,6 +196,18 @@ impl EditorClient {
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Command(
                 EditorCommand::Redo,
+            )));
+    }
+
+    pub fn update_info(&self, cursor_world_pos: vec2) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Info(
+                ClientProps {
+                    mapper_name: self.mapper_name.clone(),
+                    color: self.color,
+                    cursor_world: cursor_world_pos,
+                    server_id: self.server_id,
+                },
             )));
     }
 }

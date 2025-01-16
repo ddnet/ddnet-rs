@@ -14,6 +14,7 @@ use graphics::{
         canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
     },
 };
+use math::math::vector::vec2;
 
 use crate::{
     tab::EditorTab,
@@ -30,6 +31,7 @@ pub struct EditorUiEventHostMap {
     pub private_key: SigningKey,
 
     pub mapper_name: String,
+    pub color: [u8; 3],
 }
 
 #[derive(Debug)]
@@ -48,10 +50,14 @@ pub enum EditorUiEvent {
         cert_hash: String,
         password: String,
         mapper_name: String,
+        color: [u8; 3],
     },
     Close,
     Undo,
     Redo,
+    CursorWorldPos {
+        pos: vec2,
+    },
 }
 
 pub struct EditorMenuHostNetworkOptions {
@@ -61,6 +67,7 @@ pub struct EditorMenuHostNetworkOptions {
     pub cert: x509_cert::Certificate,
     pub private_key: SigningKey,
     pub mapper_name: String,
+    pub color: [u8; 3],
 }
 
 pub enum EditorMenuHostDialogMode {
@@ -84,6 +91,7 @@ pub enum EditorMenuDialogMode {
         cert_hash: String,
         password: String,
         mapper_name: String,
+        color: [u8; 3],
     },
 }
 
@@ -144,6 +152,7 @@ impl EditorMenuDialogMode {
             cert_hash: Default::default(),
             password: Default::default(),
             mapper_name: "nameless mapper".to_string(),
+            color: [255, 255, 255],
         }
     }
 }

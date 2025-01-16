@@ -60,6 +60,8 @@ pub struct EditorServer {
     pub password: String,
 
     clients: HashMap<NetworkConnectionId, Client>,
+
+    client_ids: u64,
 }
 
 impl EditorServer {
@@ -85,6 +87,8 @@ impl EditorServer {
             port,
             password,
             clients: Default::default(),
+
+            client_ids: 0,
         }
     }
 
@@ -118,6 +122,7 @@ impl EditorServer {
                                 password,
                                 is_local_client,
                                 mapper_name,
+                                color,
                             } = &ev
                             {
                                 if self.password.eq(password) {
@@ -125,6 +130,14 @@ impl EditorServer {
                                     client.is_local_client = *is_local_client;
                                     client.props = ClientProps {
                                         mapper_name: mapper_name.clone(),
+                                        color: *color,
+
+                                        cursor_world: Default::default(),
+                                        server_id: {
+                                            let id = self.client_ids;
+                                            self.client_ids += 1;
+                                            id
+                                        },
                                     };
 
                                     if !*is_local_client {
@@ -203,6 +216,12 @@ impl EditorServer {
                                         );
                                     }
 
+                                    self.network.send_to(
+                                        &id,
+                                        EditorEvent::Server(EditorEventServerToClient::Info {
+                                            server_id: client.props.server_id,
+                                        }),
+                                    );
                                     self.broadcast_client_infos();
                                 }
                             } else if client.is_authed {
@@ -362,8 +381,12 @@ impl EditorServer {
                                     EditorEventClientToServer::Auth { .. } => {
                                         // ignore here, handled earlier
                                     }
-                                    EditorEventClientToServer::Info(info) => {
+                                    EditorEventClientToServer::Info(mut info) => {
+                                        // make sure the id stays unique
+                                        info.server_id = client.props.server_id;
                                         client.props = info;
+
+                                        self.broadcast_client_infos();
                                     }
                                 }
                             }

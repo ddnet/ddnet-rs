@@ -144,6 +144,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                         cert,
                                         private_key,
                                         mapper_name: "hoster".to_string(),
+                                        color: [255, 255, 255],
                                     },
                                 ));
                             }
@@ -159,6 +160,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         port,
                         password,
                         cert,
+                        mapper_name,
+                        color,
                         ..
                     } = mode.as_mut();
                     let window = egui::Window::new("Host map network options")
@@ -182,12 +185,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
                         ui.label("Password:");
                         ui.text_edit_singleline(password);
+                        ui.label("Name:");
+                        ui.text_edit_singleline(mapper_name);
+                        ui.label("Color:");
+                        let color_open = ui.color_edit_button_srgb(color).enabled();
                         if ui.button("Host").clicked() {
                             host = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
+                        color_open
                     });
 
                     if host {
@@ -204,6 +212,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             cert,
                             private_key,
                             mapper_name,
+                            color,
                         } = *mode;
                         pipe.user_data
                             .ui_events
@@ -214,6 +223,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 cert,
                                 private_key,
                                 mapper_name,
+                                color,
                             })));
                     } else if cancel {
                         *menu_dialog_mode = EditorMenuDialogMode::None;
@@ -234,7 +244,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 None
                             }
                         });
-                        if intersected.is_some_and(|(outside, clicked)| outside && clicked) {
+                        if intersected.is_some_and(|(outside, clicked)| outside && clicked)
+                            && !window_res.inner.unwrap_or_default()
+                        {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
                         intersected.is_some_and(|(outside, _)| !outside)
@@ -246,6 +258,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     cert_hash,
                     password,
                     mapper_name,
+                    color,
                 } = menu_dialog_mode
                 {
                     let window = egui::Window::new("Join map network options")
@@ -263,12 +276,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.text_edit_singleline(password);
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
+                        ui.label("Color:");
+                        let is_open = ui.color_edit_button_srgb(color).enabled();
                         if ui.button("Join").clicked() {
                             join = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
+                        is_open
                     });
 
                     if join {
@@ -277,6 +293,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             cert_hash,
                             password,
                             mapper_name,
+                            color,
                         } = std::mem::replace(menu_dialog_mode, EditorMenuDialogMode::None)
                         else {
                             return;
@@ -286,6 +303,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             cert_hash,
                             password,
                             mapper_name,
+                            color,
                         });
                     } else if cancel {
                         *menu_dialog_mode = EditorMenuDialogMode::None;
@@ -306,7 +324,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 None
                             }
                         });
-                        if intersected.is_some_and(|(outside, clicked)| outside && clicked) {
+                        if intersected.is_some_and(|(outside, clicked)| outside && clicked)
+                            && !window_res.inner.unwrap_or_default()
+                        {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
                         intersected.is_some_and(|(outside, _)| !outside)

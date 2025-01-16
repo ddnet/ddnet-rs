@@ -5,6 +5,7 @@ pub mod bottom_panel;
 pub mod group_and_layer;
 pub mod left_panel;
 pub mod main_frame;
+pub mod mapper_cursors;
 pub mod page;
 pub mod top_menu;
 pub mod top_tabs;

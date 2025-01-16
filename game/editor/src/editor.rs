@@ -139,6 +139,7 @@ struct MapLoadWithServerOptions {
     port: Option<u16>,
     password: Option<String>,
     mapper_name: Option<String>,
+    color: Option<[u8; 3]>,
 }
 
 #[derive(Debug)]
@@ -149,6 +150,7 @@ enum MapLoadOptions {
         cert_hash: Hash,
         password: String,
         mapper_name: String,
+        color: [u8; 3],
     },
 }
 
@@ -159,6 +161,7 @@ impl Default for MapLoadOptions {
             port: None,
             password: None,
             mapper_name: None,
+            color: None,
         })
     }
 }
@@ -368,51 +371,56 @@ impl Editor {
     }
 
     fn new_map(&mut self, name: &str, options: MapLoadOptions) {
-        let (server_addr, server_cert, password, local_client, server, mapper_name) = match options
-        {
-            MapLoadOptions::WithServer(MapLoadWithServerOptions {
-                cert,
-                port,
-                password,
-                mapper_name,
-            }) => {
-                let server = EditorServer::new(&self.sys, cert, port, password.unwrap_or_default());
-                (
-                    format!("127.0.0.1:{}", server.port,),
-                    match &server.cert {
-                        NetworkServerCertModeResult::Cert { cert } => {
-                            NetworkClientCertCheckMode::CheckByCert {
-                                cert: cert.to_der().unwrap().into(),
-                            }
-                        }
-                        NetworkServerCertModeResult::PubKeyHash { hash } => {
-                            NetworkClientCertCheckMode::CheckByPubKeyHash {
-                                hash: Cow::Owned(*hash),
-                            }
-                        }
-                    },
-                    server.password.clone(),
-                    true,
-                    Some(server),
+        let (server_addr, server_cert, password, local_client, server, mapper_name, color) =
+            match options {
+                MapLoadOptions::WithServer(MapLoadWithServerOptions {
+                    cert,
+                    port,
+                    password,
                     mapper_name,
-                )
-            }
-            MapLoadOptions::WithoutServer {
-                server_addr,
-                cert_hash,
-                password,
-                mapper_name,
-            } => (
-                server_addr,
-                NetworkClientCertCheckMode::CheckByPubKeyHash {
-                    hash: Cow::Owned(cert_hash),
-                },
-                password,
-                false,
-                None,
-                Some(mapper_name),
-            ),
-        };
+                    color,
+                }) => {
+                    let server =
+                        EditorServer::new(&self.sys, cert, port, password.unwrap_or_default());
+                    (
+                        format!("127.0.0.1:{}", server.port,),
+                        match &server.cert {
+                            NetworkServerCertModeResult::Cert { cert } => {
+                                NetworkClientCertCheckMode::CheckByCert {
+                                    cert: cert.to_der().unwrap().into(),
+                                }
+                            }
+                            NetworkServerCertModeResult::PubKeyHash { hash } => {
+                                NetworkClientCertCheckMode::CheckByPubKeyHash {
+                                    hash: Cow::Owned(*hash),
+                                }
+                            }
+                        },
+                        server.password.clone(),
+                        true,
+                        Some(server),
+                        mapper_name,
+                        color,
+                    )
+                }
+                MapLoadOptions::WithoutServer {
+                    server_addr,
+                    cert_hash,
+                    password,
+                    mapper_name,
+                    color,
+                } => (
+                    server_addr,
+                    NetworkClientCertCheckMode::CheckByPubKeyHash {
+                        hash: Cow::Owned(cert_hash),
+                    },
+                    password,
+                    false,
+                    None,
+                    Some(mapper_name),
+                    Some(color),
+                ),
+            };
         let client = EditorClient::new(
             &self.sys,
             &server_addr,
@@ -421,6 +429,7 @@ impl Editor {
             password,
             local_client,
             mapper_name,
+            color,
         );
 
         let physics_group_attr = MapGroupPhysicsAttr {
@@ -524,6 +533,7 @@ impl Editor {
                     path: None,
                     last_time: Some(self.sys.time_get()),
                 },
+                last_info_update: None,
             },
         );
         self.active_tab = name.into();
@@ -1065,6 +1075,7 @@ impl Editor {
             options.password.unwrap_or_default(),
             true,
             options.mapper_name,
+            options.color,
         );
 
         self.tabs.insert(
@@ -1084,6 +1095,7 @@ impl Editor {
                     path: Some(path.into()),
                     last_time: Some(self.sys.time_get()),
                 },
+                last_info_update: None,
             },
         );
         self.active_tab = name;
@@ -1215,6 +1227,7 @@ impl Editor {
             options.password.unwrap_or_default(),
             true,
             options.mapper_name,
+            options.color,
         );
 
         self.tabs.insert(
@@ -1234,6 +1247,7 @@ impl Editor {
                     path: Some(load_path),
                     last_time: Some(self.sys.time_get()),
                 },
+                last_info_update: None,
             },
         );
         self.active_tab = name;
@@ -2324,6 +2338,7 @@ impl Editor {
                         cert,
                         private_key,
                         mapper_name,
+                        color,
                     } = *host_map;
                     self.load_map(
                         map_path.as_ref(),
@@ -2334,6 +2349,7 @@ impl Editor {
                             port: Some(port),
                             password: Some(password),
                             mapper_name: Some(mapper_name),
+                            color: Some(color),
                         },
                     );
                 }
@@ -2342,6 +2358,7 @@ impl Editor {
                     cert_hash,
                     password,
                     mapper_name,
+                    color,
                 } => self.new_map(
                     &ip_port.clone(),
                     MapLoadOptions::WithoutServer {
@@ -2354,6 +2371,7 @@ impl Editor {
                             .unwrap(),
                         password,
                         mapper_name,
+                        color,
                     },
                 ),
                 EditorUiEvent::Close => self.is_closed = true,
@@ -2365,6 +2383,17 @@ impl Editor {
                 EditorUiEvent::Redo => {
                     if let Some(tab) = self.tabs.get(&self.active_tab) {
                         tab.client.redo();
+                    }
+                }
+                EditorUiEvent::CursorWorldPos { pos } => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        let now = self.sys.time_get();
+                        // 10 times per sec
+                        if tab.last_info_update.is_none_or(|last_info_update| {
+                            now.saturating_sub(last_info_update) > Duration::from_millis(100)
+                        }) {
+                            tab.client.update_info(pos);
+                        }
                     }
                 }
             }

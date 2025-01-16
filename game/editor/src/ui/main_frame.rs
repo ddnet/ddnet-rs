@@ -3,6 +3,12 @@ use ui_base::types::{UiRenderPipe, UiState};
 use super::user_data::{UserData, UserDataWithTab};
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
+    super::mapper_cursors::main_frame::render(
+        ui,
+        pipe.user_data.canvas_handle,
+        &mut pipe.user_data.editor_tabs,
+    );
+
     super::top_menu::menu::render(ui, pipe);
     super::top_tabs::main_frame::render(ui, pipe);
 

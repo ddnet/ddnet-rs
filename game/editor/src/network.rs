@@ -124,7 +124,7 @@ impl EditorNetwork {
         }
     }
 
-    pub fn send_to(&mut self, id: &NetworkConnectionId, ev: EditorEvent) {
+    pub fn send_to(&self, id: &NetworkConnectionId, ev: EditorEvent) {
         if self.is_server {
             self.network
                 .send_in_order_to(&ev, id, NetworkInOrderChannel::Global);

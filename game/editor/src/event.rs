@@ -6,6 +6,7 @@ use std::{
 
 use async_trait::async_trait;
 use base::hash::Hash;
+use math::math::vector::vec2;
 use network::network::{
     connection::NetworkConnectionId, event::NetworkEvent,
     event_generator::NetworkEventToGameEventGenerator,
@@ -38,6 +39,13 @@ pub struct EditorEventOverwriteMap {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ClientProps {
     pub mapper_name: String,
+    pub color: [u8; 3],
+
+    /// Cursor position in the world coordinates
+    pub cursor_world: vec2,
+
+    /// unique id on the server
+    pub server_id: u64,
 }
 
 /// editor events are a collection of either actions or commands
@@ -49,6 +57,7 @@ pub enum EditorEventClientToServer {
         // if not local user
         is_local_client: bool,
         mapper_name: String,
+        color: [u8; 3],
     },
     Command(EditorCommand),
     Info(ClientProps),
@@ -62,6 +71,7 @@ pub enum EditorEventServerToClient {
     Error(String),
     Map(EditorEventOverwriteMap),
     Infos(Vec<ClientProps>),
+    Info { server_id: u64 },
 }
 
 /// editor events are a collection of either actions or commands

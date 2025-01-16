@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use client_render_base::map::map::RenderMap;
 
 use crate::{
@@ -12,4 +14,6 @@ pub struct EditorTab {
     pub client: EditorClient,
 
     pub auto_saver: AutoSaver,
+
+    pub last_info_update: Option<Duration>,
 }
