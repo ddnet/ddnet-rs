@@ -9,8 +9,8 @@ use ui_base::types::UiRenderPipe;
 use crate::{
     explain::TEXT_ANIM_PANEL_AND_PROPS,
     ui::user_data::{
-        EditorMenuDialogMode, EditorMenuHostDialogMode, EditorMenuHostNetworkOptions,
-        EditorUiEvent, EditorUiEventHostMap, UserData,
+        EditorMenuDialogJoinProps, EditorMenuDialogMode, EditorMenuHostDialogMode,
+        EditorMenuHostNetworkOptions, EditorUiEvent, EditorUiEventHostMap, UserData,
     },
 };
 
@@ -40,7 +40,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             *menu_dialog_mode = EditorMenuDialogMode::host(pipe.user_data.io);
                         }
                         if ui.button("Join map").clicked() {
-                            *menu_dialog_mode = EditorMenuDialogMode::join();
+                            *menu_dialog_mode = EditorMenuDialogMode::join(pipe.user_data.io);
                         }
                         if ui.button("Close").clicked() {
                             pipe.user_data.ui_events.push(EditorUiEvent::Close);
@@ -188,14 +188,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
-                        let color_open = ui.color_edit_button_srgb(color).enabled();
+                        ui.color_edit_button_srgb(color);
                         if ui.button("Host").clicked() {
                             host = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
-                        color_open
                     });
 
                     if host {
@@ -245,7 +244,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             }
                         });
                         if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                            && !window_res.inner.unwrap_or_default()
+                            && !ui.memory(|i| i.any_popup_open())
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
@@ -253,13 +252,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     } else {
                         false
                     };
-                } else if let EditorMenuDialogMode::Join {
+                } else if let EditorMenuDialogMode::Join(EditorMenuDialogJoinProps {
                     ip_port,
                     cert_hash,
                     password,
                     mapper_name,
                     color,
-                } = menu_dialog_mode
+                }) = menu_dialog_mode
                 {
                     let window = egui::Window::new("Join map network options")
                         .resizable(false)
@@ -277,24 +276,40 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
-                        let is_open = ui.color_edit_button_srgb(color).enabled();
+                        ui.color_edit_button_srgb(color);
                         if ui.button("Join").clicked() {
                             join = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
-                        is_open
                     });
 
                     if join {
-                        let EditorMenuDialogMode::Join {
+                        let EditorMenuDialogMode::Join(props) = &menu_dialog_mode else {
+                            return;
+                        };
+
+                        // save current props
+                        let fs = pipe.user_data.io.fs.clone();
+                        let props = props.clone();
+                        pipe.user_data.io.rt.spawn_without_lifetime(async move {
+                            fs.create_dir("editor".as_ref()).await?;
+                            Ok(fs
+                                .write_file(
+                                    "editor/join_props.json".as_ref(),
+                                    serde_json::to_vec_pretty(&props)?,
+                                )
+                                .await?)
+                        });
+
+                        let EditorMenuDialogMode::Join(EditorMenuDialogJoinProps {
                             ip_port,
                             cert_hash,
                             password,
                             mapper_name,
                             color,
-                        } = std::mem::replace(menu_dialog_mode, EditorMenuDialogMode::None)
+                        }) = std::mem::replace(menu_dialog_mode, EditorMenuDialogMode::None)
                         else {
                             return;
                         };
@@ -325,7 +340,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             }
                         });
                         if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                            && !window_res.inner.unwrap_or_default()
+                            && !ui.memory(|i| i.any_popup_open())
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }

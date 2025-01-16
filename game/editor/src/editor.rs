@@ -76,9 +76,12 @@ use map::{
     types::NonZeroU16MinusOne,
 };
 use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
-use network::network::types::{
-    NetworkClientCertCheckMode, NetworkServerCertAndKey, NetworkServerCertMode,
-    NetworkServerCertModeResult,
+use network::network::{
+    types::{
+        NetworkClientCertCheckMode, NetworkServerCertAndKey, NetworkServerCertMode,
+        NetworkServerCertModeResult,
+    },
+    utils::create_certifified_keys,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -107,7 +110,7 @@ use crate::{
         finish_physics_layer_buffer, upload_design_quad_layer_buffer,
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
-    notifications::EditorNotifications,
+    notifications::{EditorNotification, EditorNotifications},
     server::EditorServer,
     tab::EditorTab,
     tools::{
@@ -2396,9 +2399,41 @@ impl Editor {
                         }
                     }
                 }
+                EditorUiEvent::Chat { msg } => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.send_chat(msg);
+                    }
+                }
             }
         }
         (unused_rect, input_state, ui_canvas, egui_output)
+    }
+
+    pub fn host_map(&mut self, path: &Path, port: u16, password: String) -> anyhow::Result<Hash> {
+        let (cert, key) = create_certifified_keys();
+        let hash = cert
+            .tbs_certificate
+            .subject_public_key_info
+            .fingerprint_bytes()?;
+        self.load_map(
+            path,
+            MapLoadWithServerOptions {
+                cert: Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
+                    NetworkServerCertAndKey {
+                        cert,
+                        private_key: key,
+                    },
+                ))),
+                port: Some(port),
+                password: Some(password),
+                mapper_name: Some("server".to_string()),
+                color: None,
+            },
+        );
+        self.tabs
+            .values_mut()
+            .for_each(|tab| tab.client.update_info(vec2::new(-10000.0, -10000.0)));
+        Ok(hash)
     }
 }
 
@@ -2508,6 +2543,19 @@ impl EditorInterface for Editor {
         std::mem::swap(&mut self.save_tasks, &mut unfinished_tasks);
 
         // render the overlay for notifications
+        for ev in self.notifications.take() {
+            match ev {
+                EditorNotification::Error(msg) => self
+                    .notifications_overlay
+                    .add_err(msg, Duration::from_secs(10)),
+                EditorNotification::Warning(msg) => self
+                    .notifications_overlay
+                    .add_warn(msg, Duration::from_secs(10)),
+                EditorNotification::Info(msg) => self
+                    .notifications_overlay
+                    .add_info(msg, Duration::from_secs(10)),
+            }
+        }
         self.notifications_overlay.render();
 
         if self.is_closed {

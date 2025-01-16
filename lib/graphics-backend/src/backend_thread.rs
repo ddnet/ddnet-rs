@@ -500,8 +500,20 @@ impl BackendThread {
             }
             GraphicsBackendType::Null(_) => (
                 GraphicsStreamedData::new(
-                    GraphicsStreamVertices::Vec(Default::default()),
-                    PoolVec::new_without_pool(),
+                    GraphicsStreamVertices::Vec({
+                        let mut res = Vec::with_capacity(4096);
+                        res.resize_with(4096, Default::default);
+                        res
+                    }),
+                    {
+                        let mut res = PoolVec::new_without_pool();
+                        res.resize_with(64, || {
+                            GraphicsStreamedUniformData::new(
+                                GraphicsStreamedUniformRawData::Vector(vec![0; 1024]),
+                            )
+                        });
+                        res
+                    },
                 ),
                 InUseDataPerBackend::Null,
                 InUseDataPerBackend::Null,
@@ -596,8 +608,20 @@ impl BackendThread {
                         }
                         GraphicsBackendType::Null(_) => (
                             GraphicsStreamedData::new(
-                                GraphicsStreamVertices::Vec(Default::default()),
-                                PoolVec::new_without_pool(),
+                                GraphicsStreamVertices::Vec({
+                                    let mut res = Vec::with_capacity(4096);
+                                    res.resize_with(4096, Default::default);
+                                    res
+                                }),
+                                {
+                                    let mut res = PoolVec::new_without_pool();
+                                    res.resize_with(64, || {
+                                        GraphicsStreamedUniformData::new(
+                                            GraphicsStreamedUniformRawData::Vector(vec![0; 1024]),
+                                        )
+                                    });
+                                    res
+                                },
                             ),
                             InUseDataPerBackend::Null,
                         ),

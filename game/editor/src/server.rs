@@ -295,6 +295,13 @@ impl EditorServer {
                                                     ),
                                                 );
                                             });
+
+                                        // Make sure memory doesn't exhaust
+                                        while self.action_groups.len() > 300 {
+                                            self.action_groups.remove(0);
+                                            self.cur_action_group =
+                                                self.cur_action_group.saturating_sub(1);
+                                        }
                                     }
                                     EditorEventClientToServer::Command(cmd) => match cmd {
                                         EditorCommand::Undo | EditorCommand::Redo => {
@@ -387,6 +394,14 @@ impl EditorServer {
                                         client.props = info;
 
                                         self.broadcast_client_infos();
+                                    }
+                                    EditorEventClientToServer::Chat { msg } => {
+                                        self.network.send(EditorEvent::Server(
+                                            EditorEventServerToClient::Chat {
+                                                from: client.props.mapper_name.clone(),
+                                                msg,
+                                            },
+                                        ));
                                     }
                                 }
                             }

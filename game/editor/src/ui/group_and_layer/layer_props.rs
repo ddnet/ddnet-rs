@@ -715,6 +715,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         });
         if intersected
             .is_some_and(|(outside, clicked)| outside && clicked && resource_selector_was_outside)
+            && !ui.memory(|i| i.any_popup_open())
         {
             map.unselect_all(true, true);
         }

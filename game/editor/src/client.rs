@@ -1,4 +1,7 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{
+    collections::VecDeque,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use anyhow::anyhow;
 use base::system::System;
@@ -39,6 +42,8 @@ pub struct EditorClient {
     pub(crate) clients: Vec<ClientProps>,
     pub(crate) server_id: u64,
 
+    pub(crate) msgs: VecDeque<(String, String)>,
+
     mapper_name: String,
     color: [u8; 3],
 }
@@ -71,6 +76,7 @@ impl EditorClient {
 
             clients: Default::default(),
             server_id: Default::default(),
+            msgs: Default::default(),
 
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
@@ -100,9 +106,15 @@ impl EditorClient {
         let mut res = None;
 
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
-            let events = self.event_generator.take();
+            let mut generated_events = self.event_generator.events.blocking_lock();
 
-            for (id, _, event) in events {
+            let events = std::mem::take(&mut *generated_events);
+            for (id, time, event) in events {
+                if res.is_some() {
+                    generated_events.push_back((id, time, event));
+                    continue;
+                }
+
                 match event {
                     EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
                         EditorEventServerToClient::DoAction(act) => {
@@ -154,6 +166,12 @@ impl EditorClient {
                         }
                         EditorEventServerToClient::Info { server_id } => {
                             self.server_id = server_id;
+                        }
+                        EditorEventServerToClient::Chat { from, msg } => {
+                            self.notifications
+                                .push(EditorNotification::Info(format!("{from}: {msg}")));
+                            self.msgs.push_front((from, msg));
+                            self.msgs.truncate(30);
                         }
                     },
 
@@ -209,5 +227,10 @@ impl EditorClient {
                     server_id: self.server_id,
                 },
             )));
+    }
+
+    pub fn send_chat(&self, msg: String) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Chat { msg }));
     }
 }
