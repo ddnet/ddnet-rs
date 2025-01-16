@@ -15,6 +15,7 @@ use graphics::{
     },
 };
 use math::math::vector::vec2;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     tab::EditorTab,
@@ -78,24 +79,21 @@ pub enum EditorMenuHostDialogMode {
     HostNetworkOptions(Box<EditorMenuHostNetworkOptions>),
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditorMenuDialogJoinProps {
+    pub ip_port: String,
+    pub cert_hash: String,
+    pub password: String,
+    pub mapper_name: String,
+    pub color: [u8; 3],
+}
+
 pub enum EditorMenuDialogMode {
     None,
-    Open {
-        file_dialog: Box<FileDialog>,
-    },
-    Save {
-        file_dialog: Box<FileDialog>,
-    },
-    Host {
-        mode: EditorMenuHostDialogMode,
-    },
-    Join {
-        ip_port: String,
-        cert_hash: String,
-        password: String,
-        mapper_name: String,
-        color: [u8; 3],
-    },
+    Open { file_dialog: Box<FileDialog> },
+    Save { file_dialog: Box<FileDialog> },
+    Host { mode: EditorMenuHostDialogMode },
+    Join(EditorMenuDialogJoinProps),
 }
 
 impl EditorMenuDialogMode {
@@ -149,14 +147,25 @@ impl EditorMenuDialogMode {
             mode: EditorMenuHostDialogMode::SelectMap { file_dialog },
         }
     }
-    pub fn join() -> Self {
-        Self::Join {
-            ip_port: Default::default(),
-            cert_hash: Default::default(),
-            password: Default::default(),
-            mapper_name: "nameless mapper".to_string(),
-            color: [255, 255, 255],
-        }
+    pub fn join(io: &Io) -> Self {
+        let fs = io.fs.clone();
+
+        Self::Join(
+            io.rt
+                .spawn(async move {
+                    Ok(serde_json::from_slice(
+                        &fs.read_file("editor/join_props.json".as_ref()).await?,
+                    )?)
+                })
+                .get_storage()
+                .unwrap_or_else(|_| EditorMenuDialogJoinProps {
+                    ip_port: Default::default(),
+                    cert_hash: Default::default(),
+                    password: Default::default(),
+                    mapper_name: "nameless mapper".to_string(),
+                    color: [255, 255, 255],
+                }),
+        )
     }
 }
 
