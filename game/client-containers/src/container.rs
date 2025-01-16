@@ -10,6 +10,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tar::EntryType;
 use tokio::sync::Semaphore;
 
 use anyhow::anyhow;
@@ -484,9 +485,10 @@ where
             }
             _ => {
                 log::warn!(
-                    "Unsupported resource type {} \
+                    "Unsupported resource type {} for {} \
                     could not be validated",
-                    file_ty
+                    file_ty,
+                    file_name,
                 );
                 return false;
             }
@@ -542,15 +544,36 @@ where
             let mut file = tar::Archive::new(std::io::Cursor::new(file));
             match file.entries() {
                 Ok(entries) => entries
-                    .map(|entry| {
+                    .filter_map(|entry| {
                         entry
-                            .map(|mut entry| {
-                                let path = entry.path().map(|path| path.to_path_buf())?;
-                                let mut file: Vec<_> = Default::default();
-                                entry.read_to_end(&mut file).map(|_| (path, file))
-                            })
                             .map_err(|err| anyhow::anyhow!(err))
-                            .and_then(|val| anyhow::Ok(val?))
+                            .map(|mut entry| {
+                                let ty = entry.header().entry_type();
+                                if let EntryType::Regular = ty {
+                                    Some(
+                                        entry
+                                            .path()
+                                            .map(|path| path.to_path_buf())
+                                            .map_err(|err| anyhow::anyhow!(err))
+                                            .and_then(|path| {
+                                                let mut file: Vec<_> = Default::default();
+
+                                                entry
+                                                    .read_to_end(&mut file)
+                                                    .map(|_| (path, file))
+                                                    .map_err(|err| anyhow::anyhow!(err))
+                                            }),
+                                    )
+                                } else if matches!(ty, EntryType::Directory) {
+                                    None
+                                } else {
+                                    Some(Err(anyhow!(
+                                        "The tar reader expects files & dictionaries only"
+                                    )))
+                                }
+                            })
+                            .transpose()
+                            .map(|r| r.and_then(|r| r))
                     })
                     .collect::<anyhow::Result<HashMap<_, _>>>(),
                 Err(err) => Err(anyhow::anyhow!(err)),
