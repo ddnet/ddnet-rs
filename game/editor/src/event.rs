@@ -106,6 +106,10 @@ impl EditorEventGenerator {
     pub fn take(&self) -> VecDeque<(NetworkConnectionId, Duration, EditorNetEvent)> {
         std::mem::take(&mut self.events.blocking_lock())
     }
+
+    pub fn push(&self, event: (NetworkConnectionId, Duration, EditorNetEvent)) {
+        self.events.blocking_lock().push_back(event);
+    }
 }
 
 #[async_trait]

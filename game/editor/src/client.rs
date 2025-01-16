@@ -106,9 +106,15 @@ impl EditorClient {
         let mut res = None;
 
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
-            let events = self.event_generator.take();
+            let mut generated_events = self.event_generator.events.blocking_lock();
 
-            for (id, _, event) in events {
+            let events = std::mem::take(&mut *generated_events);
+            for (id, time, event) in events {
+                if res.is_some() {
+                    generated_events.push_back((id, time, event));
+                    continue;
+                }
+
                 match event {
                     EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
                         EditorEventServerToClient::DoAction(act) => {
