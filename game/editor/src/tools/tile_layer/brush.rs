@@ -8,7 +8,7 @@ use client_render_base::map::{
     map_pipeline::{MapGraphics, TileLayerDrawInfo},
     render_tools::{CanvasType, RenderTools},
 };
-use egui::pos2;
+use egui::{pos2, Rect};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -178,6 +178,44 @@ impl TileBrush {
         }
     }
 
+    fn selected_tiles_picker(pointer_rect: Rect, render_rect: Rect) -> (Vec<u8>, usize, usize) {
+        let mut brush_width = 0;
+        let mut brush_height = 0;
+        let mut tile_indices: Vec<u8> = Default::default();
+        // handle pointer position inside the available rect
+        if pointer_rect.intersects(render_rect) {
+            // determine tile
+            let size_of_tile = render_rect.width() / 16.0;
+            let x0 = pointer_rect.min.x.max(render_rect.min.x) - render_rect.min.x;
+            let y0 = pointer_rect.min.y.max(render_rect.min.y) - render_rect.min.y;
+            let mut x1 = pointer_rect.max.x.min(render_rect.max.x) - render_rect.min.x;
+            let mut y1 = pointer_rect.max.y.min(render_rect.max.y) - render_rect.min.y;
+
+            let x0 = (x0 / size_of_tile).rem_euclid(16.0) as usize;
+            let y0 = (y0 / size_of_tile).rem_euclid(16.0) as usize;
+            // edge cases (next_down not stabilized in rust)
+            if (x1 - render_rect.max.x) < 0.1 {
+                x1 -= 0.1
+            }
+            if (y1 - render_rect.max.y) < 0.1 {
+                y1 -= 0.1
+            }
+            let x1 = (x1 / size_of_tile).rem_euclid(16.0) as usize;
+            let y1 = (y1 / size_of_tile).rem_euclid(16.0) as usize;
+            for y in y0..=y1 {
+                for x in x0..=x1 {
+                    let tile_index = (x + y * 16) as u8;
+                    tile_indices.push(tile_index)
+                }
+            }
+
+            brush_width = (x1 + 1) - x0;
+            brush_height = (y1 + 1) - y0;
+        }
+
+        (tile_indices, brush_width, brush_height)
+    }
+
     fn tile_picker_rect(available_rect: &egui::Rect) -> egui::Rect {
         let size = available_rect.width().min(available_rect.height());
         let x_mid = available_rect.min.x + available_rect.width() / 2.0;
@@ -225,39 +263,8 @@ impl TileBrush {
                     );
                     let render_rect = Self::tile_picker_rect(available_rect);
 
-                    let mut tile_indices: Vec<u8> = Default::default();
-                    let mut brush_width = 0;
-                    let mut brush_height = 0;
-                    // handle pointer position inside the available rect
-                    if pointer_rect.intersects(render_rect) {
-                        // determine tile
-                        let size_of_tile = render_rect.width() / 16.0;
-                        let x0 = pointer_rect.min.x.max(render_rect.min.x) - render_rect.min.x;
-                        let y0 = pointer_rect.min.y.max(render_rect.min.y) - render_rect.min.y;
-                        let mut x1 = pointer_rect.max.x.min(render_rect.max.x) - render_rect.min.x;
-                        let mut y1 = pointer_rect.max.y.min(render_rect.max.y) - render_rect.min.y;
-
-                        let x0 = (x0 / size_of_tile).rem_euclid(16.0) as usize;
-                        let y0 = (y0 / size_of_tile).rem_euclid(16.0) as usize;
-                        // edge cases (next_down not stabilized in rust)
-                        if (x1 - render_rect.max.x) < 0.1 {
-                            x1 -= 0.1
-                        }
-                        if (y1 - render_rect.max.y) < 0.1 {
-                            y1 -= 0.1
-                        }
-                        let x1 = (x1 / size_of_tile).rem_euclid(16.0) as usize;
-                        let y1 = (y1 / size_of_tile).rem_euclid(16.0) as usize;
-                        for y in y0..=y1 {
-                            for x in x0..=x1 {
-                                let tile_index = (x + y * 16) as u8;
-                                tile_indices.push(tile_index)
-                            }
-                        }
-
-                        brush_width = (x1 + 1) - x0;
-                        brush_height = (y1 + 1) - y0;
-                    }
+                    let (tile_indices, brush_width, brush_height) =
+                        Self::selected_tiles_picker(pointer_rect, render_rect);
 
                     if !tile_indices.is_empty() {
                         let physics_group_editor = &map.groups.physics.user;
@@ -1647,6 +1654,32 @@ impl TileBrush {
             );
 
             if let Some(TileBrushDownPos { ui, .. }) = &self.pointer_down_world_pos {
+                let pointer_down = pos2(ui.x, ui.y);
+                let pointer_rect = egui::Rect::from_min_max(
+                    current_pointer_pos.min(pointer_down),
+                    current_pointer_pos.max(pointer_down),
+                );
+                let (tile_indices, brush_width, brush_height) =
+                    Self::selected_tiles_picker(pointer_rect, render_rect);
+                if let Some(&index) = tile_indices.first() {
+                    let tile_size = render_rect.width() / 16.0;
+                    let min = render_rect.min
+                        + egui::vec2((index % 16) as f32, (index / 16) as f32) * tile_size;
+                    render_filled_rect_from_state(
+                        stream_handle,
+                        egui::Rect::from_min_max(
+                            min,
+                            min + egui::vec2(
+                                brush_width as f32 * tile_size,
+                                brush_height as f32 * tile_size,
+                            ),
+                        ),
+                        ubvec4::new(0, 255, 255, 50),
+                        state,
+                        false,
+                    );
+                }
+
                 render_rect_from_state(
                     stream_handle,
                     state,
