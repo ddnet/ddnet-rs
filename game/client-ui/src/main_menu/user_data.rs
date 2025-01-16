@@ -15,6 +15,8 @@ use client_render_base::{
 use client_types::console::ConsoleEntry;
 use command_parser::parser::ParserCache;
 use demo::{DemoHeader, DemoHeaderExt};
+use game_base::local_server_info::LocalServerInfo;
+use game_base::server_browser::ServerBrowserData;
 use game_config::config::{Config, ConfigGame, ConfigTeeEye};
 use game_interface::types::{character_info::MAX_ASSET_NAME_LEN, render::character::TeeEye};
 use graphics::{
@@ -28,8 +30,6 @@ use graphics::{
 };
 use math::math::vector::ubvec4;
 use serde::{Deserialize, Serialize};
-use game_base::local_server_info::LocalServerInfo;
-use game_base::server_browser::ServerBrowserData;
 use url::Url;
 
 use crate::{

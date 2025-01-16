@@ -1,6 +1,6 @@
 use egui::{Color32, DragValue, Layout, ScrollArea, TextEdit};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use game_base::mapdef_06::DdraceTileNum;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{

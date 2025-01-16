@@ -3,6 +3,7 @@ pub mod graphic_tile;
 
 use std::{borrow::BorrowMut, collections::HashMap, ops::Range, sync::Arc};
 
+use game_base::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -39,7 +40,6 @@ use rayon::{
     prelude::{IndexedParallelIterator, ParallelIterator},
     slice::ParallelSliceMut,
 };
-use game_base::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 
 use math::math::vector::ivec2;
 

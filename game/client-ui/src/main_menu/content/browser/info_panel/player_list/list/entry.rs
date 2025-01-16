@@ -5,12 +5,12 @@ use client_containers::{flags::FlagsContainer, skins::SkinContainer};
 use client_render_base::render::tee::RenderTee;
 use egui::Rect;
 use egui_extras::TableRow;
+use game_base::server_browser::ServerBrowserPlayer;
 use game_interface::types::character_info::MAX_FLAG_NAME_LEN;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
 use math::math::vector::vec2;
-use game_base::server_browser::ServerBrowserPlayer;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::utils::{render_flag_for_ui, render_tee_for_ui};

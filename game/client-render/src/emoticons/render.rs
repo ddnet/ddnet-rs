@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use client_containers::emoticons::EmoticonsContainer;
+use game_base::game_types::intra_tick_time_to_ratio;
 use game_interface::types::{
     emoticons::EmoticonType,
     game::{GameTickType, NonZeroGameTickType},
@@ -15,7 +16,6 @@ use math::math::{
     vector::{ubvec4, vec2},
     PI,
 };
-use game_base::game_types::intra_tick_time_to_ratio;
 
 pub struct RenderEmoticonPipe<'a> {
     pub emoticon_container: &'a mut EmoticonsContainer,

@@ -13,6 +13,13 @@ use binds::binds::{
 };
 use client_types::console::{entries_to_parser, ConsoleEntry};
 use command_parser::parser::{self, Command, CommandType, ParserCache, Syn};
+use game_base::{
+    network::{
+        messages::{MsgClSnapshotAck, PlayerInputChainable},
+        types::chat::NetChatMsg,
+    },
+    player_input::PlayerInput,
+};
 use game_config::config::ConfigGame;
 use game_interface::{
     interface::GameStateServerOptions,
@@ -35,13 +42,6 @@ use pool::{
     rc::PoolRc,
 };
 use prediction_timer::prediction_timing::PredictionTimer;
-use game_base::{
-    network::{
-        messages::{MsgClSnapshotAck, PlayerInputChainable},
-        types::chat::NetChatMsg,
-    },
-    player_input::PlayerInput,
-};
 
 use crate::{
     client::input::input_handling::DeviceToLocalPlayerIndex,

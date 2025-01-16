@@ -1,0 +1,30 @@
+name: Check-Format
+
+on:
+  push:
+    branches-ignore:
+      - gh-readonly-queue/**
+  pull_request:
+  merge_group:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        include:
+        - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - run: |
+        rustup toolchain install stable --profile minimal
+        rustup component add rustfmt
+
+    - name: Check format
+      run: |
+        shopt -s globstar
+        rustfmt --edition=2021 --check **/**.rs

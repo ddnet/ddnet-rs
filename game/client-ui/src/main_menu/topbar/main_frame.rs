@@ -1,8 +1,8 @@
 use egui::Grid;
 use egui::{Frame, Layout};
 
-use game_config::config::Config;
 use game_base::server_browser::{SortDir, TableSort};
+use game_config::config::Config;
 use ui_base::style::bg_frame_color;
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_base::{

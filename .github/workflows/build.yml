@@ -60,6 +60,7 @@ jobs:
         submodules: true
     - run: |
         rustup toolchain install stable --profile minimal
+        rustup component add clippy
 
     - name: Prepare Linux
       if: contains(matrix.os, 'ubuntu')
@@ -126,6 +127,12 @@ jobs:
 
     - name: Build server release
       run: cargo build -p server --release --verbose --features bundled_data_dir
+
+    - name: Clippy release
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        cargo clippy --release --verbose --features ${{ matrix.features }} -- -D warnings
+        cargo clippy -p server --release --verbose --features bundled_data_dir -- -D warnings
 
     - name: Prepare artifacts
       run: |

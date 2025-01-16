@@ -3,10 +3,10 @@ use std::{sync::Arc, time::Duration};
 use base_io::io::Io;
 
 use client_types::console::ConsoleEntry;
+use game_base::{local_server_info::LocalServerInfo, server_browser::ServerBrowserData};
 use game_config::config::{Config, ConfigGame};
 use graphics::graphics::graphics::Graphics;
 use math::math::Rng;
-use game_base::{local_server_info::LocalServerInfo, server_browser::ServerBrowserData};
 use sound::sound::SoundManager;
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;

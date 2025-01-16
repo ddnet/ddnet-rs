@@ -6,13 +6,13 @@ use std::{
 };
 
 use base::linked_hash_map_view::FxLinkedHashMap;
+use game_base::network::messages::PlayerInputChainable;
 use game_interface::types::{
     id_types::PlayerId, network_stats::PlayerNetworkStats, player_info::PlayerDropReason,
 };
 use game_network::messages::MsgSvInputAck;
 use network::network::connection::NetworkConnectionId;
 use pool::{datatypes::PoolFxLinkedHashMap, pool::Pool};
-use game_base::network::messages::PlayerInputChainable;
 
 use crate::server_game::ClientAuth;
 

@@ -1,6 +1,6 @@
+use game_base::network::types::chat::NetChatMsgPlayerChannel;
 use game_interface::types::{character_info::NetworkSkinInfo, resource_key::ResourceKey};
 use serde::{Deserialize, Serialize};
-use game_base::network::types::chat::NetChatMsgPlayerChannel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMsg {

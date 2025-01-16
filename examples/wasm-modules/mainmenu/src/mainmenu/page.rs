@@ -32,6 +32,11 @@ use client_ui::{
         user_data::MainMenuInterface,
     },
 };
+use game_base::server_browser::ServerBrowserPlayer;
+use game_base::server_browser::{
+    ServerBrowserData, ServerBrowserInfo, ServerBrowserInfoMap, ServerBrowserServer,
+    ServerBrowserSkin,
+};
 use game_config::config::Config;
 use graphics::{
     graphics::graphics::Graphics,
@@ -42,11 +47,6 @@ use graphics::{
         canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
         texture::texture::GraphicsTextureHandle,
     },
-};
-use game_base::server_browser::ServerBrowserPlayer;
-use game_base::server_browser::{
-    ServerBrowserData, ServerBrowserInfo, ServerBrowserInfoMap, ServerBrowserServer,
-    ServerBrowserSkin,
 };
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
