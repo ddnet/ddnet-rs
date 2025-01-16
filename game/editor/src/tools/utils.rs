@@ -76,6 +76,39 @@ pub fn render_rect(
     render_rect_from_state(stream_handle, state, rect, color)
 }
 
+pub fn render_checkerboard_background(
+    stream_handle: &GraphicsStreamHandle,
+    render_rect: egui::Rect,
+    state: &State,
+) {
+    const FIELD_SIZE: f32 = 15.0;
+
+    let cols = (render_rect.width() / FIELD_SIZE).ceil() as i32;
+    let rows = (render_rect.height() / FIELD_SIZE).ceil() as i32;
+
+    let color1 = ubvec4::new(180, 180, 180, 255);
+    let color2 = ubvec4::new(140, 140, 140, 255);
+
+    for row in 0..rows {
+        for col in 0..cols {
+            let x = render_rect.min.x + (col as f32 * FIELD_SIZE);
+            let y = render_rect.min.y + (row as f32 * FIELD_SIZE);
+
+            let checker_rect = egui::Rect::from_min_size(
+                egui::pos2(x, y),
+                egui::vec2(
+                    FIELD_SIZE.min(render_rect.max.x - x),
+                    FIELD_SIZE.min(render_rect.max.y - y),
+                ),
+            );
+
+            let color = if (row + col) % 2 == 0 { color1 } else { color2 };
+
+            render_filled_rect_from_state(stream_handle, checker_rect, color, *state, false);
+        }
+    }
+}
+
 pub fn render_filled_rect_from_state(
     stream_handle: &GraphicsStreamHandle,
     rect: egui::Rect,
