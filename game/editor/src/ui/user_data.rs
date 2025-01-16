@@ -58,6 +58,9 @@ pub enum EditorUiEvent {
     CursorWorldPos {
         pos: vec2,
     },
+    Chat {
+        msg: String,
+    },
 }
 
 pub struct EditorMenuHostNetworkOptions {

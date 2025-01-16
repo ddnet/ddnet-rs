@@ -107,7 +107,7 @@ use crate::{
         finish_physics_layer_buffer, upload_design_quad_layer_buffer,
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
-    notifications::EditorNotifications,
+    notifications::{EditorNotification, EditorNotifications},
     server::EditorServer,
     tab::EditorTab,
     tools::{
@@ -2396,6 +2396,11 @@ impl Editor {
                         }
                     }
                 }
+                EditorUiEvent::Chat { msg } => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.send_chat(msg);
+                    }
+                }
             }
         }
         (unused_rect, input_state, ui_canvas, egui_output)
@@ -2508,6 +2513,19 @@ impl EditorInterface for Editor {
         std::mem::swap(&mut self.save_tasks, &mut unfinished_tasks);
 
         // render the overlay for notifications
+        for ev in self.notifications.take() {
+            match ev {
+                EditorNotification::Error(msg) => self
+                    .notifications_overlay
+                    .add_err(msg, Duration::from_secs(10)),
+                EditorNotification::Warning(msg) => self
+                    .notifications_overlay
+                    .add_warn(msg, Duration::from_secs(10)),
+                EditorNotification::Info(msg) => self
+                    .notifications_overlay
+                    .add_info(msg, Duration::from_secs(10)),
+            }
+        }
         self.notifications_overlay.render();
 
         if self.is_closed {

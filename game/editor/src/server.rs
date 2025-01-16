@@ -388,6 +388,14 @@ impl EditorServer {
 
                                         self.broadcast_client_infos();
                                     }
+                                    EditorEventClientToServer::Chat { msg } => {
+                                        self.network.send(EditorEvent::Server(
+                                            EditorEventServerToClient::Chat {
+                                                from: client.props.mapper_name.clone(),
+                                                msg,
+                                            },
+                                        ));
+                                    }
                                 }
                             }
                         }

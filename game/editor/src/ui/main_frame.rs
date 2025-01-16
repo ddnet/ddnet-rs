@@ -40,6 +40,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         super::group_and_layer::layer_props::render(ui, &mut pipe, ui_state);
         super::group_and_layer::quad_props::render(ui, &mut pipe, ui_state);
         super::group_and_layer::sound_props::render(ui, &mut pipe, ui_state);
+
+        super::chat_panel::panel::render(ui, &mut pipe, ui_state);
     }
 
     *pipe.user_data.pointer_is_used |= ui.memory(|i| i.any_popup_open());

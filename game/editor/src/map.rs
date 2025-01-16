@@ -536,11 +536,17 @@ pub enum EditorGroupPanelTab {
     Sounds(EditorGroupPanelResources),
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct EditorChatState {
+    pub msg: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct EditorMapPropsUiValues {
     pub group_panel_active_tab: EditorGroupPanelTab,
     pub animations_panel_open: bool,
     pub server_settings_open: bool,
+    pub chat_panel_open: Option<EditorChatState>,
     pub timeline: Timeline,
 }
 
@@ -550,6 +556,7 @@ impl Default for EditorMapPropsUiValues {
             group_panel_active_tab: EditorGroupPanelTab::GroupsAndLayers,
             animations_panel_open: false,
             server_settings_open: false,
+            chat_panel_open: None,
             timeline: Timeline::new(),
         }
     }

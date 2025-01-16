@@ -61,6 +61,9 @@ pub enum EditorEventClientToServer {
     },
     Command(EditorCommand),
     Info(ClientProps),
+    Chat {
+        msg: String,
+    },
 }
 
 /// editor events are a collection of either actions or commands
@@ -72,6 +75,7 @@ pub enum EditorEventServerToClient {
     Map(EditorEventOverwriteMap),
     Infos(Vec<ClientProps>),
     Info { server_id: u64 },
+    Chat { from: String, msg: String },
 }
 
 /// editor events are a collection of either actions or commands

@@ -1,4 +1,7 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{
+    collections::VecDeque,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use anyhow::anyhow;
 use base::system::System;
@@ -39,6 +42,8 @@ pub struct EditorClient {
     pub(crate) clients: Vec<ClientProps>,
     pub(crate) server_id: u64,
 
+    pub(crate) msgs: VecDeque<(String, String)>,
+
     mapper_name: String,
     color: [u8; 3],
 }
@@ -71,6 +76,7 @@ impl EditorClient {
 
             clients: Default::default(),
             server_id: Default::default(),
+            msgs: Default::default(),
 
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
@@ -155,6 +161,12 @@ impl EditorClient {
                         EditorEventServerToClient::Info { server_id } => {
                             self.server_id = server_id;
                         }
+                        EditorEventServerToClient::Chat { from, msg } => {
+                            self.notifications
+                                .push(EditorNotification::Info(format!("{from}: {msg}")));
+                            self.msgs.push_front((from, msg));
+                            self.msgs.truncate(30);
+                        }
                     },
 
                     EditorNetEvent::Editor(EditorEvent::Client(_)) => {
@@ -209,5 +221,10 @@ impl EditorClient {
                     server_id: self.server_id,
                 },
             )));
+    }
+
+    pub fn send_chat(&self, msg: String) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Chat { msg }));
     }
 }
