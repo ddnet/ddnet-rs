@@ -88,6 +88,13 @@ impl EditorServer {
         }
     }
 
+    fn broadcast_client_infos(&self) {
+        self.network
+            .send(EditorEvent::Server(EditorEventServerToClient::Infos(
+                self.clients.values().map(|c| c.props.clone()).collect(),
+            )));
+    }
+
     pub fn update(
         &mut self,
         tp: &Arc<rayon::ThreadPool>,
@@ -195,13 +202,13 @@ impl EditorServer {
                                             )),
                                         );
                                     }
+
+                                    self.broadcast_client_infos();
                                 }
                             } else if client.is_authed {
                                 match ev {
                                     EditorEventClientToServer::Action(act) => {
-                                        if self.cur_action_group < self.action_groups.len() {
-                                            self.action_groups.truncate(self.cur_action_group + 1);
-                                        }
+                                        self.action_groups.truncate(self.cur_action_group + 1);
 
                                         if self
                                             .action_groups
@@ -370,20 +377,12 @@ impl EditorServer {
                             NetworkEvent::Connected { .. } => {
                                 self.clients.insert(id, Client::default());
 
-                                self.network.send(EditorEvent::Server(
-                                    EditorEventServerToClient::Infos(
-                                        self.clients.values().map(|c| c.props.clone()).collect(),
-                                    ),
-                                ));
+                                self.broadcast_client_infos();
                             }
                             NetworkEvent::Disconnected { .. } => {
                                 self.clients.remove(&id);
 
-                                self.network.send(EditorEvent::Server(
-                                    EditorEventServerToClient::Infos(
-                                        self.clients.values().map(|c| c.props.clone()).collect(),
-                                    ),
-                                ));
+                                self.broadcast_client_infos();
                             }
                             _ => {
                                 // ignore

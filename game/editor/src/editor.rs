@@ -2343,7 +2343,7 @@ impl Editor {
                     password,
                     mapper_name,
                 } => self.new_map(
-                    "loading",
+                    &ip_port.clone(),
                     MapLoadOptions::WithoutServer {
                         server_addr: ip_port,
                         cert_hash: (0..cert_hash.len())

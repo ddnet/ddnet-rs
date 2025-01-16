@@ -563,7 +563,7 @@ pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
                 break;
             }
         } else {
-            break;
+            unreachable!();
         }
     }
 

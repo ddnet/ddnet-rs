@@ -35,7 +35,7 @@ pub struct EditorClient {
     notifications: EditorNotifications,
     local_client: bool,
 
-    clients: Vec<ClientProps>,
+    pub(crate) clients: Vec<ClientProps>,
 
     mapper_name: String,
 }
