@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
@@ -133,12 +134,30 @@ enum ReadFileTy {
 }
 
 #[derive(Debug, Default)]
-struct MapLoadOptions {
-    server_addr: Option<String>,
+struct MapLoadWithServerOptions {
     cert: Option<NetworkServerCertMode>,
-    cert_hash: Option<Hash>,
     port: Option<u16>,
     password: Option<String>,
+}
+
+#[derive(Debug)]
+enum MapLoadOptions {
+    WithServer(MapLoadWithServerOptions),
+    WithoutServer {
+        server_addr: String,
+        cert_hash: Hash,
+        password: String,
+    },
+}
+
+impl Default for MapLoadOptions {
+    fn default() -> Self {
+        Self::WithServer(MapLoadWithServerOptions {
+            cert: None,
+            port: None,
+            password: None,
+        })
+    }
 }
 
 /// this is basically the editor client
@@ -346,42 +365,53 @@ impl Editor {
     }
 
     fn new_map(&mut self, name: &str, options: MapLoadOptions) {
-        let server = options
-            .cert_hash
-            .is_none()
-            .then(|| EditorServer::new(&self.sys, None, None, "".into()));
+        let (server_addr, server_cert, password, local_client, server) = match options {
+            MapLoadOptions::WithServer(MapLoadWithServerOptions {
+                cert,
+                port,
+                password,
+            }) => {
+                let server = EditorServer::new(&self.sys, cert, port, password.unwrap_or_default());
+                (
+                    format!("127.0.0.1:{}", server.port,),
+                    match &server.cert {
+                        NetworkServerCertModeResult::Cert { cert } => {
+                            NetworkClientCertCheckMode::CheckByCert {
+                                cert: cert.to_der().unwrap().into(),
+                            }
+                        }
+                        NetworkServerCertModeResult::PubKeyHash { hash } => {
+                            NetworkClientCertCheckMode::CheckByPubKeyHash {
+                                hash: Cow::Owned(*hash),
+                            }
+                        }
+                    },
+                    server.password.clone(),
+                    true,
+                    Some(server),
+                )
+            }
+            MapLoadOptions::WithoutServer {
+                server_addr,
+                cert_hash,
+                password,
+            } => (
+                server_addr,
+                NetworkClientCertCheckMode::CheckByPubKeyHash {
+                    hash: Cow::Owned(cert_hash),
+                },
+                password,
+                false,
+                None,
+            ),
+        };
         let client = EditorClient::new(
             &self.sys,
-            &if let Some(server_addr) = &options.server_addr {
-                server_addr.clone()
-            } else {
-                format!(
-                    "127.0.0.1:{}",
-                    server
-                        .as_ref()
-                        .map(|server| server.port)
-                        .unwrap_or_default()
-                )
-            },
-            match &server {
-                Some(server) => match &server.cert {
-                    NetworkServerCertModeResult::Cert { cert } => {
-                        NetworkClientCertCheckMode::CheckByCert {
-                            cert: cert.to_der().unwrap().into(),
-                        }
-                    }
-                    NetworkServerCertModeResult::PubKeyHash { hash } => {
-                        NetworkClientCertCheckMode::CheckByPubKeyHash { hash }
-                    }
-                },
-                None => match &options.cert_hash {
-                    Some(hash) => NetworkClientCertCheckMode::CheckByPubKeyHash { hash },
-                    None => panic!("this should not happen: server and server cert hash are None"),
-                },
-            },
+            &server_addr,
+            server_cert,
             self.notifications.clone(),
-            options.password.unwrap_or_default(),
-            options.server_addr.is_none(),
+            password,
+            local_client,
         );
 
         let physics_group_attr = MapGroupPhysicsAttr {
@@ -956,7 +986,11 @@ impl Editor {
     }
 
     #[cfg(feature = "legacy")]
-    fn load_legacy_map(&mut self, path: &Path, options: MapLoadOptions) -> anyhow::Result<()> {
+    fn load_legacy_map(
+        &mut self,
+        path: &Path,
+        options: MapLoadWithServerOptions,
+    ) -> anyhow::Result<()> {
         let name = path
             .file_stem()
             .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
@@ -1013,7 +1047,9 @@ impl Editor {
                     }
                 }
                 NetworkServerCertModeResult::PubKeyHash { hash } => {
-                    NetworkClientCertCheckMode::CheckByPubKeyHash { hash }
+                    NetworkClientCertCheckMode::CheckByPubKeyHash {
+                        hash: Cow::Borrowed(hash),
+                    }
                 }
             },
             self.notifications.clone(),
@@ -1046,7 +1082,11 @@ impl Editor {
     }
 
     #[cfg(not(feature = "legacy"))]
-    fn load_legacy_map(&mut self, _path: &Path, _options: MapLoadOptions) -> anyhow::Result<()> {
+    fn load_legacy_map(
+        &mut self,
+        _path: &Path,
+        _options: MapLoadWithServerOptions,
+    ) -> anyhow::Result<()> {
         Err(anyhow!("loading legacy maps is not supported"))
     }
 
@@ -1064,7 +1104,11 @@ impl Editor {
         )
     }
 
-    fn load_map_impl(&mut self, path: &Path, options: MapLoadOptions) -> anyhow::Result<()> {
+    fn load_map_impl(
+        &mut self,
+        path: &Path,
+        options: MapLoadWithServerOptions,
+    ) -> anyhow::Result<()> {
         let name = path
             .file_stem()
             .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
@@ -1152,7 +1196,9 @@ impl Editor {
                     }
                 }
                 NetworkServerCertModeResult::PubKeyHash { hash } => {
-                    NetworkClientCertCheckMode::CheckByPubKeyHash { hash }
+                    NetworkClientCertCheckMode::CheckByPubKeyHash {
+                        hash: Cow::Borrowed(hash),
+                    }
                 }
             },
             self.notifications.clone(),
@@ -1185,7 +1231,7 @@ impl Editor {
     }
 
     /// Loads either a legacy or new map based on the file extension.
-    fn load_map(&mut self, path: &Path, options: MapLoadOptions) {
+    fn load_map(&mut self, path: &Path, options: MapLoadWithServerOptions) {
         let res = if path.extension().is_some_and(|ext| ext == "map") {
             self.load_legacy_map(path, options)
         } else {
@@ -2268,14 +2314,12 @@ impl Editor {
                     } = *host_map;
                     self.load_map(
                         map_path.as_ref(),
-                        MapLoadOptions {
+                        MapLoadWithServerOptions {
                             cert: Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
                                 NetworkServerCertAndKey { cert, private_key },
                             ))),
-                            cert_hash: None,
                             port: Some(port),
                             password: Some(password),
-                            server_addr: None,
                         },
                     );
                 }
@@ -2285,19 +2329,15 @@ impl Editor {
                     password,
                 } => self.new_map(
                     "loading",
-                    MapLoadOptions {
-                        server_addr: Some(ip_port),
-                        cert: None,
-                        cert_hash: Some(
-                            (0..cert_hash.len())
-                                .step_by(2)
-                                .map(|i| u8::from_str_radix(&cert_hash[i..i + 2], 16).unwrap())
-                                .collect::<Vec<_>>()
-                                .try_into()
-                                .unwrap(),
-                        ),
-                        port: None,
-                        password: Some(password),
+                    MapLoadOptions::WithoutServer {
+                        server_addr: ip_port,
+                        cert_hash: (0..cert_hash.len())
+                            .step_by(2)
+                            .map(|i| u8::from_str_radix(&cert_hash[i..i + 2], 16).unwrap())
+                            .collect::<Vec<_>>()
+                            .try_into()
+                            .unwrap(),
+                        password,
                     },
                 ),
                 EditorUiEvent::Close => self.is_closed = true,

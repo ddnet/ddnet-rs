@@ -61,7 +61,7 @@ pub(crate) type NetworkInOrderPackets = HashMap<
 #[derive(Debug)]
 pub enum NetworkClientCertCheckMode<'a> {
     CheckByCert { cert: Cow<'a, [u8]> },
-    CheckByPubKeyHash { hash: &'a Hash },
+    CheckByPubKeyHash { hash: Cow<'a, Hash> },
     // not recommended, only useful for debugging
     DisableCheck,
 }
