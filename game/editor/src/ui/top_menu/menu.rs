@@ -188,14 +188,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
-                        let color_open = ui.color_edit_button_srgb(color).enabled();
+                        ui.color_edit_button_srgb(color);
                         if ui.button("Host").clicked() {
                             host = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
-                        color_open
                     });
 
                     if host {
@@ -245,7 +244,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             }
                         });
                         if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                            && !window_res.inner.unwrap_or_default()
+                            && !ui.memory(|i| i.any_popup_open())
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
@@ -277,14 +276,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
-                        let is_open = ui.color_edit_button_srgb(color).enabled();
+                        ui.color_edit_button_srgb(color);
                         if ui.button("Join").clicked() {
                             join = true;
                         }
                         if ui.button("Cancel").clicked() {
                             cancel = true;
                         }
-                        is_open
                     });
 
                     if join {
@@ -325,7 +323,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             }
                         });
                         if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                            && !window_res.inner.unwrap_or_default()
+                            && !ui.memory(|i| i.any_popup_open())
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }

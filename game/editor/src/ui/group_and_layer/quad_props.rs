@@ -564,7 +564,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     None
                 }
             });
-            if intersected.is_some_and(|(outside, clicked)| outside && clicked) {
+            if intersected.is_some_and(|(outside, clicked)| outside && clicked)
+                && !ui.memory(|i| i.any_popup_open())
+            {
                 match &pipe.user_data.tools.active_tool {
                     ActiveTool::Quads(ActiveToolQuads::Brush) => {
                         pipe.user_data.tools.quads.brush.last_selection = None;

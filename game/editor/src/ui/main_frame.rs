@@ -42,6 +42,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         super::group_and_layer::sound_props::render(ui, &mut pipe, ui_state);
     }
 
+    *pipe.user_data.pointer_is_used |= ui.memory(|i| i.any_popup_open());
+
     *pipe.user_data.unused_rect = Some(ui.available_rect_before_wrap());
     if *pipe.user_data.pointer_is_used {
         *pipe.user_data.unused_rect = None;
