@@ -28,6 +28,8 @@ pub struct EditorUiEventHostMap {
     pub password: String,
     pub cert: x509_cert::Certificate,
     pub private_key: SigningKey,
+
+    pub mapper_name: String,
 }
 
 #[derive(Debug)]
@@ -45,6 +47,7 @@ pub enum EditorUiEvent {
         ip_port: String,
         cert_hash: String,
         password: String,
+        mapper_name: String,
     },
     Close,
 }
@@ -55,6 +58,7 @@ pub struct EditorMenuHostNetworkOptions {
     pub password: String,
     pub cert: x509_cert::Certificate,
     pub private_key: SigningKey,
+    pub mapper_name: String,
 }
 
 pub enum EditorMenuHostDialogMode {
@@ -77,6 +81,7 @@ pub enum EditorMenuDialogMode {
         ip_port: String,
         cert_hash: String,
         password: String,
+        mapper_name: String,
     },
 }
 
@@ -136,6 +141,7 @@ impl EditorMenuDialogMode {
             ip_port: Default::default(),
             cert_hash: Default::default(),
             password: Default::default(),
+            mapper_name: "nameless mapper".to_string(),
         }
     }
 }

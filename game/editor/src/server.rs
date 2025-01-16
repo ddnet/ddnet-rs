@@ -23,7 +23,10 @@ use sound::sound_mt::SoundMultiThreaded;
 use crate::{
     action_logic::do_action,
     actions::actions::EditorActionGroup,
-    event::{EditorEvent, EditorEventGenerator, EditorEventOverwriteMap, EditorNetEvent},
+    event::{
+        ClientProps, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
+        EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+    },
     map::EditorMap,
     network::EditorNetwork,
 };
@@ -32,6 +35,7 @@ use crate::{
 struct Client {
     is_authed: bool,
     is_local_client: bool,
+    props: ClientProps,
 }
 
 /// the editor server is mostly there to
@@ -93,17 +97,21 @@ impl EditorServer {
 
             for (id, _, event) in events {
                 match event {
-                    EditorNetEvent::Editor(ev) => {
+                    EditorNetEvent::Editor(EditorEvent::Client(ev)) => {
                         // check if client exist and is authed
                         if let Some(client) = self.clients.get_mut(&id) {
-                            if let EditorEvent::Auth {
+                            if let EditorEventClientToServer::Auth {
                                 password,
                                 is_local_client,
+                                mapper_name,
                             } = &ev
                             {
                                 if self.password.eq(password) {
                                     client.is_authed = true;
                                     client.is_local_client = *is_local_client;
+                                    client.props = ClientProps {
+                                        mapper_name: mapper_name.clone(),
+                                    };
 
                                     if !*is_local_client {
                                         let resources: HashMap<_, _> = map
@@ -172,16 +180,18 @@ impl EditorServer {
 
                                         self.network.send_to(
                                             &id,
-                                            EditorEvent::Map(EditorEventOverwriteMap {
-                                                map: map_bytes,
-                                                resources,
-                                            }),
+                                            EditorEvent::Server(EditorEventServerToClient::Map(
+                                                EditorEventOverwriteMap {
+                                                    map: map_bytes,
+                                                    resources,
+                                                },
+                                            )),
                                         );
                                     }
                                 }
                             } else if client.is_authed {
                                 match ev {
-                                    EditorEvent::Action(act) => {
+                                    EditorEventClientToServer::Action(act) => {
                                         if self
                                             .action_groups
                                             .last_mut()
@@ -213,15 +223,17 @@ impl EditorServer {
                                             ) {
                                                 self.network.send_to(
                                                     &id,
-                                                    EditorEvent::Error(format!(
-                                                        "Failed to execute your action\n\
+                                                    EditorEvent::Server(
+                                                        EditorEventServerToClient::Error(format!(
+                                                            "Failed to execute your action\n\
                                                         This is usually caused if a \
                                                         previous action invalidates \
                                                         this action, e.g. by a different user.\n\
                                                         If all users are inactive, executing \
                                                         the same action again should work; \
                                                         if not it means it's a bug.\n{err}"
-                                                    )),
+                                                        )),
+                                                    ),
                                                 );
                                             } else {
                                                 send_act.actions.push(sent_act);
@@ -233,31 +245,47 @@ impl EditorServer {
                                             .for_each(|(id, _)| {
                                                 self.network.send_to(
                                                     id,
-                                                    EditorEvent::Action(send_act.clone()),
+                                                    EditorEvent::Server(
+                                                        EditorEventServerToClient::Action(
+                                                            send_act.clone(),
+                                                        ),
+                                                    ),
                                                 );
                                             });
                                     }
-                                    EditorEvent::Command(_) => todo!(),
-                                    EditorEvent::Error(_) => {
-                                        // ignore
-                                    }
-                                    EditorEvent::Auth { .. } => {
+                                    EditorEventClientToServer::Command(_) => todo!(),
+                                    EditorEventClientToServer::Auth { .. } => {
                                         // ignore here, handled earlier
                                     }
-                                    EditorEvent::Map { .. } => {
-                                        // ignore
+                                    EditorEventClientToServer::Info(info) => {
+                                        client.props = info;
                                     }
                                 }
                             }
                         }
                     }
+                    EditorNetEvent::Editor(EditorEvent::Server(_)) => {
+                        // ignore
+                    }
                     EditorNetEvent::NetworkEvent(ev) => {
                         match &ev {
                             NetworkEvent::Connected { .. } => {
                                 self.clients.insert(id, Client::default());
+
+                                self.network.send(EditorEvent::Server(
+                                    EditorEventServerToClient::Infos(
+                                        self.clients.values().map(|c| c.props.clone()).collect(),
+                                    ),
+                                ));
                             }
                             NetworkEvent::Disconnected { .. } => {
                                 self.clients.remove(&id);
+
+                                self.network.send(EditorEvent::Server(
+                                    EditorEventServerToClient::Infos(
+                                        self.clients.values().map(|c| c.props.clone()).collect(),
+                                    ),
+                                ));
                             }
                             _ => {
                                 // ignore

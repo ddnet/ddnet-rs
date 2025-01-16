@@ -16,7 +16,10 @@ use sound::sound_mt::SoundMultiThreaded;
 use crate::{
     action_logic::do_action,
     actions::actions::{EditorAction, EditorActionGroup},
-    event::{EditorEvent, EditorEventGenerator, EditorEventOverwriteMap, EditorNetEvent},
+    event::{
+        ClientProps, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
+        EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+    },
     map::EditorMap,
     network::EditorNetwork,
     notifications::{EditorNotification, EditorNotifications},
@@ -31,6 +34,10 @@ pub struct EditorClient {
 
     notifications: EditorNotifications,
     local_client: bool,
+
+    clients: Vec<ClientProps>,
+
+    mapper_name: String,
 }
 
 impl EditorClient {
@@ -41,6 +48,7 @@ impl EditorClient {
         notifications: EditorNotifications,
         server_password: String,
         local_client: bool,
+        mapper_name: Option<String>,
     ) -> Self {
         let has_events: Arc<AtomicBool> = Default::default();
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
@@ -56,12 +64,18 @@ impl EditorClient {
             event_generator,
             notifications,
             local_client,
+
+            clients: Default::default(),
+
+            mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
         };
 
-        res.network.send(EditorEvent::Auth {
-            password: server_password,
-            is_local_client: local_client,
-        });
+        res.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Auth {
+                password: server_password,
+                is_local_client: local_client,
+                mapper_name: res.mapper_name.clone(),
+            }));
 
         res
     }
@@ -83,8 +97,8 @@ impl EditorClient {
 
             for (id, _, event) in events {
                 match event {
-                    EditorNetEvent::Editor(ev) => match ev {
-                        EditorEvent::Action(act) => {
+                    EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
+                        EditorEventServerToClient::Action(act) => {
                             if !self.local_client {
                                 for act in act.actions {
                                     if let Err(err) = do_action(
@@ -103,19 +117,20 @@ impl EditorClient {
                                 }
                             }
                         }
-                        EditorEvent::Command(_) => {
-                            // ignore
-                        }
-                        EditorEvent::Error(err) => {
+                        EditorEventServerToClient::Error(err) => {
                             self.notifications.push(EditorNotification::Error(err));
                         }
-                        EditorEvent::Auth { .. } => {
-                            // ignore
-                        }
-                        EditorEvent::Map(map) => {
+                        EditorEventServerToClient::Map(map) => {
                             res = Some(map);
                         }
+                        EditorEventServerToClient::Infos(infos) => {
+                            self.clients = infos;
+                        }
                     },
+
+                    EditorNetEvent::Editor(EditorEvent::Client(_)) => {
+                        // ignore
+                    }
                     EditorNetEvent::NetworkEvent(ev) => self.network.handle_network_ev(id, ev),
                 }
             }
@@ -125,13 +140,19 @@ impl EditorClient {
     }
 
     pub fn execute(&mut self, action: EditorAction, group_identifier: Option<&str>) {
-        self.network.send(EditorEvent::Action(EditorActionGroup {
-            actions: vec![action],
-            identifier: group_identifier.map(|s| s.to_string()),
-        }));
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Action(
+                EditorActionGroup {
+                    actions: vec![action],
+                    identifier: group_identifier.map(|s| s.to_string()),
+                },
+            )));
     }
 
     pub fn execute_group(&mut self, action_group: EditorActionGroup) {
-        self.network.send(EditorEvent::Action(action_group));
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Action(
+                action_group,
+            )));
     }
 }

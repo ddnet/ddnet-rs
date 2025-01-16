@@ -134,6 +134,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                         password: Default::default(),
                                         cert,
                                         private_key,
+                                        mapper_name: "hoster".to_string(),
                                     },
                                 ));
                             }
@@ -193,6 +194,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             map_path,
                             cert,
                             private_key,
+                            mapper_name,
                         } = *mode;
                         pipe.user_data
                             .ui_events
@@ -202,6 +204,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 password,
                                 cert,
                                 private_key,
+                                mapper_name,
                             })));
                     } else if cancel {
                         *menu_dialog_mode = EditorMenuDialogMode::None;
@@ -233,6 +236,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     ip_port,
                     cert_hash,
                     password,
+                    mapper_name,
                 } = menu_dialog_mode
                 {
                     let window = egui::Window::new("Join map network options")
@@ -248,6 +252,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.text_edit_singleline(cert_hash);
                         ui.label("Password:");
                         ui.text_edit_singleline(password);
+                        ui.label("Name:");
+                        ui.text_edit_singleline(mapper_name);
                         if ui.button("Join").clicked() {
                             join = true;
                         }
@@ -261,6 +267,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             ip_port,
                             cert_hash,
                             password,
+                            mapper_name,
                         } = std::mem::replace(menu_dialog_mode, EditorMenuDialogMode::None)
                         else {
                             return;
@@ -269,6 +276,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             ip_port,
                             cert_hash,
                             password,
+                            mapper_name,
                         });
                     } else if cancel {
                         *menu_dialog_mode = EditorMenuDialogMode::None;

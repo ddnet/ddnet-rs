@@ -22,30 +22,52 @@ use crate::actions::actions::EditorActionGroup;
 /// undo the last action.
 /// It's basically the logic of the editor ui which does not diretly affect
 /// the state of the map.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum EditorCommand {
     Undo,
     Redo,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditorEventOverwriteMap {
     pub map: Vec<u8>,
     pub resources: HashMap<Hash, Vec<u8>>,
 }
 
+/// The client props the server knows about.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct ClientProps {
+    pub mapper_name: String,
+}
+
 /// editor events are a collection of either actions or commands
-#[derive(Debug, Serialize, Deserialize)]
-pub enum EditorEvent {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEventClientToServer {
     Action(EditorActionGroup),
-    Command(EditorCommand),
-    Error(String),
     Auth {
         password: String,
         // if not local user
         is_local_client: bool,
+        mapper_name: String,
     },
+    Command(EditorCommand),
+    Info(ClientProps),
+}
+
+/// editor events are a collection of either actions or commands
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEventServerToClient {
+    Action(EditorActionGroup),
+    Error(String),
     Map(EditorEventOverwriteMap),
+    Infos(Vec<ClientProps>),
+}
+
+/// editor events are a collection of either actions or commands
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEvent {
+    Client(EditorEventClientToServer),
+    Server(EditorEventServerToClient),
 }
 
 pub enum EditorNetEvent {

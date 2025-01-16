@@ -138,6 +138,7 @@ struct MapLoadWithServerOptions {
     cert: Option<NetworkServerCertMode>,
     port: Option<u16>,
     password: Option<String>,
+    mapper_name: Option<String>,
 }
 
 #[derive(Debug)]
@@ -147,6 +148,7 @@ enum MapLoadOptions {
         server_addr: String,
         cert_hash: Hash,
         password: String,
+        mapper_name: String,
     },
 }
 
@@ -156,6 +158,7 @@ impl Default for MapLoadOptions {
             cert: None,
             port: None,
             password: None,
+            mapper_name: None,
         })
     }
 }
@@ -365,11 +368,13 @@ impl Editor {
     }
 
     fn new_map(&mut self, name: &str, options: MapLoadOptions) {
-        let (server_addr, server_cert, password, local_client, server) = match options {
+        let (server_addr, server_cert, password, local_client, server, mapper_name) = match options
+        {
             MapLoadOptions::WithServer(MapLoadWithServerOptions {
                 cert,
                 port,
                 password,
+                mapper_name,
             }) => {
                 let server = EditorServer::new(&self.sys, cert, port, password.unwrap_or_default());
                 (
@@ -389,12 +394,14 @@ impl Editor {
                     server.password.clone(),
                     true,
                     Some(server),
+                    mapper_name,
                 )
             }
             MapLoadOptions::WithoutServer {
                 server_addr,
                 cert_hash,
                 password,
+                mapper_name,
             } => (
                 server_addr,
                 NetworkClientCertCheckMode::CheckByPubKeyHash {
@@ -403,6 +410,7 @@ impl Editor {
                 password,
                 false,
                 None,
+                Some(mapper_name),
             ),
         };
         let client = EditorClient::new(
@@ -412,6 +420,7 @@ impl Editor {
             self.notifications.clone(),
             password,
             local_client,
+            mapper_name,
         );
 
         let physics_group_attr = MapGroupPhysicsAttr {
@@ -1055,6 +1064,7 @@ impl Editor {
             self.notifications.clone(),
             options.password.unwrap_or_default(),
             true,
+            options.mapper_name,
         );
 
         self.tabs.insert(
@@ -1204,6 +1214,7 @@ impl Editor {
             self.notifications.clone(),
             options.password.unwrap_or_default(),
             true,
+            options.mapper_name,
         );
 
         self.tabs.insert(
@@ -2311,6 +2322,7 @@ impl Editor {
                         password,
                         cert,
                         private_key,
+                        mapper_name,
                     } = *host_map;
                     self.load_map(
                         map_path.as_ref(),
@@ -2320,6 +2332,7 @@ impl Editor {
                             ))),
                             port: Some(port),
                             password: Some(password),
+                            mapper_name: Some(mapper_name),
                         },
                     );
                 }
@@ -2327,6 +2340,7 @@ impl Editor {
                     ip_port,
                     cert_hash,
                     password,
+                    mapper_name,
                 } => self.new_map(
                     "loading",
                     MapLoadOptions::WithoutServer {
@@ -2338,6 +2352,7 @@ impl Editor {
                             .try_into()
                             .unwrap(),
                         password,
+                        mapper_name,
                     },
                 ),
                 EditorUiEvent::Close => self.is_closed = true,
