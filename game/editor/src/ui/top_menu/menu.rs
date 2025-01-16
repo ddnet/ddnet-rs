@@ -47,6 +47,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         }
                     });
 
+                    ui.menu_button("Edit", |ui| {
+                        if ui.add(Button::new("Undo")).clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::Undo);
+                        }
+                        if ui.add(Button::new("Redo")).clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::Redo);
+                        }
+                    });
+
                     ui.menu_button("Tools", |ui| {
                         if ui
                             .add(

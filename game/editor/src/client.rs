@@ -14,10 +14,10 @@ use network::network::types::NetworkClientCertCheckMode;
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::do_action,
+    action_logic::{do_action, undo_action},
     actions::actions::{EditorAction, EditorActionGroup},
     event::{
-        ClientProps, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
+        ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
         EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
@@ -53,7 +53,7 @@ impl EditorClient {
         let has_events: Arc<AtomicBool> = Default::default();
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
 
-        let mut res = Self {
+        let res = Self {
             network: EditorNetwork::new_client(
                 sys,
                 event_generator.clone(),
@@ -98,10 +98,29 @@ impl EditorClient {
             for (id, _, event) in events {
                 match event {
                     EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
-                        EditorEventServerToClient::Action(act) => {
+                        EditorEventServerToClient::DoAction(act) => {
                             if !self.local_client {
                                 for act in act.actions {
                                     if let Err(err) = do_action(
+                                        tp,
+                                        sound_mt,
+                                        graphics_mt,
+                                        buffer_object_handle,
+                                        backend_handle,
+                                        texture_handle,
+                                        act,
+                                        map,
+                                    ) {
+                                        self.notifications.push(EditorNotification::Error(format!("There has been an critical error while processing a action of the server: {err}.\nThis usually indicates a bug in the editor code.\nCan not continue.")));
+                                        return Err(anyhow!("critical error during do_action"));
+                                    }
+                                }
+                            }
+                        }
+                        EditorEventServerToClient::UndoAction(act) => {
+                            if !self.local_client {
+                                for act in act.actions.into_iter().rev() {
+                                    if let Err(err) = undo_action(
                                         tp,
                                         sound_mt,
                                         graphics_mt,
@@ -153,6 +172,20 @@ impl EditorClient {
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Action(
                 action_group,
+            )));
+    }
+
+    pub fn undo(&self) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Command(
+                EditorCommand::Undo,
+            )));
+    }
+
+    pub fn redo(&self) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::Command(
+                EditorCommand::Redo,
             )));
     }
 }

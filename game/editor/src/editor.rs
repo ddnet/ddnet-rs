@@ -2356,6 +2356,16 @@ impl Editor {
                     },
                 ),
                 EditorUiEvent::Close => self.is_closed = true,
+                EditorUiEvent::Undo => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.undo();
+                    }
+                }
+                EditorUiEvent::Redo => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.redo();
+                    }
+                }
             }
         }
         (unused_rect, input_state, ui_canvas, egui_output)

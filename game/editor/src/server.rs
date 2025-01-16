@@ -21,10 +21,10 @@ use network::network::{
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::do_action,
+    action_logic::{do_action, undo_action},
     actions::actions::EditorActionGroup,
     event::{
-        ClientProps, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
+        ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
         EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
@@ -45,6 +45,8 @@ struct Client {
 /// an undo/redo manager
 pub struct EditorServer {
     action_groups: Vec<EditorActionGroup>,
+    cur_action_group: usize,
+
     network: EditorNetwork,
 
     has_events: Arc<AtomicBool>,
@@ -72,6 +74,8 @@ impl EditorServer {
             EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port);
         Self {
             action_groups: Default::default(),
+            cur_action_group: 0,
+
             has_events,
             event_generator,
             network,
@@ -192,6 +196,10 @@ impl EditorServer {
                             } else if client.is_authed {
                                 match ev {
                                     EditorEventClientToServer::Action(act) => {
+                                        if self.cur_action_group < self.action_groups.len() {
+                                            self.action_groups.truncate(self.cur_action_group + 1);
+                                        }
+
                                         if self
                                             .action_groups
                                             .last_mut()
@@ -203,7 +211,9 @@ impl EditorServer {
                                                 .actions
                                                 .append(&mut act.actions.clone());
                                         } else {
+                                            let new_index = self.action_groups.len();
                                             self.action_groups.push(act.clone());
+                                            self.cur_action_group = new_index;
                                         }
                                         let mut send_act = EditorActionGroup {
                                             actions: Vec::new(),
@@ -246,14 +256,93 @@ impl EditorServer {
                                                 self.network.send_to(
                                                     id,
                                                     EditorEvent::Server(
-                                                        EditorEventServerToClient::Action(
+                                                        EditorEventServerToClient::DoAction(
                                                             send_act.clone(),
                                                         ),
                                                     ),
                                                 );
                                             });
                                     }
-                                    EditorEventClientToServer::Command(_) => todo!(),
+                                    EditorEventClientToServer::Command(cmd) => match cmd {
+                                        EditorCommand::Undo | EditorCommand::Redo => {
+                                            let is_undo = matches!(cmd, EditorCommand::Undo);
+
+                                            if !is_undo {
+                                                self.cur_action_group = (self.cur_action_group + 1)
+                                                    .clamp(
+                                                        0,
+                                                        self.action_groups.len().saturating_sub(1),
+                                                    );
+                                            }
+
+                                            if let Some(group) =
+                                                self.action_groups.get(self.cur_action_group)
+                                            {
+                                                let it: Box<dyn Iterator<Item = _>> = if is_undo {
+                                                    Box::new(group.actions.iter().rev())
+                                                } else {
+                                                    Box::new(group.actions.iter())
+                                                };
+                                                for act in it {
+                                                    let action_fn = if is_undo {
+                                                        undo_action
+                                                    } else {
+                                                        do_action
+                                                    };
+                                                    if let Err(err) = action_fn(
+                                                        tp,
+                                                        sound_mt,
+                                                        graphics_mt,
+                                                        buffer_object_handle,
+                                                        backend_handle,
+                                                        texture_handle,
+                                                        act.clone(),
+                                                        map,
+                                                    ) {
+                                                        let err = format!(
+                                                            "Failed to execute your action.\n\
+                                                            Since it was an {} command, this \
+                                                            probably indicates a bug in the code.\n\
+                                                            {err}",
+                                                            if is_undo { "undo" } else { "redo" }
+                                                        );
+                                                        self.network.send_to(
+                                                            &id,
+                                                            EditorEvent::Server(
+                                                                EditorEventServerToClient::Error(
+                                                                    err,
+                                                                ),
+                                                            ),
+                                                        );
+                                                    }
+                                                }
+
+                                                let act = if is_undo {
+                                                    EditorEventServerToClient::UndoAction(
+                                                        group.clone(),
+                                                    )
+                                                } else {
+                                                    EditorEventServerToClient::DoAction(
+                                                        group.clone(),
+                                                    )
+                                                };
+                                                self.clients
+                                                    .iter()
+                                                    .filter(|(_, client)| !client.is_local_client)
+                                                    .for_each(|(id, _)| {
+                                                        self.network.send_to(
+                                                            id,
+                                                            EditorEvent::Server(act.clone()),
+                                                        );
+                                                    });
+                                            }
+
+                                            if is_undo {
+                                                self.cur_action_group =
+                                                    self.cur_action_group.saturating_sub(1);
+                                            }
+                                        }
+                                    },
                                     EditorEventClientToServer::Auth { .. } => {
                                         // ignore here, handled earlier
                                     }

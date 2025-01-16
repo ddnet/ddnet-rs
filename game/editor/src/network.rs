@@ -112,7 +112,7 @@ impl EditorNetwork {
         }
     }
 
-    pub fn send(&mut self, ev: EditorEvent) {
+    pub fn send(&self, ev: EditorEvent) {
         if self.is_server {
             for connection in &self.connections {
                 self.network

@@ -57,7 +57,8 @@ pub enum EditorEventClientToServer {
 /// editor events are a collection of either actions or commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EditorEventServerToClient {
-    Action(EditorActionGroup),
+    DoAction(EditorActionGroup),
+    UndoAction(EditorActionGroup),
     Error(String),
     Map(EditorEventOverwriteMap),
     Infos(Vec<ClientProps>),

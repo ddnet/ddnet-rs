@@ -50,6 +50,8 @@ pub enum EditorUiEvent {
         mapper_name: String,
     },
     Close,
+    Undo,
+    Redo,
 }
 
 pub struct EditorMenuHostNetworkOptions {
