@@ -42,7 +42,7 @@ pub enum LocalConsoleEvent {
         // The bind was added to the player's profile
         was_player_profile: bool,
     },
-    /// A unbind command was executed
+    /// An unbind command was executed
     Unbind {
         // The bind was added to the player's profile
         was_player_profile: bool,

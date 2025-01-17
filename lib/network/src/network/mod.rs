@@ -434,7 +434,7 @@ pub mod tests {
             {
                 notifier_server.wait_for_event(None);
             }
-            // reliable in order a on different channel
+            // reliable in order an on different channel
             *game_event_generator_server.cur_test_name.blocking_lock() =
                 "reliable in order on different channel".to_string();
             for channel in 10..12 {

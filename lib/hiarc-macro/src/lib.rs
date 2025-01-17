@@ -122,7 +122,7 @@ pub fn hiarc(attr: TokenStream, tokens: TokenStream) -> TokenStream {
 ///
 /// This attribute purposely does not re-implement the `Drop`-trait on the outer struct
 ///
-/// You can additionally not pass any closures, closures can have bindings to a instance of the annotated struct and call
+/// You can additionally not pass any closures, closures can have bindings to an instance of the annotated struct and call
 /// a function on it, which leads to panics.
 /// Even fruther, all function parameters must implement hiarc and their hiarc value must be smaller than
 /// the annotated struct => the parameter can not be a struct that keeps a reference to the annotated struct.

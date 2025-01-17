@@ -76,7 +76,7 @@ fn calc_font_size_index(
     } else {
         // font is already smallest
         let next_col_count = cur_column_count + 1;
-        // check if a additional column would fit somehow
+        // check if an additional column would fit somehow
         let required_size =
             next_col_count as f32 * min_table_width + (next_col_count - 1) as f32 * spacing_x;
         if height < full_height && required_size <= width {

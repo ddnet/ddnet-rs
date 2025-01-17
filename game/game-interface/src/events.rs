@@ -381,7 +381,7 @@ pub enum GameWorldAction {
 pub enum GameWorldNotificationEvent {
     /// A system message
     System(GameWorldSystemMessage),
-    /// A action that is displayed in an action feed, kill message or finish time etc.
+    /// An action that is displayed in an action feed, kill message or finish time etc.
     Action(GameWorldAction),
     /// Message of the day
     Motd { msg: MtPoolNetworkString<1024> },
@@ -396,7 +396,7 @@ pub enum GameWorldEvent {
 
 /// # ID (Event-ID)
 /// All events have an ID, this ID is always unique across all worlds on the server for every single event.
-/// The client tries to match a event by its ID, the client might reset the id generator tho, if
+/// The client tries to match an event by its ID, the client might reset the id generator tho, if
 /// the server is out of sync.
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
 pub struct GameWorldEvents {

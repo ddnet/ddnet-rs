@@ -130,7 +130,7 @@ pub struct PlayerVoteKey {
 pub struct RandomUnfinishedMapKey {
     /// A category in which this vote was called.
     pub category: NetworkString<MAX_CATEGORY_NAME_LEN>,
-    /// A optional difficulty for the random map
+    /// An optional difficulty for the random map
     pub difficulty: Option<MapDifficulty>,
 }
 

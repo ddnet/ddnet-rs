@@ -711,7 +711,7 @@ impl InputHandling {
         }
     }
 
-    /// returns a list of immediate events that are a result of a input
+    /// returns a list of immediate events that are a result of an input
     pub fn handle_player_binds(
         &mut self,
         game_data: &mut GameData,

@@ -134,7 +134,7 @@ struct DefaultItem<L> {
 ///
 /// # Users
 /// Users of the containers must call [Container::get_or_default] to get
-/// access to a resource. It accepts a file name and a optional hash.
+/// access to a resource. It accepts a file name and an optional hash.
 /// The hash must be used if the resource is forced by a game server,
 /// else it's optional.
 /// Calling [Container::update] causes the container to remove unused
@@ -460,7 +460,7 @@ where
                         // also check if only allowed characters are inside the strings
                         {
                             for char in line.chars() {
-                                if !char.is_ascii_graphic() || !char.is_ascii_whitespace() {
+                                if !char.is_ascii_graphic() && !char.is_ascii_whitespace() {
                                     log::warn!(
                                         "downloaded text resource (txt) \
                                         ({}) contains an unallowed character: \"{}\"",

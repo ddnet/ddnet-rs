@@ -17,7 +17,7 @@ pub fn verify_ogg_vorbis(file: &[u8]) -> anyhow::Result<()> {
     )?;
     anyhow::ensure!(
         reader.tracks().len() == 1,
-        "currently exactly one track in a ogg vorbis file is allowed."
+        "currently exactly one track in an ogg vorbis file is allowed."
     );
     let mut decoder = VorbisDecoder::try_new(
         &reader

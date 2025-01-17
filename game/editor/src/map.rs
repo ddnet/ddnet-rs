@@ -64,7 +64,7 @@ pub trait EditorDesignLayerInterface {
 #[derive(Debug, Default, Clone)]
 pub struct EditorCommonGroupOrLayerAttr {
     pub hidden: bool,
-    // active layer/group, e.g. a brush on a active tile layer would have effect
+    // active layer/group, e.g. a brush on an active tile layer would have effect
     pub active: bool,
 }
 

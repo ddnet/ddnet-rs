@@ -247,7 +247,7 @@ impl Instance {
 
     pub fn process_samples(&mut self, samples: u32) -> anyhow::Result<Vec<kira::Frame>> {
         let AudioManagerTy::OffAir(manager) = &mut self.manager else {
-            return Err(anyhow!("Not a off-air scene."));
+            return Err(anyhow!("Not an off-air scene."));
         };
 
         manager.backend_mut().on_start_processing();
