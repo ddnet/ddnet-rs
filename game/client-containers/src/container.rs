@@ -460,7 +460,7 @@ where
                         // also check if only allowed characters are inside the strings
                         {
                             for char in line.chars() {
-                                if !char.is_ascii_graphic() || !char.is_ascii_whitespace() {
+                                if !char.is_ascii_graphic() && !char.is_ascii_whitespace() {
                                     log::warn!(
                                         "downloaded text resource (txt) \
                                         ({}) contains an unallowed character: \"{}\"",
