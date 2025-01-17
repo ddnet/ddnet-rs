@@ -420,7 +420,7 @@ impl OffscreenSurface {
 #[derive(Debug, Hiarc)]
 pub struct RenderSetupSwitchingPass {
     pub surface: Arc<OffscreenSurface>,
-    // render into a offscreen framebuffer first
+    // render into an offscreen framebuffer first
     pub render_pass: Arc<RenderPass>,
     pub framebuffer_list: Vec<Framebuffer>,
 }

@@ -82,7 +82,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                         });
                                 }
                                 if ui.button("Join other team").clicked() {
-                                    // Show a overview over all teams
+                                    // Show an overview over all teams
                                     config
                                         .path()
                                         .add_query(("team_select".to_string(), "1".to_string()));

@@ -114,7 +114,7 @@ pub struct MsgSvServerInfo {
     /// A server should provide these resource itself.
     pub required_resources: RequiredResources,
     /// - if this is `Some`, it is the port to the fallback resource download server.
-    /// - if this is `None`, either resources are downloaded from a official resource
+    /// - if this is `None`, either resources are downloaded from an official resource
     ///     server or from a resource server stored in the server
     ///     browser information of this server.
     ///

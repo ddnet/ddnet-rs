@@ -541,7 +541,7 @@ impl SubRenderPass {
         )
     }
 
-    /// `stop_execution_flag` will be checked after every pipeline created (which might be a expensive operation) to allow earlier cancelation if desired
+    /// `stop_execution_flag` will be checked after every pipeline created (which might be an expensive operation) to allow earlier cancellation if desired
     pub fn create_pipelines(
         &mut self,
         logical_device: &Arc<LogicalDevice>,

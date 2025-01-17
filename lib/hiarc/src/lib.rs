@@ -764,7 +764,7 @@ pub enum HiUnsafeSyncSendCellCastError {
     FailedToUnwrap,
 }
 
-/// This struct takes a instance of [`HiUnsafeRefCell`] () and _tries_ wrap it's inner value into a wrapper,
+/// This struct takes an instance of [`HiUnsafeRefCell`] () and _tries_ wrap it's inner value into a wrapper,
 /// that is [`Sync`] + [`Send`].
 ///
 /// It fails if the outer wrappers are not the only owners of the value (e.g. [`Rc`]).

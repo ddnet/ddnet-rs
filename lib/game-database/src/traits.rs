@@ -115,7 +115,7 @@ impl DbStatementResultInterface for () {
     {
         anyhow::ensure!(
             results.is_empty(),
-            "for a empty result, the result set should be empty as well."
+            "for an empty result the result set should be empty as well."
         );
         Ok(())
     }

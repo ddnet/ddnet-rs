@@ -120,7 +120,7 @@ pub trait BackendRenderExecuteInterface {
     /// the color attachment of the previous render pass
     fn set_color_attachment_as_texture(&mut self, index: u64, address_mode_index: u64);
 
-    /// the color attachment of a offscreen buffer
+    /// the color attachment of an offscreen buffer
     fn set_offscreen_attachment_as_texture(
         &mut self,
         offscreen_id: u128,

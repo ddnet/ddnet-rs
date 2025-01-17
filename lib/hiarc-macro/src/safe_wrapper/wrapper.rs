@@ -101,7 +101,7 @@ pub(crate) fn hiarc_safer_wrapper(
                                     (true, false)
                                 }
                                 _ => {
-                                    // ignore rest, except it's a trait, or it has a attr called `hiarc_force_impl`
+                                    // ignore rest, except it's a trait, or it has an attr called `hiarc_force_impl`
                                     let mut found_force = false;
                                     let mut found_trait_is_immutable_self = false;
                                     f.attrs.retain_mut(|attr| {

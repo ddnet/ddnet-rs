@@ -2,14 +2,14 @@ use base::{hash::Hash, reduced_ascii_str::ReducedAsciiString};
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
 
-/// a reference to a external resource
+/// a reference to an external resource
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
 pub struct MapResourceMetaData {
     pub blake3_hash: Hash,
     pub ty: ReducedAsciiString,
 }
 
-/// a reference to a external resource
+/// a reference to an external resource
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
 pub struct MapResourceRef {
     pub name: ReducedAsciiString,
@@ -20,7 +20,7 @@ pub struct MapResourceRef {
     pub hq_meta: Option<MapResourceMetaData>,
 }
 
-/// a reference to a external resource
+/// a reference to an external resource
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
 pub struct Resources {
     pub images: Vec<MapResourceRef>,

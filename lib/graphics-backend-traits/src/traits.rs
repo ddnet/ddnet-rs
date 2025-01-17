@@ -87,7 +87,7 @@ pub trait GraphicsBackendMtInterface: Debug {
     /// normally (create texture, create buffer).
     /// The rule of thumb is to always try to call this, when you are loading inside
     /// a thread
-    /// `do_expensive_flushing` determines if the implementation is allowed to use a expensive flushing mechanism
+    /// `do_expensive_flushing` determines if the implementation is allowed to use an expensive flushing mechanism
     /// this is generally recommended since this function should only be called from a function anyway,
     /// but it might cost more performance in some cases which makes it undesirable for situations where
     /// it is better to have fewest possible runtime (e.g. loading a map, which is required to proceed the game)

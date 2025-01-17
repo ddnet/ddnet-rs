@@ -19,7 +19,7 @@ use crate::actions::actions::EditorActionGroup;
 /// An editor command is the way the user expresses to
 /// issue a certain state change.
 ///
-/// E.g. a undo command means that the server should try to
+/// E.g. an undo command means that the server should try to
 /// undo the last action.
 /// It's basically the logic of the editor ui which does not diretly affect
 /// the state of the map.
