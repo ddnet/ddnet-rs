@@ -1329,6 +1329,7 @@ impl RenderGame {
                         .weapon_container
                         .get_or_default_opt(info.map(|i| &i.weapon))
                         .gun
+                        .weapon
                         .fire
                         .random_entry(&mut self.rng)
                         .play(
@@ -1568,6 +1569,7 @@ impl RenderGame {
                             .ninja_container
                             .get_or_default_opt(info.map(|i| &i.ninja))
                             .spawn
+                            .random_entry(&mut self.rng)
                             .play(
                                 SoundPlayProps::new_with_pos_opt(pos)
                                     .with_with_spatial(settings.spatial_sound)
@@ -1581,6 +1583,7 @@ impl RenderGame {
                             .ninja_container
                             .get_or_default_opt(info.map(|i| &i.ninja))
                             .collect
+                            .random_entry(&mut self.rng)
                             .play(
                                 SoundPlayProps::new_with_pos_opt(pos)
                                     .with_with_spatial(settings.spatial_sound)
@@ -1687,6 +1690,7 @@ impl RenderGame {
                     .get_or_default_opt(info.map(|i| &i.weapon))
                     .grenade
                     .spawn
+                    .random_entry(&mut self.rng)
                     .play(
                         SoundPlayProps::new_with_pos_opt(pos)
                             .with_with_spatial(settings.spatial_sound)
@@ -1701,6 +1705,7 @@ impl RenderGame {
                     .get_or_default_opt(info.map(|i| &i.weapon))
                     .grenade
                     .collect
+                    .random_entry(&mut self.rng)
                     .play(
                         SoundPlayProps::new_with_pos_opt(pos)
                             .with_with_spatial(settings.spatial_sound)
@@ -1757,6 +1762,7 @@ impl RenderGame {
                     .get_or_default_opt(info.map(|i| &i.weapon))
                     .laser
                     .spawn
+                    .random_entry(&mut self.rng)
                     .play(
                         SoundPlayProps::new_with_pos_opt(pos)
                             .with_with_spatial(settings.spatial_sound)
@@ -1771,6 +1777,7 @@ impl RenderGame {
                     .get_or_default_opt(info.map(|i| &i.weapon))
                     .laser
                     .collect
+                    .random_entry(&mut self.rng)
                     .play(
                         SoundPlayProps::new_with_pos_opt(pos)
                             .with_with_spatial(settings.spatial_sound)
@@ -1813,6 +1820,7 @@ impl RenderGame {
                     .get_or_default_opt(info.map(|i| &i.weapon))
                     .shotgun
                     .spawn
+                    .random_entry(&mut self.rng)
                     .play(
                         SoundPlayProps::new_with_pos_opt(pos)
                             .with_with_spatial(settings.spatial_sound)
@@ -1827,6 +1835,7 @@ impl RenderGame {
                     .get_or_default_opt(info.map(|i| &i.weapon))
                     .shotgun
                     .collect
+                    .random_entry(&mut self.rng)
                     .play(
                         SoundPlayProps::new_with_pos_opt(pos)
                             .with_with_spatial(settings.spatial_sound)
@@ -1938,7 +1947,8 @@ impl RenderGame {
                         .game_container
                         .get_or_default_opt(info.map(|i| &i.game))
                         .heart
-                        .spawn
+                        .spawns
+                        .random_entry(&mut self.rng)
                         .play(
                             SoundPlayProps::new_with_pos_opt(pos)
                                 .with_with_spatial(settings.spatial_sound)
@@ -1969,7 +1979,8 @@ impl RenderGame {
                         .game_container
                         .get_or_default_opt(info.map(|i| &i.game))
                         .shield
-                        .spawn
+                        .spawns
+                        .random_entry(&mut self.rng)
                         .play(
                             SoundPlayProps::new_with_pos_opt(pos)
                                 .with_with_spatial(settings.spatial_sound)

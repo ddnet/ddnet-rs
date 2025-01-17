@@ -32,7 +32,7 @@ use graphics::{
     streaming::quad_scope_begin,
 };
 use graphics_types::rendering::State;
-use math::math::{vector::vec2, Rng, RngSlice, PI};
+use math::math::{vector::vec2, PI};
 use ui_base::ui::UiCreator;
 use vanilla::weapons::definitions::weapon_def::{get_weapon_sprite_scale, get_weapon_visual_scale};
 
@@ -93,8 +93,6 @@ pub struct RenderHud {
     ddrace_offsets: RenderOffsetsDdrace,
 
     canvas_handle: GraphicsCanvasHandle,
-
-    rng: Rng,
 }
 
 impl RenderHud {
@@ -359,8 +357,6 @@ impl RenderHud {
 
             canvas_handle: graphics.canvas_handle.clone(),
 
-            rng: Rng::new(0),
-
             ui: HudRender::new(graphics, creator),
         }
     }
@@ -429,10 +425,21 @@ impl RenderHud {
         );
 
         // render ammo
-        let weapon = weapons.by_type(cur_weapon);
-        if !weapon.projectiles.is_empty() && info.ammo_of_weapon.is_some() {
+        let projectile = match cur_weapon {
+            WeaponType::Hammer => None,
+            WeaponType::Gun => Some(&weapons.gun.projectile),
+            WeaponType::Shotgun => Some(&weapons.shotgun.projectile),
+            WeaponType::Grenade => Some(&weapons.grenade.projectile),
+            WeaponType::Laser => Some(&weapons.laser.projectile),
+        };
+        if let Some(projectile) = info
+            .ammo_of_weapon
+            .is_some()
+            .then_some(projectile)
+            .flatten()
+        {
             let cur_ammo_of_weapon = info.ammo_of_weapon.unwrap().min(10) as usize;
-            let texture = weapon.projectiles.random_entry(&mut self.rng);
+            let texture = &projectile.projectile;
             self.quad_container.render_quad_container(
                 self.vanilla_offsets.weapon_ammo_offsets[cur_weapon as usize],
                 &QuadContainerRenderCount::Count(cur_ammo_of_weapon),

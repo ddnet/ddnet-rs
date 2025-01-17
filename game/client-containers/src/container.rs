@@ -1485,6 +1485,45 @@ pub fn load_file_part_and_upload_ex(
     })
 }
 
+pub fn load_file_part_list_and_upload(
+    graphics_mt: &GraphicsMultiThreaded,
+    files: &ContainerLoadedItemDir,
+    default_files: &ContainerLoadedItemDir,
+    item_name: &str,
+    extra_paths: &[&str],
+    part_name_base: &str,
+) -> anyhow::Result<Vec<ContainerItemLoadData>> {
+    let mut textures = Vec::new();
+    let mut i = 0;
+    let mut allow_default = true;
+    loop {
+        match load_file_part_and_upload_ex(
+            graphics_mt,
+            files,
+            default_files,
+            item_name,
+            extra_paths,
+            &format!("{part_name_base}_{:03}", i + 1),
+            allow_default,
+        ) {
+            Ok(img) => {
+                allow_default &= img.from_default;
+                textures.push(img.img);
+            }
+            Err(err) => {
+                if i == 0 {
+                    return Err(err);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        i += 1;
+    }
+    Ok(textures)
+}
+
 pub struct SoundFilePartResult {
     pub mem: SoundBackendMemory,
     /// Was loaded by the default fallback mechanism
@@ -1568,6 +1607,44 @@ pub fn load_sound_file_part_and_upload_ex(
     }
 
     Ok(SoundFilePartResult { mem, from_default })
+}
+
+pub fn load_sound_file_part_list_and_upload(
+    sound_mt: &SoundMultiThreaded,
+    files: &ContainerLoadedItemDir,
+    default_files: &ContainerLoadedItemDir,
+    item_name: &str,
+    extra_paths: &[&str],
+    part_name_base: &str,
+) -> anyhow::Result<Vec<SoundBackendMemory>> {
+    let mut sounds = Vec::new();
+    let mut i = 0;
+    let mut allow_default = true;
+    loop {
+        match load_sound_file_part_and_upload_ex(
+            sound_mt,
+            files,
+            default_files,
+            item_name,
+            extra_paths,
+            &format!("{part_name_base}_{:03}", i + 1),
+            allow_default,
+        ) {
+            Ok(sound) => {
+                allow_default &= sound.from_default;
+                sounds.push(sound.mem);
+            }
+            Err(err) => {
+                if i == 0 {
+                    return Err(err);
+                } else {
+                    break;
+                }
+            }
+        }
+        i += 1;
+    }
+    Ok(sounds)
 }
 
 /// returns the png data, the width and height are the 3d texture w & h, additionally the depth is returned

@@ -65,29 +65,39 @@ pub fn particles_list(
             };
             let mut index = 0;
 
-            render_texture(&particles.airjump, index);
-            index += 1;
-            render_texture(&particles.slice, index);
-            index += 1;
-            render_texture(&particles.ball, index);
-            index += 1;
-            for tex in &particles.splats {
+            for tex in particles.airjump.iter().take(2) {
                 render_texture(tex, index);
                 index += 1;
             }
-            render_texture(&particles.smoke, index);
-            index += 1;
-            render_texture(&particles.shell, index);
-            index += 1;
-            for tex in &particles.explosions {
+            for tex in particles.slice.iter().take(2) {
                 render_texture(tex, index);
                 index += 1;
             }
-            for tex in &particles.hits {
+            for tex in particles.ball.iter().take(2) {
                 render_texture(tex, index);
                 index += 1;
             }
-            for tex in &particles.stars {
+            for tex in particles.splats.iter().take(2) {
+                render_texture(tex, index);
+                index += 1;
+            }
+            for tex in particles.smoke.iter().take(2) {
+                render_texture(tex, index);
+                index += 1;
+            }
+            for tex in particles.shell.iter().take(2) {
+                render_texture(tex, index);
+                index += 1;
+            }
+            for tex in particles.explosions.iter().take(2) {
+                render_texture(tex, index);
+                index += 1;
+            }
+            for tex in particles.hits.iter().take(2) {
+                render_texture(tex, index);
+                index += 1;
+            }
+            for tex in particles.stars.iter().take(2) {
                 render_texture(tex, index);
                 index += 1;
             }

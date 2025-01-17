@@ -10,8 +10,7 @@ use sound::{
 };
 
 use crate::container::{
-    load_file_part_and_upload_ex, load_sound_file_part_and_upload,
-    load_sound_file_part_and_upload_ex, ContainerLoadedItem, ContainerLoadedItemDir,
+    load_sound_file_part_list_and_upload, ContainerLoadedItem, ContainerLoadedItemDir,
 };
 
 use super::container::{
@@ -22,7 +21,7 @@ use super::container::{
 pub struct Pickup {
     pub tex: TextureContainer,
 
-    pub spawn: SoundObject,
+    pub spawns: Vec<SoundObject>,
     pub collects: Vec<SoundObject>,
 }
 
@@ -35,15 +34,13 @@ pub struct Game {
     pub lose_laser: TextureContainer,
     pub lose_ninja: TextureContainer,
     pub lose_shotgun: TextureContainer,
-
-    pub stars: Vec<TextureContainer>,
 }
 
 #[derive(Debug)]
 pub struct LoadPickup {
     pub tex: ContainerItemLoadData,
 
-    pub spawn: SoundBackendMemory,
+    pub spawns: Vec<SoundBackendMemory>,
     pub collects: Vec<SoundBackendMemory>,
 }
 
@@ -56,8 +53,6 @@ pub struct LoadGame {
     pub lose_laser: ContainerItemLoadData,
     pub lose_ninja: ContainerItemLoadData,
     pub lose_shotgun: ContainerItemLoadData,
-
-    pub stars: Vec<ContainerItemLoadData>,
 
     game_name: String,
 }
@@ -82,45 +77,22 @@ impl LoadGame {
                 )?
                 .img,
 
-                spawn: load_sound_file_part_and_upload(
+                spawns: load_sound_file_part_list_and_upload(
                     sound_mt,
                     &files,
                     default_files,
                     game_name,
                     &["audio", "heart"],
                     "spawn",
-                )?
-                .mem,
-                collects: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            &files,
-                            default_files,
-                            game_name,
-                            &["audio", "heart"],
-                            &format!("collect{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
+                )?,
+                collects: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    &files,
+                    default_files,
+                    game_name,
+                    &["audio", "heart"],
+                    "collect",
+                )?,
             },
             shield: LoadPickup {
                 tex: load_file_part_and_upload(
@@ -133,45 +105,22 @@ impl LoadGame {
                 )?
                 .img,
 
-                spawn: load_sound_file_part_and_upload(
+                spawns: load_sound_file_part_list_and_upload(
                     sound_mt,
                     &files,
                     default_files,
                     game_name,
                     &["audio", "shield"],
                     "spawn",
-                )?
-                .mem,
-                collects: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            &files,
-                            default_files,
-                            game_name,
-                            &["audio", "shield"],
-                            &format!("collect{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
+                )?,
+                collects: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    &files,
+                    default_files,
+                    game_name,
+                    &["audio", "shield"],
+                    "collect",
+                )?,
             },
 
             lose_grenade: load_file_part_and_upload(
@@ -210,38 +159,6 @@ impl LoadGame {
                 "lose_shotgun",
             )?
             .img,
-
-            stars: {
-                let mut textures = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_file_part_and_upload_ex(
-                        graphics_mt,
-                        &files,
-                        default_files,
-                        game_name,
-                        &[],
-                        &format!("star{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(img) => {
-                            allow_default &= img.from_default;
-                            textures.push(img.img);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-
-                    i += 1;
-                }
-                textures
-            },
 
             game_name: game_name.to_string(),
         })
@@ -284,7 +201,12 @@ impl ContainerLoad<Game> for LoadGame {
             heart: Pickup {
                 tex: Self::load_file_into_texture(texture_handle, self.heart.tex, &self.game_name),
 
-                spawn: sound_object_handle.create(self.heart.spawn),
+                spawns: self
+                    .heart
+                    .spawns
+                    .into_iter()
+                    .map(|obj| sound_object_handle.create(obj))
+                    .collect::<Vec<_>>(),
                 collects: self
                     .heart
                     .collects
@@ -295,7 +217,12 @@ impl ContainerLoad<Game> for LoadGame {
             shield: Pickup {
                 tex: Self::load_file_into_texture(texture_handle, self.shield.tex, &self.game_name),
 
-                spawn: sound_object_handle.create(self.shield.spawn),
+                spawns: self
+                    .shield
+                    .spawns
+                    .into_iter()
+                    .map(|obj| sound_object_handle.create(obj))
+                    .collect::<Vec<_>>(),
                 collects: self
                     .shield
                     .collects
@@ -324,12 +251,6 @@ impl ContainerLoad<Game> for LoadGame {
                 self.lose_shotgun,
                 &self.game_name,
             ),
-
-            stars: self
-                .stars
-                .into_iter()
-                .map(|star| Self::load_file_into_texture(texture_handle, star, &self.game_name))
-                .collect::<Vec<_>>(),
         }
     }
 }
