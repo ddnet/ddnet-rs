@@ -12,8 +12,8 @@ use sound::{
 
 use crate::{
     container::{
-        load_file_part_and_upload_ex, load_sound_file_part_and_upload,
-        load_sound_file_part_and_upload_ex, ContainerLoadedItem, ContainerLoadedItemDir,
+        load_file_part_list_and_upload, load_sound_file_part_list_and_upload, ContainerLoadedItem,
+        ContainerLoadedItemDir,
     },
     skins::{LoadSkin, Skin},
 };
@@ -30,8 +30,8 @@ pub struct Ninja {
 
     pub skin: Rc<Skin>,
 
-    pub spawn: SoundObject,
-    pub collect: SoundObject,
+    pub spawn: Vec<SoundObject>,
+    pub collect: Vec<SoundObject>,
     pub attacks: Vec<SoundObject>,
     pub hits: Vec<SoundObject>,
 }
@@ -44,8 +44,8 @@ pub struct LoadNinja {
 
     skin: LoadSkin,
 
-    spawn: SoundBackendMemory,
-    collect: SoundBackendMemory,
+    spawn: Vec<SoundBackendMemory>,
+    collect: Vec<SoundBackendMemory>,
     attacks: Vec<SoundBackendMemory>,
     hits: Vec<SoundBackendMemory>,
 
@@ -79,37 +79,14 @@ impl LoadNinja {
                 "weapon",
             )?
             .img,
-            muzzles: {
-                let mut textures = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_file_part_and_upload_ex(
-                        graphics_mt,
-                        &files,
-                        default_files,
-                        ninja_name,
-                        &[],
-                        &format!("muzzle{i}"),
-                        allow_default,
-                    ) {
-                        Ok(img) => {
-                            allow_default &= img.from_default;
-                            textures.push(img.img);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-
-                    i += 1;
-                }
-                textures
-            },
+            muzzles: load_file_part_list_and_upload(
+                graphics_mt,
+                &files,
+                default_files,
+                ninja_name,
+                &[],
+                "muzzle",
+            )?,
 
             skin: LoadSkin::new(
                 graphics_mt,
@@ -120,84 +97,38 @@ impl LoadNinja {
                 Some("skin"),
             )?,
 
-            spawn: load_sound_file_part_and_upload(
+            spawn: load_sound_file_part_list_and_upload(
                 sound_mt,
                 &files,
                 default_files,
                 ninja_name,
                 &["audio"],
                 "spawn",
-            )?
-            .mem,
-            collect: load_sound_file_part_and_upload(
+            )?,
+            collect: load_sound_file_part_list_and_upload(
                 sound_mt,
                 &files,
                 default_files,
                 ninja_name,
                 &["audio"],
                 "collect",
-            )?
-            .mem,
-            attacks: {
-                let mut sounds: Vec<_> = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        &files,
-                        default_files,
-                        ninja_name,
-                        &["audio"],
-                        &format!("attack{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
-            hits: {
-                let mut sounds: Vec<_> = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        &files,
-                        default_files,
-                        ninja_name,
-                        &["audio"],
-                        &format!("hit{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            )?,
+            attacks: load_sound_file_part_list_and_upload(
+                sound_mt,
+                &files,
+                default_files,
+                ninja_name,
+                &["audio"],
+                "attack",
+            )?,
+            hits: load_sound_file_part_list_and_upload(
+                sound_mt,
+                &files,
+                default_files,
+                ninja_name,
+                &["audio"],
+                "hit",
+            )?,
             ninja_name: ninja_name.to_string(),
         })
     }
@@ -248,8 +179,16 @@ impl ContainerLoad<Ninja> for LoadNinja {
 
             skin: self.skin.convert(texture_handle, sound_object_handle),
 
-            spawn: sound_object_handle.create(self.spawn),
-            collect: sound_object_handle.create(self.collect),
+            spawn: self
+                .spawn
+                .into_iter()
+                .map(|obj| sound_object_handle.create(obj))
+                .collect::<Vec<_>>(),
+            collect: self
+                .collect
+                .into_iter()
+                .map(|obj| sound_object_handle.create(obj))
+                .collect::<Vec<_>>(),
             attacks: self
                 .attacks
                 .into_iter()

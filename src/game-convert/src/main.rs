@@ -201,28 +201,28 @@ fn main() {
         converted.projectile_gun,
         &args.output,
         "weapons/default",
-        "gun/projectile0",
+        "gun/projectile",
     );
     write_part(
         &mut write_mode,
         converted.projectile_shotgun,
         &args.output,
         "weapons/default",
-        "shotgun/projectile0",
+        "shotgun/projectile",
     );
     write_part(
         &mut write_mode,
         converted.projectile_grenade,
         &args.output,
         "weapons/default",
-        "grenade/projectile0",
+        "grenade/projectile",
     );
     write_part(
         &mut write_mode,
         converted.projectile_laser,
         &args.output,
         "weapons/default",
-        "laser/projectile0",
+        "laser/projectile",
     );
 
     converted
@@ -235,7 +235,7 @@ fn main() {
                 muzzle,
                 &args.output,
                 "weapons/default",
-                &format!("gun/muzzle{index}"),
+                &format!("gun/muzzle_{:03}", index + 1),
             )
         });
     converted
@@ -248,7 +248,7 @@ fn main() {
                 muzzle,
                 &args.output,
                 "weapons/default",
-                &format!("shotgun/muzzle{index}"),
+                &format!("shotgun/muzzle_{:03}", index + 1),
             )
         });
     converted
@@ -261,7 +261,7 @@ fn main() {
                 muzzle,
                 &args.output,
                 "ninjas/default",
-                &format!("muzzle{index}"),
+                &format!("muzzle_{:03}", index + 1),
             )
         });
     if let Some(ninja_bar_full_left) = converted.ninja_bar_full_left {

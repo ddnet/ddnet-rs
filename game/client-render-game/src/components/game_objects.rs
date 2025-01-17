@@ -230,9 +230,9 @@ impl GameObjectsRender {
         }
 
         let texture = match ty {
-            WeaponWithProjectile::Gun => &weapon.gun.projectiles[0],
-            WeaponWithProjectile::Shotgun => &weapon.shotgun.weapon.projectiles[0],
-            WeaponWithProjectile::Grenade => &weapon.grenade.weapon.projectiles[0],
+            WeaponWithProjectile::Gun => &weapon.gun.projectile.projectile,
+            WeaponWithProjectile::Shotgun => &weapon.shotgun.projectile.projectile,
+            WeaponWithProjectile::Grenade => &weapon.grenade.projectile.projectile,
         };
         quad_scope.set_colors_from_single(1.0, 1.0, 1.0, phased_alpha);
         self.items_quad_container.render_quad_container_as_sprite(

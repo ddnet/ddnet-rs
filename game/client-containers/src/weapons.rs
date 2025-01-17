@@ -12,8 +12,8 @@ use sound::{
 };
 
 use crate::container::{
-    load_file_part_and_upload_ex, load_sound_file_part_and_upload,
-    load_sound_file_part_and_upload_ex, ContainerLoadedItem, ContainerLoadedItemDir,
+    load_file_part_list_and_upload, load_sound_file_part_list_and_upload, ContainerLoadedItem,
+    ContainerLoadedItemDir,
 };
 
 use super::container::{
@@ -21,11 +21,19 @@ use super::container::{
 };
 
 #[derive(Debug, Hiarc, Clone)]
+pub struct WeaponProjectile {
+    pub projectile: TextureContainer,
+}
+
+#[derive(Debug, Hiarc, Clone)]
+pub struct WeaponMuzzles {
+    pub muzzles: Vec<TextureContainer>,
+}
+
+#[derive(Debug, Hiarc, Clone)]
 pub struct Weapon {
     pub tex: TextureContainer,
     pub cursor: TextureContainer,
-    pub projectiles: Vec<TextureContainer>,
-    pub muzzles: Vec<TextureContainer>,
 
     pub fire: Vec<SoundObject>,
     pub switch: Vec<SoundObject>,
@@ -33,27 +41,42 @@ pub struct Weapon {
 }
 
 #[derive(Debug, Hiarc, Clone)]
+pub struct Gun {
+    pub weapon: Weapon,
+
+    pub projectile: WeaponProjectile,
+    pub muzzles: WeaponMuzzles,
+}
+
+#[derive(Debug, Hiarc, Clone)]
 pub struct Grenade {
     pub weapon: Weapon,
-    pub spawn: SoundObject,
-    pub collect: SoundObject,
+    pub spawn: Vec<SoundObject>,
+    pub collect: Vec<SoundObject>,
     pub explosions: Vec<SoundObject>,
+
+    pub projectile: WeaponProjectile,
 }
 
 #[derive(Debug, Hiarc, Clone)]
 pub struct Laser {
     pub weapon: Weapon,
-    pub spawn: SoundObject,
-    pub collect: SoundObject,
+    pub spawn: Vec<SoundObject>,
+    pub collect: Vec<SoundObject>,
     pub bounces: Vec<SoundObject>,
     pub heads: Vec<TextureContainer>,
+
+    pub projectile: WeaponProjectile,
 }
 
 #[derive(Debug, Hiarc, Clone)]
 pub struct Shotgun {
     pub weapon: Weapon,
-    pub spawn: SoundObject,
-    pub collect: SoundObject,
+    pub spawn: Vec<SoundObject>,
+    pub collect: Vec<SoundObject>,
+
+    pub projectile: WeaponProjectile,
+    pub muzzles: WeaponMuzzles,
 }
 
 #[derive(Debug, Hiarc, Clone)]
@@ -65,7 +88,7 @@ pub struct Hammer {
 #[derive(Debug, Hiarc, Clone)]
 pub struct Weapons {
     pub hammer: Hammer,
-    pub gun: Weapon,
+    pub gun: Gun,
     pub shotgun: Shotgun,
     pub grenade: Grenade,
     pub laser: Laser,
@@ -75,7 +98,7 @@ impl Weapons {
     pub fn by_type(&self, weapon: WeaponType) -> &Weapon {
         match weapon {
             WeaponType::Hammer => &self.hammer.weapon,
-            WeaponType::Gun => &self.gun,
+            WeaponType::Gun => &self.gun.weapon,
             WeaponType::Shotgun => &self.shotgun.weapon,
             WeaponType::Grenade => &self.grenade.weapon,
             WeaponType::Laser => &self.laser.weapon,
@@ -84,11 +107,80 @@ impl Weapons {
 }
 
 #[derive(Debug, Hiarc)]
+pub struct LoadProjectile {
+    projectile: ContainerItemLoadData,
+}
+
+impl LoadProjectile {
+    pub fn new(
+        graphics_mt: &GraphicsMultiThreaded,
+        files: &ContainerLoadedItemDir,
+        default_files: &ContainerLoadedItemDir,
+        weapon_name: &str,
+        weapon_part: &str,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            projectile: load_file_part_and_upload(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "projectile",
+            )?
+            .img,
+        })
+    }
+
+    fn load(self, texture_handle: &GraphicsTextureHandle, name: &str) -> WeaponProjectile {
+        WeaponProjectile {
+            projectile: texture_handle
+                .load_texture_rgba_u8(self.projectile.data, name)
+                .unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Hiarc)]
+pub struct LoadMuzzles {
+    muzzles: Vec<ContainerItemLoadData>,
+}
+
+impl LoadMuzzles {
+    pub fn new(
+        graphics_mt: &GraphicsMultiThreaded,
+        files: &ContainerLoadedItemDir,
+        default_files: &ContainerLoadedItemDir,
+        weapon_name: &str,
+        weapon_part: &str,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            muzzles: load_file_part_list_and_upload(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "muzzle",
+            )?,
+        })
+    }
+
+    fn load(self, texture_handle: &GraphicsTextureHandle, name: &str) -> WeaponMuzzles {
+        WeaponMuzzles {
+            muzzles: self
+                .muzzles
+                .into_iter()
+                .map(|v| texture_handle.load_texture_rgba_u8(v.data, name).unwrap())
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Hiarc)]
 pub struct LoadWeapon {
     tex: ContainerItemLoadData,
     cursor_tex: ContainerItemLoadData,
-    projectiles: Vec<ContainerItemLoadData>,
-    muzzles: Vec<ContainerItemLoadData>,
 
     fire: Vec<SoundBackendMemory>,
     switch: Vec<SoundBackendMemory>,
@@ -103,8 +195,6 @@ impl LoadWeapon {
         default_files: &ContainerLoadedItemDir,
         weapon_name: &str,
         weapon_part: &str,
-        has_projectiles: bool,
-        has_muzzle: bool,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             // weapon
@@ -128,163 +218,30 @@ impl LoadWeapon {
             )?
             .img,
 
-            projectiles: {
-                let mut textures = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                if has_projectiles {
-                    loop {
-                        match load_file_part_and_upload_ex(
-                            graphics_mt,
-                            files,
-                            default_files,
-                            weapon_name,
-                            &[weapon_part],
-                            &format!("projectile{i}"),
-                            allow_default,
-                        ) {
-                            Ok(img) => {
-                                allow_default &= img.from_default;
-                                textures.push(img.img);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-
-                        i += 1;
-                    }
-                }
-                textures
-            },
-            muzzles: {
-                let mut textures = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                if has_muzzle {
-                    loop {
-                        match load_file_part_and_upload_ex(
-                            graphics_mt,
-                            files,
-                            default_files,
-                            weapon_name,
-                            &[weapon_part],
-                            &format!("muzzle{i}"),
-                            allow_default,
-                        ) {
-                            Ok(img) => {
-                                allow_default &= img.from_default;
-                                textures.push(img.img);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-
-                        i += 1;
-                    }
-                }
-                textures
-            },
-
-            fire: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("fire{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
-            switch: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("switch{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
-            noammo: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("noammo{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            fire: load_sound_file_part_list_and_upload(
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "fire",
+            )?,
+            switch: load_sound_file_part_list_and_upload(
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "switch",
+            )?,
+            noammo: load_sound_file_part_list_and_upload(
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "noammo",
+            )?,
         })
     }
 
@@ -305,16 +262,6 @@ impl LoadWeapon {
         Weapon {
             tex: Self::load_file_into_texture(texture_handle, file.tex, name),
             cursor: Self::load_file_into_texture(texture_handle, file.cursor_tex, name),
-            projectiles: file
-                .projectiles
-                .into_iter()
-                .map(|file| Self::load_file_into_texture(texture_handle, file, name))
-                .collect(),
-            muzzles: file
-                .muzzles
-                .into_iter()
-                .map(|file| Self::load_file_into_texture(texture_handle, file, name))
-                .collect(),
 
             fire: file
                 .fire
@@ -336,12 +283,53 @@ impl LoadWeapon {
 }
 
 #[derive(Debug, Hiarc)]
+pub struct LoadGun {
+    weapon: LoadWeapon,
+
+    projectile: LoadProjectile,
+    muzzles: LoadMuzzles,
+}
+
+impl LoadGun {
+    pub fn new(
+        graphics_mt: &GraphicsMultiThreaded,
+        sound_mt: &SoundMultiThreaded,
+        files: &ContainerLoadedItemDir,
+        default_files: &ContainerLoadedItemDir,
+        weapon_name: &str,
+        weapon_part: &str,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            weapon: LoadWeapon::new(
+                graphics_mt,
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                weapon_part,
+            )?,
+
+            projectile: LoadProjectile::new(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                weapon_part,
+            )?,
+            muzzles: LoadMuzzles::new(graphics_mt, files, default_files, weapon_name, weapon_part)?,
+        })
+    }
+}
+
+#[derive(Debug, Hiarc)]
 pub struct LoadGrenade {
     weapon: LoadWeapon,
 
-    spawn: SoundBackendMemory,
-    collect: SoundBackendMemory,
+    spawn: Vec<SoundBackendMemory>,
+    collect: Vec<SoundBackendMemory>,
     explosions: Vec<SoundBackendMemory>,
+
+    projectile: LoadProjectile,
 }
 
 impl LoadGrenade {
@@ -352,8 +340,6 @@ impl LoadGrenade {
         default_files: &ContainerLoadedItemDir,
         weapon_name: &str,
         weapon_part: &str,
-        has_projectile: bool,
-        has_muzzle: bool,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             weapon: LoadWeapon::new(
@@ -363,60 +349,42 @@ impl LoadGrenade {
                 default_files,
                 weapon_name,
                 weapon_part,
-                has_projectile,
-                has_muzzle,
             )?,
 
-            explosions: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("explosion{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            explosions: load_sound_file_part_list_and_upload(
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "explosion",
+            )?,
 
-            spawn: load_sound_file_part_and_upload(
+            spawn: load_sound_file_part_list_and_upload(
                 sound_mt,
                 files,
                 default_files,
                 weapon_name,
                 &[weapon_part],
                 "spawn",
-            )?
-            .mem,
+            )?,
 
-            collect: load_sound_file_part_and_upload(
+            collect: load_sound_file_part_list_and_upload(
                 sound_mt,
                 files,
                 default_files,
                 weapon_name,
                 &[weapon_part],
                 "collect",
-            )?
-            .mem,
+            )?,
+
+            projectile: LoadProjectile::new(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                weapon_part,
+            )?,
         })
     }
 }
@@ -425,10 +393,12 @@ impl LoadGrenade {
 pub struct LoadLaser {
     weapon: LoadWeapon,
 
-    spawn: SoundBackendMemory,
-    collect: SoundBackendMemory,
+    spawn: Vec<SoundBackendMemory>,
+    collect: Vec<SoundBackendMemory>,
     bounces: Vec<SoundBackendMemory>,
     heads: Vec<ContainerItemLoadData>,
+
+    projectile: LoadProjectile,
 }
 
 impl LoadLaser {
@@ -439,8 +409,6 @@ impl LoadLaser {
         default_files: &ContainerLoadedItemDir,
         weapon_name: &str,
         weapon_part: &str,
-        has_projectile: bool,
-        has_muzzle: bool,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             weapon: LoadWeapon::new(
@@ -450,92 +418,51 @@ impl LoadLaser {
                 default_files,
                 weapon_name,
                 weapon_part,
-                has_projectile,
-                has_muzzle,
             )?,
 
-            bounces: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("bounce{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            bounces: load_sound_file_part_list_and_upload(
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "bounce",
+            )?,
 
-            spawn: load_sound_file_part_and_upload(
+            spawn: load_sound_file_part_list_and_upload(
                 sound_mt,
                 files,
                 default_files,
                 weapon_name,
                 &[weapon_part],
                 "spawn",
-            )?
-            .mem,
+            )?,
 
-            collect: load_sound_file_part_and_upload(
+            collect: load_sound_file_part_list_and_upload(
                 sound_mt,
                 files,
                 default_files,
                 weapon_name,
                 &[weapon_part],
                 "collect",
-            )?
-            .mem,
+            )?,
 
-            heads: {
-                let mut textures: Vec<ContainerItemLoadData> = Default::default();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_file_part_and_upload_ex(
-                        graphics_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("splat{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(img) => {
-                            allow_default &= img.from_default;
-                            textures.push(img.img);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
+            heads: load_file_part_list_and_upload(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "bounce",
+            )?,
 
-                    i += 1;
-                }
-                textures
-            },
+            projectile: LoadProjectile::new(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                weapon_part,
+            )?,
         })
     }
 }
@@ -544,8 +471,11 @@ impl LoadLaser {
 pub struct LoadShotgun {
     weapon: LoadWeapon,
 
-    spawn: SoundBackendMemory,
-    collect: SoundBackendMemory,
+    projectile: LoadProjectile,
+    muzzles: LoadMuzzles,
+
+    spawn: Vec<SoundBackendMemory>,
+    collect: Vec<SoundBackendMemory>,
 }
 
 impl LoadShotgun {
@@ -556,8 +486,6 @@ impl LoadShotgun {
         default_files: &ContainerLoadedItemDir,
         weapon_name: &str,
         weapon_part: &str,
-        has_projectiles: bool,
-        has_muzzle: bool,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             weapon: LoadWeapon::new(
@@ -567,29 +495,34 @@ impl LoadShotgun {
                 default_files,
                 weapon_name,
                 weapon_part,
-                has_projectiles,
-                has_muzzle,
             )?,
 
-            spawn: load_sound_file_part_and_upload(
+            spawn: load_sound_file_part_list_and_upload(
                 sound_mt,
                 files,
                 default_files,
                 weapon_name,
                 &[weapon_part],
                 "spawn",
-            )?
-            .mem,
+            )?,
 
-            collect: load_sound_file_part_and_upload(
+            collect: load_sound_file_part_list_and_upload(
                 sound_mt,
                 files,
                 default_files,
                 weapon_name,
                 &[weapon_part],
                 "collect",
-            )?
-            .mem,
+            )?,
+
+            projectile: LoadProjectile::new(
+                graphics_mt,
+                files,
+                default_files,
+                weapon_name,
+                weapon_part,
+            )?,
+            muzzles: LoadMuzzles::new(graphics_mt, files, default_files, weapon_name, weapon_part)?,
         })
     }
 }
@@ -609,8 +542,6 @@ impl LoadHammer {
         default_files: &ContainerLoadedItemDir,
         weapon_name: &str,
         weapon_part: &str,
-        has_projectile: bool,
-        has_muzzle: bool,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             weapon: LoadWeapon::new(
@@ -620,40 +551,16 @@ impl LoadHammer {
                 default_files,
                 weapon_name,
                 weapon_part,
-                has_projectile,
-                has_muzzle,
             )?,
 
-            hits: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        files,
-                        default_files,
-                        weapon_name,
-                        &[weapon_part],
-                        &format!("hit{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            hits: load_sound_file_part_list_and_upload(
+                sound_mt,
+                files,
+                default_files,
+                weapon_name,
+                &[weapon_part],
+                "hit",
+            )?,
         })
     }
 }
@@ -661,7 +568,7 @@ impl LoadHammer {
 #[derive(Debug, Hiarc)]
 pub struct LoadWeapons {
     hammer: LoadHammer,
-    gun: LoadWeapon,
+    gun: LoadGun,
     shotgun: LoadShotgun,
     grenade: LoadGrenade,
     laser: LoadLaser,
@@ -686,19 +593,15 @@ impl LoadWeapons {
                 default_files,
                 weapon_name,
                 "hammer",
-                false,
-                false,
             )?,
             // gun
-            gun: LoadWeapon::new(
+            gun: LoadGun::new(
                 graphics_mt,
                 sound_mt,
                 &files,
                 default_files,
                 weapon_name,
                 "gun",
-                true,
-                true,
             )?,
             // shotgun
             shotgun: LoadShotgun::new(
@@ -708,8 +611,6 @@ impl LoadWeapons {
                 default_files,
                 weapon_name,
                 "shotgun",
-                true,
-                true,
             )?,
             // grenade
             grenade: LoadGrenade::new(
@@ -719,8 +620,6 @@ impl LoadWeapons {
                 default_files,
                 weapon_name,
                 "grenade",
-                true,
-                false,
             )?,
             // laser
             laser: LoadLaser::new(
@@ -730,8 +629,6 @@ impl LoadWeapons {
                 default_files,
                 weapon_name,
                 "laser",
-                true,
-                false,
             )?,
 
             weapon_name: weapon_name.to_string(),
@@ -758,12 +655,16 @@ impl LoadWeapons {
                     .map(|hammer| sound_object_handle.create(hammer))
                     .collect::<Vec<_>>(),
             },
-            gun: LoadWeapon::load_files_into_objects(
-                texture_handle,
-                sound_object_handle,
-                self.gun,
-                &self.weapon_name,
-            ),
+            gun: Gun {
+                weapon: LoadWeapon::load_files_into_objects(
+                    texture_handle,
+                    sound_object_handle,
+                    self.gun.weapon,
+                    &self.weapon_name,
+                ),
+                projectile: self.gun.projectile.load(texture_handle, &self.weapon_name),
+                muzzles: self.gun.muzzles.load(texture_handle, &self.weapon_name),
+            },
             shotgun: Shotgun {
                 weapon: LoadWeapon::load_files_into_objects(
                     texture_handle,
@@ -771,8 +672,24 @@ impl LoadWeapons {
                     self.shotgun.weapon,
                     &self.weapon_name,
                 ),
-                spawn: sound_object_handle.create(self.shotgun.spawn),
-                collect: sound_object_handle.create(self.shotgun.collect),
+                spawn: self
+                    .shotgun
+                    .spawn
+                    .into_iter()
+                    .map(|s| sound_object_handle.create(s))
+                    .collect(),
+                collect: self
+                    .shotgun
+                    .collect
+                    .into_iter()
+                    .map(|s| sound_object_handle.create(s))
+                    .collect(),
+
+                projectile: self
+                    .shotgun
+                    .projectile
+                    .load(texture_handle, &self.weapon_name),
+                muzzles: self.shotgun.muzzles.load(texture_handle, &self.weapon_name),
             },
             grenade: Grenade {
                 weapon: LoadWeapon::load_files_into_objects(
@@ -781,14 +698,28 @@ impl LoadWeapons {
                     self.grenade.weapon,
                     &self.weapon_name,
                 ),
-                spawn: sound_object_handle.create(self.grenade.spawn),
-                collect: sound_object_handle.create(self.grenade.collect),
+                spawn: self
+                    .grenade
+                    .spawn
+                    .into_iter()
+                    .map(|s| sound_object_handle.create(s))
+                    .collect(),
+                collect: self
+                    .grenade
+                    .collect
+                    .into_iter()
+                    .map(|s| sound_object_handle.create(s))
+                    .collect(),
                 explosions: self
                     .grenade
                     .explosions
                     .into_iter()
                     .map(|bounce| sound_object_handle.create(bounce))
                     .collect::<Vec<_>>(),
+                projectile: self
+                    .grenade
+                    .projectile
+                    .load(texture_handle, &self.weapon_name),
             },
             laser: Laser {
                 weapon: LoadWeapon::load_files_into_objects(
@@ -797,8 +728,18 @@ impl LoadWeapons {
                     self.laser.weapon,
                     &self.weapon_name,
                 ),
-                spawn: sound_object_handle.create(self.laser.spawn),
-                collect: sound_object_handle.create(self.laser.collect),
+                spawn: self
+                    .laser
+                    .spawn
+                    .into_iter()
+                    .map(|s| sound_object_handle.create(s))
+                    .collect(),
+                collect: self
+                    .laser
+                    .collect
+                    .into_iter()
+                    .map(|s| sound_object_handle.create(s))
+                    .collect(),
                 bounces: self
                     .laser
                     .bounces
@@ -811,6 +752,10 @@ impl LoadWeapons {
                     .into_iter()
                     .map(|head| LoadWeapon::load_file_into_texture(texture_handle, head, "head"))
                     .collect::<Vec<_>>(),
+                projectile: self
+                    .laser
+                    .projectile
+                    .load(texture_handle, &self.weapon_name),
             },
         }
     }

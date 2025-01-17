@@ -22,7 +22,7 @@ use sound::{
 };
 
 use crate::container::{
-    load_sound_file_part_and_upload_ex, ContainerLoadedItem, ContainerLoadedItemDir,
+    load_sound_file_part_list_and_upload, ContainerLoadedItem, ContainerLoadedItemDir,
 };
 
 use super::container::{load_file_part_as_png, Container, ContainerItemLoadData, ContainerLoad};
@@ -932,276 +932,78 @@ impl LoadSkin {
             grey_scaled_textures: grey_scaled_textures_data.load_into_texture(graphics_mt),
 
             sound: LoadSkinSounds {
-                ground_jump: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("ground_jump{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                air_jump: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("air_jump{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                spawn: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("spawn{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                death: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("death{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                pain_short: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("pain_short{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                pain_long: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("pain_long{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                hit_strong: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("hit_strong{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                hit_weak: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("hit_weak{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
-                skid: {
-                    let mut sounds = Vec::new();
-                    let mut i = 0;
-                    let mut allow_default = true;
-                    loop {
-                        match load_sound_file_part_and_upload_ex(
-                            sound_mt,
-                            files,
-                            default_files,
-                            skin_name,
-                            &[skin_extra_path.as_slice(), &["audio"]].concat(),
-                            &format!("skid{}", i + 1),
-                            allow_default,
-                        ) {
-                            Ok(sound) => {
-                                allow_default &= sound.from_default;
-                                sounds.push(sound.mem);
-                            }
-                            Err(err) => {
-                                if i == 0 {
-                                    return Err(err);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
-                    sounds
-                },
+                ground_jump: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "ground_jump",
+                )?,
+                air_jump: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "air_jump",
+                )?,
+                spawn: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "spawn",
+                )?,
+                death: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "death",
+                )?,
+                pain_short: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "pain_short",
+                )?,
+                pain_long: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "pain_long",
+                )?,
+                hit_strong: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "hit_strong",
+                )?,
+                hit_weak: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "hit_weak",
+                )?,
+                skid: load_sound_file_part_list_and_upload(
+                    sound_mt,
+                    files,
+                    default_files,
+                    skin_name,
+                    &[skin_extra_path.as_slice(), &["audio"]].concat(),
+                    "skid",
+                )?,
             },
 
             skin_name: skin_name.to_string(),

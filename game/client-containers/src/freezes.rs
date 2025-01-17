@@ -9,7 +9,9 @@ use sound::{
 };
 
 use crate::{
-    container::{load_sound_file_part_and_upload_ex, ContainerLoadedItem, ContainerLoadedItemDir},
+    container::{
+        load_sound_file_part_list_and_upload, ContainerLoadedItem, ContainerLoadedItemDir,
+    },
     skins::{LoadSkin, Skin},
 };
 
@@ -49,36 +51,14 @@ impl LoadFreeze {
                 Some("skin"),
             )?,
 
-            attacks: {
-                let mut sounds = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        &files,
-                        default_files,
-                        freeze_name,
-                        &["audio"],
-                        &format!("attack{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            attacks: load_sound_file_part_list_and_upload(
+                sound_mt,
+                &files,
+                default_files,
+                freeze_name,
+                &["audio"],
+                "attack",
+            )?,
 
             _freeze_name: freeze_name.to_string(),
         })

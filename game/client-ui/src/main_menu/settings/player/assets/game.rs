@@ -75,11 +75,6 @@ pub fn game_list(
             render_texture(&game.heart.tex, index);
             index += 1;
             render_texture(&game.shield.tex, index);
-            index += 1;
-            for tex in &game.stars {
-                render_texture(tex, index);
-                index += 1;
-            }
         },
         |_, name| {
             next_name = Some(name.to_string());

@@ -11,7 +11,7 @@ use sound::{
 };
 
 use crate::container::{
-    load_sound_file_part_and_upload_ex, ContainerLoadedItem, ContainerLoadedItemDir,
+    load_sound_file_part_list_and_upload, ContainerLoadedItem, ContainerLoadedItemDir,
 };
 
 use super::container::{
@@ -68,96 +68,30 @@ impl LoadHook {
             )?
             .img,
 
-            hit_hookable: {
-                let mut sounds: Vec<_> = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        &files,
-                        default_files,
-                        hook_name,
-                        &[],
-                        &format!("hit_hookable{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
-            hit_player: {
-                let mut sounds: Vec<_> = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        &files,
-                        default_files,
-                        hook_name,
-                        &[],
-                        &format!("hit_player{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
-            hit_unhookable: {
-                let mut sounds: Vec<_> = Vec::new();
-                let mut i = 0;
-                let mut allow_default = true;
-                loop {
-                    match load_sound_file_part_and_upload_ex(
-                        sound_mt,
-                        &files,
-                        default_files,
-                        hook_name,
-                        &[],
-                        &format!("hit_unhookable{}", i + 1),
-                        allow_default,
-                    ) {
-                        Ok(sound) => {
-                            allow_default &= sound.from_default;
-                            sounds.push(sound.mem);
-                        }
-                        Err(err) => {
-                            if i == 0 {
-                                return Err(err);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    i += 1;
-                }
-                sounds
-            },
+            hit_hookable: load_sound_file_part_list_and_upload(
+                sound_mt,
+                &files,
+                default_files,
+                hook_name,
+                &[],
+                "hit_hookable",
+            )?,
+            hit_player: load_sound_file_part_list_and_upload(
+                sound_mt,
+                &files,
+                default_files,
+                hook_name,
+                &[],
+                "hit_player",
+            )?,
+            hit_unhookable: load_sound_file_part_list_and_upload(
+                sound_mt,
+                &files,
+                default_files,
+                hook_name,
+                &[],
+                "hit_unhookable",
+            )?,
 
             hook_name: hook_name.to_string(),
         })
