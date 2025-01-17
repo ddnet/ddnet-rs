@@ -652,8 +652,9 @@ fn parse_command<const S: usize>(
                     parse_command_ident(tokens, commands)
                         .map(|(s, range)| SynOrErr::Syn((Syn::Text(s), range)))
                         .unwrap_or_else(|range_err| {
-                            let (err, range) = range_err
-                                .unwrap_or_else(|| (anyhow!("No text was given"), range.clone()));
+                            let (err, range) = range_err.unwrap_or_else(|| {
+                                (anyhow!("No text was given"), range.end + 1..range.end + 2)
+                            });
                             SynOrErr::ParseRes(CommandParseResult::InvalidCommandIdent {
                                 range,
                                 err: err.to_string(),
