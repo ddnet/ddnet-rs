@@ -1617,6 +1617,12 @@ impl Editor {
         as_tile_numbers: Option<&TextureContainer2dArray>,
         layer_rect: &mut Vec<LayerRect>,
     ) {
+        let time = if map.user.ui_values.animations_panel_open {
+            map.user.ui_values.timeline.time()
+        } else {
+            map.user.time
+        };
+
         map_render.render_layer(
             animations,
             &map.resources,
@@ -1627,7 +1633,7 @@ impl Editor {
                 map.animation_tick(),
                 &map.game_time_info().intra_tick_time,
             ),
-            &map.user.time,
+            &time,
             &group.attr,
             layer,
             match layer {

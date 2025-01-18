@@ -663,6 +663,7 @@ impl QuadBrush {
             stream_handle,
             canvas_handle,
             map,
+            true,
         );
 
         if self.brush.is_none() || self.pointer_down_state.is_selection() {
