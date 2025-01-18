@@ -1484,8 +1484,10 @@ impl Editor {
                 path,
             );
         } else {
+            let msg = "No map was loaded to be saved.";
+            log::info!("{msg}");
             self.notifications_overlay
-                .add_err("No map was loaded to be saved.", Duration::from_secs(10));
+                .add_err(msg, Duration::from_secs(10));
         }
     }
 
@@ -2334,10 +2336,10 @@ impl Editor {
                     {
                         self.save_map(&path);
                     } else {
-                        self.notifications_overlay.add_err(
-                            "The current map has to be saved at least once.",
-                            Duration::from_secs(10),
-                        );
+                        let msg = "The current map has to be saved at least once.";
+                        log::info!("{msg}");
+                        self.notifications_overlay
+                            .add_err(msg, Duration::from_secs(10));
                     }
                 }
                 EditorUiEvent::HostMap(host_map) => {
@@ -2581,7 +2583,7 @@ impl EditorInterface for Editor {
                 EditorNotification::Info(msg) => {
                     log::info!("{msg}");
                     self.notifications_overlay
-                        .add_info(msg, Duration::from_secs(10));
+                        .add_info(msg, Duration::from_secs(5));
                 }
             }
         }

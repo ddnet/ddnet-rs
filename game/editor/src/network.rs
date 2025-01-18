@@ -139,23 +139,31 @@ impl EditorNetwork {
         &mut self,
         id: NetworkConnectionId,
         ev: NetworkEvent,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<String>> {
         match ev {
-            NetworkEvent::Connected { .. } => {
+            NetworkEvent::Connected { addr, .. } => {
                 self.connections.insert(id);
-                Ok(())
+                Ok(Some(format!(
+                    "{} {}",
+                    if self.is_server {
+                        "Client connected successfully"
+                    } else {
+                        "Connected successfully to"
+                    },
+                    addr,
+                )))
             }
             NetworkEvent::Disconnected(reason) => {
                 self.connections.remove(&id);
                 match reason {
                     NetworkEventDisconnect::LocallyClosed | NetworkEventDisconnect::Graceful => {
-                        Ok(())
+                        Ok(None)
                     }
                     err => Err(anyhow!("{err}")),
                 }
             }
             NetworkEvent::ConnectingFailed(err) => Err(err.into()),
-            NetworkEvent::NetworkStats(_) => Ok(()),
+            NetworkEvent::NetworkStats(_) => Ok(None),
         }
     }
 }

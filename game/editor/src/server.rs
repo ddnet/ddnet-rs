@@ -421,9 +421,17 @@ impl EditorServer {
                                 // ignore
                             }
                         }
-                        if let Err(err) = self.network.handle_network_ev(id, ev) {
-                            log::error!("{err}");
-                            notifications.add_err(err.to_string(), Duration::from_secs(10));
+                        match self.network.handle_network_ev(id, ev) {
+                            Ok(None) => {
+                                // ignore
+                            }
+                            Ok(Some(msg)) => {
+                                log::info!("Editor server: {msg}");
+                            }
+                            Err(err) => {
+                                log::error!("{err}");
+                                notifications.add_err(err.to_string(), Duration::from_secs(10));
+                            }
                         }
                     }
                 }

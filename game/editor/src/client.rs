@@ -193,9 +193,19 @@ impl EditorClient {
                         // ignore
                     }
                     EditorNetEvent::NetworkEvent(ev) => {
-                        if let Err(err) = self.network.handle_network_ev(id, ev) {
-                            self.notifications
-                                .push(EditorNotification::Error(err.to_string()));
+                        match self.network.handle_network_ev(id, ev) {
+                            Ok(None) => {
+                                // ignore
+                            }
+                            Ok(Some(msg)) => {
+                                if !self.local_client {
+                                    self.notifications.push(EditorNotification::Info(msg));
+                                }
+                            }
+                            Err(err) => {
+                                self.notifications
+                                    .push(EditorNotification::Error(err.to_string()));
+                            }
                         }
                     }
                 }
