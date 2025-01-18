@@ -1568,19 +1568,14 @@ impl TileBrush {
             let tl_y = -render_rect.min.y * size_ratio_y;
 
             // render filled rect as bg
-            state.map_canvas(
-                0.0,
-                0.0,
-                canvas_handle.canvas_width(),
-                canvas_handle.canvas_height(),
-            );
+            state.map_canvas(0.0, 0.0, ui_canvas.width(), ui_canvas.height());
             render_checkerboard_background(stream_handle, render_rect, &state);
 
             state.map_canvas(
                 tl_x,
                 tl_y,
-                tl_x + canvas_handle.canvas_width() * size_ratio_x,
-                tl_y + canvas_handle.canvas_height() * size_ratio_y,
+                tl_x + ui_canvas.width() * size_ratio_x,
+                tl_y + ui_canvas.height() * size_ratio_y,
             );
             let texture = match layer.as_ref().unwrap() {
                 EditorLayerUnionRef::Physics { .. } => {
@@ -1634,12 +1629,7 @@ impl TileBrush {
                 );
             }
             // render rect border
-            state.map_canvas(
-                0.0,
-                0.0,
-                canvas_handle.canvas_width(),
-                canvas_handle.canvas_height(),
-            );
+            state.map_canvas(0.0, 0.0, ui_canvas.width(), ui_canvas.height());
 
             render_rect_from_state(
                 stream_handle,
