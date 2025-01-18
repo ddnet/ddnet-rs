@@ -262,6 +262,7 @@ impl EditorClient {
                     color: self.color,
                     cursor_world: cursor_world_pos,
                     server_id: self.server_id,
+                    stats: None,
                 },
             )));
     }

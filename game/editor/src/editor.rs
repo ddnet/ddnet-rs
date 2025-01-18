@@ -2452,9 +2452,6 @@ impl Editor {
                 color: None,
             },
         );
-        self.tabs
-            .values_mut()
-            .for_each(|tab| tab.client.update_info(vec2::new(-10000.0, -10000.0)));
 
         Ok(hash)
     }

@@ -24,7 +24,7 @@ impl NetworkConnectionId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ConnectionStats {
     pub ping: Duration,
     pub packets_lost: u64,

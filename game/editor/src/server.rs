@@ -15,6 +15,7 @@ use graphics::{
     },
 };
 use map::map::Map;
+use math::math::vector::vec2;
 use network::network::{
     connection::NetworkConnectionId,
     event::NetworkEvent,
@@ -128,12 +129,14 @@ impl EditorServer {
                         mapper_name: mapper_name.clone(),
                         color: *color,
 
-                        cursor_world: Default::default(),
+                        cursor_world: vec2::new(-10000.0, -10000.0),
                         server_id: {
                             let id = self.client_ids;
                             self.client_ids += 1;
                             id
                         },
+
+                        stats: client.props.stats,
                     };
 
                     if !*is_local_client {
@@ -356,6 +359,7 @@ impl EditorServer {
                     EditorEventClientToServer::Info(mut info) => {
                         // make sure the id stays unique
                         info.server_id = client.props.server_id;
+                        info.stats = client.props.stats;
                         client.props = info;
 
                         self.broadcast_client_infos();
@@ -416,6 +420,11 @@ impl EditorServer {
                                 self.clients.remove(&id);
 
                                 self.broadcast_client_infos();
+                            }
+                            NetworkEvent::NetworkStats(stats) => {
+                                if let Some(client) = self.clients.get_mut(&id) {
+                                    client.props.stats = Some(*stats);
+                                }
                             }
                             _ => {
                                 // ignore
