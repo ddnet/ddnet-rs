@@ -64,53 +64,24 @@ use crate::{
     },
 };
 
-fn merge_quad_addrem_base(
+fn merge_quad_add_base(
     mut act1: ActQuadLayerAddRemQuads,
     act2: ActQuadLayerAddRemQuads,
 ) -> anyhow::Result<(ActQuadLayerAddRemQuads, Option<ActQuadLayerAddRemQuads>)> {
-    // if both actions modify the same quad range they can be merged
-    let (min_index, mut min_index_quads, max_index, max_index_quads) = if act1.index < act2.index {
-        (act1.index, act1.quads, act2.index, act2.quads)
-    } else {
-        (act2.index, act2.quads, act1.index, act1.quads)
-    };
-    if min_index + min_index_quads.len() >= max_index {
-        act1.index = min_index;
-        act1.quads = {
-            if act1.index == min_index {
-                min_index_quads.splice((max_index - min_index).., max_index_quads);
-                min_index_quads
-            } else {
-                min_index_quads.extend(max_index_quads.into_iter().skip(max_index - min_index));
-                min_index_quads
-            }
-        };
+    if act1.index <= act2.index && act1.index + act1.quads.len() >= act2.index {
+        let index = act2.index - act1.index;
+        act1.quads.splice(index..index, act2.quads);
         Ok((act1, None))
     } else {
-        let is_background = act1.is_background;
-        let group_index = act1.group_index;
-        let layer_index = act1.layer_index;
-        let (mut act1, mut act2) = (
-            ActQuadLayerAddRemQuads {
-                is_background,
-                group_index,
-                layer_index,
-                index: min_index,
-                quads: min_index_quads,
-            },
-            ActQuadLayerAddRemQuads {
-                is_background,
-                group_index,
-                layer_index,
-                index: max_index,
-                quads: max_index_quads,
-            },
-        );
-        if act1.index != min_index {
-            std::mem::swap(&mut act1, &mut act2);
-        }
         Ok((act1, Some(act2)))
     }
+}
+
+fn merge_quad_rem_base(
+    act1: ActQuadLayerAddRemQuads,
+    act2: ActQuadLayerAddRemQuads,
+) -> anyhow::Result<(ActQuadLayerAddRemQuads, Option<ActQuadLayerAddRemQuads>)> {
+    merge_quad_add_base(act2, act1)
 }
 
 fn merge_sound_addrem_base(
@@ -251,7 +222,7 @@ fn merge_actions_group(
                 && act1.base.group_index == act2.base.group_index
                 && act1.base.layer_index == act2.base.layer_index
             {
-                let (act1, act2) = merge_quad_addrem_base(act1.base, act2.base)?;
+                let (act1, act2) = merge_quad_add_base(act1.base, act2.base)?;
 
                 Ok((
                     EditorAction::QuadLayerAddQuads(ActQuadLayerAddQuads { base: act1 }),
@@ -291,7 +262,7 @@ fn merge_actions_group(
                 && act1.base.group_index == act2.base.group_index
                 && act1.base.layer_index == act2.base.layer_index
             {
-                let (act1, act2) = merge_quad_addrem_base(act1.base, act2.base)?;
+                let (act1, act2) = merge_quad_rem_base(act1.base, act2.base)?;
 
                 Ok((
                     EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads { base: act1 }),

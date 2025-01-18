@@ -47,7 +47,7 @@ struct Client {
 /// an undo/redo manager
 pub struct EditorServer {
     action_groups: Vec<EditorActionGroup>,
-    cur_action_group: usize,
+    cur_action_group: Option<usize>,
 
     network: EditorNetwork,
 
@@ -78,7 +78,7 @@ impl EditorServer {
             EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port);
         Self {
             action_groups: Default::default(),
-            cur_action_group: 0,
+            cur_action_group: None,
 
             has_events,
             event_generator,
@@ -99,6 +99,277 @@ impl EditorServer {
             )));
     }
 
+    fn handle_client_ev(
+        &mut self,
+        id: NetworkConnectionId,
+        ev: EditorEventClientToServer,
+        tp: &Arc<rayon::ThreadPool>,
+        sound_mt: &SoundMultiThreaded,
+        graphics_mt: &GraphicsMultiThreaded,
+        buffer_object_handle: &GraphicsBufferObjectHandle,
+        backend_handle: &GraphicsBackendHandle,
+        texture_handle: &GraphicsTextureHandle,
+        map: &mut EditorMap,
+        notifications: &mut ClientNotifications,
+    ) {
+        // check if client exist and is authed
+        if let Some(client) = self.clients.get_mut(&id) {
+            if let EditorEventClientToServer::Auth {
+                password,
+                is_local_client,
+                mapper_name,
+                color,
+            } = &ev
+            {
+                if self.password.eq(password) {
+                    client.is_authed = true;
+                    client.is_local_client = *is_local_client;
+                    client.props = ClientProps {
+                        mapper_name: mapper_name.clone(),
+                        color: *color,
+
+                        cursor_world: Default::default(),
+                        server_id: {
+                            let id = self.client_ids;
+                            self.client_ids += 1;
+                            id
+                        },
+                    };
+
+                    if !*is_local_client {
+                        let resources: HashMap<_, _> = map
+                            .resources
+                            .images
+                            .iter()
+                            .flat_map(|r| {
+                                [(r.def.meta.blake3_hash, r.user.file.as_ref().clone())]
+                                    .into_iter()
+                                    .chain(r.def.hq_meta.as_ref().zip(r.user.hq.as_ref()).map(
+                                        |(s, (file, _))| (s.blake3_hash, file.as_ref().clone()),
+                                    ))
+                            })
+                            .chain(map.resources.image_arrays.iter().flat_map(|r| {
+                                [(r.def.meta.blake3_hash, r.user.file.as_ref().clone())]
+                                    .into_iter()
+                                    .chain(r.def.hq_meta.as_ref().zip(r.user.hq.as_ref()).map(
+                                        |(s, (file, _))| (s.blake3_hash, file.as_ref().clone()),
+                                    ))
+                            }))
+                            .chain(map.resources.sounds.iter().flat_map(|r| {
+                                [(r.def.meta.blake3_hash, r.user.file.as_ref().clone())]
+                                    .into_iter()
+                                    .chain(r.def.hq_meta.as_ref().zip(r.user.hq.as_ref()).map(
+                                        |(s, (file, _))| (s.blake3_hash, file.as_ref().clone()),
+                                    ))
+                            }))
+                            .collect();
+
+                        let map: Map = map.clone().into();
+
+                        let mut map_bytes = Vec::new();
+                        map.write(&mut map_bytes, tp).unwrap();
+
+                        self.network.send_to(
+                            &id,
+                            EditorEvent::Server(EditorEventServerToClient::Map(
+                                EditorEventOverwriteMap {
+                                    map: map_bytes,
+                                    resources,
+                                },
+                            )),
+                        );
+                    }
+
+                    self.network.send_to(
+                        &id,
+                        EditorEvent::Server(EditorEventServerToClient::Info {
+                            server_id: client.props.server_id,
+                        }),
+                    );
+                    self.broadcast_client_infos();
+                }
+            } else if client.is_authed {
+                match ev {
+                    EditorEventClientToServer::Action(act) => {
+                        if let Some(cur_action_group) = self.cur_action_group {
+                            self.action_groups.truncate(cur_action_group + 1);
+                        }
+
+                        if self
+                            .action_groups
+                            .last_mut()
+                            .is_some_and(|group| group.identifier == act.identifier)
+                        {
+                            let group = self.action_groups.last_mut().unwrap();
+                            group.actions.append(&mut act.actions.clone());
+
+                            if let Err(err) = merge_actions(&mut group.actions) {
+                                notifications.add_err(err.to_string(), Duration::from_secs(10));
+                            }
+                        } else {
+                            let new_index = self.action_groups.len();
+                            self.action_groups.push(act.clone());
+                            self.cur_action_group = Some(new_index);
+                        }
+                        let mut send_act = EditorActionGroup {
+                            actions: Vec::new(),
+                            identifier: act.identifier.clone(),
+                        };
+                        for act in act.actions {
+                            let sent_act = act.clone();
+                            if let Err(err) = do_action(
+                                tp,
+                                sound_mt,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                texture_handle,
+                                act,
+                                map,
+                            ) {
+                                self.network.send_to(
+                                    &id,
+                                    EditorEvent::Server(EditorEventServerToClient::Error(format!(
+                                        "Failed to execute your action\n\
+                                        This is usually caused if a \
+                                        previous action invalidates \
+                                        this action, e.g. by a different user.\n\
+                                        If all users are inactive, executing \
+                                        the same action again should work; \
+                                        if not it means it's a bug.\n{err}"
+                                    ))),
+                                );
+                            } else {
+                                send_act.actions.push(sent_act);
+                            }
+                        }
+                        self.clients
+                            .iter()
+                            .filter(|(_, client)| !client.is_local_client)
+                            .for_each(|(id, _)| {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::DoAction(
+                                        send_act.clone(),
+                                    )),
+                                );
+                            });
+
+                        // Make sure memory doesn't exhaust
+                        while self.action_groups.len() > 300 {
+                            self.action_groups.remove(0);
+                            self.cur_action_group =
+                                self.cur_action_group.map(|index| index.saturating_sub(1));
+                        }
+                    }
+                    EditorEventClientToServer::Command(cmd) => match cmd {
+                        EditorCommand::Undo | EditorCommand::Redo => {
+                            let is_undo = matches!(cmd, EditorCommand::Undo);
+
+                            if ((is_undo && self.cur_action_group.is_some())
+                                || (!is_undo
+                                    && self.cur_action_group.is_none_or(|index| {
+                                        index < self.action_groups.len().saturating_sub(1)
+                                    })))
+                                && !self.action_groups.is_empty()
+                            {
+                                if !is_undo {
+                                    self.cur_action_group =
+                                        match self.cur_action_group {
+                                            Some(index) => Some((index + 1).clamp(
+                                                0,
+                                                self.action_groups.len().saturating_sub(1),
+                                            )),
+                                            None => Some(0),
+                                        };
+                                }
+
+                                if let Some(group) = self
+                                    .action_groups
+                                    .get(self.cur_action_group.unwrap_or_default())
+                                {
+                                    let it: Box<dyn Iterator<Item = _>> = if is_undo {
+                                        Box::new(group.actions.iter().rev())
+                                    } else {
+                                        Box::new(group.actions.iter())
+                                    };
+                                    for act in it {
+                                        let action_fn =
+                                            if is_undo { undo_action } else { do_action };
+                                        if let Err(err) = action_fn(
+                                            tp,
+                                            sound_mt,
+                                            graphics_mt,
+                                            buffer_object_handle,
+                                            backend_handle,
+                                            texture_handle,
+                                            act.clone(),
+                                            map,
+                                        ) {
+                                            let err = format!(
+                                                "Failed to execute your action.\n\
+                                                Since it was an {} command, this \
+                                                probably indicates a bug in the code.\n\
+                                                {err}",
+                                                if is_undo { "undo" } else { "redo" }
+                                            );
+                                            notifications.add_err(&err, Duration::from_secs(10));
+                                            self.network.send_to(
+                                                &id,
+                                                EditorEvent::Server(
+                                                    EditorEventServerToClient::Error(err),
+                                                ),
+                                            );
+                                        }
+                                    }
+
+                                    let act = if is_undo {
+                                        EditorEventServerToClient::UndoAction(group.clone())
+                                    } else {
+                                        EditorEventServerToClient::DoAction(group.clone())
+                                    };
+                                    self.clients
+                                        .iter()
+                                        .filter(|(_, client)| !client.is_local_client)
+                                        .for_each(|(id, _)| {
+                                            self.network
+                                                .send_to(id, EditorEvent::Server(act.clone()));
+                                        });
+                                }
+
+                                if is_undo {
+                                    self.cur_action_group = match self.cur_action_group {
+                                        Some(index) => index.checked_sub(1),
+                                        None => panic!(
+                                            "Undo while the action group was None is a bug!."
+                                        ),
+                                    };
+                                }
+                            }
+                        }
+                    },
+                    EditorEventClientToServer::Auth { .. } => {
+                        // ignore here, handled earlier
+                    }
+                    EditorEventClientToServer::Info(mut info) => {
+                        // make sure the id stays unique
+                        info.server_id = client.props.server_id;
+                        client.props = info;
+
+                        self.broadcast_client_infos();
+                    }
+                    EditorEventClientToServer::Chat { msg } => {
+                        self.network
+                            .send(EditorEvent::Server(EditorEventServerToClient::Chat {
+                                from: client.props.mapper_name.clone(),
+                                msg,
+                            }));
+                    }
+                }
+            }
+        }
+    }
+
     pub fn update(
         &mut self,
         tp: &Arc<rayon::ThreadPool>,
@@ -116,296 +387,18 @@ impl EditorServer {
             for (id, _, event) in events {
                 match event {
                     EditorNetEvent::Editor(EditorEvent::Client(ev)) => {
-                        // check if client exist and is authed
-                        if let Some(client) = self.clients.get_mut(&id) {
-                            if let EditorEventClientToServer::Auth {
-                                password,
-                                is_local_client,
-                                mapper_name,
-                                color,
-                            } = &ev
-                            {
-                                if self.password.eq(password) {
-                                    client.is_authed = true;
-                                    client.is_local_client = *is_local_client;
-                                    client.props = ClientProps {
-                                        mapper_name: mapper_name.clone(),
-                                        color: *color,
-
-                                        cursor_world: Default::default(),
-                                        server_id: {
-                                            let id = self.client_ids;
-                                            self.client_ids += 1;
-                                            id
-                                        },
-                                    };
-
-                                    if !*is_local_client {
-                                        let resources: HashMap<_, _> = map
-                                            .resources
-                                            .images
-                                            .iter()
-                                            .flat_map(|r| {
-                                                [(
-                                                    r.def.meta.blake3_hash,
-                                                    r.user.file.as_ref().clone(),
-                                                )]
-                                                .into_iter()
-                                                .chain(
-                                                    r.def
-                                                        .hq_meta
-                                                        .as_ref()
-                                                        .zip(r.user.hq.as_ref())
-                                                        .map(|(s, (file, _))| {
-                                                            (s.blake3_hash, file.as_ref().clone())
-                                                        }),
-                                                )
-                                            })
-                                            .chain(map.resources.image_arrays.iter().flat_map(
-                                                |r| {
-                                                    [(
-                                                        r.def.meta.blake3_hash,
-                                                        r.user.file.as_ref().clone(),
-                                                    )]
-                                                    .into_iter()
-                                                    .chain(
-                                                        r.def
-                                                            .hq_meta
-                                                            .as_ref()
-                                                            .zip(r.user.hq.as_ref())
-                                                            .map(|(s, (file, _))| {
-                                                                (
-                                                                    s.blake3_hash,
-                                                                    file.as_ref().clone(),
-                                                                )
-                                                            }),
-                                                    )
-                                                },
-                                            ))
-                                            .chain(map.resources.sounds.iter().flat_map(|r| {
-                                                [(
-                                                    r.def.meta.blake3_hash,
-                                                    r.user.file.as_ref().clone(),
-                                                )]
-                                                .into_iter()
-                                                .chain(
-                                                    r.def
-                                                        .hq_meta
-                                                        .as_ref()
-                                                        .zip(r.user.hq.as_ref())
-                                                        .map(|(s, (file, _))| {
-                                                            (s.blake3_hash, file.as_ref().clone())
-                                                        }),
-                                                )
-                                            }))
-                                            .collect();
-
-                                        let map: Map = map.clone().into();
-
-                                        let mut map_bytes = Vec::new();
-                                        map.write(&mut map_bytes, tp).unwrap();
-
-                                        self.network.send_to(
-                                            &id,
-                                            EditorEvent::Server(EditorEventServerToClient::Map(
-                                                EditorEventOverwriteMap {
-                                                    map: map_bytes,
-                                                    resources,
-                                                },
-                                            )),
-                                        );
-                                    }
-
-                                    self.network.send_to(
-                                        &id,
-                                        EditorEvent::Server(EditorEventServerToClient::Info {
-                                            server_id: client.props.server_id,
-                                        }),
-                                    );
-                                    self.broadcast_client_infos();
-                                }
-                            } else if client.is_authed {
-                                match ev {
-                                    EditorEventClientToServer::Action(act) => {
-                                        self.action_groups.truncate(self.cur_action_group + 1);
-
-                                        if self
-                                            .action_groups
-                                            .last_mut()
-                                            .is_some_and(|group| group.identifier == act.identifier)
-                                        {
-                                            let group = self.action_groups.last_mut().unwrap();
-                                            group.actions.append(&mut act.actions.clone());
-
-                                            if let Err(err) = merge_actions(&mut group.actions) {
-                                                notifications.add_err(
-                                                    err.to_string(),
-                                                    Duration::from_secs(10),
-                                                );
-                                            }
-                                        } else {
-                                            let new_index = self.action_groups.len();
-                                            self.action_groups.push(act.clone());
-                                            self.cur_action_group = new_index;
-                                        }
-                                        let mut send_act = EditorActionGroup {
-                                            actions: Vec::new(),
-                                            identifier: act.identifier.clone(),
-                                        };
-                                        for act in act.actions {
-                                            let sent_act = act.clone();
-                                            if let Err(err) = do_action(
-                                                tp,
-                                                sound_mt,
-                                                graphics_mt,
-                                                buffer_object_handle,
-                                                backend_handle,
-                                                texture_handle,
-                                                act,
-                                                map,
-                                            ) {
-                                                self.network.send_to(
-                                                    &id,
-                                                    EditorEvent::Server(
-                                                        EditorEventServerToClient::Error(format!(
-                                                            "Failed to execute your action\n\
-                                                        This is usually caused if a \
-                                                        previous action invalidates \
-                                                        this action, e.g. by a different user.\n\
-                                                        If all users are inactive, executing \
-                                                        the same action again should work; \
-                                                        if not it means it's a bug.\n{err}"
-                                                        )),
-                                                    ),
-                                                );
-                                            } else {
-                                                send_act.actions.push(sent_act);
-                                            }
-                                        }
-                                        self.clients
-                                            .iter()
-                                            .filter(|(_, client)| !client.is_local_client)
-                                            .for_each(|(id, _)| {
-                                                self.network.send_to(
-                                                    id,
-                                                    EditorEvent::Server(
-                                                        EditorEventServerToClient::DoAction(
-                                                            send_act.clone(),
-                                                        ),
-                                                    ),
-                                                );
-                                            });
-
-                                        // Make sure memory doesn't exhaust
-                                        while self.action_groups.len() > 300 {
-                                            self.action_groups.remove(0);
-                                            self.cur_action_group =
-                                                self.cur_action_group.saturating_sub(1);
-                                        }
-                                    }
-                                    EditorEventClientToServer::Command(cmd) => match cmd {
-                                        EditorCommand::Undo | EditorCommand::Redo => {
-                                            let is_undo = matches!(cmd, EditorCommand::Undo);
-
-                                            if !is_undo {
-                                                self.cur_action_group = (self.cur_action_group + 1)
-                                                    .clamp(
-                                                        0,
-                                                        self.action_groups.len().saturating_sub(1),
-                                                    );
-                                            }
-
-                                            if let Some(group) =
-                                                self.action_groups.get(self.cur_action_group)
-                                            {
-                                                let it: Box<dyn Iterator<Item = _>> = if is_undo {
-                                                    Box::new(group.actions.iter().rev())
-                                                } else {
-                                                    Box::new(group.actions.iter())
-                                                };
-                                                for act in it {
-                                                    let action_fn = if is_undo {
-                                                        undo_action
-                                                    } else {
-                                                        do_action
-                                                    };
-                                                    if let Err(err) = action_fn(
-                                                        tp,
-                                                        sound_mt,
-                                                        graphics_mt,
-                                                        buffer_object_handle,
-                                                        backend_handle,
-                                                        texture_handle,
-                                                        act.clone(),
-                                                        map,
-                                                    ) {
-                                                        let err = format!(
-                                                            "Failed to execute your action.\n\
-                                                            Since it was an {} command, this \
-                                                            probably indicates a bug in the code.\n\
-                                                            {err}",
-                                                            if is_undo { "undo" } else { "redo" }
-                                                        );
-                                                        notifications
-                                                            .add_err(&err, Duration::from_secs(10));
-                                                        self.network.send_to(
-                                                            &id,
-                                                            EditorEvent::Server(
-                                                                EditorEventServerToClient::Error(
-                                                                    err,
-                                                                ),
-                                                            ),
-                                                        );
-                                                    }
-                                                }
-
-                                                let act = if is_undo {
-                                                    EditorEventServerToClient::UndoAction(
-                                                        group.clone(),
-                                                    )
-                                                } else {
-                                                    EditorEventServerToClient::DoAction(
-                                                        group.clone(),
-                                                    )
-                                                };
-                                                self.clients
-                                                    .iter()
-                                                    .filter(|(_, client)| !client.is_local_client)
-                                                    .for_each(|(id, _)| {
-                                                        self.network.send_to(
-                                                            id,
-                                                            EditorEvent::Server(act.clone()),
-                                                        );
-                                                    });
-                                            }
-
-                                            if is_undo {
-                                                self.cur_action_group =
-                                                    self.cur_action_group.saturating_sub(1);
-                                            }
-                                        }
-                                    },
-                                    EditorEventClientToServer::Auth { .. } => {
-                                        // ignore here, handled earlier
-                                    }
-                                    EditorEventClientToServer::Info(mut info) => {
-                                        // make sure the id stays unique
-                                        info.server_id = client.props.server_id;
-                                        client.props = info;
-
-                                        self.broadcast_client_infos();
-                                    }
-                                    EditorEventClientToServer::Chat { msg } => {
-                                        self.network.send(EditorEvent::Server(
-                                            EditorEventServerToClient::Chat {
-                                                from: client.props.mapper_name.clone(),
-                                                msg,
-                                            },
-                                        ));
-                                    }
-                                }
-                            }
-                        }
+                        self.handle_client_ev(
+                            id,
+                            ev,
+                            tp,
+                            sound_mt,
+                            graphics_mt,
+                            buffer_object_handle,
+                            backend_handle,
+                            texture_handle,
+                            map,
+                            notifications,
+                        );
                     }
                     EditorNetEvent::Editor(EditorEvent::Server(_)) => {
                         // ignore
