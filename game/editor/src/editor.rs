@@ -2336,7 +2336,8 @@ impl Editor {
                     {
                         self.save_map(&path);
                     } else {
-                        let msg = "The current map has to be saved at least once.";
+                        let msg = "The current map has never been saved.\n\
+                            It has to be saved using the GUI at least once.";
                         log::info!("{msg}");
                         self.notifications_overlay
                             .add_err(msg, Duration::from_secs(10));
@@ -2403,13 +2404,14 @@ impl Editor {
                     }
                 }
                 EditorUiEvent::CursorWorldPos { pos } => {
-                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                    if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
                         let now = self.sys.time_get();
-                        // 10 times per sec
+                        // 50 times per sec
                         if tab.last_info_update.is_none_or(|last_info_update| {
-                            now.saturating_sub(last_info_update) > Duration::from_millis(100)
+                            now.saturating_sub(last_info_update) > Duration::from_millis(20)
                         }) {
                             tab.client.update_info(pos);
+                            tab.last_info_update = Some(now);
                         }
                     }
                 }
@@ -2541,7 +2543,10 @@ impl EditorInterface for Editor {
         }
 
         if !ui_output.copied_text.is_empty() {
-            dbg!(&ui_output.copied_text);
+            log::info!(
+                "[Editor] Copied the following text: {}",
+                &ui_output.copied_text
+            );
         }
 
         // handle save tasks

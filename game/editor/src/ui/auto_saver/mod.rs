@@ -15,13 +15,14 @@ pub fn render(
 
     let window_res = Window::new("Auto-saver-overview").show(ui.ctx(), |ui| {
         ui.label(
-            "The auto-saver is a tool independent \
+            "The auto-saver is a tool \
             to be used for multi people mapping.",
         );
         ui.label(
             "Instead of manually saving, you can define \
             various actions that should trigger a save.",
         );
+        ui.label("The auto-saver is active as long as you keep this window open.");
         ui.add_space(10.0);
 
         Grid::new("auto-saver-overview-grid")

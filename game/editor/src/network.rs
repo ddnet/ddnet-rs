@@ -18,11 +18,31 @@ use network::network::{
 
 use crate::event::{EditorEvent, EditorEventGenerator};
 
+#[derive(Debug, Clone)]
+pub enum NetworkClientState {
+    Connecting(String),
+    Connected,
+    Disconnected(String),
+    Err(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum NetworkState {
+    Server,
+    Client(NetworkClientState),
+}
+
+impl NetworkState {
+    pub fn is_server(&self) -> bool {
+        matches!(self, Self::Server)
+    }
+}
+
 /// small wrapper around network for needs of editor
 pub struct EditorNetwork {
     network: QuinnNetwork,
 
-    is_server: bool,
+    state: NetworkState,
 
     connections: HashSet<NetworkConnectionId>,
 }
@@ -64,7 +84,7 @@ impl EditorNetwork {
         (
             Self {
                 network,
-                is_server: true,
+                state: NetworkState::Server,
                 connections: Default::default(),
             },
             server_cert,
@@ -108,13 +128,24 @@ impl EditorNetwork {
 
         Self {
             network,
-            is_server: false,
+            state: NetworkState::Client(NetworkClientState::Connecting(server_addr.into())),
             connections: Default::default(),
         }
     }
 
+    pub fn state(&self) -> NetworkState {
+        self.state.clone()
+    }
+
+    pub fn is_connected(&self) -> bool {
+        matches!(
+            self.state,
+            NetworkState::Client(NetworkClientState::Connected)
+        )
+    }
+
     pub fn send(&self, ev: EditorEvent) {
-        if self.is_server {
+        if self.state.is_server() {
             for connection in &self.connections {
                 self.network
                     .send_in_order_to(&ev, connection, NetworkInOrderChannel::Global);
@@ -126,7 +157,7 @@ impl EditorNetwork {
     }
 
     pub fn send_to(&self, id: &NetworkConnectionId, ev: EditorEvent) {
-        if self.is_server {
+        if self.state.is_server() {
             self.network
                 .send_in_order_to(&ev, id, NetworkInOrderChannel::Global);
         } else {
@@ -143,9 +174,12 @@ impl EditorNetwork {
         match ev {
             NetworkEvent::Connected { addr, .. } => {
                 self.connections.insert(id);
+                if let NetworkState::Client(state) = &mut self.state {
+                    *state = NetworkClientState::Connected;
+                }
                 Ok(Some(format!(
                     "{} {}",
-                    if self.is_server {
+                    if self.state.is_server() {
                         "Client connected successfully"
                     } else {
                         "Connected successfully to"
@@ -155,6 +189,9 @@ impl EditorNetwork {
             }
             NetworkEvent::Disconnected(reason) => {
                 self.connections.remove(&id);
+                if let NetworkState::Client(state) = &mut self.state {
+                    *state = NetworkClientState::Disconnected(reason.to_string());
+                }
                 match reason {
                     NetworkEventDisconnect::LocallyClosed | NetworkEventDisconnect::Graceful => {
                         Ok(None)
@@ -162,7 +199,12 @@ impl EditorNetwork {
                     err => Err(anyhow!("{err}")),
                 }
             }
-            NetworkEvent::ConnectingFailed(err) => Err(err.into()),
+            NetworkEvent::ConnectingFailed(err) => {
+                if let NetworkState::Client(state) = &mut self.state {
+                    *state = NetworkClientState::Err(err.to_string());
+                }
+                Err(err.into())
+            }
             NetworkEvent::NetworkStats(_) => Ok(None),
         }
     }

@@ -25,7 +25,7 @@ use crate::{
         EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
-    network::EditorNetwork,
+    network::{EditorNetwork, NetworkState},
     notifications::{EditorNotification, EditorNotifications},
 };
 
@@ -91,6 +91,10 @@ impl EditorClient {
             }));
 
         res
+    }
+
+    pub fn net_state(&self) -> NetworkState {
+        self.network.state()
     }
 
     pub fn update(
@@ -247,6 +251,10 @@ impl EditorClient {
     }
 
     pub fn update_info(&self, cursor_world_pos: vec2) {
+        if !self.network.is_connected() {
+            return;
+        }
+
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Info(
                 ClientProps {
