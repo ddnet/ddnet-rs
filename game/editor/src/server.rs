@@ -204,6 +204,7 @@ impl EditorServer {
                             group.actions.append(&mut act.actions.clone());
 
                             if let Err(err) = merge_actions(&mut group.actions) {
+                                log::error!("{err}");
                                 notifications.add_err(err.to_string(), Duration::from_secs(10));
                             }
                         } else {
@@ -313,6 +314,7 @@ impl EditorServer {
                                                 {err}",
                                                 if is_undo { "undo" } else { "redo" }
                                             );
+                                            log::error!("{err}");
                                             notifications.add_err(&err, Duration::from_secs(10));
                                             self.network.send_to(
                                                 &id,
@@ -419,7 +421,10 @@ impl EditorServer {
                                 // ignore
                             }
                         }
-                        self.network.handle_network_ev(id, ev)
+                        if let Err(err) = self.network.handle_network_ev(id, ev) {
+                            log::error!("{err}");
+                            notifications.add_err(err.to_string(), Duration::from_secs(10));
+                        }
                     }
                 }
             }

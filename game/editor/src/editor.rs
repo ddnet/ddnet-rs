@@ -218,8 +218,6 @@ pub struct Editor {
     thread_pool: Arc<rayon::ThreadPool>,
 
     save_tasks: Vec<IoRuntimeTask<()>>,
-
-    is_closed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -366,8 +364,6 @@ impl Editor {
             save_tasks: Default::default(),
 
             sys,
-
-            is_closed: false,
         };
         res.load_map("map/maps/ctf1.twmap".as_ref(), Default::default());
         res
@@ -1266,6 +1262,7 @@ impl Editor {
             self.load_map_impl(path, options)
         };
         if let Err(err) = res {
+            log::error!("{err}");
             self.notifications_overlay
                 .add_err(err.to_string(), Duration::from_secs(10));
         }
@@ -1449,6 +1446,7 @@ impl Editor {
                     save_tasks.push(task);
                 }
                 Err(err) => {
+                    log::error!("{err}");
                     notifications_overlay.add_err(err.to_string(), Duration::from_secs(10));
                 }
             }
@@ -2294,6 +2292,7 @@ impl Editor {
         Option<InputState>,
         Option<UiCanvasSize>,
         egui::PlatformOutput,
+        Option<EditorResult>,
     ) {
         let mut unused_rect: Option<egui::Rect> = None;
         let mut input_state: Option<InputState> = None;
@@ -2314,6 +2313,8 @@ impl Editor {
             auto_mapper: &mut self.auto_mapper,
             io: &self.io,
         });
+
+        let mut forced_result = None;
 
         // handle ui events
         for ev in std::mem::take(&mut self.ui_events) {
@@ -2383,7 +2384,12 @@ impl Editor {
                         color,
                     },
                 ),
-                EditorUiEvent::Close => self.is_closed = true,
+                EditorUiEvent::Close => {
+                    forced_result = Some(EditorResult::Close);
+                }
+                EditorUiEvent::Minimize => {
+                    forced_result = Some(EditorResult::Minimize);
+                }
                 EditorUiEvent::Undo => {
                     if let Some(tab) = self.tabs.get(&self.active_tab) {
                         tab.client.undo();
@@ -2412,7 +2418,13 @@ impl Editor {
                 }
             }
         }
-        (unused_rect, input_state, ui_canvas, egui_output)
+        (
+            unused_rect,
+            input_state,
+            ui_canvas,
+            egui_output,
+            forced_result,
+        )
     }
 
     pub fn host_map(&mut self, path: &Path, port: u16, password: String) -> anyhow::Result<Hash> {
@@ -2439,6 +2451,7 @@ impl Editor {
         self.tabs
             .values_mut()
             .for_each(|tab| tab.client.update_info(vec2::new(-10000.0, -10000.0)));
+
         Ok(hash)
     }
 }
@@ -2446,6 +2459,7 @@ impl Editor {
 #[derive(Serialize, Deserialize)]
 pub enum EditorResult {
     Close,
+    Minimize,
     PlatformOutput(egui::PlatformOutput),
 }
 
@@ -2469,7 +2483,8 @@ impl EditorInterface for Editor {
         self.render_tools(&self.latest_canvas_rect.clone());
 
         // then render the UI above it
-        let (unused_rect, input_state, canvas_size, ui_output) = self.render_ui(input, config);
+        let (unused_rect, input_state, canvas_size, ui_output, forced_result) =
+            self.render_ui(input, config);
         self.latest_canvas_rect = canvas_size.unwrap_or_else(|| {
             Rect::from_min_size(
                 pos2(0.0, 0.0),
@@ -2533,11 +2548,13 @@ impl EditorInterface for Editor {
             if task.is_finished() {
                 match task.get_storage() {
                     Ok(_) => {
+                        log::info!("Map saved.");
                         self.notifications_overlay
                             .add_info("Map saved.", Duration::from_secs(2));
                         // ignore
                     }
                     Err(err) => {
+                        log::error!("{err}");
                         self.notifications_overlay
                             .add_err(err.to_string(), Duration::from_secs(10));
                     }
@@ -2551,21 +2568,27 @@ impl EditorInterface for Editor {
         // render the overlay for notifications
         for ev in self.notifications.take() {
             match ev {
-                EditorNotification::Error(msg) => self
-                    .notifications_overlay
-                    .add_err(msg, Duration::from_secs(10)),
-                EditorNotification::Warning(msg) => self
-                    .notifications_overlay
-                    .add_warn(msg, Duration::from_secs(10)),
-                EditorNotification::Info(msg) => self
-                    .notifications_overlay
-                    .add_info(msg, Duration::from_secs(10)),
+                EditorNotification::Error(msg) => {
+                    log::error!("{msg}");
+                    self.notifications_overlay
+                        .add_err(msg, Duration::from_secs(10));
+                }
+                EditorNotification::Warning(msg) => {
+                    log::warn!("{msg}");
+                    self.notifications_overlay
+                        .add_warn(msg, Duration::from_secs(10));
+                }
+                EditorNotification::Info(msg) => {
+                    log::info!("{msg}");
+                    self.notifications_overlay
+                        .add_info(msg, Duration::from_secs(10));
+                }
             }
         }
         self.notifications_overlay.render();
 
-        if self.is_closed {
-            EditorResult::Close
+        if let Some(res) = forced_result {
+            res
         } else {
             EditorResult::PlatformOutput(ui_output)
         }

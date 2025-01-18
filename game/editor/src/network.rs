@@ -1,9 +1,10 @@
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
+use anyhow::anyhow;
 use base::system::System;
 use network::network::{
     connection::NetworkConnectionId,
-    event::NetworkEvent,
+    event::{NetworkEvent, NetworkEventDisconnect},
     packet_compressor::{types::DecompressionByteLimit, DefaultNetworkPacketCompressor},
     plugins::NetworkPlugins,
     quinn_network::QuinnNetwork,
@@ -134,16 +135,27 @@ impl EditorNetwork {
         }
     }
 
-    pub fn handle_network_ev(&mut self, id: NetworkConnectionId, ev: NetworkEvent) {
+    pub fn handle_network_ev(
+        &mut self,
+        id: NetworkConnectionId,
+        ev: NetworkEvent,
+    ) -> anyhow::Result<()> {
         match ev {
             NetworkEvent::Connected { .. } => {
                 self.connections.insert(id);
+                Ok(())
             }
-            NetworkEvent::Disconnected { .. } => {
+            NetworkEvent::Disconnected(reason) => {
                 self.connections.remove(&id);
+                match reason {
+                    NetworkEventDisconnect::LocallyClosed | NetworkEventDisconnect::Graceful => {
+                        Ok(())
+                    }
+                    err => Err(anyhow!("{err}")),
+                }
             }
-            NetworkEvent::ConnectingFailed(_) => {}
-            NetworkEvent::NetworkStats(_) => {}
+            NetworkEvent::ConnectingFailed(err) => Err(err.into()),
+            NetworkEvent::NetworkStats(_) => Ok(()),
         }
     }
 }

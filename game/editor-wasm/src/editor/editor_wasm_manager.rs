@@ -124,3 +124,24 @@ impl EditorInterface for EditorWasmManager {
         self.state.as_mut().render(input, config)
     }
 }
+
+#[derive(Default)]
+pub enum EditorState {
+    #[default]
+    None,
+    Open(EditorWasmManager),
+    Minimized(EditorWasmManager),
+}
+
+impl EditorState {
+    pub fn is_open(&self) -> bool {
+        matches!(self, Self::Open(_))
+    }
+
+    pub fn should_reload(&self) -> bool {
+        match self {
+            EditorState::Open(editor) | EditorState::Minimized(editor) => editor.should_reload(),
+            EditorState::None => false,
+        }
+    }
+}

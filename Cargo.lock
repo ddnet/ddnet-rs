@@ -3227,6 +3227,7 @@ dependencies = [
  "graphics-types",
  "hiarc",
  "image-utils",
+ "log",
  "map",
  "map-convert-lib",
  "math",
