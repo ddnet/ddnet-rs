@@ -3144,7 +3144,21 @@ impl CDatafileWrapper {
                     switch,
                     tune,
                 };
-                Self::str_to_ints(&mut layer_item.name, "".as_bytes());
+                Self::str_to_ints(
+                    &mut layer_item.name,
+                    match &layer {
+                        MapLayerPhysics::Arbitrary(_) => {
+                            panic!("arbitrary tile layer not supported")
+                        }
+                        MapLayerPhysics::Game(_) => "Game",
+                        MapLayerPhysics::Front(_) => "Front",
+                        MapLayerPhysics::Tele(_) => "Tele",
+                        MapLayerPhysics::Speedup(_) => "Speedup",
+                        MapLayerPhysics::Switch(_) => "Switch",
+                        MapLayerPhysics::Tune(_) => "Tune",
+                    }
+                    .as_bytes(),
+                );
                 layer_item.write_to_vec(&mut data_layer);
 
                 let data_item = CDatafileItem {
