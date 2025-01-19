@@ -41,11 +41,11 @@ use crate::{
         ActChangePhysicsGroupAttr, ActChangeQuadAttr, ActChangeQuadLayerAttr, ActChangeSoundAttr,
         ActChangeSoundLayerAttr, ActChangeSwitch, ActChangeTeleporter,
         ActChangeTileLayerDesignAttr, ActChangeTuneZone, ActLayerChangeImageIndex,
-        ActLayerChangeSoundIndex, ActQuadLayerAddQuads, ActQuadLayerAddRemQuads,
-        ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage, ActRemImage2dArray,
-        ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound, ActRemSoundAnim,
-        ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds, ActSoundLayerAddSounds,
-        ActSoundLayerRemSounds, ActSwapGroups, ActSwapLayers, ActTileLayerReplTilesBase,
+        ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
+        ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
+        ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds,
+        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
         ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
@@ -141,27 +141,34 @@ fn merge_actions_group(
     action2: EditorAction,
 ) -> anyhow::Result<(EditorAction, Option<EditorAction>)> {
     match (action1, action2) {
-        (EditorAction::SwapGroups(mut act1), EditorAction::SwapGroups(act2)) => {
-            if act1.is_background == act2.is_background {
-                act1.group2 = act2.group2;
+        (EditorAction::MoveGroup(mut act1), EditorAction::MoveGroup(act2)) => {
+            if act1.new_is_background == act2.old_is_background && act1.new_group == act2.old_group
+            {
+                act1.new_is_background = act2.new_is_background;
+                act1.new_group = act2.new_group;
 
-                Ok((EditorAction::SwapGroups(act1), None))
+                Ok((EditorAction::MoveGroup(act1), None))
             } else {
                 Ok((
-                    EditorAction::SwapGroups(act1),
-                    Some(EditorAction::SwapGroups(act2)),
+                    EditorAction::MoveGroup(act1),
+                    Some(EditorAction::MoveGroup(act2)),
                 ))
             }
         }
-        (EditorAction::SwapLayers(mut act1), EditorAction::SwapLayers(act2)) => {
-            if act1.is_background == act2.is_background && act1.group == act2.group {
-                act1.layer2 = act2.layer2;
+        (EditorAction::MoveLayer(mut act1), EditorAction::MoveLayer(act2)) => {
+            if act1.new_is_background == act2.old_is_background
+                && act1.new_group == act2.old_group
+                && act1.new_layer == act2.old_layer
+            {
+                act1.new_is_background = act2.new_is_background;
+                act1.new_group = act2.new_group;
+                act1.new_layer = act2.new_layer;
 
-                Ok((EditorAction::SwapLayers(act1), None))
+                Ok((EditorAction::MoveLayer(act1), None))
             } else {
                 Ok((
-                    EditorAction::SwapLayers(act1),
-                    Some(EditorAction::SwapLayers(act2)),
+                    EditorAction::MoveLayer(act1),
+                    Some(EditorAction::MoveLayer(act2)),
                 ))
             }
         }
@@ -581,46 +588,78 @@ pub fn do_action(
     map: &mut EditorMap,
 ) -> anyhow::Result<()> {
     match action {
-        EditorAction::SwapGroups(act) => {
-            let groups = if act.is_background {
+        EditorAction::MoveGroup(act) => {
+            let groups = if act.old_is_background {
                 &mut map.groups.background
             } else {
                 &mut map.groups.foreground
             };
             anyhow::ensure!(
-                groups.get(act.group1).is_some(),
+                groups.get(act.old_group).is_some(),
                 "group {} is out of bounds",
-                act.group1
+                act.old_group
             );
-            anyhow::ensure!(
-                groups.get(act.group2).is_some(),
-                "group {} is out of bounds",
-                act.group2
-            );
-            groups.swap(act.group1, act.group2);
+            let group = groups.remove(act.old_group);
+            let groups = if act.new_is_background {
+                &mut map.groups.background
+            } else {
+                &mut map.groups.foreground
+            };
+            if act.new_group <= groups.len() {
+                groups.insert(act.new_group, group);
+            } else {
+                let groups = if act.old_is_background {
+                    &mut map.groups.background
+                } else {
+                    &mut map.groups.foreground
+                };
+                // add group back
+                groups.insert(act.old_group, group);
+                anyhow::bail!("group {} is out of bounds", act.new_group);
+            }
         }
-        EditorAction::SwapLayers(act) => {
-            let groups = if act.is_background {
+        EditorAction::MoveLayer(act) => {
+            let groups = if act.old_is_background {
                 &mut map.groups.background
             } else {
                 &mut map.groups.foreground
             };
             let group = groups
-                .get_mut(act.group)
-                .ok_or(anyhow!("group {} is out of bounds", act.group))?;
+                .get_mut(act.old_group)
+                .ok_or_else(|| anyhow!("group {} is out of bounds", act.old_group))?;
             anyhow::ensure!(
-                group.layers.get(act.layer1).is_some(),
-                "layer {} is out of bounds in group {}",
-                act.layer1,
-                act.group
+                group.layers.get(act.old_layer).is_some(),
+                "layer {} is out of bounds",
+                act.old_layer
             );
-            anyhow::ensure!(
-                group.layers.get(act.layer2).is_some(),
-                "layer {} is out of bounds in group {}",
-                act.layer2,
-                act.group
-            );
-            group.layers.swap(act.layer1, act.layer2);
+            let layer = group.layers.remove(act.old_layer);
+            let groups = if act.new_is_background {
+                &mut map.groups.background
+            } else {
+                &mut map.groups.foreground
+            };
+            if let Some(group) = groups
+                .get_mut(act.new_group)
+                .and_then(|group| (act.new_layer <= group.layers.len()).then_some(group))
+            {
+                group.layers.insert(act.new_layer, layer);
+            } else {
+                let groups = if act.old_is_background {
+                    &mut map.groups.background
+                } else {
+                    &mut map.groups.foreground
+                };
+                let group = groups
+                    .get_mut(act.old_group)
+                    .expect("Group must exist at this point. logic bug.");
+                // add layer back
+                group.layers.insert(act.old_layer, layer);
+                anyhow::bail!(
+                    "layer {} or group {} is out of bounds",
+                    act.new_layer,
+                    act.new_group
+                );
+            }
         }
         EditorAction::AddImage(act) => {
             anyhow::ensure!(
@@ -2048,32 +2087,35 @@ pub fn undo_action(
     map: &mut EditorMap,
 ) -> anyhow::Result<()> {
     match action {
-        EditorAction::SwapGroups(act) => do_action(
+        EditorAction::MoveGroup(act) => do_action(
             tp,
             sound_mt,
             graphics_mt,
             buffer_object_handle,
             backend_handle,
             texture_handle,
-            EditorAction::SwapGroups(ActSwapGroups {
-                is_background: act.is_background,
-                group1: act.group2,
-                group2: act.group1,
+            EditorAction::MoveGroup(ActMoveGroup {
+                old_is_background: act.new_is_background,
+                old_group: act.new_group,
+                new_is_background: act.old_is_background,
+                new_group: act.old_group,
             }),
             map,
         ),
-        EditorAction::SwapLayers(act) => do_action(
+        EditorAction::MoveLayer(act) => do_action(
             tp,
             sound_mt,
             graphics_mt,
             buffer_object_handle,
             backend_handle,
             texture_handle,
-            EditorAction::SwapLayers(ActSwapLayers {
-                is_background: act.is_background,
-                group: act.group,
-                layer1: act.layer2,
-                layer2: act.layer1,
+            EditorAction::MoveLayer(ActMoveLayer {
+                old_is_background: act.new_is_background,
+                old_group: act.new_group,
+                old_layer: act.new_layer,
+                new_is_background: act.old_is_background,
+                new_group: act.old_group,
+                new_layer: act.old_layer,
             }),
             map,
         ),

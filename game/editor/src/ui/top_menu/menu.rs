@@ -36,11 +36,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         if ui.button("Save map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::save(pipe.user_data.io);
                         }
+                        ui.separator();
                         if ui.button("Host map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::host(pipe.user_data.io);
                         }
                         if ui.button("Join map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::join(pipe.user_data.io);
+                        }
+                        ui.separator();
+                        if ui.button("Minimize").clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::Minimize);
                         }
                         if ui.button("Close").clicked() {
                             pipe.user_data.ui_events.push(EditorUiEvent::Close);
