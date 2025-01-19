@@ -83,7 +83,7 @@ use graphics_backend::{
     window::BackendWindow,
 };
 
-use editor_wasm::editor::editor_wasm_manager::EditorWasmManager;
+use editor_wasm::editor::editor_wasm_manager::{EditorState, EditorWasmManager};
 use game_interface::{
     client_commands::{ClientCameraMode, ClientCommand, JoinStage},
     events::EventClientInfo,
@@ -380,7 +380,7 @@ struct ClientNativeImpl {
     cur_time: Duration,
     last_refresh_rate_time: Duration,
 
-    editor: Option<EditorWasmManager>,
+    editor: EditorState,
 
     entities_container: EntitiesContainer,
     skin_container: SkinContainer,
@@ -586,7 +586,7 @@ impl ClientNativeImpl {
             let is_menu_open = self.ui_manager.ui.ui_state.is_ui_open
                 || self.local_console.ui.ui_state.is_ui_open
                 || remote_console_open
-                || self.editor.is_some()
+                || self.editor.is_open()
                 || self.demo_player.is_some();
 
             let intra_tick_ratio = intra_tick_time_to_ratio(
@@ -1268,23 +1268,25 @@ impl ClientNativeImpl {
 
     fn render(&mut self, native: &mut dyn NativeImpl) {
         // first unload editor => then reload. else native library doesn't get a reload
-        if self
-            .editor
-            .as_ref()
-            .is_some_and(|editor| editor.should_reload())
-        {
-            self.editor = None;
+        if self.editor.should_reload() {
+            self.editor = EditorState::None;
 
-            self.editor = Some(EditorWasmManager::new(
+            let is_open = self.editor.is_open();
+            let editor = EditorWasmManager::new(
                 &self.sound,
                 &self.graphics,
                 &self.graphics_backend,
                 &self.io,
                 &self.thread_pool,
                 &self.font_data,
-            ));
+            );
+            self.editor = if is_open {
+                EditorState::Open(editor)
+            } else {
+                EditorState::Minimized(editor)
+            };
         }
-        if let Some(editor) = &mut self.editor {
+        if let EditorState::Open(editor) = &mut self.editor {
             match editor.render(
                 if self.local_console.ui.ui_state.is_ui_open || self.game.remote_console_open() {
                     Default::default()
@@ -1301,8 +1303,16 @@ impl ClientNativeImpl {
                             || self.game.remote_console_open(),
                     );
                 }
+                EditorResult::Minimize => {
+                    self.editor = match std::mem::take(&mut self.editor) {
+                        EditorState::Open(editor) | EditorState::Minimized(editor) => {
+                            EditorState::Minimized(editor)
+                        }
+                        EditorState::None => EditorState::None,
+                    };
+                }
                 EditorResult::Close => {
-                    self.editor = None;
+                    self.editor = EditorState::None;
                 }
             }
         } else {
@@ -1480,14 +1490,19 @@ impl ClientNativeImpl {
                             }
                         }
                         UiEvent::StartEditor => {
-                            self.editor = Some(EditorWasmManager::new(
-                                &self.sound,
-                                &self.graphics,
-                                &self.graphics_backend,
-                                &self.io,
-                                &self.thread_pool,
-                                &self.font_data,
-                            ));
+                            self.editor = match std::mem::take(&mut self.editor) {
+                                EditorState::Open(editor) | EditorState::Minimized(editor) => {
+                                    EditorState::Open(editor)
+                                }
+                                EditorState::None => EditorState::Open(EditorWasmManager::new(
+                                    &self.sound,
+                                    &self.graphics,
+                                    &self.graphics_backend,
+                                    &self.io,
+                                    &self.thread_pool,
+                                    &self.font_data,
+                                )),
+                            };
                         }
                         UiEvent::Connect {
                             addr,
@@ -2765,7 +2780,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             io,
             config: Config::new(loading.config_game, loading.config_engine),
             last_refresh_rate_time,
-            editor: None,
+            editor: Default::default(),
 
             local_console,
             console_logs: Default::default(),
@@ -2947,7 +2962,7 @@ impl FromNativeImpl for ClientNativeImpl {
         let has_input = !self.ui_manager.ui.ui_state.is_ui_open
             && !self.local_console.ui.ui_state.is_ui_open
             && !self.game.remote_console_open()
-            && self.editor.is_none()
+            && !self.editor.is_open()
             && self.demo_player.is_none();
         if let Game::Active(game) = &mut self.game {
             // check loading of votes

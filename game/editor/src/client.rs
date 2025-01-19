@@ -25,7 +25,7 @@ use crate::{
         EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
-    network::EditorNetwork,
+    network::{EditorNetwork, NetworkState},
     notifications::{EditorNotification, EditorNotifications},
 };
 
@@ -91,6 +91,10 @@ impl EditorClient {
             }));
 
         res
+    }
+
+    pub fn net_state(&self) -> NetworkState {
+        self.network.state()
     }
 
     pub fn update(
@@ -192,7 +196,22 @@ impl EditorClient {
                     EditorNetEvent::Editor(EditorEvent::Client(_)) => {
                         // ignore
                     }
-                    EditorNetEvent::NetworkEvent(ev) => self.network.handle_network_ev(id, ev),
+                    EditorNetEvent::NetworkEvent(ev) => {
+                        match self.network.handle_network_ev(id, ev) {
+                            Ok(None) => {
+                                // ignore
+                            }
+                            Ok(Some(msg)) => {
+                                if !self.local_client {
+                                    self.notifications.push(EditorNotification::Info(msg));
+                                }
+                            }
+                            Err(err) => {
+                                self.notifications
+                                    .push(EditorNotification::Error(err.to_string()));
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -232,6 +251,10 @@ impl EditorClient {
     }
 
     pub fn update_info(&self, cursor_world_pos: vec2) {
+        if !self.network.is_connected() {
+            return;
+        }
+
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Info(
                 ClientProps {
@@ -239,6 +262,7 @@ impl EditorClient {
                     color: self.color,
                     cursor_world: cursor_world_pos,
                     server_id: self.server_id,
+                    stats: None,
                 },
             )));
     }

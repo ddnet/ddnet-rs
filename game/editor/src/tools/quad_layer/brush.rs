@@ -338,6 +338,7 @@ impl QuadBrush {
                     }
 
                     if *quad != *edit_quad {
+                        let index = last_active.quad_index;
                         client.execute(
                             EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
                                 is_background,
@@ -346,10 +347,10 @@ impl QuadBrush {
                                 old_attr: edit_quad.clone(),
                                 new_attr: quad.clone(),
 
-                                index: last_active.quad_index,
+                                index,
                             })),
                             Some(&format!(
-                                "change-quad-attr-{is_background}-{group_index}-{layer_index}"
+                                "change-quad-attr-{is_background}-{group_index}-{layer_index}-{index}"
                             )),
                         );
                     }
@@ -663,6 +664,7 @@ impl QuadBrush {
             stream_handle,
             canvas_handle,
             map,
+            true,
         );
 
         if self.brush.is_none() || self.pointer_down_state.is_selection() {

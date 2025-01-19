@@ -10,8 +10,9 @@ use ui_base::{
 use crate::{
     actions::actions::{
         ActAddRemPhysicsTileLayer, ActAddRemQuadLayer, ActAddRemSoundLayer, ActAddRemTileLayer,
-        ActChangeQuadLayerAttr, ActChangeSoundLayerAttr, ActChangeTileLayerDesignAttr,
-        ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer, ActRemTileLayer, EditorAction,
+        ActChangeDesignLayerName, ActChangeQuadLayerAttr, ActChangeSoundLayerAttr,
+        ActChangeTileLayerDesignAttr, ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer,
+        ActRemTileLayer, EditorAction,
     },
     explain::TEXT_LAYER_PROPS_COLOR,
     map::{
@@ -223,6 +224,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
             let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Tile Layer Attributes")
                 .resizable(false)
@@ -415,6 +417,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         "change-design-tile-layer-attr-{is_background}-{g}-{l}"
                     )),
                 );
+            } else if layer_editor.name != layer_name_cmp {
+                tab.client.execute(
+                    EditorAction::ChangeDesignLayerName(ActChangeDesignLayerName {
+                        is_background,
+                        group_index: g,
+                        layer_index: l,
+                        old_name: layer.layer.name.clone(),
+                        new_name: layer_editor.name.clone(),
+                    }),
+                    Some(&format!(
+                        "change-design-tile-layer-name-{is_background}-{g}-{l}"
+                    )),
+                );
             } else if delete_layer {
                 tab.client.execute(
                     EditorAction::RemTileLayer(ActRemTileLayer {
@@ -440,6 +455,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
             let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Quad Layer Attributes")
                 .resizable(false)
@@ -520,6 +536,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }),
                     Some(&format!("change-quad-layer-attr-{is_background}-{g}-{l}")),
                 );
+            } else if layer_editor.name != layer_name_cmp {
+                tab.client.execute(
+                    EditorAction::ChangeDesignLayerName(ActChangeDesignLayerName {
+                        is_background,
+                        group_index: g,
+                        layer_index: l,
+                        old_name: layer.layer.name.clone(),
+                        new_name: layer_editor.name.clone(),
+                    }),
+                    Some(&format!(
+                        "change-design-tile-layer-name-{is_background}-{g}-{l}"
+                    )),
+                );
             } else if delete_layer {
                 tab.client.execute(
                     EditorAction::RemQuadLayer(ActRemQuadLayer {
@@ -545,6 +574,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
             let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Sound Layer Attributes")
                 .resizable(false)
@@ -624,6 +654,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         new_attr: layer_editor.attr.clone(),
                     }),
                     Some(&format!("change-sound-layer-attr-{is_background}-{g}-{l}")),
+                );
+            } else if layer_editor.name != layer_name_cmp {
+                tab.client.execute(
+                    EditorAction::ChangeDesignLayerName(ActChangeDesignLayerName {
+                        is_background,
+                        group_index: g,
+                        layer_index: l,
+                        old_name: layer.layer.name.clone(),
+                        new_name: layer_editor.name.clone(),
+                    }),
+                    Some(&format!(
+                        "change-design-tile-layer-name-{is_background}-{g}-{l}"
+                    )),
                 );
             } else if delete_layer {
                 tab.client.execute(

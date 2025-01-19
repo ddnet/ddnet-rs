@@ -60,10 +60,12 @@ pub enum EditorAction {
     RemGroup(ActRemGroup),
     // change attributes
     ChangeGroupAttr(ActChangeGroupAttr),
+    ChangeGroupName(ActChangeGroupName),
     ChangePhysicsGroupAttr(ActChangePhysicsGroupAttr),
     ChangeTileLayerDesignAttr(ActChangeTileLayerDesignAttr),
     ChangeQuadLayerAttr(ActChangeQuadLayerAttr),
     ChangeSoundLayerAttr(ActChangeSoundLayerAttr),
+    ChangeDesignLayerName(ActChangeDesignLayerName),
     ChangeQuadAttr(Box<ActChangeQuadAttr>),
     ChangeSoundAttr(ActChangeSoundAttr),
     ChangeTeleporter(ActChangeTeleporter),
@@ -1209,6 +1211,42 @@ impl EditorActionInterface for ActChangeGroupAttr {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActChangeGroupName {
+    pub is_background: bool,
+    pub group_index: usize,
+    pub old_name: String,
+    pub new_name: String,
+}
+
+impl EditorActionInterface for ActChangeGroupName {
+    fn undo_info(&self) -> String {
+        format!(
+            "Change name of group #{} in {} back to {}",
+            self.group_index,
+            if self.is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+            self.old_name
+        )
+    }
+
+    fn redo_info(&self) -> String {
+        format!(
+            "Change name of group #{} in {} to {}",
+            self.group_index,
+            if self.is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+            self.new_name
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActChangePhysicsGroupAttr {
     pub old_attr: MapGroupPhysicsAttr,
     pub new_attr: MapGroupPhysicsAttr,
@@ -1337,6 +1375,47 @@ impl EditorActionInterface for ActChangeSoundLayerAttr {
             } else {
                 "foreground"
             }
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActChangeDesignLayerName {
+    pub is_background: bool,
+    pub group_index: usize,
+    pub layer_index: usize,
+    pub old_name: String,
+    pub new_name: String,
+}
+
+impl EditorActionInterface for ActChangeDesignLayerName {
+    fn undo_info(&self) -> String {
+        format!(
+            "Rename layer {} #{} in group #{} ({}) back to {}",
+            self.new_name,
+            self.layer_index,
+            self.group_index,
+            if self.is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+            self.old_name,
+        )
+    }
+
+    fn redo_info(&self) -> String {
+        format!(
+            "Rename layer {} #{} in group #{} ({}) to {}",
+            self.old_name,
+            self.layer_index,
+            self.group_index,
+            if self.is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+            self.new_name,
         )
     }
 }

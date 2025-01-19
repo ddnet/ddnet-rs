@@ -1,4 +1,4 @@
-use egui::Button;
+use egui::{Button, Grid};
 use ui_base::types::UiRenderPipe;
 
 use crate::ui::user_data::UserData;
@@ -27,9 +27,20 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     if tab.client.clients.len() > 1 {
                         btn = btn.on_hover_ui(|ui| {
                             ui.vertical(|ui| {
-                                for client in tab.client.clients.iter() {
-                                    ui.label(&client.mapper_name);
-                                }
+                                Grid::new("overview-mappers-network-tooltip")
+                                    .num_columns(2)
+                                    .show(ui, |ui| {
+                                        for client in tab.client.clients.iter() {
+                                            ui.label(&client.mapper_name);
+                                            if let Some(stats) = &client.stats {
+                                                ui.label(format!(
+                                                    "Ping: {}ms",
+                                                    stats.ping.as_millis()
+                                                ));
+                                            }
+                                            ui.end_row();
+                                        }
+                                    });
                             });
                         })
                     }

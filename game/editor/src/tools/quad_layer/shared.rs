@@ -81,6 +81,7 @@ pub fn render_quad_points(
     stream_handle: &GraphicsStreamHandle,
     canvas_handle: &GraphicsCanvasHandle,
     map: &EditorMap,
+    render_corner_points: bool,
 ) {
     // render quad corner/center points
     if let Some(EditorLayerUnionRef::Design {
@@ -120,8 +121,9 @@ pub fn render_quad_points(
                 map.groups.user.zoom,
             );
             stream_handle.render_quads(
-                    hi_closure!([points: [fvec2; 5], x: f32, y: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                        let point_size = QUAD_POINT_RADIUS * 0.7;
+                hi_closure!([points: [fvec2; 5], x: f32, y: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {
+                    let point_size = QUAD_POINT_RADIUS * 0.7;
+                    if render_corner_points {
                         for point in &points[0..4] {
                             let color = if in_radius(point, &vec2::new(x, y), QUAD_POINT_RADIUS) {
                                 ubvec4::new(150, 150, 255, 255)
@@ -138,23 +140,24 @@ pub fn render_quad_points(
                                 .into()
                             );
                         }
-                        let color = if in_radius(&points[4], &vec2::new(x, y), QUAD_POINT_RADIUS) {
-                            ubvec4::new(150, 255, 150, 255)
-                        }
-                        else {
-                            ubvec4::new(0, 255, 0, 255)
-                        };
-                        stream_handle.add_vertices(
-                            StreamedQuad::default().from_pos_and_size(
-                                vec2::new(points[4].x.to_num::<f32>() - point_size / 2.0, points[4].y.to_num::<f32>() - point_size / 2.0),
-                                vec2::new(point_size, point_size)
-                            )
-                            .color(color)
-                            .into()
-                        );
-                    }),
-                    state,
-                );
+                    }
+                    let color = if in_radius(&points[4], &vec2::new(x, y), QUAD_POINT_RADIUS) {
+                        ubvec4::new(150, 255, 150, 255)
+                    }
+                    else {
+                        ubvec4::new(0, 255, 0, 255)
+                    };
+                    stream_handle.add_vertices(
+                        StreamedQuad::default().from_pos_and_size(
+                            vec2::new(points[4].x.to_num::<f32>() - point_size / 2.0, points[4].y.to_num::<f32>() - point_size / 2.0),
+                            vec2::new(point_size, point_size)
+                        )
+                        .color(color)
+                        .into()
+                    );
+                }),
+                state,
+            );
         }
     }
 }

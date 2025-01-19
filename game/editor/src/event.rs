@@ -8,7 +8,8 @@ use async_trait::async_trait;
 use base::hash::Hash;
 use math::math::vector::vec2;
 use network::network::{
-    connection::NetworkConnectionId, event::NetworkEvent,
+    connection::{ConnectionStats, NetworkConnectionId},
+    event::NetworkEvent,
     event_generator::NetworkEventToGameEventGenerator,
 };
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,8 @@ pub struct ClientProps {
 
     /// unique id on the server
     pub server_id: u64,
+
+    pub stats: Option<ConnectionStats>,
 }
 
 /// editor events are a collection of either actions or commands

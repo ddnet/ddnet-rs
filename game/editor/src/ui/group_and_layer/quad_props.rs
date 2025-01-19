@@ -10,7 +10,9 @@ use time::Duration;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
-    actions::actions::{ActChangeQuadAttr, EditorAction},
+    actions::actions::{
+        ActChangeQuadAttr, ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, EditorAction,
+    },
     explain::TEXT_QUAD_PROP_COLOR,
     map::{EditorAnimations, EditorLayer, EditorLayerUnionRefMut, EditorMapGroupsInterface},
     tools::{
@@ -114,7 +116,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             animations_panel_open: bool,
             animations: &EditorAnimations,
             pointer_is_used: &mut bool,
-        ) -> InnerResponse<()> {
+        ) -> InnerResponse<bool> {
+            let mut delete = false;
             egui::Grid::new("design group attr grid")
                 .num_columns(2)
                 .spacing([20.0, 4.0])
@@ -301,7 +304,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
 
                         // square
-                        if ui.button("square").clicked() {
+                        if ui.button("Square").clicked() {
                             let mut min = quad.points[0];
                             let mut max = quad.points[0];
 
@@ -316,6 +319,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             quad.points[1] = vec2_base::new(max.x, min.y);
                             quad.points[2] = vec2_base::new(min.x, max.y);
                             quad.points[3] = max;
+                        }
+                        ui.end_row();
+
+                        if ui.button("Delete").clicked() {
+                            delete = true;
                         }
                         ui.end_row();
                     } else if let QuadPointerDownPoint::Corner(c) = point {
@@ -377,6 +385,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         .on_hover_ui(animations_panel_open_warning);
                         ui.end_row();
                     }
+                    delete
                 })
         }
 
@@ -406,6 +415,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     )
                 });
 
+                let delete = window_res
+                    .as_ref()
+                    .is_some_and(|r| r.inner.as_ref().is_some_and(|r| r.inner));
+
                 if *quad != quad_cmp && !animations_panel_open {
                     let layer_quad = &layer.layer.quads[index];
                     pipe.user_data.editor_tab.client.execute(
@@ -420,6 +433,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         })),
                         Some(&format!(
                             "change-quad-attr-{is_background}-{group_index}-{layer_index}-{index}"
+                        )),
+                    );
+                } else if delete {
+                    pipe.user_data.editor_tab.client.execute(
+                        EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads {
+                            base: ActQuadLayerAddRemQuads {
+                                is_background,
+                                group_index,
+                                layer_index,
+                                index,
+                                quads: vec![quad.clone()],
+                            },
+                        }),
+                        Some(&format!(
+                            "quad-rem-design-{is_background}-{group_index}-{layer_index}-{index}"
                         )),
                     );
                 }
@@ -463,6 +491,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         pipe.user_data.pointer_is_used,
                     )
                 });
+
+                let delete = window_res
+                    .as_ref()
+                    .is_some_and(|r| r.inner.as_ref().is_some_and(|r| r.inner));
 
                 if quad != quad_cmp {
                     let prop_quad = quad;
@@ -535,6 +567,34 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             );
                         }
                     });
+                } else if delete {
+                    // rewrite the quad indices, since they get invalid every time a quad is deleted.
+                    for i in 0..selected_quads.len() {
+                        let (delete_index, _) = selected_quads[i];
+                        for (index, _) in selected_quads.iter_mut().skip(i + 1) {
+                            if *index > delete_index {
+                                *index = index.saturating_sub(1);
+                            }
+                        }
+                    }
+
+                    for (index, quad) in selected_quads {
+                        pipe.user_data.editor_tab.client.execute(
+                            EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads {
+                                base: ActQuadLayerAddRemQuads {
+                                    is_background,
+                                    group_index,
+                                    layer_index,
+                                    index,
+                                    quads: vec![quad.clone()],
+                                },
+                            }),
+                            Some(&format!(
+                                "quad-rem-design-{is_background}-\
+                                {group_index}-{layer_index}-{index}"
+                            )),
+                        );
+                    }
                 }
 
                 window_res

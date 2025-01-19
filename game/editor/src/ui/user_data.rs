@@ -53,6 +53,7 @@ pub enum EditorUiEvent {
         mapper_name: String,
         color: [u8; 3],
     },
+    Minimize,
     Close,
     Undo,
     Redo,

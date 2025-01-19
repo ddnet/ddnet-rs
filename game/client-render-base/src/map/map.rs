@@ -126,8 +126,9 @@ impl RenderMap {
     pub(crate) fn animation_eval<
         F,
         T: DeserializeOwned + Debug + Copy + Default + IndexMut<usize, Output = F>,
+        const CHANNELS: usize,
     >(
-        anim: &AnimBase<AnimPoint<T>>,
+        anim: &AnimBase<AnimPoint<T, CHANNELS>>,
         channels: usize,
         cur_time: &Duration,
         cur_anim_time: &Duration,

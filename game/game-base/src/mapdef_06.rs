@@ -42,6 +42,9 @@ pub enum MapItemTypes {
     // format with UUIDs. See src/engine/shared/datafile.cpp for some of
     // the implementation.
     Count,
+
+    /// The id is directly the evaluated id after uuid manager.
+    EnvpointsBezier = 65534,
 }
 
 pub enum CurveType {
@@ -50,8 +53,7 @@ pub enum CurveType {
     Slow,
     Fast,
     Smooth,
-
-    Count,
+    Bezier,
 }
 
 #[repr(u8)]
@@ -1200,6 +1202,92 @@ impl CEnvPoint {
         w.extend(self.time.to_le_bytes());
         w.extend(self.curve_type.to_le_bytes());
         w.extend(self.values.iter().flat_map(|v| v.to_le_bytes()));
+    }
+}
+
+#[derive(Debug, Hiarc, Default, Clone, Copy)]
+#[repr(C)]
+pub struct CEnvPointBezier {
+    // Delta x in ms and Delta y as 22.10 fxp
+    pub in_tangent_delta_x: [i32; 4],
+    pub in_tangent_delta_y: [i32; 4],
+    pub out_tangent_delta_x: [i32; 4],
+    pub out_tangent_delta_y: [i32; 4],
+}
+
+impl CEnvPointBezier {
+    pub fn read_from_slice(data: &[u8]) -> Self {
+        let mut rest = data;
+
+        let mut bezier = Self::default();
+        bezier.in_tangent_delta_x.iter_mut().for_each(|c| {
+            let (val, rest2) = rest.split_at(size_of::<i32>());
+            *c = read_i32_le(val);
+            rest = rest2;
+        });
+        bezier.in_tangent_delta_y.iter_mut().for_each(|c| {
+            let (val, rest2) = rest.split_at(size_of::<i32>());
+            *c = read_i32_le(val);
+            rest = rest2;
+        });
+        bezier.out_tangent_delta_x.iter_mut().for_each(|c| {
+            let (val, rest2) = rest.split_at(size_of::<i32>());
+            *c = read_i32_le(val);
+            rest = rest2;
+        });
+        bezier.out_tangent_delta_y.iter_mut().for_each(|c| {
+            let (val, rest2) = rest.split_at(size_of::<i32>());
+            *c = read_i32_le(val);
+            rest = rest2;
+        });
+        bezier
+    }
+
+    pub fn write_to_vec(&self, w: &mut Vec<u8>) {
+        w.extend(self.in_tangent_delta_x.iter().flat_map(|v| v.to_le_bytes()));
+        w.extend(self.in_tangent_delta_y.iter().flat_map(|v| v.to_le_bytes()));
+        w.extend(
+            self.out_tangent_delta_x
+                .iter()
+                .flat_map(|v| v.to_le_bytes()),
+        );
+        w.extend(
+            self.out_tangent_delta_y
+                .iter()
+                .flat_map(|v| v.to_le_bytes()),
+        );
+    }
+}
+
+#[derive(Debug, Hiarc)]
+#[repr(C)]
+pub struct CEnvPointAndBezier {
+    pub point: CEnvPoint,
+
+    pub bezier: CEnvPointBezier,
+}
+
+impl CEnvPointAndBezier {
+    pub fn read_from_slice(data: &[u8]) -> Self {
+        let point = CEnvPoint::read_from_slice(data);
+
+        let (_, rest) = data.split_at(size_of::<CEnvPoint>());
+
+        let size_bezier = size_of::<CEnvPointBezier>();
+
+        let mut bezier = CEnvPointBezier::default();
+        if rest.len() >= size_bezier {
+            bezier = CEnvPointBezier::read_from_slice(rest);
+        }
+
+        Self { point, bezier }
+    }
+
+    pub fn write_to_vec(&self, w: &mut Vec<u8>, write_bezier: bool) {
+        self.point.write_to_vec(w);
+        if write_bezier {
+            self.bezier.write_to_vec(w);
+        }
     }
 }
 

@@ -37,15 +37,16 @@ use crate::{
         ActAddColorAnim, ActAddGroup, ActAddImage, ActAddImage2dArray, ActAddPhysicsTileLayer,
         ActAddPosAnim, ActAddQuadLayer, ActAddRemImage, ActAddRemQuadLayer, ActAddRemSound,
         ActAddRemSoundLayer, ActAddRemTileLayer, ActAddSound, ActAddSoundAnim, ActAddSoundLayer,
-        ActAddTileLayer, ActChangeGroupAttr, ActChangePhysicsGroupAttr, ActChangeQuadAttr,
-        ActChangeQuadLayerAttr, ActChangeSoundAttr, ActChangeSoundLayerAttr, ActChangeSwitch,
-        ActChangeTeleporter, ActChangeTileLayerDesignAttr, ActChangeTuneZone,
-        ActLayerChangeImageIndex, ActLayerChangeSoundIndex, ActQuadLayerAddQuads,
-        ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
-        ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds,
-        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActSwapGroups, ActSwapLayers,
-        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+        ActAddTileLayer, ActChangeDesignLayerName, ActChangeGroupAttr, ActChangeGroupName,
+        ActChangePhysicsGroupAttr, ActChangeQuadAttr, ActChangeQuadLayerAttr, ActChangeSoundAttr,
+        ActChangeSoundLayerAttr, ActChangeSwitch, ActChangeTeleporter,
+        ActChangeTileLayerDesignAttr, ActChangeTuneZone, ActLayerChangeImageIndex,
+        ActLayerChangeSoundIndex, ActQuadLayerAddQuads, ActQuadLayerAddRemQuads,
+        ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage, ActRemImage2dArray,
+        ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound, ActRemSoundAnim,
+        ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds, ActSoundLayerAddSounds,
+        ActSoundLayerRemSounds, ActSwapGroups, ActSwapLayers, ActTileLayerReplTilesBase,
+        ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     map::{
@@ -63,53 +64,24 @@ use crate::{
     },
 };
 
-fn merge_quad_addrem_base(
+fn merge_quad_add_base(
     mut act1: ActQuadLayerAddRemQuads,
     act2: ActQuadLayerAddRemQuads,
 ) -> anyhow::Result<(ActQuadLayerAddRemQuads, Option<ActQuadLayerAddRemQuads>)> {
-    // if both actions modify the same quad range they can be merged
-    let (min_index, mut min_index_quads, max_index, max_index_quads) = if act1.index < act2.index {
-        (act1.index, act1.quads, act2.index, act2.quads)
-    } else {
-        (act2.index, act2.quads, act1.index, act1.quads)
-    };
-    if min_index + min_index_quads.len() >= max_index {
-        act1.index = min_index;
-        act1.quads = {
-            if act1.index == min_index {
-                min_index_quads.splice((max_index - min_index).., max_index_quads);
-                min_index_quads
-            } else {
-                min_index_quads.extend(max_index_quads.into_iter().skip(max_index - min_index));
-                min_index_quads
-            }
-        };
+    if act1.index <= act2.index && act1.index + act1.quads.len() >= act2.index {
+        let index = act2.index - act1.index;
+        act1.quads.splice(index..index, act2.quads);
         Ok((act1, None))
     } else {
-        let is_background = act1.is_background;
-        let group_index = act1.group_index;
-        let layer_index = act1.layer_index;
-        let (mut act1, mut act2) = (
-            ActQuadLayerAddRemQuads {
-                is_background,
-                group_index,
-                layer_index,
-                index: min_index,
-                quads: min_index_quads,
-            },
-            ActQuadLayerAddRemQuads {
-                is_background,
-                group_index,
-                layer_index,
-                index: max_index,
-                quads: max_index_quads,
-            },
-        );
-        if act1.index != min_index {
-            std::mem::swap(&mut act1, &mut act2);
-        }
         Ok((act1, Some(act2)))
     }
+}
+
+fn merge_quad_rem_base(
+    act1: ActQuadLayerAddRemQuads,
+    act2: ActQuadLayerAddRemQuads,
+) -> anyhow::Result<(ActQuadLayerAddRemQuads, Option<ActQuadLayerAddRemQuads>)> {
+    merge_quad_add_base(act2, act1)
 }
 
 fn merge_sound_addrem_base(
@@ -250,7 +222,7 @@ fn merge_actions_group(
                 && act1.base.group_index == act2.base.group_index
                 && act1.base.layer_index == act2.base.layer_index
             {
-                let (act1, act2) = merge_quad_addrem_base(act1.base, act2.base)?;
+                let (act1, act2) = merge_quad_add_base(act1.base, act2.base)?;
 
                 Ok((
                     EditorAction::QuadLayerAddQuads(ActQuadLayerAddQuads { base: act1 }),
@@ -290,7 +262,7 @@ fn merge_actions_group(
                 && act1.base.group_index == act2.base.group_index
                 && act1.base.layer_index == act2.base.layer_index
             {
-                let (act1, act2) = merge_quad_addrem_base(act1.base, act2.base)?;
+                let (act1, act2) = merge_quad_rem_base(act1.base, act2.base)?;
 
                 Ok((
                     EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads { base: act1 }),
@@ -391,6 +363,17 @@ fn merge_actions_group(
                 ))
             }
         }
+        (EditorAction::ChangeGroupName(mut act1), EditorAction::ChangeGroupName(act2)) => {
+            if act1.is_background == act2.is_background && act1.group_index == act2.group_index {
+                act1.new_name = act2.new_name;
+                Ok((EditorAction::ChangeGroupName(act1), None))
+            } else {
+                Ok((
+                    EditorAction::ChangeGroupName(act1),
+                    Some(EditorAction::ChangeGroupName(act2)),
+                ))
+            }
+        }
         (
             EditorAction::ChangePhysicsGroupAttr(mut act1),
             EditorAction::ChangePhysicsGroupAttr(act2),
@@ -445,6 +428,23 @@ fn merge_actions_group(
                 Ok((
                     EditorAction::ChangeSoundLayerAttr(act1),
                     Some(EditorAction::ChangeSoundLayerAttr(act2)),
+                ))
+            }
+        }
+        (
+            EditorAction::ChangeDesignLayerName(mut act1),
+            EditorAction::ChangeDesignLayerName(act2),
+        ) => {
+            if act1.is_background == act2.is_background
+                && act1.group_index == act2.group_index
+                && act1.layer_index == act2.layer_index
+            {
+                act1.new_name = act2.new_name;
+                Ok((EditorAction::ChangeDesignLayerName(act1), None))
+            } else {
+                Ok((
+                    EditorAction::ChangeDesignLayerName(act1),
+                    Some(EditorAction::ChangeDesignLayerName(act2)),
                 ))
             }
         }
@@ -1601,6 +1601,19 @@ pub fn do_action(
                 .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
                 .attr = act.new_attr;
         }
+        EditorAction::ChangeGroupName(act) => {
+            let groups = if act.is_background {
+                &mut map.groups.background
+            } else {
+                &mut map.groups.foreground
+            };
+            let group = groups
+                .get_mut(act.group_index)
+                .ok_or(anyhow!("group {} is out of bounds", act.group_index))?;
+
+            let name = &mut group.name;
+            *name = act.new_name;
+        }
         EditorAction::ChangePhysicsGroupAttr(act) => {
             let group = &mut map.groups.physics;
 
@@ -1825,6 +1838,31 @@ pub fn do_action(
             } else {
                 return Err(anyhow!("not a sound layer"));
             }
+        }
+        EditorAction::ChangeDesignLayerName(act) => {
+            let groups = if act.is_background {
+                &mut map.groups.background
+            } else {
+                &mut map.groups.foreground
+            };
+            let layer = groups
+                .get_mut(act.group_index)
+                .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
+                .layers
+                .get_mut(act.layer_index)
+                .ok_or(anyhow!(
+                    "layer {} is out of bounds in group {}",
+                    act.layer_index,
+                    act.group_index
+                ))?;
+
+            let name = match layer {
+                MapLayerSkeleton::Abritrary(_) => anyhow::bail!("Renaming unsupported layer."),
+                MapLayerSkeleton::Tile(layer) => &mut layer.layer.name,
+                MapLayerSkeleton::Quad(layer) => &mut layer.layer.name,
+                MapLayerSkeleton::Sound(layer) => &mut layer.layer.name,
+            };
+            *name = act.new_name;
         }
         EditorAction::ChangeQuadAttr(act) => {
             let groups = if act.is_background {
@@ -2328,6 +2366,21 @@ pub fn undo_action(
             }),
             map,
         ),
+        EditorAction::ChangeGroupName(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::ChangeGroupName(ActChangeGroupName {
+                is_background: act.is_background,
+                group_index: act.group_index,
+                new_name: act.old_name,
+                old_name: act.new_name,
+            }),
+            map,
+        ),
         EditorAction::ChangePhysicsGroupAttr(act) => do_action(
             tp,
             sound_mt,
@@ -2391,6 +2444,22 @@ pub fn undo_action(
                 layer_index: act.layer_index,
                 new_attr: act.old_attr,
                 old_attr: act.new_attr,
+            }),
+            map,
+        ),
+        EditorAction::ChangeDesignLayerName(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::ChangeDesignLayerName(ActChangeDesignLayerName {
+                is_background: act.is_background,
+                group_index: act.group_index,
+                layer_index: act.layer_index,
+                new_name: act.old_name,
+                old_name: act.new_name,
             }),
             map,
         ),

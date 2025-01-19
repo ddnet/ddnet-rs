@@ -3227,6 +3227,7 @@ dependencies = [
  "graphics-types",
  "hiarc",
  "image-utils",
+ "log",
  "map",
  "map-convert-lib",
  "math",
@@ -4064,6 +4065,7 @@ dependencies = [
  "hiarc",
  "image-utils",
  "indexmap 2.7.0",
+ "itertools 0.13.0",
  "map",
  "math",
  "num-derive",
@@ -5908,6 +5910,7 @@ dependencies = [
  "ruzstd 0.8.0",
  "serde",
  "serde_json",
+ "serde_with",
  "time",
  "zstd",
 ]

@@ -218,8 +218,6 @@ pub struct Editor {
     thread_pool: Arc<rayon::ThreadPool>,
 
     save_tasks: Vec<IoRuntimeTask<()>>,
-
-    is_closed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -366,8 +364,6 @@ impl Editor {
             save_tasks: Default::default(),
 
             sys,
-
-            is_closed: false,
         };
         res.load_map("map/maps/ctf1.twmap".as_ref(), Default::default());
         res
@@ -1266,6 +1262,7 @@ impl Editor {
             self.load_map_impl(path, options)
         };
         if let Err(err) = res {
+            log::error!("{err}");
             self.notifications_overlay
                 .add_err(err.to_string(), Duration::from_secs(10));
         }
@@ -1449,6 +1446,7 @@ impl Editor {
                     save_tasks.push(task);
                 }
                 Err(err) => {
+                    log::error!("{err}");
                     notifications_overlay.add_err(err.to_string(), Duration::from_secs(10));
                 }
             }
@@ -1486,8 +1484,10 @@ impl Editor {
                 path,
             );
         } else {
+            let msg = "No map was loaded to be saved.";
+            log::info!("{msg}");
             self.notifications_overlay
-                .add_err("No map was loaded to be saved.", Duration::from_secs(10));
+                .add_err(msg, Duration::from_secs(10));
         }
     }
 
@@ -1617,6 +1617,12 @@ impl Editor {
         as_tile_numbers: Option<&TextureContainer2dArray>,
         layer_rect: &mut Vec<LayerRect>,
     ) {
+        let time = if map.user.ui_values.animations_panel_open {
+            map.user.ui_values.timeline.time()
+        } else {
+            map.user.time
+        };
+
         map_render.render_layer(
             animations,
             &map.resources,
@@ -1627,7 +1633,7 @@ impl Editor {
                 map.animation_tick(),
                 &map.game_time_info().intra_tick_time,
             ),
-            &map.user.time,
+            &time,
             &group.attr,
             layer,
             match layer {
@@ -2288,6 +2294,7 @@ impl Editor {
         Option<InputState>,
         Option<UiCanvasSize>,
         egui::PlatformOutput,
+        Option<EditorResult>,
     ) {
         let mut unused_rect: Option<egui::Rect> = None;
         let mut input_state: Option<InputState> = None;
@@ -2309,6 +2316,8 @@ impl Editor {
             io: &self.io,
         });
 
+        let mut forced_result = None;
+
         // handle ui events
         for ev in std::mem::take(&mut self.ui_events) {
             match ev {
@@ -2327,10 +2336,11 @@ impl Editor {
                     {
                         self.save_map(&path);
                     } else {
-                        self.notifications_overlay.add_err(
-                            "The current map has to be saved at least once.",
-                            Duration::from_secs(10),
-                        );
+                        let msg = "The current map has never been saved.\n\
+                            It has to be saved using the GUI at least once.";
+                        log::info!("{msg}");
+                        self.notifications_overlay
+                            .add_err(msg, Duration::from_secs(10));
                     }
                 }
                 EditorUiEvent::HostMap(host_map) => {
@@ -2377,7 +2387,12 @@ impl Editor {
                         color,
                     },
                 ),
-                EditorUiEvent::Close => self.is_closed = true,
+                EditorUiEvent::Close => {
+                    forced_result = Some(EditorResult::Close);
+                }
+                EditorUiEvent::Minimize => {
+                    forced_result = Some(EditorResult::Minimize);
+                }
                 EditorUiEvent::Undo => {
                     if let Some(tab) = self.tabs.get(&self.active_tab) {
                         tab.client.undo();
@@ -2389,13 +2404,14 @@ impl Editor {
                     }
                 }
                 EditorUiEvent::CursorWorldPos { pos } => {
-                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                    if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
                         let now = self.sys.time_get();
-                        // 10 times per sec
+                        // 50 times per sec
                         if tab.last_info_update.is_none_or(|last_info_update| {
-                            now.saturating_sub(last_info_update) > Duration::from_millis(100)
+                            now.saturating_sub(last_info_update) > Duration::from_millis(20)
                         }) {
                             tab.client.update_info(pos);
+                            tab.last_info_update = Some(now);
                         }
                     }
                 }
@@ -2406,7 +2422,13 @@ impl Editor {
                 }
             }
         }
-        (unused_rect, input_state, ui_canvas, egui_output)
+        (
+            unused_rect,
+            input_state,
+            ui_canvas,
+            egui_output,
+            forced_result,
+        )
     }
 
     pub fn host_map(&mut self, path: &Path, port: u16, password: String) -> anyhow::Result<Hash> {
@@ -2430,9 +2452,7 @@ impl Editor {
                 color: None,
             },
         );
-        self.tabs
-            .values_mut()
-            .for_each(|tab| tab.client.update_info(vec2::new(-10000.0, -10000.0)));
+
         Ok(hash)
     }
 }
@@ -2440,6 +2460,7 @@ impl Editor {
 #[derive(Serialize, Deserialize)]
 pub enum EditorResult {
     Close,
+    Minimize,
     PlatformOutput(egui::PlatformOutput),
 }
 
@@ -2463,7 +2484,8 @@ impl EditorInterface for Editor {
         self.render_tools(&self.latest_canvas_rect.clone());
 
         // then render the UI above it
-        let (unused_rect, input_state, canvas_size, ui_output) = self.render_ui(input, config);
+        let (unused_rect, input_state, canvas_size, ui_output, forced_result) =
+            self.render_ui(input, config);
         self.latest_canvas_rect = canvas_size.unwrap_or_else(|| {
             Rect::from_min_size(
                 pos2(0.0, 0.0),
@@ -2518,7 +2540,10 @@ impl EditorInterface for Editor {
         }
 
         if !ui_output.copied_text.is_empty() {
-            dbg!(&ui_output.copied_text);
+            log::info!(
+                "[Editor] Copied the following text: {}",
+                &ui_output.copied_text
+            );
         }
 
         // handle save tasks
@@ -2527,11 +2552,13 @@ impl EditorInterface for Editor {
             if task.is_finished() {
                 match task.get_storage() {
                     Ok(_) => {
+                        log::info!("Map saved.");
                         self.notifications_overlay
                             .add_info("Map saved.", Duration::from_secs(2));
                         // ignore
                     }
                     Err(err) => {
+                        log::error!("{err}");
                         self.notifications_overlay
                             .add_err(err.to_string(), Duration::from_secs(10));
                     }
@@ -2545,21 +2572,27 @@ impl EditorInterface for Editor {
         // render the overlay for notifications
         for ev in self.notifications.take() {
             match ev {
-                EditorNotification::Error(msg) => self
-                    .notifications_overlay
-                    .add_err(msg, Duration::from_secs(10)),
-                EditorNotification::Warning(msg) => self
-                    .notifications_overlay
-                    .add_warn(msg, Duration::from_secs(10)),
-                EditorNotification::Info(msg) => self
-                    .notifications_overlay
-                    .add_info(msg, Duration::from_secs(10)),
+                EditorNotification::Error(msg) => {
+                    log::error!("{msg}");
+                    self.notifications_overlay
+                        .add_err(msg, Duration::from_secs(10));
+                }
+                EditorNotification::Warning(msg) => {
+                    log::warn!("{msg}");
+                    self.notifications_overlay
+                        .add_warn(msg, Duration::from_secs(10));
+                }
+                EditorNotification::Info(msg) => {
+                    log::info!("{msg}");
+                    self.notifications_overlay
+                        .add_info(msg, Duration::from_secs(5));
+                }
             }
         }
         self.notifications_overlay.render();
 
-        if self.is_closed {
-            EditorResult::Close
+        if let Some(res) = forced_result {
+            res
         } else {
             EditorResult::PlatformOutput(ui_output)
         }

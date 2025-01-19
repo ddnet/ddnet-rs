@@ -7,7 +7,8 @@ use ui_base::{
 
 use crate::{
     actions::actions::{
-        ActAddRemGroup, ActChangeGroupAttr, ActChangePhysicsGroupAttr, ActRemGroup, EditorAction,
+        ActAddRemGroup, ActChangeGroupAttr, ActChangeGroupName, ActChangePhysicsGroupAttr,
+        ActRemGroup, EditorAction,
     },
     map::{EditorMapInterface, EditorPhysicsLayer},
     ui::{group_and_layer::shared::copy_tiles, user_data::UserDataWithTab},
@@ -101,6 +102,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 let group_editor = group.user.selected.as_mut().unwrap();
                 let attr = &mut group_editor.attr;
                 let attr_cmp = *attr;
+                let name_cmp = group_editor.name.clone();
                 let mut delete_group = false;
                 egui::Grid::new("design group attr grid")
                     .num_columns(2)
@@ -188,6 +190,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             new_attr: *attr,
                         }),
                         Some(&format!("change-design-group-attr-{is_background}-{g}")),
+                    );
+                } else if group_editor.name != name_cmp {
+                    tab.client.execute(
+                        EditorAction::ChangeGroupName(ActChangeGroupName {
+                            is_background,
+                            group_index: g,
+                            old_name: group.name.clone(),
+                            new_name: group_editor.name.clone(),
+                        }),
+                        Some(&format!("change-design-group-name-{is_background}-{g}")),
                     );
                 } else if delete_group {
                     tab.client.execute(

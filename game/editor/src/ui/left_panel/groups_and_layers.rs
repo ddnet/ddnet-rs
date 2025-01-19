@@ -70,15 +70,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 })
                 .body(|ui| {
                     for (l, layer) in group.layers.iter_mut().enumerate() {
-                        let layer_btn = {
-                            let mut btn = egui::Button::new(layer_name(resources, layer, l));
+                        let (icon, layer_btn) = {
+                            let (icon, name) = layer_name(ui, resources, layer, l);
+
+                            let mut btn = egui::Button::new(name);
                             if layer.editor_attr().active {
                                 btn = btn.selected(true);
                             }
                             if layer.is_selected() {
                                 btn = btn.stroke(button_selected_style());
                             }
-                            btn
+                            (icon, btn)
                         };
 
                         ui.with_layout(Layout::right_to_left(egui::Align::Min), |ui| {
@@ -91,14 +93,24 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                             }
 
                             ui.vertical_centered_justified(|ui| {
-                                let btn = ui.add(layer_btn);
+                                ui.horizontal(|ui| {
+                                    ui.label(icon);
 
-                                if btn.clicked() {
-                                    activated_layer = Some((g, l));
-                                }
-                                if btn.secondary_clicked() {
-                                    selected_layers.push((g, l));
-                                }
+                                    ui.with_layout(
+                                        Layout::left_to_right(egui::Align::Center)
+                                            .with_main_justify(true),
+                                        |ui| {
+                                            let btn = ui.add(layer_btn);
+
+                                            if btn.clicked() {
+                                                activated_layer = Some((g, l));
+                                            }
+                                            if btn.secondary_clicked() {
+                                                selected_layers.push((g, l));
+                                            }
+                                        },
+                                    );
+                                });
                             });
                         });
                     }
@@ -194,10 +206,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
         )
     };
 
+    let height_physics = (height * 0.3).min(230.0);
+    let height_design = (height - height_physics) / 2.0;
+
     egui_extras::StripBuilder::new(ui)
-        .size(Size::exact(height * 0.35))
-        .size(Size::exact(height * 0.3))
-        .size(Size::exact(height * 0.35))
+        .size(Size::exact(height_design))
+        .size(Size::exact(height_physics))
+        .size(Size::exact(height_design))
         .vertical(|mut strip| {
             // background
             strip.cell(|ui| {
@@ -284,7 +299,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                         .rect_filled(calc_paint_rect(ui), 0.0, scroll_color);
                     StripBuilder::new(ui)
                         .size(Size::remainder())
-                        .size(Size::exact(20.0))
+                        .size(Size::exact(25.0))
                         .vertical(|mut strip| {
                             strip.cell(|ui| {
                                 ui.style_mut().wrap_mode = None;
@@ -411,7 +426,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                                     || !phy_layers.switch
                                     || !phy_layers.tune
                                 {
-                                    ui.add_space(10.0);
                                     ui.menu_button("\u{f0fe} Add physics layer", |ui| {
                                         let mut add_layer = None;
                                         if !phy_layers.front && ui.button("Front").clicked() {

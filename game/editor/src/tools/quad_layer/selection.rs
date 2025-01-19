@@ -10,7 +10,7 @@ use map::map::{
     animations::{AnimPointColor, AnimPointCurveType, AnimPointPos},
     groups::layers::design::Quad,
 };
-use math::math::vector::{dvec2, fvec3, nfvec4, ubvec4, vec2};
+use math::math::vector::{dvec2, ffixed, fvec3, nfvec4, ubvec4, vec2};
 
 use crate::{
     map::{EditorLayer, EditorLayerQuad, EditorLayerUnionRef, EditorMap, EditorMapInterface},
@@ -24,7 +24,10 @@ use super::shared::{render_quad_points, QuadPointerDownPoint, QUAD_POINT_RADIUS}
 pub enum QuadPointerDownState {
     None,
     /// quad corner/center point
-    Point(QuadPointerDownPoint),
+    Point {
+        point: QuadPointerDownPoint,
+        pos: vec2,
+    },
     /// selection of quads
     Selection(vec2),
 }
@@ -237,53 +240,85 @@ impl QuadSelection {
         };
         let range = self.range.as_mut().unwrap();
 
-        // check if the pointer clicked on one of the quad corner/center points
-        let mut clicked_quad_point = false;
-        if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
-            for quad in layer.layer.quads.iter() {
-                let points = super::shared::get_quad_points_animated(quad, map, map.user.time);
+        let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
+        let vec2 { x, y } = ui_pos_to_world_pos(
+            canvas_handle,
+            ui_canvas,
+            map.groups.user.zoom,
+            vec2::new(pointer_cur.x, pointer_cur.y),
+            map.groups.user.pos.x,
+            map.groups.user.pos.y,
+            offset.x,
+            offset.y,
+            parallax.x,
+            parallax.y,
+        );
 
-                let pointer_cur = ui_pos_to_world_pos(
-                    canvas_handle,
-                    ui_canvas,
-                    map.groups.user.zoom,
-                    vec2::new(pointer_cur.x, pointer_cur.y),
-                    map.groups.user.pos.x,
-                    map.groups.user.pos.y,
-                    offset.x,
-                    offset.y,
-                    parallax.x,
-                    parallax.y,
-                );
+        if let Some(QuadPointerDownState::Point {
+            point: QuadPointerDownPoint::Center,
+            pos,
+        }) = latest_pointer
+            .primary_down()
+            .then_some(&mut self.pointer_down_state)
+        {
+            let x_diff = x - pos.x;
+            let y_diff = y - pos.y;
+            *pos = vec2::new(x, y);
+            self.anim_point_pos.value.x += ffixed::from_num(x_diff);
+            self.anim_point_pos.value.y += ffixed::from_num(y_diff);
+        } else {
+            // check if the pointer clicked on one of the quad corner/center points
+            let mut clicked_quad_point = false;
+            if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
+                for quad in layer.layer.quads.iter() {
+                    let points = super::shared::get_quad_points_animated(quad, map, map.user.time);
 
-                let radius = QUAD_POINT_RADIUS;
-                let mut p = [false; 5];
-                p.iter_mut()
-                    .enumerate()
-                    .for_each(|(index, p)| *p = in_radius(&points[index], &pointer_cur, radius));
-                if let Some((index, _)) = p.iter().enumerate().find(|(_, &p)| p) {
-                    // pointer is in a drag mode
-                    clicked_quad_point = true;
-                    let down_point = if index == 4 {
-                        QuadPointerDownPoint::Center
-                    } else {
-                        QuadPointerDownPoint::Corner(index)
-                    };
-                    if latest_pointer.primary_pressed() {
-                        self.pointer_down_state = QuadPointerDownState::Point(down_point);
-                    } else {
-                        range.point = Some(down_point);
+                    let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
+
+                    let pointer_cur = ui_pos_to_world_pos(
+                        canvas_handle,
+                        ui_canvas,
+                        map.groups.user.zoom,
+                        vec2::new(pointer_cur.x, pointer_cur.y),
+                        map.groups.user.pos.x,
+                        map.groups.user.pos.y,
+                        offset.x,
+                        offset.y,
+                        parallax.x,
+                        parallax.y,
+                    );
+
+                    let radius = QUAD_POINT_RADIUS;
+                    let mut p = [false; 5];
+                    p.iter_mut().enumerate().for_each(|(index, p)| {
+                        *p = in_radius(&points[index], &pointer_cur, radius)
+                    });
+                    if let Some((index, _)) = p.iter().enumerate().find(|(_, &p)| p) {
+                        // pointer is in a drag mode
+                        clicked_quad_point = true;
+                        let down_point = if index == 4 {
+                            QuadPointerDownPoint::Center
+                        } else {
+                            QuadPointerDownPoint::Corner(index)
+                        };
+                        if latest_pointer.primary_pressed() {
+                            self.pointer_down_state = QuadPointerDownState::Point {
+                                point: down_point,
+                                pos: vec2::new(x, y),
+                            };
+                        } else {
+                            range.point = Some(down_point);
+                        }
+
+                        break;
                     }
-
-                    break;
                 }
-            }
 
-            if !clicked_quad_point && latest_pointer.secondary_pressed() {
-                self.range = None;
-                self.pointer_down_state = QuadPointerDownState::None;
+                if !clicked_quad_point && latest_pointer.secondary_pressed() {
+                    self.range = None;
+                    self.pointer_down_state = QuadPointerDownState::None;
+                }
             }
         }
     }
@@ -438,6 +473,7 @@ impl QuadSelection {
             stream_handle,
             canvas_handle,
             map,
+            false,
         );
 
         if self.range.is_none() || self.pointer_down_state.is_selection() {
