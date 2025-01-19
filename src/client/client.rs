@@ -1269,9 +1269,8 @@ impl ClientNativeImpl {
     fn render(&mut self, native: &mut dyn NativeImpl) {
         // first unload editor => then reload. else native library doesn't get a reload
         if self.editor.should_reload() {
-            self.editor = EditorState::None;
-
             let is_open = self.editor.is_open();
+            self.editor = EditorState::None;
             let editor = EditorWasmManager::new(
                 &self.sound,
                 &self.graphics,

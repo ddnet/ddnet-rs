@@ -72,13 +72,26 @@ pub enum EditorEventClientToServer {
 /// editor events are a collection of either actions or commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EditorEventServerToClient {
-    DoAction(EditorActionGroup),
-    UndoAction(EditorActionGroup),
+    DoAction {
+        action: EditorActionGroup,
+        redo_label: Option<String>,
+        undo_label: Option<String>,
+    },
+    UndoAction {
+        action: EditorActionGroup,
+        redo_label: Option<String>,
+        undo_label: Option<String>,
+    },
     Error(String),
     Map(EditorEventOverwriteMap),
     Infos(Vec<ClientProps>),
-    Info { server_id: u64 },
-    Chat { from: String, msg: String },
+    Info {
+        server_id: u64,
+    },
+    Chat {
+        from: String,
+        msg: String,
+    },
 }
 
 /// editor events are a collection of either actions or commands

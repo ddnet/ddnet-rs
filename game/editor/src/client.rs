@@ -44,6 +44,9 @@ pub struct EditorClient {
 
     pub(crate) msgs: VecDeque<(String, String)>,
 
+    pub(crate) undo_label: Option<String>,
+    pub(crate) redo_label: Option<String>,
+
     mapper_name: String,
     color: [u8; 3],
 }
@@ -77,6 +80,9 @@ impl EditorClient {
             clients: Default::default(),
             server_id: Default::default(),
             msgs: Default::default(),
+
+            undo_label: None,
+            redo_label: None,
 
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
@@ -121,9 +127,13 @@ impl EditorClient {
 
                 match event {
                     EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
-                        EditorEventServerToClient::DoAction(act) => {
+                        EditorEventServerToClient::DoAction {
+                            action,
+                            redo_label,
+                            undo_label,
+                        } => {
                             if !self.local_client {
-                                for act in act.actions {
+                                for act in action.actions {
                                     if let Err(err) = do_action(
                                         tp,
                                         sound_mt,
@@ -146,10 +156,16 @@ impl EditorClient {
                                     }
                                 }
                             }
+                            self.undo_label = undo_label;
+                            self.redo_label = redo_label;
                         }
-                        EditorEventServerToClient::UndoAction(act) => {
+                        EditorEventServerToClient::UndoAction {
+                            action,
+                            redo_label,
+                            undo_label,
+                        } => {
                             if !self.local_client {
-                                for act in act.actions.into_iter().rev() {
+                                for act in action.actions.into_iter().rev() {
                                     if let Err(err) = undo_action(
                                         tp,
                                         sound_mt,
@@ -172,6 +188,8 @@ impl EditorClient {
                                     }
                                 }
                             }
+                            self.undo_label = undo_label;
+                            self.redo_label = redo_label;
                         }
                         EditorEventServerToClient::Error(err) => {
                             self.notifications.push(EditorNotification::Error(err));

@@ -25,7 +25,7 @@ use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
     action_logic::{do_action, merge_actions, undo_action},
-    actions::actions::EditorActionGroup,
+    actions::actions::{EditorActionGroup, EditorActionInterface},
     event::{
         ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
         EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
@@ -247,17 +247,6 @@ impl EditorServer {
                                 send_act.actions.push(sent_act);
                             }
                         }
-                        self.clients
-                            .iter()
-                            .filter(|(_, client)| !client.is_local_client)
-                            .for_each(|(id, _)| {
-                                self.network.send_to(
-                                    id,
-                                    EditorEvent::Server(EditorEventServerToClient::DoAction(
-                                        send_act.clone(),
-                                    )),
-                                );
-                            });
 
                         // Make sure memory doesn't exhaust
                         while self.action_groups.len() > 300 {
@@ -265,6 +254,20 @@ impl EditorServer {
                             self.cur_action_group =
                                 self.cur_action_group.map(|index| index.saturating_sub(1));
                         }
+
+                        self.clients
+                            .iter()
+                            .filter(|(_, client)| !client.is_local_client)
+                            .for_each(|(id, _)| {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::DoAction {
+                                        action: send_act.clone(),
+                                        undo_label: self.undo_label(),
+                                        redo_label: self.redo_label(),
+                                    }),
+                                );
+                            });
                     }
                     EditorEventClientToServer::Command(cmd) => match cmd {
                         EditorCommand::Undo | EditorCommand::Redo => {
@@ -288,7 +291,7 @@ impl EditorServer {
                                         };
                                 }
 
-                                if let Some(group) = self
+                                let group = if let Some(group) = self
                                     .action_groups
                                     .get(self.cur_action_group.unwrap_or_default())
                                 {
@@ -327,20 +330,10 @@ impl EditorServer {
                                             );
                                         }
                                     }
-
-                                    let act = if is_undo {
-                                        EditorEventServerToClient::UndoAction(group.clone())
-                                    } else {
-                                        EditorEventServerToClient::DoAction(group.clone())
-                                    };
-                                    self.clients
-                                        .iter()
-                                        .filter(|(_, client)| !client.is_local_client)
-                                        .for_each(|(id, _)| {
-                                            self.network
-                                                .send_to(id, EditorEvent::Server(act.clone()));
-                                        });
-                                }
+                                    Some(group.clone())
+                                } else {
+                                    None
+                                };
 
                                 if is_undo {
                                     self.cur_action_group = match self.cur_action_group {
@@ -349,6 +342,31 @@ impl EditorServer {
                                             "Undo while the action group was None is a bug!."
                                         ),
                                     };
+                                }
+
+                                if let Some(group) = group {
+                                    let undo_label = self.undo_label();
+                                    let redo_label = self.redo_label();
+                                    let act = if is_undo {
+                                        EditorEventServerToClient::UndoAction {
+                                            action: group,
+                                            redo_label,
+                                            undo_label,
+                                        }
+                                    } else {
+                                        EditorEventServerToClient::DoAction {
+                                            action: group,
+                                            redo_label,
+                                            undo_label,
+                                        }
+                                    };
+                                    self.clients
+                                        .iter()
+                                        .filter(|(_, client)| !client.is_local_client)
+                                        .for_each(|(id, _)| {
+                                            self.network
+                                                .send_to(id, EditorEvent::Server(act.clone()));
+                                        });
                                 }
                             }
                         }
@@ -446,5 +464,47 @@ impl EditorServer {
                 }
             }
         }
+    }
+
+    pub fn undo_label(&self) -> Option<String> {
+        self.cur_action_group
+            .and_then(|i| self.action_groups.get(i))
+            .and_then(|g| g.actions.last().map(|a| (a, g.actions.len())))
+            .map(|(a, len)| {
+                format!(
+                    "{}{}",
+                    a.undo_info(),
+                    if len > 1 {
+                        format!(" + {len} more ")
+                    } else {
+                        "".to_string()
+                    }
+                )
+            })
+    }
+    pub fn redo_label(&self) -> Option<String> {
+        (!self.action_groups.is_empty()
+            && self
+                .cur_action_group
+                .is_none_or(|i| i < self.action_groups.len().saturating_sub(1)))
+        .then(|| {
+            self.action_groups.get(match self.cur_action_group {
+                Some(val) => val + 1,
+                None => 0,
+            })
+        })
+        .flatten()
+        .and_then(|g| g.actions.first().map(|a| (a, g.actions.len())))
+        .map(|(a, len)| {
+            format!(
+                "{}{}",
+                a.redo_info(),
+                if len > 1 {
+                    format!(" + {len} more ")
+                } else {
+                    "".to_string()
+                }
+            )
+        })
     }
 }
