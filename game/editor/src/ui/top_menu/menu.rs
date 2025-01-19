@@ -48,10 +48,41 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     });
 
                     ui.menu_button("Edit", |ui| {
-                        if ui.add(Button::new("Undo")).clicked() {
+                        ui.set_min_width(250.0);
+                        let undo_label = pipe.user_data.editor_tabs.active_tab().and_then(|t| {
+                            t.server
+                                .as_ref()
+                                .map(|s| s.undo_label())
+                                .unwrap_or_else(|| t.client.undo_label.clone())
+                        });
+                        if ui
+                            .add_enabled(
+                                undo_label.is_some(),
+                                Button::new(format!(
+                                    "Undo{}",
+                                    undo_label.map(|l| format!(": {l}")).unwrap_or_default()
+                                )),
+                            )
+                            .clicked()
+                        {
                             pipe.user_data.ui_events.push(EditorUiEvent::Undo);
                         }
-                        if ui.add(Button::new("Redo")).clicked() {
+                        let redo_label = pipe.user_data.editor_tabs.active_tab().and_then(|t| {
+                            t.server
+                                .as_ref()
+                                .map(|s| s.redo_label())
+                                .unwrap_or_else(|| t.client.redo_label.clone())
+                        });
+                        if ui
+                            .add_enabled(
+                                redo_label.is_some(),
+                                Button::new(format!(
+                                    "Redo{}",
+                                    redo_label.map(|l| format!(": {l}")).unwrap_or_default()
+                                )),
+                            )
+                            .clicked()
+                        {
                             pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                         }
                     });

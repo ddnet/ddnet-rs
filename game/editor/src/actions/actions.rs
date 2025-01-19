@@ -1,4 +1,5 @@
 use base::linked_hash_map_view::FxLinkedHashMap;
+use enum_dispatch::enum_dispatch;
 use map::{
     map::{
         animations::{ColorAnimation, PosAnimation, SoundAnimation},
@@ -19,10 +20,26 @@ use map::{
 };
 use serde::{Deserialize, Serialize};
 
+#[enum_dispatch]
+pub trait EditorActionInterface {
+    fn undo_info(&self) -> String;
+    fn redo_info(&self) -> String;
+}
+
+impl<T: EditorActionInterface> EditorActionInterface for Box<T> {
+    fn undo_info(&self) -> String {
+        self.as_ref().undo_info()
+    }
+    fn redo_info(&self) -> String {
+        self.as_ref().redo_info()
+    }
+}
+
 /// an action that results in a change in the state of the map
 /// this action is usually shared across all clients
 /// additionally every action must be able to handle the undo to that action
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[enum_dispatch(EditorActionInterface)]
 pub enum EditorAction {
     // gui swaps
     SwapGroups(ActSwapGroups),
@@ -92,11 +109,6 @@ pub struct EditorActionGroup {
     /// if this group fits its needs
     /// a value of `None` indicates that this action should never be grouped
     pub identifier: Option<String>,
-}
-
-pub trait EditorActionInterface {
-    fn undo_info(&self) -> String;
-    fn redo_info(&self) -> String;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
