@@ -14,7 +14,8 @@ use map::map::{
 };
 
 use math::math::{
-    vector::{ffixed, lffixed, ubvec4, vec2},
+    mix,
+    vector::{ffixed, lffixed, ubvec4, vec2, vec2_base},
     PI,
 };
 
@@ -183,8 +184,140 @@ impl RenderTools {
         state.map_canvas(points[0], points[1], points[2], points[3]);
     }
 
-    pub fn render_eval_anim<F, T: Debug + Copy + Default + IndexMut<usize, Output = F>>(
-        points: &[AnimPoint<T>],
+    fn solve_bezier<T>(
+        x: T,
+        p0: T,
+        p1: T,
+        p2: T,
+        p3: T,
+        sqrt: impl Fn(T) -> T,
+        cbrt: impl Fn(T) -> T,
+        acos: impl Fn(T) -> T,
+        cos: impl Fn(T) -> T,
+    ) -> T
+    where
+        T: std::ops::Sub<T, Output = T>
+            + std::ops::Add<T, Output = T>
+            + std::ops::Mul<T, Output = T>
+            + std::ops::Div<T, Output = T>
+            + std::ops::Neg<Output = T>
+            + std::cmp::PartialEq<T>
+            + std::cmp::PartialOrd<T>
+            + From<u8>
+            + From<f32>
+            + Copy,
+    {
+        let x3 = -p0 + T::from(3) * p1 - T::from(3) * p2 + p3;
+        let x2 = T::from(3) * p0 - T::from(6) * p1 + T::from(3) * p2;
+        let x1 = -T::from(3) * p0 + T::from(3) * p1;
+        let x0 = p0 - x;
+
+        if x3 == T::from(0) && x2 == T::from(0) {
+            // linear
+            // a * t + b = 0
+            let a = x1;
+            let b = x0;
+
+            if a == T::from(0) {
+                return T::from(0);
+            }
+            -b / a
+        } else if x3 == T::from(0) {
+            // quadratic
+            // t * t + b * t + c = 0
+            let b = x1 / x2;
+            let c = x0 / x2;
+
+            if c == T::from(0) {
+                return T::from(0);
+            }
+
+            let d = b * b - T::from(4) * c;
+            let sqrt_d = sqrt(d);
+
+            let t = (-b + sqrt_d) / T::from(2);
+
+            if T::from(0) <= t && t <= T::from(1.0001) {
+                return t;
+            }
+            (-b - sqrt_d) / T::from(2)
+        } else {
+            // cubic
+            // t * t * t + a * t * t + b * t * t + c = 0
+            let a = x2 / x3;
+            let b = x1 / x3;
+            let c = x0 / x3;
+
+            // substitute t = y - a / 3
+            let sub = a / T::from(3);
+
+            // depressed form x^3 + px + q = 0
+            // cardano's method
+            let p = b / T::from(3) - a * a / T::from(9);
+            let q = (T::from(2) * a * a * a / T::from(27) - a * b / T::from(3) + c) / T::from(2);
+
+            let d = q * q + p * p * p;
+
+            if d > T::from(0) {
+                // only one 'real' solution
+                let s = sqrt(d);
+                return cbrt(s - q) - cbrt(s + q) - sub;
+            } else if d == T::from(0) {
+                // one single, one double solution or triple solution
+                let s = cbrt(-q);
+                let t = T::from(2) * s - sub;
+
+                if T::from(0) <= t && t <= T::from(1.0001) {
+                    return t;
+                }
+                -s - sub
+            } else {
+                // Casus irreducibilis ... ,_,
+                let phi = acos(-q / sqrt(-(p * p * p))) / T::from(3);
+                let s = T::from(2) * sqrt(-p);
+
+                let t1 = s * cos(phi) - sub;
+
+                if T::from(0) <= t1 && t1 <= T::from(1.0001) {
+                    return t1;
+                }
+
+                let t2 = -s * cos(phi + T::from(PI) / T::from(3)) - sub;
+
+                if T::from(0) <= t2 && t2 <= T::from(1.0001) {
+                    return t2;
+                }
+                -s * cos(phi - T::from(PI) / T::from(3)) - sub
+            }
+        }
+    }
+
+    fn bezier<T, TB>(p0: &T, p1: &T, p2: &T, p3: &T, amount: TB) -> T
+    where
+        T: std::ops::Sub<T, Output = T>
+            + std::ops::Add<T, Output = T>
+            + std::ops::Mul<TB, Output = T>
+            + Copy,
+        TB: Copy,
+    {
+        // De-Casteljau Algorithm
+        let c10 = mix(p0, p1, amount);
+        let c11 = mix(p1, p2, amount);
+        let c12 = mix(p2, p3, amount);
+
+        let c20 = mix(&c10, &c11, amount);
+        let c21 = mix(&c11, &c12, amount);
+
+        // c30
+        mix(&c20, &c21, amount)
+    }
+
+    pub fn render_eval_anim<
+        F,
+        T: Debug + Copy + Default + IndexMut<usize, Output = F>,
+        const CHANNELS: usize,
+    >(
+        points: &[AnimPoint<T, CHANNELS>],
         time_nanos_param: time::Duration,
         channels: usize,
     ) -> T
@@ -223,7 +356,7 @@ impl RenderTools {
             / lffixed::from_num(delta.as_nanos()))
         .to_num();
 
-        match point1.curve_type {
+        match &point1.curve_type {
             AnimPointCurveType::Step => {
                 a = 0i32.into();
             }
@@ -240,6 +373,56 @@ impl RenderTools {
             AnimPointCurveType::Smooth => {
                 // second hermite basis
                 a = ffixed::from_num(-2) * a * a * a + ffixed::from_num(3) * a * a;
+            }
+            AnimPointCurveType::Bezier(beziers) => {
+                let mut res = T::default();
+                for c in 0..channels {
+                    // monotonic 2d cubic bezier curve
+                    let p0 = vec2_base::new(
+                        ffixed::from_num(point1.time.as_secs_f64() * 1000.0),
+                        point1.value[c].to_fixed(),
+                    );
+                    let p3 = vec2_base::new(
+                        ffixed::from_num(point2.time.as_secs_f64() * 1000.0),
+                        point2.value[c].to_fixed(),
+                    );
+
+                    let out_tang = vec2_base::new(
+                        ffixed::from_num(beziers.value[c].out_tangent.x.as_secs_f64() * 1000.0),
+                        beziers.value[c].out_tangent.y,
+                    );
+                    let in_tang = vec2_base::new(
+                        ffixed::from_num(-beziers.value[c].in_tangent.x.as_secs_f64() * 1000.0),
+                        beziers.value[c].in_tangent.y,
+                    );
+
+                    let mut p1 = p0 + out_tang;
+                    let mut p2 = p3 + in_tang;
+
+                    // validate bezier curve
+                    p1.x = p1.x.clamp(p0.x, p3.x);
+                    p2.x = p2.x.clamp(p0.x, p3.x);
+
+                    // solve x(a) = time for a
+                    a = ffixed::from_num(
+                        Self::solve_bezier(
+                            time_nanos.as_seconds_f64() * 1000.0,
+                            p0.x.to_num(),
+                            p1.x.to_num(),
+                            p2.x.to_num(),
+                            p3.x.to_num(),
+                            f64::sqrt,
+                            f64::cbrt,
+                            f64::acos,
+                            f64::cos,
+                        )
+                        .clamp(0.0, 1.0),
+                    );
+
+                    // value = y(t)
+                    res[c] = F::from_fixed(Self::bezier(&p0.y, &p1.y, &p2.y, &p3.y, a));
+                }
+                return res;
             }
         }
 

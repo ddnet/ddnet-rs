@@ -8,13 +8,15 @@ use crate::map::animations::{
 };
 
 #[derive(Debug, Hiarc)]
-pub struct AnimPointSkeleton<AP, T> {
-    pub def: AnimPoint<T>,
+pub struct AnimPointSkeleton<AP, T, const CHANNELS: usize> {
+    pub def: AnimPoint<T, CHANNELS>,
     pub user: AP,
 }
 
-impl<AP, T> From<AnimPointSkeleton<AP, T>> for AnimPoint<T> {
-    fn from(value: AnimPointSkeleton<AP, T>) -> Self {
+impl<AP, T, const CHANNELS: usize> From<AnimPointSkeleton<AP, T, CHANNELS>>
+    for AnimPoint<T, CHANNELS>
+{
+    fn from(value: AnimPointSkeleton<AP, T, CHANNELS>) -> Self {
         value.def
     }
 }

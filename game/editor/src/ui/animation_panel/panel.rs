@@ -302,10 +302,10 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
         &tools.active_tool,
         &mut tools.quads.selection,
     ) {
-        fn add_or_insert<P: Clone + DeserializeOwned>(
+        fn add_or_insert<P: Clone + DeserializeOwned, const CHANNELS: usize>(
             cur_time: Duration,
-            anim: &mut AnimBaseSkeleton<EditorAnimationProps, AnimPoint<P>>,
-            insert_repl_point: &AnimPoint<P>,
+            anim: &mut AnimBaseSkeleton<EditorAnimationProps, AnimPoint<P, CHANNELS>>,
+            insert_repl_point: &AnimPoint<P, CHANNELS>,
         ) {
             enum ReplOrInsert {
                 Repl(usize),

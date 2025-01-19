@@ -19,6 +19,7 @@ use image_utils::{
     png::{load_png_image_as_rgba, resize_rgba, save_png_image, PngValidatorOptions},
     utils,
 };
+use itertools::{EitherOrBoth, Itertools};
 use math::math::{
     f2fx, fx2f,
     vector::{ffixed, fvec2, fvec3, ivec2, ivec4, nffixed, nfvec4, uffixed, ufvec2, vec1_base},
@@ -32,8 +33,8 @@ use map::{
     map::{
         self as mapnew,
         animations::{
-            AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound, Animations,
-            ColorAnimation, PosAnimation, SoundAnimation,
+            AnimBezier, AnimBezierPoint, AnimBeziers, AnimPointColor, AnimPointCurveType,
+            AnimPointPos, AnimPointSound, Animations, ColorAnimation, PosAnimation, SoundAnimation,
         },
         config::Config,
         groups::{
@@ -60,45 +61,14 @@ use map::{
 };
 
 use crate::mapdef_06::{
-    read_i32_le, read_u32_le, CEnvPoint, CMapItemEnvelope, CMapItemEnvelopeVer, CMapItemGroup,
-    CMapItemImage, CMapItemInfo, CMapItemInfoSettings, CMapItemLayer, CMapItemLayerQuads,
-    CMapItemLayerSounds, CMapItemLayerSoundsVer, CMapItemLayerTilemap, CMapItemSound,
-    CMapItemVersion, CQuad, CSoundShape, CSoundSource, CSpeedupTile, CSwitchTile, CTeleTile, CTile,
-    CTuneTile, CurveType, LayerFlag, MapImage, MapInfo, MapItemTypes, MapLayer, MapLayerQuad,
-    MapLayerTile, MapLayerTypes, MapSound, MapTileLayerDetail, ReadFromSliceWriteToVec,
-    SoundShapeTy, TilesLayerFlag,
+    read_i32_le, read_u32_le, CEnvPoint, CEnvPointAndBezier, CEnvPointBezier, CMapItemEnvelope,
+    CMapItemEnvelopeVer, CMapItemGroup, CMapItemImage, CMapItemInfo, CMapItemInfoSettings,
+    CMapItemLayer, CMapItemLayerQuads, CMapItemLayerSounds, CMapItemLayerSoundsVer,
+    CMapItemLayerTilemap, CMapItemSound, CMapItemVersion, CQuad, CSoundShape, CSoundSource,
+    CSpeedupTile, CSwitchTile, CTeleTile, CTile, CTuneTile, CurveType, LayerFlag, MapImage,
+    MapInfo, MapItemTypes, MapLayer, MapLayerQuad, MapLayerTile, MapLayerTypes, MapSound,
+    MapTileLayerDetail, ReadFromSliceWriteToVec, SoundShapeTy, TilesLayerFlag,
 };
-
-enum UuidOffset {
-    Uuid = 0x8000,
-}
-
-#[repr(C)]
-pub struct CUuid {
-    data: [u8; 16],
-}
-
-#[repr(C)]
-pub struct CItemEx {
-    uuid: [i32; std::mem::size_of::<CUuid>() / 4],
-}
-/*
-TODO: impl
-static CItemEx FromUuid(CUuid Uuid)
-{
-    CItemEx Result;
-    for(i = 0; i < (int)sizeof(CUuid) / 4: i32, i++)
-        Result.m_aUuid[i] = bytes_be_to_int(&Uuid.m_aData[i * 4]);
-    return Result;
-}
-
-CUuid ToUuid() const
-{
-    CUuid Result;
-    for(i = 0; i < (int)sizeof(CUuid) / 4: i32, i++)
-        int_to_bytes_be(&Result.m_aData[i * 4], m_aUuid[i]);
-    return Result;
-} */
 
 #[derive(Debug, Hiarc, Copy, Clone, Default)]
 #[repr(C)]
@@ -287,7 +257,7 @@ pub struct CDatafileWrapper {
     envelopes: Vec<(String, CMapItemEnvelope)>,
     groups: Vec<CMapItemGroup>,
     pub layers: Vec<MapLayer>,
-    env_points: Vec<Vec<CEnvPoint>>,
+    env_points: Vec<Vec<CEnvPointAndBezier>>,
     pub sounds: Vec<MapSound>,
 
     game_layer_index: usize,
@@ -391,33 +361,7 @@ impl CDatafileWrapper {
     ) -> anyhow::Result<&'a [u8]> {
         let do_benchmark = options.do_benchmark;
         self.name = file_name.to_string();
-        //log_trace("datafile", "loading. filename='%s'", pFilename);
 
-        // take the CRC of the file and store it
-        /*unsigned Crc = 0;
-        SHA256_DIGEST Sha256;
-        {
-            enum
-            {
-                BUFFER_SIZE = 64 * 1024
-            };
-
-            SHA256_CTX Sha256Ctxt;
-            sha256_init(&Sha256Ctxt);
-            unsigned char aBuffer[BUFFER_SIZE];
-
-            while(true)
-            {
-                unsigned Bytes = io_read(File, aBuffer, BUFFER_SIZE);
-                if(Bytes == 0)
-                    break;
-                Crc = crc32(Crc, aBuffer, Bytes);
-                sha256_update(&Sha256Ctxt, aBuffer, Bytes);
-            }
-            Sha256 = sha256_finish(&Sha256Ctxt);
-
-            io_seek(File, 0, IOSEEK_START);
-        }*/
         let mut data_file: CDatafile = CDatafile::default();
         let mut read_data = data_param.as_slice();
 
@@ -443,21 +387,11 @@ impl CDatafileWrapper {
                     || data_file.header.id[2] != 'T' as i8
                     || data_file.header.id[3] != 'A' as i8)
             {
-                /*dbg_msg(
-                    "datafile",
-                    "wrong signature. %x %x %x %x",
-                    Header.m_aID[0],
-                    Header.m_aID[1],
-                    Header.m_aID[2],
-                    Header.m_aID[3],
-                );*/
                 return Err(anyhow!("header is wrong"));
             }
 
             // data_file.m_Header.m_Version != 3 &&
             if data_file.header.version != 4 {
-                // TODO dbg_msg("datafile", "wrong version. version=%x", Header.m_Version);
-
                 return Err(anyhow!(
                     "file versions other than 4 are currently not supported"
                 ));
@@ -476,24 +410,9 @@ impl CDatafileWrapper {
             }
             read_size_total += data_file.header.item_size;
 
-            /*TODO:(*pTmpDataFile).m_File = File;
-            (*pTmpDataFile).m_Sha256 = Sha256;
-            (*pTmpDataFile).m_Crc = Crc;*/
-
             if read_data.len() < (read_size_total as usize) {
-                //TODO dbg_msg("datafile", "couldn't load the whole thing, wanted=%d got=%d", Size, ReadSize);
-
                 return Err(anyhow!("file is too small, can't read all items"));
             }
-
-            /*
-            if(DEBUG)
-            {
-                dbg_msg("datafile", "allocsize=%d", AllocSize);
-                dbg_msg("datafile", "readsize=%d", ReadSize);
-                dbg_msg("datafile", "swaplen=%d", Header.m_Swaplen);
-                dbg_msg("datafile", "item_size=%d", (*self.m_pDataFile).m_Header.m_ItemSize);
-            } */
 
             let size_of_item = size_of::<CDatafileItemType>();
             for _i in 0..data_file.header.num_item_types {
@@ -812,32 +731,6 @@ impl CDatafileWrapper {
                     }
                 },
                 || {
-                    if !options.dont_load_map_item[MapItemTypes::Envpoints as usize] {
-                        //MAPITEMTYPE_ENVPOINTS
-                        let mut start = i32::default();
-                        let mut num = i32::default();
-                        let item_size = size_of::<CEnvPoint>();
-                        Self::get_type(
-                            &data_file,
-                            MapItemTypes::Envpoints as i32,
-                            &mut start,
-                            &mut num,
-                        );
-                        for i in 0..num as usize {
-                            let item_count = items[start as usize + i].data.len() / item_size;
-                            let mut env_points: Vec<CEnvPoint> = Vec::new();
-                            for n in 0..item_count {
-                                let item_off = n * item_size;
-                                let data =
-                                    &items[start as usize + i].data[item_off..item_off + item_size];
-                                env_points.push(CEnvPoint::read_from_slice(data));
-                            }
-                            self.env_points.push(env_points);
-                        }
-                        benchmark.bench_multi("loading the map env-points");
-                    }
-                },
-                || {
                     if !options.dont_load_map_item[MapItemTypes::Sound as usize] {
                         //MAPITEMTYPE_SOUND
                         let mut start = i32::default();
@@ -865,6 +758,76 @@ impl CDatafileWrapper {
                 }
             );
         });
+
+        if !options.dont_load_map_item[MapItemTypes::Envpoints as usize] {
+            let has_bezier = self
+                .envelopes
+                .iter()
+                .any(|e| e.1.version > CMapItemEnvelopeVer::CurVersion as i32);
+            // MAPITEMTYPE_ENVPOINTS
+            let mut start = i32::default();
+            let mut num = i32::default();
+            let item_size = if has_bezier {
+                size_of::<CEnvPointAndBezier>()
+            } else {
+                size_of::<CEnvPoint>()
+            };
+            Self::get_type(
+                &data_file,
+                MapItemTypes::Envpoints as i32,
+                &mut start,
+                &mut num,
+            );
+            for i in 0..num as usize {
+                let item_count = items[start as usize + i].data.len() / item_size;
+                let mut env_points: Vec<CEnvPointAndBezier> = Vec::new();
+                for n in 0..item_count {
+                    let item_off = n * item_size;
+                    let data = &items[start as usize + i].data[item_off..item_off + item_size];
+                    env_points.push(CEnvPointAndBezier::read_from_slice(data));
+                }
+                self.env_points.push(env_points);
+            }
+            benchmark.bench_multi("loading the map env-points");
+
+            // try to load bezier ddnet style
+            {
+                // MAPITEMTYPE_ENVPOINTS_BEZIER
+                let mut start = i32::default();
+                let mut num = i32::default();
+                let item_size = size_of::<CEnvPointBezier>();
+                Self::get_type(
+                    &data_file,
+                    MapItemTypes::EnvpointsBezier as i32,
+                    &mut start,
+                    &mut num,
+                );
+                let mut env_beziers: Vec<Vec<CEnvPointBezier>> = Default::default();
+                for i in 0..num as usize {
+                    let item_count = items[start as usize + i].data.len() / item_size;
+                    let mut beziers: Vec<CEnvPointBezier> = Default::default();
+                    for n in 0..item_count {
+                        let item_off = n * item_size;
+                        let data = &items[start as usize + i].data[item_off..item_off + item_size];
+                        beziers.push(CEnvPointBezier::read_from_slice(data));
+                    }
+                    env_beziers.push(beziers);
+                }
+                benchmark.bench_multi("loading the map env-beziers");
+
+                if self.env_points.len() == env_beziers.len() {
+                    for (i, beziers) in env_beziers.iter().enumerate() {
+                        let env_points = &mut self.env_points[i];
+
+                        if env_points.len() == beziers.len() {
+                            for n in 0..env_points.len() {
+                                env_points[n].bezier = beziers[n];
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         self.data_file = data_file; //pTmpDataFile;
 
@@ -1145,33 +1108,11 @@ impl CDatafileWrapper {
         res
     }
 
-    fn get_internal_item_type(external_type: i32) -> i32 {
-        if external_type < UuidOffset::Uuid as i32 {
-            return external_type;
-        }
-        /* TODO! CUuid Uuid = g_UuidManager.GetUuid(ExternalType);
-        Start, Num: i32,
-        GetType(ITEMTYPE_EX, &Start, &Num);
-        for(i = Start; i < Start + Num: i32, i++)
-        {
-            if(GetItemSize(i) < (int)sizeof(CItemEx))
-            {
-                continue;
-            }
-            ID: i32,
-            if(Uuid == ((const CItemEx *)GetItem(i, 0, &ID))->ToUuid())
-            {
-                return ID;
-            }
-        }*/
-        -1
-    }
-
     fn get_type(data_file: &CDatafile, item_type: i32, start_index: &mut i32, num: &mut i32) {
         *start_index = 0;
         *num = 0;
 
-        let real_type = Self::get_internal_item_type(item_type);
+        let real_type = item_type;
         for i in 0..data_file.header.num_item_types as usize {
             if data_file.info.item_types[i].item_type == real_type {
                 *start_index = data_file.info.item_types[i].start;
@@ -1395,7 +1336,7 @@ impl CDatafileWrapper {
         self.env_points.len()
     }
 
-    pub fn get_env_points(&self) -> &[Vec<CEnvPoint>] {
+    pub fn get_env_points(&self) -> &[Vec<CEnvPointAndBezier>] {
         self.env_points.as_slice()
     }
 
@@ -1496,13 +1437,52 @@ impl CDatafileWrapper {
             },
         };
 
-        fn conv_curv_type(curve_type: i32) -> anyhow::Result<AnimPointCurveType> {
-            match curve_type {
+        fn conv_curv_type<const COUNT: usize>(
+            e: &CEnvPointAndBezier,
+            e_next: Option<&CEnvPointAndBezier>,
+        ) -> anyhow::Result<AnimPointCurveType<COUNT>> {
+            match e.point.curve_type {
                 i if i == CurveType::Step as i32 => Ok(AnimPointCurveType::Step),
                 i if i == CurveType::Linear as i32 => Ok(AnimPointCurveType::Linear),
                 i if i == CurveType::Slow as i32 => Ok(AnimPointCurveType::Slow),
                 i if i == CurveType::Fast as i32 => Ok(AnimPointCurveType::Fast),
                 i if i == CurveType::Smooth as i32 => Ok(AnimPointCurveType::Smooth),
+                i if i == CurveType::Bezier as i32 => {
+                    let Some(e_next) = e_next else {
+                        // fall back to linear
+                        return Ok(AnimPointCurveType::Linear);
+                    };
+
+                    Ok(AnimPointCurveType::Bezier(AnimBeziers {
+                        value: {
+                            let mut values = Vec::with_capacity(COUNT);
+
+                            for i in 0..COUNT {
+                                values.push(AnimBezier {
+                                    out_tangent: AnimBezierPoint {
+                                        x: Duration::from_millis(
+                                            e.bezier.out_tangent_delta_x[i] as u64,
+                                        ),
+                                        y: ffixed::from_num(
+                                            fx2f(e.bezier.out_tangent_delta_y[i]) / 32.0,
+                                        ),
+                                    },
+                                    in_tangent: AnimBezierPoint {
+                                        x: Duration::from_millis(
+                                            e_next.bezier.in_tangent_delta_x[i].unsigned_abs()
+                                                as u64,
+                                        ),
+                                        y: ffixed::from_num(
+                                            fx2f(e_next.bezier.in_tangent_delta_y[i]) / 32.0,
+                                        ),
+                                    },
+                                });
+                            }
+
+                            values.try_into().unwrap()
+                        },
+                    }))
+                }
                 _ => Err(anyhow!("non supported curve type")),
             }
         }
@@ -1514,20 +1494,29 @@ impl CDatafileWrapper {
                 1 => {
                     // sound
                     old_env_assign.insert(index, map.animations.sound.len());
+                    let env_points = &self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])
+                        [env.start_point as usize
+                            ..env.start_point as usize + env.num_points as usize];
                     map.animations.sound.push(SoundAnimation {
                         name: env_name,
                         synchronized: env.synchronized != 0,
-                        points: self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])[env
-                            .start_point
-                            as usize
-                            ..env.start_point as usize + env.num_points as usize]
+                        points: env_points
                             .iter()
+                            .zip_longest(env_points.iter().skip(1))
                             .map(|e| {
+                                let (EitherOrBoth::Left((e, e_next))
+                                | EitherOrBoth::Both((e, _), e_next)) =
+                                    e.map_any(|e| e, Some).map_left(|e| (e, None))
+                                else {
+                                    panic!("logic error, either both must be left or both");
+                                };
                                 anyhow::Ok(AnimPointSound {
-                                    curve_type: conv_curv_type(e.curve_type)?,
-                                    time: Duration::from_millis(e.time.clamp(0, i32::MAX) as u64),
+                                    curve_type: conv_curv_type(e, e_next)?,
+                                    time: Duration::from_millis(
+                                        e.point.time.clamp(0, i32::MAX) as u64
+                                    ),
                                     value: vec1_base {
-                                        x: nffixed::from_num(fx2f(e.values[0])),
+                                        x: nffixed::from_num(fx2f(e.point.values[0])),
                                     },
                                 })
                             })
@@ -1537,22 +1526,31 @@ impl CDatafileWrapper {
                 3 => {
                     // pos (+ rot)
                     old_env_assign.insert(index, map.animations.pos.len());
+                    let env_points = &self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])
+                        [env.start_point as usize
+                            ..env.start_point as usize + env.num_points as usize];
                     map.animations.pos.push(PosAnimation {
                         name: env_name,
                         synchronized: env.synchronized != 0,
-                        points: self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])[env
-                            .start_point
-                            as usize
-                            ..env.start_point as usize + env.num_points as usize]
+                        points: env_points
                             .iter()
+                            .zip_longest(env_points.iter().skip(1))
                             .map(|e| {
+                                let (EitherOrBoth::Left((e, e_next))
+                                | EitherOrBoth::Both((e, _), e_next)) =
+                                    e.map_any(|e| e, Some).map_left(|e| (e, None))
+                                else {
+                                    panic!("logic error, either both must be left or both");
+                                };
                                 anyhow::Ok(AnimPointPos {
-                                    curve_type: conv_curv_type(e.curve_type)?,
-                                    time: Duration::from_millis(e.time.clamp(0, i32::MAX) as u64),
+                                    curve_type: conv_curv_type(e, e_next)?,
+                                    time: Duration::from_millis(
+                                        e.point.time.clamp(0, i32::MAX) as u64
+                                    ),
                                     value: fvec3 {
-                                        x: ffixed::from_num(fx2f(e.values[0]) / 32.0),
-                                        y: ffixed::from_num(fx2f(e.values[1]) / 32.0),
-                                        z: ffixed::from_num(fx2f(e.values[2])),
+                                        x: ffixed::from_num(fx2f(e.point.values[0]) / 32.0),
+                                        y: ffixed::from_num(fx2f(e.point.values[1]) / 32.0),
+                                        z: ffixed::from_num(fx2f(e.point.values[2])),
                                     },
                                 })
                             })
@@ -1562,23 +1560,40 @@ impl CDatafileWrapper {
                 4 => {
                     // color
                     old_env_assign.insert(index, map.animations.color.len());
+                    let env_points = &self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])
+                        [env.start_point as usize
+                            ..env.start_point as usize + env.num_points as usize];
                     map.animations.color.push(ColorAnimation {
                         name: env_name,
                         synchronized: env.synchronized != 0,
-                        points: self.env_points.first().map(|e| e.as_slice()).unwrap_or(&[])[env
-                            .start_point
-                            as usize
-                            ..env.start_point as usize + env.num_points as usize]
+                        points: env_points
                             .iter()
+                            .zip_longest(env_points.iter().skip(1))
                             .map(|e| {
+                                let (EitherOrBoth::Left((e, e_next))
+                                | EitherOrBoth::Both((e, _), e_next)) =
+                                    e.map_any(|e| e, Some).map_left(|e| (e, None))
+                                else {
+                                    panic!("logic error, either both must be left or both");
+                                };
                                 anyhow::Ok(AnimPointColor {
-                                    curve_type: conv_curv_type(e.curve_type)?,
-                                    time: Duration::from_millis(e.time.clamp(0, i32::MAX) as u64),
+                                    curve_type: conv_curv_type(e, e_next)?,
+                                    time: Duration::from_millis(
+                                        e.point.time.clamp(0, i32::MAX) as u64
+                                    ),
                                     value: nfvec4 {
-                                        x: nffixed::from_num(fx2f(e.values[0]).clamp(0.0, 1.0)),
-                                        y: nffixed::from_num(fx2f(e.values[1]).clamp(0.0, 1.0)),
-                                        z: nffixed::from_num(fx2f(e.values[2]).clamp(0.0, 1.0)),
-                                        w: nffixed::from_num(fx2f(e.values[3]).clamp(0.0, 1.0)),
+                                        x: nffixed::from_num(
+                                            fx2f(e.point.values[0]).clamp(0.0, 1.0),
+                                        ),
+                                        y: nffixed::from_num(
+                                            fx2f(e.point.values[1]).clamp(0.0, 1.0),
+                                        ),
+                                        z: nffixed::from_num(
+                                            fx2f(e.point.values[2]).clamp(0.0, 1.0),
+                                        ),
+                                        w: nffixed::from_num(
+                                            fx2f(e.point.values[3]).clamp(0.0, 1.0),
+                                        ),
                                     },
                                 })
                             })
@@ -2251,13 +2266,34 @@ impl CDatafileWrapper {
         let mut data_compressed_data: Vec<u8> = Vec::new();
         let mut data_items: Vec<u8> = Vec::new();
 
-        fn conv_curv_type(curve_type: AnimPointCurveType) -> i32 {
+        fn conv_curv_type_and_bezier<const COUNT: usize>(
+            curve_type: AnimPointCurveType<COUNT>,
+        ) -> (i32, Option<CEnvPointBezier>) {
             match curve_type {
-                AnimPointCurveType::Step => CurveType::Step as i32,
-                AnimPointCurveType::Linear => CurveType::Linear as i32,
-                AnimPointCurveType::Slow => CurveType::Slow as i32,
-                AnimPointCurveType::Fast => CurveType::Fast as i32,
-                AnimPointCurveType::Smooth => CurveType::Smooth as i32,
+                AnimPointCurveType::Step => (CurveType::Step as i32, None),
+                AnimPointCurveType::Linear => (CurveType::Linear as i32, None),
+                AnimPointCurveType::Slow => (CurveType::Slow as i32, None),
+                AnimPointCurveType::Fast => (CurveType::Fast as i32, None),
+                AnimPointCurveType::Smooth => (CurveType::Smooth as i32, None),
+                AnimPointCurveType::Bezier(beziers) => (
+                    CurveType::Bezier as i32,
+                    Some({
+                        let mut bezier = CEnvPointBezier::default();
+
+                        for i in 0..COUNT {
+                            bezier.in_tangent_delta_x[i] =
+                                beziers.value[i].in_tangent.x.as_millis() as i32;
+                            bezier.in_tangent_delta_y[i] =
+                                f2fx(beziers.value[i].in_tangent.y.to_num::<f32>() * 32.0);
+                            bezier.out_tangent_delta_x[i] =
+                                beziers.value[i].out_tangent.x.as_millis() as i32;
+                            bezier.out_tangent_delta_y[i] =
+                                f2fx(beziers.value[i].out_tangent.y.to_num::<f32>() * 32.0);
+                        }
+
+                        bezier
+                    }),
+                ),
             }
         }
 
@@ -2293,20 +2329,29 @@ impl CDatafileWrapper {
         let sound_env_index_offset = pos_env_index_offset + map.animations.pos.len();
         let color_env_index_offset = sound_env_index_offset + map.animations.sound.len();
         {
-            let mut env_points: Vec<CEnvPoint> = Vec::new();
+            let mut env_points: Vec<CEnvPointAndBezier> = Vec::new();
             let mut envs: Vec<CMapItemEnvelope> = Vec::new();
+
+            let mut has_bezier = false;
 
             for pos_anim in map.animations.pos.iter() {
                 let start_index = env_points.len();
-                env_points.extend(pos_anim.points.iter().map(|p| CEnvPoint {
-                    time: p.time.as_millis() as i32,
-                    curve_type: conv_curv_type(p.curve_type),
-                    values: [
-                        f2fx(p.value.x.to_num::<f32>() * 32.0),
-                        f2fx(p.value.y.to_num::<f32>() * 32.0),
-                        f2fx(p.value.z.to_num::<f32>()),
-                        0,
-                    ],
+                env_points.extend(pos_anim.points.iter().map(|p| {
+                    let (curve_type, bezier) = conv_curv_type_and_bezier(p.curve_type);
+                    has_bezier |= bezier.is_some();
+                    CEnvPointAndBezier {
+                        point: CEnvPoint {
+                            time: p.time.as_millis() as i32,
+                            curve_type,
+                            values: [
+                                f2fx(p.value.x.to_num::<f32>() * 32.0),
+                                f2fx(p.value.y.to_num::<f32>() * 32.0),
+                                f2fx(p.value.z.to_num::<f32>()),
+                                0,
+                            ],
+                        },
+                        bezier: bezier.unwrap_or_default(),
+                    }
                 }));
                 let mut env = CMapItemEnvelope {
                     version: CMapItemEnvelopeVer::CurVersion as i32,
@@ -2322,10 +2367,17 @@ impl CDatafileWrapper {
 
             for sound_anim in map.animations.sound.iter() {
                 let start_index = env_points.len();
-                env_points.extend(sound_anim.points.iter().map(|p| CEnvPoint {
-                    time: p.time.as_millis() as i32,
-                    curve_type: conv_curv_type(p.curve_type),
-                    values: [f2fx(p.value.x.to_num()), 0, 0, 0],
+                env_points.extend(sound_anim.points.iter().map(|p| {
+                    let (curve_type, bezier) = conv_curv_type_and_bezier(p.curve_type);
+                    has_bezier |= bezier.is_some();
+                    CEnvPointAndBezier {
+                        point: CEnvPoint {
+                            time: p.time.as_millis() as i32,
+                            curve_type,
+                            values: [f2fx(p.value.x.to_num()), 0, 0, 0],
+                        },
+                        bezier: bezier.unwrap_or_default(),
+                    }
                 }));
                 let mut env = CMapItemEnvelope {
                     version: CMapItemEnvelopeVer::CurVersion as i32,
@@ -2341,15 +2393,22 @@ impl CDatafileWrapper {
 
             for color_anim in map.animations.color.iter() {
                 let start_index = env_points.len();
-                env_points.extend(color_anim.points.iter().map(|p| CEnvPoint {
-                    time: p.time.as_millis() as i32,
-                    curve_type: conv_curv_type(p.curve_type),
-                    values: [
-                        f2fx(p.value.r().to_num()),
-                        f2fx(p.value.g().to_num()),
-                        f2fx(p.value.b().to_num()),
-                        f2fx(p.value.a().to_num()),
-                    ],
+                env_points.extend(color_anim.points.iter().map(|p| {
+                    let (curve_type, bezier) = conv_curv_type_and_bezier(p.curve_type);
+                    has_bezier |= bezier.is_some();
+                    CEnvPointAndBezier {
+                        point: CEnvPoint {
+                            time: p.time.as_millis() as i32,
+                            curve_type,
+                            values: [
+                                f2fx(p.value.r().to_num()),
+                                f2fx(p.value.g().to_num()),
+                                f2fx(p.value.b().to_num()),
+                                f2fx(p.value.a().to_num()),
+                            ],
+                        },
+                        bezier: bezier.unwrap_or_default(),
+                    }
                 }));
                 let mut env = CMapItemEnvelope {
                     version: CMapItemEnvelopeVer::CurVersion as i32,
@@ -2363,6 +2422,22 @@ impl CDatafileWrapper {
                 envs.push(env);
             }
 
+            // if one env has a bezier, load all envs as bezier, increase version
+            if has_bezier {
+                envs.iter_mut()
+                    .for_each(|e| e.version = CMapItemEnvelopeVer::CurVersion as i32 + 1);
+
+                // additionally the old map format writes the in beziers to the in bezier of the next bezier
+                for i in 0..env_points.len().saturating_sub(1) {
+                    let points = &mut env_points[i..=i + 1];
+                    points[1].bezier.in_tangent_delta_x = points[0].bezier.in_tangent_delta_x;
+                    points[1].bezier.in_tangent_delta_y = points[0].bezier.in_tangent_delta_y;
+
+                    points[0].bezier.in_tangent_delta_x = Default::default();
+                    points[0].bezier.in_tangent_delta_y = Default::default();
+                }
+            }
+
             // next: write all env points to data
             let item_index = res.data_file.info.item_offsets.len() as i32;
             res.data_file
@@ -2372,7 +2447,7 @@ impl CDatafileWrapper {
 
             let mut data_envs: Vec<u8> = Default::default();
             for env_point in &env_points {
-                env_point.write_to_vec(&mut data_envs);
+                env_point.write_to_vec(&mut data_envs, has_bezier);
             }
             let env_item = CDatafileItem {
                 size: data_envs.len() as i32,
@@ -2384,7 +2459,7 @@ impl CDatafileWrapper {
             res.data_file.info.item_types.push(CDatafileItemType {
                 item_type: MapItemTypes::Envpoints as i32,
                 start: item_index,
-                num: env_points.len() as i32,
+                num: 1,
             });
 
             // next: write all env definitions to data
