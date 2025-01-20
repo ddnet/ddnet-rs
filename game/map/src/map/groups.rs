@@ -24,7 +24,7 @@ pub struct MapGroupAttr {
     pub clipping: Option<MapGroupAttrClipping>,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapGroup {
     pub attr: MapGroupAttr,
     pub layers: Vec<MapLayer>,
@@ -33,7 +33,7 @@ pub struct MapGroup {
     pub name: String,
 }
 
-#[derive(Debug, Hiarc, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MapGroupPhysicsAttr {
     pub width: NonZeroU16MinusOne,
     pub height: NonZeroU16MinusOne,

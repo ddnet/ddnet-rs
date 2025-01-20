@@ -1,4 +1,5 @@
 use base::linked_hash_map_view::FxLinkedHashMap;
+use enum_dispatch::enum_dispatch;
 use map::{
     map::{
         animations::{ColorAnimation, PosAnimation, SoundAnimation},
@@ -19,14 +20,30 @@ use map::{
 };
 use serde::{Deserialize, Serialize};
 
+#[enum_dispatch]
+pub trait EditorActionInterface {
+    fn undo_info(&self) -> String;
+    fn redo_info(&self) -> String;
+}
+
+impl<T: EditorActionInterface> EditorActionInterface for Box<T> {
+    fn undo_info(&self) -> String {
+        self.as_ref().undo_info()
+    }
+    fn redo_info(&self) -> String {
+        self.as_ref().redo_info()
+    }
+}
+
 /// an action that results in a change in the state of the map
 /// this action is usually shared across all clients
 /// additionally every action must be able to handle the undo to that action
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[enum_dispatch(EditorActionInterface)]
 pub enum EditorAction {
-    // gui swaps
-    SwapGroups(ActSwapGroups),
-    SwapLayers(ActSwapLayers),
+    // move layer/group
+    MoveGroup(ActMoveGroup),
+    MoveLayer(ActMoveLayer),
     // add image/sound
     AddImage(ActAddImage),
     AddImage2dArray(ActAddImage2dArray),
@@ -94,62 +111,85 @@ pub struct EditorActionGroup {
     pub identifier: Option<String>,
 }
 
-pub trait EditorActionInterface {
-    fn undo_info(&self) -> String;
-    fn redo_info(&self) -> String;
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActSwapGroups {
-    pub is_background: bool,
-    pub group1: usize,
-    pub group2: usize,
+pub struct ActMoveGroup {
+    pub old_is_background: bool,
+    pub old_group: usize,
+    pub new_is_background: bool,
+    pub new_group: usize,
 }
 
-impl EditorActionInterface for ActSwapGroups {
+impl EditorActionInterface for ActMoveGroup {
     fn undo_info(&self) -> String {
+        Self {
+            old_is_background: self.new_is_background,
+            old_group: self.new_group,
+            new_is_background: self.old_is_background,
+            new_group: self.old_group,
+        }
+        .redo_info()
+    }
+
+    fn redo_info(&self) -> String {
         format!(
-            "Swapped group #{} & #{} in {}",
-            self.group1,
-            self.group2,
-            if self.is_background {
+            "Move group #{} in {} to #{} in {}",
+            self.old_group,
+            if self.old_is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+            self.new_group,
+            if self.new_is_background {
                 "background"
             } else {
                 "foreground"
             }
         )
     }
-
-    fn redo_info(&self) -> String {
-        self.undo_info()
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActSwapLayers {
-    pub is_background: bool,
-    pub layer1: usize,
-    pub layer2: usize,
-    pub group: usize,
+pub struct ActMoveLayer {
+    pub old_is_background: bool,
+    pub old_group: usize,
+    pub old_layer: usize,
+    pub new_is_background: bool,
+    pub new_group: usize,
+    pub new_layer: usize,
 }
 
-impl EditorActionInterface for ActSwapLayers {
+impl EditorActionInterface for ActMoveLayer {
     fn undo_info(&self) -> String {
-        format!(
-            "Swapped layer #{} and #{} of group #{} in {}",
-            self.layer1,
-            self.layer2,
-            self.group,
-            if self.is_background {
-                "background"
-            } else {
-                "foreground"
-            }
-        )
+        Self {
+            old_is_background: self.new_is_background,
+            old_group: self.new_group,
+            old_layer: self.new_layer,
+            new_is_background: self.old_is_background,
+            new_group: self.old_group,
+            new_layer: self.old_layer,
+        }
+        .redo_info()
     }
 
     fn redo_info(&self) -> String {
-        self.undo_info()
+        format!(
+            "Move layer #{} of group #{} in {} to #{} of group #{} in {}",
+            self.old_layer,
+            self.old_group,
+            if self.old_is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+            self.new_layer,
+            self.new_group,
+            if self.new_is_background {
+                "background"
+            } else {
+                "foreground"
+            },
+        )
     }
 }
 

@@ -1,13 +1,14 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Button, DragValue};
+use egui::{Align2, Button, DragValue, Grid, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::UiRenderPipe;
 
 use crate::{
     explain::TEXT_ANIM_PANEL_AND_PROPS,
+    tab::EditorAdminPanelState,
     ui::user_data::{
         EditorMenuDialogJoinProps, EditorMenuDialogMode, EditorMenuHostDialogMode,
         EditorMenuHostNetworkOptions, EditorUiEvent, EditorUiEventHostMap, UserData,
@@ -36,11 +37,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         if ui.button("Save map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::save(pipe.user_data.io);
                         }
+                        ui.separator();
                         if ui.button("Host map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::host(pipe.user_data.io);
                         }
                         if ui.button("Join map").clicked() {
                             *menu_dialog_mode = EditorMenuDialogMode::join(pipe.user_data.io);
+                        }
+                        ui.separator();
+                        if ui.button("Minimize").clicked() {
+                            pipe.user_data.ui_events.push(EditorUiEvent::Minimize);
                         }
                         if ui.button("Close").clicked() {
                             pipe.user_data.ui_events.push(EditorUiEvent::Close);
@@ -48,10 +54,41 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     });
 
                     ui.menu_button("Edit", |ui| {
-                        if ui.add(Button::new("Undo")).clicked() {
+                        ui.set_min_width(250.0);
+                        let undo_label = pipe.user_data.editor_tabs.active_tab().and_then(|t| {
+                            t.server
+                                .as_ref()
+                                .map(|s| s.undo_label())
+                                .unwrap_or_else(|| t.client.undo_label.clone())
+                        });
+                        if ui
+                            .add_enabled(
+                                undo_label.is_some(),
+                                Button::new(format!(
+                                    "Undo{}",
+                                    undo_label.map(|l| format!(": {l}")).unwrap_or_default()
+                                )),
+                            )
+                            .clicked()
+                        {
                             pipe.user_data.ui_events.push(EditorUiEvent::Undo);
                         }
-                        if ui.add(Button::new("Redo")).clicked() {
+                        let redo_label = pipe.user_data.editor_tabs.active_tab().and_then(|t| {
+                            t.server
+                                .as_ref()
+                                .map(|s| s.redo_label())
+                                .unwrap_or_else(|| t.client.redo_label.clone())
+                        });
+                        if ui
+                            .add_enabled(
+                                redo_label.is_some(),
+                                Button::new(format!(
+                                    "Redo{}",
+                                    redo_label.map(|l| format!(": {l}")).unwrap_or_default()
+                                )),
+                            )
+                            .clicked()
+                        {
                             pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                         }
                     });
@@ -102,6 +139,70 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                     !tab.map.user.options.show_tile_numbers;
                             }
                         });
+
+                        if tab.client.allows_remote_admin
+                            && ui
+                                .add(Button::new("Server").selected(tab.admin_panel.open))
+                                .clicked()
+                        {
+                            tab.admin_panel.open = !tab.admin_panel.open;
+                        }
+
+                        if tab.admin_panel.open {
+                            Window::new("Admin panel")
+                                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
+                                .show(ui.ctx(), |ui| {
+                                    Grid::new("admin-panel-overview").num_columns(2).show(
+                                        ui,
+                                        |ui| match &mut tab.admin_panel.state {
+                                            EditorAdminPanelState::NonAuthed(state) => {
+                                                ui.label("Admin password:");
+                                                ui.add(
+                                                    TextEdit::singleline(&mut state.password)
+                                                        .password(true),
+                                                );
+                                                ui.end_row();
+
+                                                if ui.button("Auth").clicked() {
+                                                    pipe.user_data.ui_events.push(
+                                                        EditorUiEvent::AdminAuth {
+                                                            password: state.password.clone(),
+                                                        },
+                                                    );
+                                                }
+                                                ui.end_row();
+                                            }
+                                            EditorAdminPanelState::Authed(state) => {
+                                                ui.label("Do auto saves.");
+                                                let mut do_autosaves =
+                                                    state.state.auto_save.is_some();
+                                                ui.checkbox(&mut do_autosaves, "");
+                                                ui.end_row();
+                                                if !do_autosaves {
+                                                    state.state.auto_save = None;
+                                                }
+                                                if let Some(auto_save) = &mut state.state.auto_save
+                                                {
+                                                    ui.label("Save interval:");
+                                                    let mut secs = auto_save.as_secs();
+                                                    ui.add(DragValue::new(&mut secs));
+                                                    ui.end_row();
+                                                    *auto_save = Duration::from_secs(secs);
+                                                }
+
+                                                if ui.button("Apply").clicked() {
+                                                    pipe.user_data.ui_events.push(
+                                                        EditorUiEvent::AdminChangeConfig {
+                                                            state: state.clone(),
+                                                        },
+                                                    );
+                                                }
+                                                ui.end_row();
+                                            }
+                                        },
+                                    );
+                                });
+                        }
                     }
                 });
 
@@ -184,7 +285,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label(fmt_hash(&hash));
 
                         ui.label("Password:");
-                        ui.text_edit_singleline(password);
+                        ui.add(TextEdit::singleline(password).password(true));
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
@@ -272,7 +373,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label("Certificate hash:");
                         ui.text_edit_singleline(cert_hash);
                         ui.label("Password:");
-                        ui.text_edit_singleline(password);
+                        ui.add(TextEdit::singleline(password).password(true));
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");

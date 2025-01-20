@@ -77,7 +77,7 @@ where
         .ok_or_else(|| serde::de::Error::custom("vec not sorted"))
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AnimBase<T: DeserializeOwned + PartialOrd> {
     #[serde(deserialize_with = "points_deser")]
     pub points: Vec<T>,

@@ -177,7 +177,7 @@ impl QuadSelection {
                     || super::shared::in_box(&points[3], x0, y0, x1, y1)
                     || super::shared::in_box(&points[4], x0, y0, x1, y1)
                 {
-                    quads.insert(q, quad.clone());
+                    quads.insert(q, *quad);
                 }
             }
 

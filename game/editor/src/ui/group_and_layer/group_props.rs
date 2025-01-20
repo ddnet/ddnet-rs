@@ -1,3 +1,4 @@
+use egui::DragValue;
 use map::{map::groups::layers::tiles::MapTileLayerPhysicsTiles, types::NonZeroU16MinusOne};
 use math::math::vector::{ffixed, uffixed};
 use ui_base::{
@@ -8,11 +9,84 @@ use ui_base::{
 use crate::{
     actions::actions::{
         ActAddRemGroup, ActChangeGroupAttr, ActChangeGroupName, ActChangePhysicsGroupAttr,
-        ActRemGroup, EditorAction,
+        ActMoveGroup, ActRemGroup, EditorAction,
     },
-    map::{EditorMapInterface, EditorPhysicsLayer},
+    map::{EditorMap, EditorMapInterface, EditorPhysicsLayer},
     ui::{group_and_layer::shared::copy_tiles, user_data::UserDataWithTab},
 };
+
+#[derive(Debug)]
+enum MoveGroup {
+    IsBackground(bool),
+    Group(usize),
+}
+
+fn render_group_move(ui: &mut egui::Ui, is_background: bool, g: usize) -> Option<MoveGroup> {
+    let mut move_group = None;
+
+    let mut new_is_background = is_background;
+    ui.label("In background");
+    if ui.checkbox(&mut new_is_background, "").changed() {
+        move_group = Some(MoveGroup::IsBackground(new_is_background));
+    }
+    ui.end_row();
+
+    ui.label("Group");
+    let mut new_group = g;
+    if ui.add(DragValue::new(&mut new_group)).changed() {
+        move_group = Some(MoveGroup::Group(new_group));
+    }
+    ui.end_row();
+
+    move_group
+}
+
+fn group_move_to_act(
+    mv: MoveGroup,
+    is_background: bool,
+    g: usize,
+    map: &EditorMap,
+) -> Option<ActMoveGroup> {
+    match mv {
+        MoveGroup::IsBackground(new_is_background) => {
+            if new_is_background == is_background {
+                return None;
+            }
+            let groups = if new_is_background {
+                &map.groups.background
+            } else {
+                &map.groups.foreground
+            };
+            Some(ActMoveGroup {
+                old_is_background: is_background,
+                old_group: g,
+                new_is_background,
+                new_group: groups.len(),
+            })
+        }
+        MoveGroup::Group(new_group) => {
+            if new_group == g {
+                return None;
+            }
+            let groups = if is_background {
+                &map.groups.background
+            } else {
+                &map.groups.foreground
+            };
+
+            if new_group < g || new_group < groups.len() {
+                Some(ActMoveGroup {
+                    old_is_background: is_background,
+                    old_group: g,
+                    new_is_background: is_background,
+                    new_group,
+                })
+            } else {
+                None
+            }
+        }
+    }
+}
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     #[derive(Debug, PartialEq, Eq)]
@@ -97,13 +171,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .resizable(false)
                 .collapsible(false);
 
+            // render group attributes
+            let group_editor = group.user.selected.as_mut().unwrap();
+            let attr = &mut group_editor.attr;
+            let attr_cmp = *attr;
+            let name_cmp = group_editor.name.clone();
+
+            let mut delete_group = false;
+            let mut move_group = None;
+
             let res = window.show(ui.ctx(), |ui| {
-                // render group attributes
-                let group_editor = group.user.selected.as_mut().unwrap();
-                let attr = &mut group_editor.attr;
-                let attr_cmp = *attr;
-                let name_cmp = group_editor.name.clone();
-                let mut delete_group = false;
                 egui::Grid::new("design group attr grid")
                     .num_columns(2)
                     .spacing([20.0, 4.0])
@@ -179,41 +256,52 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             delete_group = true;
                         }
                         ui.end_row();
-                    });
 
-                if *attr != attr_cmp {
-                    tab.client.execute(
-                        EditorAction::ChangeGroupAttr(ActChangeGroupAttr {
-                            is_background,
-                            group_index: g,
-                            old_attr: group.attr,
-                            new_attr: *attr,
-                        }),
-                        Some(&format!("change-design-group-attr-{is_background}-{g}")),
-                    );
-                } else if group_editor.name != name_cmp {
-                    tab.client.execute(
-                        EditorAction::ChangeGroupName(ActChangeGroupName {
-                            is_background,
-                            group_index: g,
-                            old_name: group.name.clone(),
-                            new_name: group_editor.name.clone(),
-                        }),
-                        Some(&format!("change-design-group-name-{is_background}-{g}")),
-                    );
-                } else if delete_group {
-                    tab.client.execute(
-                        EditorAction::RemGroup(ActRemGroup {
-                            base: ActAddRemGroup {
-                                is_background,
-                                index: g,
-                                group: group.clone().into(),
-                            },
-                        }),
-                        None,
-                    );
-                }
+                        ui.label("Move group");
+                        ui.end_row();
+
+                        // group moving
+                        move_group = render_group_move(ui, is_background, g);
+                    });
             });
+
+            if *attr != attr_cmp {
+                tab.client.execute(
+                    EditorAction::ChangeGroupAttr(ActChangeGroupAttr {
+                        is_background,
+                        group_index: g,
+                        old_attr: group.attr,
+                        new_attr: *attr,
+                    }),
+                    Some(&format!("change-design-group-attr-{is_background}-{g}")),
+                );
+            } else if group_editor.name != name_cmp {
+                tab.client.execute(
+                    EditorAction::ChangeGroupName(ActChangeGroupName {
+                        is_background,
+                        group_index: g,
+                        old_name: group.name.clone(),
+                        new_name: group_editor.name.clone(),
+                    }),
+                    Some(&format!("change-design-group-name-{is_background}-{g}")),
+                );
+            } else if delete_group {
+                tab.client.execute(
+                    EditorAction::RemGroup(ActRemGroup {
+                        base: ActAddRemGroup {
+                            is_background,
+                            index: g,
+                            group: group.clone().into(),
+                        },
+                    }),
+                    None,
+                );
+            } else if let Some(move_act) =
+                move_group.and_then(|mv| group_move_to_act(mv, is_background, g, map))
+            {
+                tab.client.execute(EditorAction::MoveGroup(move_act), None);
+            }
+
             res
         }
         GroupAttrMode::Physics => {
@@ -230,7 +318,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         .show(ui, |ui| {
                             // render physics group attributes
                             let attr = group.user.selected.as_mut().unwrap();
-                            let attr_cmp = attr.clone();
+                            let attr_cmp = *attr;
                             // w
                             ui.label("width");
                             let mut w = attr.width.get();
@@ -286,8 +374,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 tab.client.execute(
                                     EditorAction::ChangePhysicsGroupAttr(
                                         ActChangePhysicsGroupAttr {
-                                            old_attr: group.attr.clone(),
-                                            new_attr: attr.clone(),
+                                            old_attr: group.attr,
+                                            new_attr: *attr,
 
                                             new_layer_tiles: {
                                                 let width_or_height_change = group.attr.width

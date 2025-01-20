@@ -6,12 +6,12 @@ use super::tiles::{
     MapTileLayerPhysicsTilesRef, SpeedupTile, SwitchTile, TeleTile, Tile, TuneTile,
 };
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerTilePhysicsBase<T> {
     pub tiles: Vec<T>,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerTilePhysicsTele {
     pub base: MapLayerTilePhysicsBase<TeleTile>,
     // linked hash map bcs we want to keep order between serialization
@@ -19,7 +19,7 @@ pub struct MapLayerTilePhysicsTele {
     pub tele_names: FxLinkedHashMap<u8, String>,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerTilePhysicsSwitch {
     pub base: MapLayerTilePhysicsBase<SwitchTile>,
     // linked hash map bcs we want to keep order between serialization
@@ -27,20 +27,20 @@ pub struct MapLayerTilePhysicsSwitch {
     pub switch_names: FxLinkedHashMap<u8, String>,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerTilePhysicsTuneZone {
     pub name: String,
     pub tunes: FxLinkedHashMap<String, String>,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerTilePhysicsTune {
     pub base: MapLayerTilePhysicsBase<TuneTile>,
     // linked hash map bcs we want to keep order between serialization
     pub tune_zones: FxLinkedHashMap<u8, MapLayerTilePhysicsTuneZone>,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MapLayerPhysics {
     Arbitrary(Vec<u8>),
     Game(MapLayerTilePhysicsBase<Tile>),

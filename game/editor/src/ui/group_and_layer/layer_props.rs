@@ -1,4 +1,4 @@
-use egui::{Color32, InnerResponse};
+use egui::{Color32, DragValue, InnerResponse};
 use map::types::NonZeroU16MinusOne;
 use math::math::vector::{nffixed, nfvec4};
 use time::Duration;
@@ -11,12 +11,12 @@ use crate::{
     actions::actions::{
         ActAddRemPhysicsTileLayer, ActAddRemQuadLayer, ActAddRemSoundLayer, ActAddRemTileLayer,
         ActChangeDesignLayerName, ActChangeQuadLayerAttr, ActChangeSoundLayerAttr,
-        ActChangeTileLayerDesignAttr, ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer,
-        ActRemTileLayer, EditorAction,
+        ActChangeTileLayerDesignAttr, ActMoveLayer, ActRemPhysicsTileLayer, ActRemQuadLayer,
+        ActRemSoundLayer, ActRemTileLayer, EditorAction,
     },
     explain::TEXT_LAYER_PROPS_COLOR,
     map::{
-        EditorDesignLayerInterface, EditorLayer, EditorMapInterface, EditorPhysicsLayer,
+        EditorDesignLayerInterface, EditorLayer, EditorMap, EditorMapInterface, EditorPhysicsLayer,
         ResourceSelection,
     },
     ui::{
@@ -27,6 +27,122 @@ use crate::{
         user_data::UserDataWithTab,
     },
 };
+
+#[derive(Debug)]
+enum MoveLayer {
+    IsBackground(bool),
+    Group(usize),
+    Layer(usize),
+}
+
+fn render_layer_move(
+    ui: &mut egui::Ui,
+    is_background: bool,
+    g: usize,
+    l: usize,
+) -> Option<MoveLayer> {
+    let mut move_layer = None;
+
+    let mut new_is_background = is_background;
+    ui.label("In background");
+    if ui.checkbox(&mut new_is_background, "").changed() {
+        move_layer = Some(MoveLayer::IsBackground(new_is_background));
+    }
+    ui.end_row();
+
+    ui.label("Group");
+    let mut new_group = g;
+    if ui.add(DragValue::new(&mut new_group)).changed() {
+        move_layer = Some(MoveLayer::Group(new_group));
+    }
+    ui.end_row();
+
+    ui.label("Layer");
+    let mut new_layer = l;
+    if ui.add(DragValue::new(&mut new_layer)).changed() {
+        move_layer = Some(MoveLayer::Layer(new_layer));
+    }
+    ui.end_row();
+
+    move_layer
+}
+
+fn layer_move_to_act(
+    mv: MoveLayer,
+    is_background: bool,
+    g: usize,
+    l: usize,
+    map: &EditorMap,
+) -> Option<ActMoveLayer> {
+    match mv {
+        MoveLayer::IsBackground(new_is_background) => {
+            if new_is_background == is_background {
+                return None;
+            }
+            let groups = if new_is_background {
+                &map.groups.background
+            } else {
+                &map.groups.foreground
+            };
+            if let Some((new_group, group)) = groups.iter().enumerate().next_back() {
+                Some(ActMoveLayer {
+                    old_is_background: is_background,
+                    old_group: g,
+                    old_layer: l,
+                    new_is_background,
+                    new_group,
+                    new_layer: group.layers.len(),
+                })
+            } else {
+                None
+            }
+        }
+        MoveLayer::Group(new_group) => {
+            if new_group == g {
+                return None;
+            }
+            let groups = if is_background {
+                &map.groups.background
+            } else {
+                &map.groups.foreground
+            };
+            groups.get(new_group).map(|group| ActMoveLayer {
+                old_is_background: is_background,
+                old_group: g,
+                old_layer: l,
+                new_is_background: is_background,
+                new_group,
+                new_layer: group.layers.len(),
+            })
+        }
+        MoveLayer::Layer(new_layer) => {
+            if new_layer == l {
+                return None;
+            }
+            let groups = if is_background {
+                &map.groups.background
+            } else {
+                &map.groups.foreground
+            };
+            if let Some(group) = groups.get(g) {
+                if new_layer < l || new_layer < group.layers.len() {
+                    Some(ActMoveLayer {
+                        old_is_background: is_background,
+                        old_group: g,
+                        old_layer: l,
+                        new_is_background: is_background,
+                        new_group: g,
+                        new_layer,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+    }
+}
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     #[derive(Debug, PartialEq, Eq)]
@@ -223,7 +339,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 panic!("not a tile layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
-            let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_attr_cmp = layer_editor.attr;
             let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Tile Layer Attributes")
@@ -231,6 +347,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .collapsible(false);
 
             let mut delete_layer = false;
+            let mut move_layer = None;
 
             let res = window.show(ui.ctx(), |ui| {
                 egui::Grid::new("design group attr grid")
@@ -355,6 +472,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             delete_layer = true;
                         }
                         ui.end_row();
+
+                        ui.label("Move layer");
+                        ui.end_row();
+
+                        // layer moving
+                        move_layer = render_layer_move(ui, is_background, g, l);
                     })
             });
 
@@ -388,8 +511,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         is_background,
                         group_index: g,
                         layer_index: l,
-                        old_attr: layer.layer.attr.clone(),
-                        new_attr: layer_editor.attr.clone(),
+                        old_attr: layer.layer.attr,
+                        new_attr: layer_editor.attr,
 
                         old_tiles: layer.layer.tiles.clone(),
                         new_tiles: {
@@ -442,6 +565,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }),
                     None,
                 );
+            } else if let Some(move_act) =
+                move_layer.and_then(|mv| layer_move_to_act(mv, is_background, g, l, map))
+            {
+                tab.client.execute(EditorAction::MoveLayer(move_act), None);
             }
 
             res
@@ -454,7 +581,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 panic!("not a quad layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
-            let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_attr_cmp = layer_editor.attr;
             let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Quad Layer Attributes")
@@ -462,6 +589,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .collapsible(false);
 
             let mut delete_layer = false;
+            let mut move_layer = None;
 
             let res = window.show(ui.ctx(), |ui| {
                 egui::Grid::new("design group attr grid")
@@ -498,6 +626,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             delete_layer = true;
                         }
                         ui.end_row();
+
+                        ui.label("Move layer");
+                        ui.end_row();
+
+                        // layer moving
+                        move_layer = render_layer_move(ui, is_background, g, l);
                     })
             });
 
@@ -531,8 +665,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         is_background,
                         group_index: g,
                         layer_index: l,
-                        old_attr: layer.layer.attr.clone(),
-                        new_attr: layer_editor.attr.clone(),
+                        old_attr: layer.layer.attr,
+                        new_attr: layer_editor.attr,
                     }),
                     Some(&format!("change-quad-layer-attr-{is_background}-{g}-{l}")),
                 );
@@ -561,6 +695,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }),
                     None,
                 );
+            } else if let Some(move_act) =
+                move_layer.and_then(|mv| layer_move_to_act(mv, is_background, g, l, map))
+            {
+                tab.client.execute(EditorAction::MoveLayer(move_act), None);
             }
 
             res
@@ -573,7 +711,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 panic!("not a sound layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
-            let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_attr_cmp = layer_editor.attr;
             let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Sound Layer Attributes")
@@ -581,6 +719,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .collapsible(false);
 
             let mut delete_layer = false;
+            let mut move_layer = None;
 
             let res = window.show(ui.ctx(), |ui| {
                 egui::Grid::new("design group attr grid")
@@ -617,6 +756,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             delete_layer = true;
                         }
                         ui.end_row();
+
+                        ui.label("Move layer");
+                        ui.end_row();
+
+                        // layer moving
+                        move_layer = render_layer_move(ui, is_background, g, l);
                     })
             });
 
@@ -650,8 +795,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         is_background,
                         group_index: g,
                         layer_index: l,
-                        old_attr: layer.layer.attr.clone(),
-                        new_attr: layer_editor.attr.clone(),
+                        old_attr: layer.layer.attr,
+                        new_attr: layer_editor.attr,
                     }),
                     Some(&format!("change-sound-layer-attr-{is_background}-{g}-{l}")),
                 );
@@ -680,6 +825,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }),
                     None,
                 );
+            } else if let Some(move_act) =
+                move_layer.and_then(|mv| layer_move_to_act(mv, is_background, g, l, map))
+            {
+                tab.client.execute(EditorAction::MoveLayer(move_act), None);
             }
 
             res

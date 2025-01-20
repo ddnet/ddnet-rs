@@ -24,19 +24,21 @@ use network::network::{
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::{do_action, merge_actions, undo_action},
-    actions::actions::EditorActionGroup,
+    action_logic::{do_action, merge_actions, redo_action, undo_action},
+    actions::actions::{EditorActionGroup, EditorActionInterface},
     event::{
-        ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
-        EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+        AdminConfigState, ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer,
+        EditorEventGenerator, EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
     network::EditorNetwork,
+    tools::auto_saver::AutoSaver,
 };
 
 #[derive(Debug, Default)]
 struct Client {
     is_authed: bool,
+    is_admin: bool,
     is_local_client: bool,
     props: ClientProps,
 }
@@ -60,6 +62,8 @@ pub struct EditorServer {
 
     pub password: String,
 
+    admin_password: Option<String>,
+
     clients: HashMap<NetworkConnectionId, Client>,
 
     client_ids: u64,
@@ -71,13 +75,14 @@ impl EditorServer {
         cert_mode: Option<NetworkServerCertMode>,
         port: Option<u16>,
         password: String,
-    ) -> Self {
+        admin_password: Option<String>,
+    ) -> anyhow::Result<Self> {
         let has_events: Arc<AtomicBool> = Default::default();
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
 
         let (network, cert, port) =
-            EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port);
-        Self {
+            EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port)?;
+        Ok(Self {
             action_groups: Default::default(),
             cur_action_group: None,
 
@@ -89,8 +94,10 @@ impl EditorServer {
             password,
             clients: Default::default(),
 
+            admin_password,
+
             client_ids: 0,
-        }
+        })
     }
 
     fn broadcast_client_infos(&self) {
@@ -111,6 +118,7 @@ impl EditorServer {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        auto_saver: &mut AutoSaver,
         notifications: &mut ClientNotifications,
     ) {
         // check if client exist and is authed
@@ -187,9 +195,17 @@ impl EditorServer {
                         &id,
                         EditorEvent::Server(EditorEventServerToClient::Info {
                             server_id: client.props.server_id,
+                            allows_remote_admin: self.admin_password.is_some(),
                         }),
                     );
                     self.broadcast_client_infos();
+                } else {
+                    self.network.send_to(
+                        &id,
+                        EditorEvent::Server(EditorEventServerToClient::Error(
+                            "wrong password".to_string(),
+                        )),
+                    );
                 }
             } else if client.is_authed {
                 match ev {
@@ -198,30 +214,12 @@ impl EditorServer {
                             self.action_groups.truncate(cur_action_group + 1);
                         }
 
-                        if self
-                            .action_groups
-                            .last_mut()
-                            .is_some_and(|group| group.identifier == act.identifier)
-                        {
-                            let group = self.action_groups.last_mut().unwrap();
-                            group.actions.append(&mut act.actions.clone());
-
-                            if let Err(err) = merge_actions(&mut group.actions) {
-                                log::error!("{err}");
-                                notifications.add_err(err.to_string(), Duration::from_secs(10));
-                            }
-                        } else {
-                            let new_index = self.action_groups.len();
-                            self.action_groups.push(act.clone());
-                            self.cur_action_group = Some(new_index);
-                        }
-                        let mut send_act = EditorActionGroup {
+                        let mut valid_act = EditorActionGroup {
                             actions: Vec::new(),
                             identifier: act.identifier.clone(),
                         };
                         for act in act.actions {
-                            let sent_act = act.clone();
-                            if let Err(err) = do_action(
+                            match do_action(
                                 tp,
                                 sound_mt,
                                 graphics_mt,
@@ -230,34 +228,51 @@ impl EditorServer {
                                 texture_handle,
                                 act,
                                 map,
+                                true,
                             ) {
-                                self.network.send_to(
-                                    &id,
-                                    EditorEvent::Server(EditorEventServerToClient::Error(format!(
-                                        "Failed to execute your action\n\
-                                        This is usually caused if a \
-                                        previous action invalidates \
-                                        this action, e.g. by a different user.\n\
-                                        If all users are inactive, executing \
-                                        the same action again should work; \
-                                        if not it means it's a bug.\n{err}"
-                                    ))),
-                                );
-                            } else {
-                                send_act.actions.push(sent_act);
+                                Ok(act) => {
+                                    valid_act.actions.push(act);
+                                }
+                                Err(err) => {
+                                    self.network.send_to(
+                                        &id,
+                                        EditorEvent::Server(EditorEventServerToClient::Error(
+                                            format!(
+                                                "Failed to execute your action\n\
+                                            This is usually caused if a \
+                                            previous action invalidates \
+                                            this action, e.g. by a different user.\n\
+                                            If all users are inactive, executing \
+                                            the same action again should work; \
+                                            if not it means it's a bug.\n{err}"
+                                            ),
+                                        )),
+                                    );
+                                    break;
+                                }
                             }
                         }
-                        self.clients
-                            .iter()
-                            .filter(|(_, client)| !client.is_local_client)
-                            .for_each(|(id, _)| {
-                                self.network.send_to(
-                                    id,
-                                    EditorEvent::Server(EditorEventServerToClient::DoAction(
-                                        send_act.clone(),
-                                    )),
-                                );
-                            });
+                        if self.action_groups.last_mut().is_some_and(|group| {
+                            group
+                                .identifier
+                                .as_ref()
+                                // explicitly check for some here
+                                .is_some_and(|identifier| {
+                                    Some(identifier) == valid_act.identifier.as_ref()
+                                })
+                        }) {
+                            let group = self.action_groups.last_mut().unwrap();
+                            group.actions.append(&mut valid_act.actions.clone());
+
+                            if let Err(err) = merge_actions(&mut group.actions) {
+                                log::error!("{err}");
+                                notifications.add_err(err.to_string(), Duration::from_secs(10));
+                            }
+                        } else {
+                            let new_index = self.action_groups.len();
+                            self.action_groups.push(valid_act.clone());
+                            self.cur_action_group = Some(new_index);
+                        }
 
                         // Make sure memory doesn't exhaust
                         while self.action_groups.len() > 300 {
@@ -265,6 +280,20 @@ impl EditorServer {
                             self.cur_action_group =
                                 self.cur_action_group.map(|index| index.saturating_sub(1));
                         }
+
+                        self.clients
+                            .iter()
+                            .filter(|(_, client)| !client.is_local_client)
+                            .for_each(|(id, _)| {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::RedoAction {
+                                        action: valid_act.clone(),
+                                        undo_label: self.undo_label(),
+                                        redo_label: self.redo_label(),
+                                    }),
+                                );
+                            });
                     }
                     EditorEventClientToServer::Command(cmd) => match cmd {
                         EditorCommand::Undo | EditorCommand::Redo => {
@@ -288,7 +317,7 @@ impl EditorServer {
                                         };
                                 }
 
-                                if let Some(group) = self
+                                let group = if let Some(group) = self
                                     .action_groups
                                     .get(self.cur_action_group.unwrap_or_default())
                                 {
@@ -299,7 +328,7 @@ impl EditorServer {
                                     };
                                     for act in it {
                                         let action_fn =
-                                            if is_undo { undo_action } else { do_action };
+                                            if is_undo { undo_action } else { redo_action };
                                         if let Err(err) = action_fn(
                                             tp,
                                             sound_mt,
@@ -327,20 +356,10 @@ impl EditorServer {
                                             );
                                         }
                                     }
-
-                                    let act = if is_undo {
-                                        EditorEventServerToClient::UndoAction(group.clone())
-                                    } else {
-                                        EditorEventServerToClient::DoAction(group.clone())
-                                    };
-                                    self.clients
-                                        .iter()
-                                        .filter(|(_, client)| !client.is_local_client)
-                                        .for_each(|(id, _)| {
-                                            self.network
-                                                .send_to(id, EditorEvent::Server(act.clone()));
-                                        });
-                                }
+                                    Some(group.clone())
+                                } else {
+                                    None
+                                };
 
                                 if is_undo {
                                     self.cur_action_group = match self.cur_action_group {
@@ -349,6 +368,31 @@ impl EditorServer {
                                             "Undo while the action group was None is a bug!."
                                         ),
                                     };
+                                }
+
+                                if let Some(group) = group {
+                                    let undo_label = self.undo_label();
+                                    let redo_label = self.redo_label();
+                                    let act = if is_undo {
+                                        EditorEventServerToClient::UndoAction {
+                                            action: group,
+                                            redo_label,
+                                            undo_label,
+                                        }
+                                    } else {
+                                        EditorEventServerToClient::RedoAction {
+                                            action: group,
+                                            redo_label,
+                                            undo_label,
+                                        }
+                                    };
+                                    self.clients
+                                        .iter()
+                                        .filter(|(_, client)| !client.is_local_client)
+                                        .for_each(|(id, _)| {
+                                            self.network
+                                                .send_to(id, EditorEvent::Server(act.clone()));
+                                        });
                                 }
                             }
                         }
@@ -371,6 +415,40 @@ impl EditorServer {
                                 msg,
                             }));
                     }
+                    EditorEventClientToServer::AdminAuth { password } => {
+                        if self.admin_password == Some(password) {
+                            self.network
+                                .send(EditorEvent::Server(EditorEventServerToClient::AdminAuthed));
+                            client.is_admin = true;
+                            for (id, _) in self.clients.iter().filter(|(_, c)| c.is_admin) {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::AdminState {
+                                        cur_state: AdminConfigState {
+                                            auto_save: auto_saver
+                                                .active
+                                                .then_some(auto_saver.interval)
+                                                .flatten(),
+                                        },
+                                    }),
+                                );
+                            }
+                        }
+                    }
+                    EditorEventClientToServer::AdminChangeConfig(state) => {
+                        if self.admin_password == Some(state.password) {
+                            auto_saver.active = state.state.auto_save.is_some();
+                            auto_saver.interval = state.state.auto_save;
+                            for (id, _) in self.clients.iter().filter(|(_, c)| c.is_admin) {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::AdminState {
+                                        cur_state: state.state.clone(),
+                                    }),
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -385,6 +463,7 @@ impl EditorServer {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        auto_saver: &mut AutoSaver,
         notifications: &mut ClientNotifications,
     ) {
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
@@ -403,6 +482,7 @@ impl EditorServer {
                             backend_handle,
                             texture_handle,
                             map,
+                            auto_saver,
                             notifications,
                         );
                     }
@@ -446,5 +526,47 @@ impl EditorServer {
                 }
             }
         }
+    }
+
+    pub fn undo_label(&self) -> Option<String> {
+        self.cur_action_group
+            .and_then(|i| self.action_groups.get(i))
+            .and_then(|g| g.actions.last().map(|a| (a, g.actions.len())))
+            .map(|(a, len)| {
+                format!(
+                    "{}{}",
+                    a.undo_info(),
+                    if len > 1 {
+                        format!(" + {len} more ")
+                    } else {
+                        "".to_string()
+                    }
+                )
+            })
+    }
+    pub fn redo_label(&self) -> Option<String> {
+        (!self.action_groups.is_empty()
+            && self
+                .cur_action_group
+                .is_none_or(|i| i < self.action_groups.len().saturating_sub(1)))
+        .then(|| {
+            self.action_groups.get(match self.cur_action_group {
+                Some(val) => val + 1,
+                None => 0,
+            })
+        })
+        .flatten()
+        .and_then(|g| g.actions.first().map(|a| (a, g.actions.len())))
+        .map(|(a, len)| {
+            format!(
+                "{}{}",
+                a.redo_info(),
+                if len > 1 {
+                    format!(" + {len} more ")
+                } else {
+                    "".to_string()
+                }
+            )
+        })
     }
 }

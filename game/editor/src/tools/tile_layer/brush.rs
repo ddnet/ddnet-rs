@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{cell::Cell, collections::HashSet, sync::Arc};
 
 use client_containers::{container::ContainerKey, entities::EntitiesContainer};
 use client_render_base::map::{
@@ -33,6 +33,7 @@ use map::{
 };
 use math::math::vector::{dvec2, ivec2, ubvec4, usvec2, vec2, vec4};
 use pool::mt_datatypes::PoolVec;
+use rand::RngCore;
 
 use crate::{
     actions::actions::{
@@ -63,6 +64,28 @@ pub enum BrushVisual {
     Physics(PhysicsTileLayerVisuals),
 }
 
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq)]
+pub enum TileBrushLastApplyLayer {
+    Physics {
+        layer_index: usize,
+    },
+    Design {
+        group_index: usize,
+        layer_index: usize,
+        is_background: bool,
+    },
+}
+
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq)]
+pub struct TileBrushLastApply {
+    pub x: u16,
+    pub y: u16,
+    pub w: u16,
+    pub h: u16,
+
+    pub layer: TileBrushLastApplyLayer,
+}
+
 #[derive(Debug, Hiarc)]
 pub struct TileBrushTiles {
     pub tiles: MapTileLayerTiles,
@@ -75,6 +98,8 @@ pub struct TileBrushTiles {
     pub render: BrushVisual,
     pub map_render: MapGraphics,
     pub texture: TextureContainer2dArray,
+
+    pub last_apply: Cell<Option<TileBrushLastApply>>,
 }
 
 #[derive(Debug, Hiarc)]
@@ -116,6 +141,9 @@ pub struct TileBrush {
 
     pub pointer_down_world_pos: Option<TileBrushDownPos>,
     pub shift_pointer_down_world_pos: Option<TileBrushDownPos>,
+
+    /// Random id counted up, used for action identifiers
+    pub brush_id_counter: u128,
 }
 
 impl TileBrush {
@@ -135,6 +163,9 @@ impl TileBrush {
 
             pointer_down_world_pos: None,
             shift_pointer_down_world_pos: None,
+
+            brush_id_counter: ((rand::rngs::OsRng.next_u64() as u128) << 64)
+                + rand::rngs::OsRng.next_u64() as u128,
         }
     }
 
@@ -416,6 +447,7 @@ impl TileBrush {
                             }),
                         };
 
+                        self.brush_id_counter += 1;
                         self.brush = Some(TileBrushTiles {
                             tiles,
                             w,
@@ -425,6 +457,8 @@ impl TileBrush {
                             render,
                             map_render: MapGraphics::new(backend_handle),
                             texture,
+
+                            last_apply: Default::default(),
                         });
                     }
                 }
@@ -592,6 +626,7 @@ impl TileBrush {
                             &tiles,
                         );
 
+                        self.brush_id_counter += 1;
                         self.brush = Some(TileBrushTiles {
                             tiles,
                             w,
@@ -607,6 +642,8 @@ impl TileBrush {
                             render,
                             map_render: MapGraphics::new(backend_handle),
                             texture,
+
+                            last_apply: Default::default(),
                         });
                     } else {
                         self.brush = None;
@@ -642,6 +679,7 @@ impl TileBrush {
     }
 
     fn apply_brush_internal(
+        brush_id_counter: u128,
         layer: &EditorLayerUnionRef<'_>,
         brush: &TileBrushTiles,
         client: &mut EditorClient,
@@ -716,8 +754,9 @@ impl TileBrush {
                 matches!(brush.tiles, MapTileLayerTiles::Design(_))
             }
         };
+
         if brush_w > 0 && brush_h > 0 && brush_matches_layer {
-            let (action, group_indentifier) = match layer {
+            let (action, group_indentifier, apply_layer) = match layer {
                 EditorLayerUnionRef::Physics {
                     layer,
                     group_attr,
@@ -867,7 +906,10 @@ impl TileBrush {
                             h: NonZeroU16MinusOne::new(brush_h).unwrap(),
                         },
                     }),
-                    format!("tile-brush phy {}", layer_index),
+                    format!("tile-brush phy {}", layer_index,),
+                    TileBrushLastApplyLayer::Physics {
+                        layer_index: *layer_index,
+                    },
                 ),
                 EditorLayerUnionRef::Design {
                     layer,
@@ -942,10 +984,30 @@ impl TileBrush {
                             "tile-brush {}-{}-{}",
                             group_index, layer_index, is_background
                         ),
+                        TileBrushLastApplyLayer::Design {
+                            group_index: *group_index,
+                            layer_index: *layer_index,
+                            is_background: *is_background,
+                        },
                     )
                 }
             };
-            client.execute(action, Some(&group_indentifier));
+
+            let next_apply = TileBrushLastApply {
+                x,
+                y,
+                w: brush_w,
+                h: brush_h,
+                layer: apply_layer,
+            };
+            let apply = brush.last_apply.get().is_none_or(|b| b != next_apply);
+            if apply {
+                brush.last_apply.set(Some(next_apply));
+                client.execute(
+                    action,
+                    Some(&format!("{group_indentifier}-{brush_id_counter}")),
+                );
+            }
         }
     }
 
@@ -980,6 +1042,7 @@ impl TileBrush {
                         let brush_w = (brush.w.get() - tile_offset_x).min(width);
 
                         Self::apply_brush_internal(
+                            self.brush_id_counter,
                             &layer,
                             brush,
                             client,
@@ -1125,6 +1188,7 @@ impl TileBrush {
                 let y = y - brush.negative_offset.y as i32;
 
                 Self::apply_brush_internal(
+                    self.brush_id_counter,
                     &layer,
                     brush,
                     client,

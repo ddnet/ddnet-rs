@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tiles::{MapTileLayerAttr, Tile};
 
-#[derive(Debug, Hiarc, Clone)]
+#[derive(Debug, Hiarc, Clone, PartialEq, Eq)]
 pub struct MapLayerTile {
     pub attr: MapTileLayerAttr,
     pub tiles: Vec<Tile>,
@@ -45,7 +45,7 @@ impl<'de> Deserialize<'de> for MapLayerTile {
     }
 }
 
-#[derive(Debug, Hiarc, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Quad {
     pub points: [fvec2; 5],
     pub colors: [nfvec4; 4],
@@ -58,7 +58,7 @@ pub struct Quad {
     pub color_anim_offset: time::Duration,
 }
 
-#[derive(Debug, Hiarc, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MapLayerQuadsAttrs {
     pub image: Option<usize>,
 
@@ -66,7 +66,7 @@ pub struct MapLayerQuadsAttrs {
     pub high_detail: bool,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerQuad {
     pub attr: MapLayerQuadsAttrs,
     pub quads: Vec<Quad>,
@@ -75,13 +75,13 @@ pub struct MapLayerQuad {
     pub name: String,
 }
 
-#[derive(Debug, Hiarc, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SoundShape {
     Rect { size: ufvec2 },
     Circle { radius: uffixed },
 }
 
-#[derive(Debug, Hiarc, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sound {
     pub pos: fvec2,
     pub looped: bool,
@@ -97,7 +97,7 @@ pub struct Sound {
     pub shape: SoundShape,
 }
 
-#[derive(Debug, Hiarc, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MapLayerSoundAttrs {
     pub sound: Option<usize>,
 
@@ -105,7 +105,7 @@ pub struct MapLayerSoundAttrs {
     pub high_detail: bool,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerSound {
     pub attr: MapLayerSoundAttrs,
     pub sounds: Vec<Sound>,
@@ -114,7 +114,7 @@ pub struct MapLayerSound {
     pub name: String,
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MapLayer {
     /// can be used for mods, if client compability is important, while having custom layers
     Abritrary(Vec<u8>),

@@ -18,15 +18,17 @@ use network::network::types::NetworkClientCertCheckMode;
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::{do_action, undo_action},
+    action_logic::{redo_action, undo_action},
     actions::actions::{EditorAction, EditorActionGroup},
     event::{
-        ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
-        EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+        AdminChangeConfig, AdminConfigState, ClientProps, EditorCommand, EditorEvent,
+        EditorEventClientToServer, EditorEventGenerator, EditorEventOverwriteMap,
+        EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
     network::{EditorNetwork, NetworkState},
     notifications::{EditorNotification, EditorNotifications},
+    tab::{EditorAdminPanel, EditorAdminPanelState},
 };
 
 /// the editor client handles events from the server if needed
@@ -41,8 +43,12 @@ pub struct EditorClient {
 
     pub(crate) clients: Vec<ClientProps>,
     pub(crate) server_id: u64,
+    pub(crate) allows_remote_admin: bool,
 
     pub(crate) msgs: VecDeque<(String, String)>,
+
+    pub(crate) undo_label: Option<String>,
+    pub(crate) redo_label: Option<String>,
 
     mapper_name: String,
     color: [u8; 3],
@@ -76,7 +82,11 @@ impl EditorClient {
 
             clients: Default::default(),
             server_id: Default::default(),
+            allows_remote_admin: false,
             msgs: Default::default(),
+
+            undo_label: None,
+            redo_label: None,
 
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
@@ -106,6 +116,7 @@ impl EditorClient {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        admin_panel: &mut EditorAdminPanel,
     ) -> anyhow::Result<Option<EditorEventOverwriteMap>> {
         let mut res = None;
 
@@ -120,78 +131,96 @@ impl EditorClient {
                 }
 
                 match event {
-                    EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
-                        EditorEventServerToClient::DoAction(act) => {
-                            if !self.local_client {
-                                for act in act.actions {
-                                    if let Err(err) = do_action(
-                                        tp,
-                                        sound_mt,
-                                        graphics_mt,
-                                        buffer_object_handle,
-                                        backend_handle,
-                                        texture_handle,
-                                        act,
-                                        map,
-                                    ) {
-                                        self.notifications.push(EditorNotification::Error(
-                                            format!(
-                                                "There has been an critical error while \
+                    EditorNetEvent::Editor(EditorEvent::Server(ev)) => {
+                        let undo_event = matches!(ev, EditorEventServerToClient::UndoAction { .. });
+                        match ev {
+                            EditorEventServerToClient::RedoAction {
+                                action,
+                                redo_label,
+                                undo_label,
+                            }
+                            | EditorEventServerToClient::UndoAction {
+                                action,
+                                redo_label,
+                                undo_label,
+                            } => {
+                                if !self.local_client {
+                                    let actions: Box<dyn Iterator<Item = _>> = if undo_event {
+                                        Box::new(action.actions.into_iter().rev())
+                                    } else {
+                                        Box::new(action.actions.into_iter())
+                                    };
+                                    for act in actions {
+                                        let act_func =
+                                            if undo_event { undo_action } else { redo_action };
+                                        if let Err(err) = act_func(
+                                            tp,
+                                            sound_mt,
+                                            graphics_mt,
+                                            buffer_object_handle,
+                                            backend_handle,
+                                            texture_handle,
+                                            act,
+                                            map,
+                                        ) {
+                                            self.notifications.push(EditorNotification::Error(
+                                                format!(
+                                                    "There has been an critical error while \
                                                 processing an action of the server: {err}.\n\
                                                 This usually indicates a bug in the \
                                                 editor code.\nCan not continue."
-                                            ),
-                                        ));
-                                        return Err(anyhow!("critical error during do_action"));
+                                                ),
+                                            ));
+                                            return Err(anyhow!("critical error during do_action"));
+                                        }
+                                    }
+                                }
+                                self.undo_label = undo_label;
+                                self.redo_label = redo_label;
+                            }
+                            EditorEventServerToClient::Error(err) => {
+                                self.notifications.push(EditorNotification::Error(err));
+                            }
+                            EditorEventServerToClient::Map(map) => {
+                                res = Some(map);
+                            }
+                            EditorEventServerToClient::Infos(infos) => {
+                                self.clients = infos;
+                            }
+                            EditorEventServerToClient::Info {
+                                server_id,
+                                allows_remote_admin,
+                            } => {
+                                self.server_id = server_id;
+                                self.allows_remote_admin = allows_remote_admin;
+                            }
+                            EditorEventServerToClient::Chat { from, msg } => {
+                                self.notifications
+                                    .push(EditorNotification::Info(format!("{from}: {msg}")));
+                                self.msgs.push_front((from, msg));
+                                self.msgs.truncate(30);
+                            }
+                            EditorEventServerToClient::AdminAuthed => {
+                                admin_panel.state = match admin_panel.state.clone() {
+                                    EditorAdminPanelState::NonAuthed(state) => {
+                                        EditorAdminPanelState::Authed(AdminChangeConfig {
+                                            password: state.password,
+                                            state: AdminConfigState { auto_save: None },
+                                        })
+                                    }
+                                    EditorAdminPanelState::Authed(state) => {
+                                        EditorAdminPanelState::Authed(state)
                                     }
                                 }
                             }
-                        }
-                        EditorEventServerToClient::UndoAction(act) => {
-                            if !self.local_client {
-                                for act in act.actions.into_iter().rev() {
-                                    if let Err(err) = undo_action(
-                                        tp,
-                                        sound_mt,
-                                        graphics_mt,
-                                        buffer_object_handle,
-                                        backend_handle,
-                                        texture_handle,
-                                        act,
-                                        map,
-                                    ) {
-                                        self.notifications.push(EditorNotification::Error(
-                                            format!(
-                                                "There has been an critical error while \
-                                                processing an action of the server: {err}.\n\
-                                                This usually indicates a bug in the editor code.\n\
-                                                Can not continue."
-                                            ),
-                                        ));
-                                        return Err(anyhow!("critical error during do_action"));
-                                    }
+                            EditorEventServerToClient::AdminState { cur_state } => {
+                                if let EditorAdminPanelState::Authed(state) = &mut admin_panel.state
+                                {
+                                    state.state = cur_state;
                                 }
                             }
                         }
-                        EditorEventServerToClient::Error(err) => {
-                            self.notifications.push(EditorNotification::Error(err));
-                        }
-                        EditorEventServerToClient::Map(map) => {
-                            res = Some(map);
-                        }
-                        EditorEventServerToClient::Infos(infos) => {
-                            self.clients = infos;
-                        }
-                        EditorEventServerToClient::Info { server_id } => {
-                            self.server_id = server_id;
-                        }
-                        EditorEventServerToClient::Chat { from, msg } => {
-                            self.notifications
-                                .push(EditorNotification::Info(format!("{from}: {msg}")));
-                            self.msgs.push_front((from, msg));
-                            self.msgs.truncate(30);
-                        }
-                    },
+                    }
 
                     EditorNetEvent::Editor(EditorEvent::Client(_)) => {
                         // ignore
@@ -270,5 +299,18 @@ impl EditorClient {
     pub fn send_chat(&self, msg: String) {
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Chat { msg }));
+    }
+
+    pub fn admin_auth(&self, password: String) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::AdminAuth {
+                password,
+            }));
+    }
+
+    pub fn admin_change_cfg(&self, state: AdminChangeConfig) {
+        self.network.send(EditorEvent::Client(
+            EditorEventClientToServer::AdminChangeConfig(state),
+        ));
     }
 }

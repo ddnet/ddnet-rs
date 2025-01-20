@@ -3220,11 +3220,13 @@ dependencies = [
  "egui-timeline",
  "egui_commonmark",
  "egui_extras",
+ "enum_dispatch",
  "game-base",
  "game-config",
  "game-interface",
  "graphics",
  "graphics-types",
+ "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
  "image-utils",
  "log",
@@ -3589,6 +3591,18 @@ checksum = "1bf1fa3f06bbff1ea5b1a9c7b14aa992a39657db60a2759457328d7e058f49ee"
 dependencies = [
  "num-bigint",
  "num-traits",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.94",
+]
+
+[[package]]
+name = "enum_dispatch"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa18ce2bc66555b3218614519ac839ddb759a7d6720732f979ef8d13be147ecd"
+dependencies = [
+ "once_cell",
  "proc-macro2",
  "quote",
  "syn 2.0.94",

@@ -392,7 +392,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         let window_res = match attr_mode {
             QuadAttrMode::Single => {
                 let (index, quad) = selected_quads.pop_first().unwrap();
-                let quad_cmp = quad.clone();
+                let quad_cmp = *quad;
 
                 let window = egui::Window::new("Design Quad Attributes")
                     .resizable(false)
@@ -426,8 +426,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             is_background,
                             group_index,
                             layer_index,
-                            old_attr: layer_quad.clone(),
-                            new_attr: quad.clone(),
+                            old_attr: *layer_quad,
+                            new_attr: *quad,
 
                             index,
                         })),
@@ -443,7 +443,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 group_index,
                                 layer_index,
                                 index,
-                                quads: vec![quad.clone()],
+                                quads: vec![*quad],
                             },
                         }),
                         Some(&format!(
@@ -459,9 +459,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     .iter_mut()
                     .peekable()
                     .next()
-                    .map(|(i, q)| (*i, q.clone()))
+                    .map(|(i, q)| (*i, **q))
                     .unwrap();
-                let quad_cmp = quad.clone();
+                let quad_cmp = quad;
 
                 let mut selected_quads: Vec<_> = selected_quads.into_iter().collect();
                 let can_change_pos_anim = selected_quads
@@ -556,8 +556,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     is_background,
                                     group_index,
                                     layer_index,
-                                    old_attr: layer_quad.clone(),
-                                    new_attr: quad.clone(),
+                                    old_attr: *layer_quad,
+                                    new_attr: **quad,
 
                                     index,
                                 })),
@@ -586,7 +586,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     group_index,
                                     layer_index,
                                     index,
-                                    quads: vec![quad.clone()],
+                                    quads: vec![*quad],
                                 },
                             }),
                             Some(&format!(

@@ -831,7 +831,7 @@ impl EditorMapInterface for EditorMap {
                     EditorLayer::Tile(layer) => {
                         if layer.user.selected.is_none() {
                             layer.user.selected = Some(EditorTileLayerPropsSelection {
-                                attr: layer.layer.attr.clone(),
+                                attr: layer.layer.attr,
                                 name: layer.layer.name.clone(),
                                 image_2d_array_selection_open: None,
                             });
@@ -842,7 +842,7 @@ impl EditorMapInterface for EditorMap {
                     EditorLayer::Quad(layer) => {
                         if layer.user.selected.is_none() {
                             layer.user.selected = Some(EditorQuadLayerPropsPropsSelection {
-                                attr: layer.layer.attr.clone(),
+                                attr: layer.layer.attr,
                                 name: layer.layer.name.clone(),
                                 image_selection_open: None,
                             });
@@ -853,7 +853,7 @@ impl EditorMapInterface for EditorMap {
                     EditorLayer::Sound(layer) => {
                         if layer.user.selected.is_none() {
                             layer.user.selected = Some(EditorSoundLayerPropsPropsSelection {
-                                attr: layer.layer.attr.clone(),
+                                attr: layer.layer.attr,
                                 name: layer.layer.name.clone(),
                                 sound_selection_open: None,
                             });
@@ -876,7 +876,7 @@ impl EditorMapInterface for EditorMap {
         match set_group {
             EditorMapSetGroup::Physics => {
                 if self.groups.physics.user.selected.is_none() {
-                    self.groups.physics.user.selected = Some(self.groups.physics.attr.clone());
+                    self.groups.physics.user.selected = Some(self.groups.physics.attr);
                 } else {
                     self.groups.physics.user.selected = None;
                 }

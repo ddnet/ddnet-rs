@@ -3,14 +3,14 @@ use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
 
 /// a reference to an external resource
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapResourceMetaData {
     pub blake3_hash: Hash,
     pub ty: ReducedAsciiString,
 }
 
 /// a reference to an external resource
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapResourceRef {
     pub name: ReducedAsciiString,
     pub meta: MapResourceMetaData,
