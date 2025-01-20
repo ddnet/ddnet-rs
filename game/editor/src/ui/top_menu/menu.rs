@@ -1,7 +1,7 @@
 use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Align2, Button, DragValue, Grid, TextEdit, Window};
+use egui::{Align2, Button, DragValue, Grid, Key, KeyboardShortcut, Modifiers, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::UiRenderPipe;
@@ -466,8 +466,27 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     }
                 }
 
-                if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S)) {
+                if ui.input_mut(|i| {
+                    i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::S))
+                }) {
                     pipe.user_data.ui_events.push(EditorUiEvent::SaveCurMap);
+                }
+                if ui.input_mut(|i| {
+                    i.consume_shortcut(&KeyboardShortcut::new(
+                        Modifiers::CTRL.plus(Modifiers::SHIFT),
+                        Key::Z,
+                    )) || i.consume_shortcut(&KeyboardShortcut::new(
+                        Modifiers::CTRL.plus(Modifiers::SHIFT),
+                        Key::Y,
+                    ))
+                }) {
+                    pipe.user_data.ui_events.push(EditorUiEvent::Redo);
+                }
+                if ui.input_mut(|i| {
+                    i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::Z))
+                        || i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::Y))
+                }) {
+                    pipe.user_data.ui_events.push(EditorUiEvent::Undo);
                 }
             });
         });
