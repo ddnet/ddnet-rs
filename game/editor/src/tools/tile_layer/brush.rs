@@ -33,6 +33,7 @@ use map::{
 };
 use math::math::vector::{dvec2, ivec2, ubvec4, usvec2, vec2, vec4};
 use pool::mt_datatypes::PoolVec;
+use rand::RngCore;
 
 use crate::{
     actions::actions::{
@@ -140,6 +141,9 @@ pub struct TileBrush {
 
     pub pointer_down_world_pos: Option<TileBrushDownPos>,
     pub shift_pointer_down_world_pos: Option<TileBrushDownPos>,
+
+    /// Random id counted up, used for action identifiers
+    pub brush_id_counter: u128,
 }
 
 impl TileBrush {
@@ -159,6 +163,9 @@ impl TileBrush {
 
             pointer_down_world_pos: None,
             shift_pointer_down_world_pos: None,
+
+            brush_id_counter: ((rand::rngs::OsRng.next_u64() as u128) << 64)
+                + rand::rngs::OsRng.next_u64() as u128,
         }
     }
 
@@ -440,6 +447,7 @@ impl TileBrush {
                             }),
                         };
 
+                        self.brush_id_counter += 1;
                         self.brush = Some(TileBrushTiles {
                             tiles,
                             w,
@@ -618,6 +626,7 @@ impl TileBrush {
                             &tiles,
                         );
 
+                        self.brush_id_counter += 1;
                         self.brush = Some(TileBrushTiles {
                             tiles,
                             w,
@@ -670,6 +679,7 @@ impl TileBrush {
     }
 
     fn apply_brush_internal(
+        brush_id_counter: u128,
         layer: &EditorLayerUnionRef<'_>,
         brush: &TileBrushTiles,
         client: &mut EditorClient,
@@ -993,7 +1003,10 @@ impl TileBrush {
             let apply = brush.last_apply.get().is_none_or(|b| b != next_apply);
             if apply {
                 brush.last_apply.set(Some(next_apply));
-                client.execute(action, Some(&group_indentifier));
+                client.execute(
+                    action,
+                    Some(&format!("{group_indentifier}-{brush_id_counter}")),
+                );
             }
         }
     }
@@ -1029,6 +1042,7 @@ impl TileBrush {
                         let brush_w = (brush.w.get() - tile_offset_x).min(width);
 
                         Self::apply_brush_internal(
+                            self.brush_id_counter,
                             &layer,
                             brush,
                             client,
@@ -1174,6 +1188,7 @@ impl TileBrush {
                 let y = y - brush.negative_offset.y as i32;
 
                 Self::apply_brush_internal(
+                    self.brush_id_counter,
                     &layer,
                     brush,
                     client,

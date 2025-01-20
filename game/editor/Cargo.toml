@@ -40,7 +40,7 @@ serde = { version = "1.0.217", features = ["derive"] }
 tokio = { version = "1.42.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 rayon = "1.10.0"
-rand = { version = "0.8.5", features = ["std_rng"], default-features = false }
+rand = { version = "0.8.5", features = ["std_rng"] }
 time = { version = "0.3.37", features = ["serde"] }
 serde_json = "1.0.134"
 ed25519-dalek = { version = "2.1.1", features = ["serde"] }
