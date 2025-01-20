@@ -165,10 +165,10 @@ impl EditorClient {
                                         ) {
                                             self.notifications.push(EditorNotification::Error(
                                                 format!(
-                                                    "There has been an critical error while \
-                                                processing an action of the server: {err}.\n\
-                                                This usually indicates a bug in the \
-                                                editor code.\nCan not continue."
+                                                    "There has been a critical error while \
+                                                    processing an action of the server: {err}.\n\
+                                                    This usually indicates a bug in the \
+                                                    editor code.\nCan not continue."
                                                 ),
                                             ));
                                             return Err(anyhow!("critical error during do_action"));

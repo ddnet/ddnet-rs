@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
@@ -62,6 +62,8 @@ pub struct EditorServer {
 
     pub password: String,
 
+    pub action_log: VecDeque<String>,
+
     admin_password: Option<String>,
 
     clients: HashMap<NetworkConnectionId, Client>,
@@ -93,6 +95,8 @@ impl EditorServer {
             port,
             password,
             clients: Default::default(),
+
+            action_log: Default::default(),
 
             admin_password,
 
@@ -210,10 +214,6 @@ impl EditorServer {
             } else if client.is_authed {
                 match ev {
                     EditorEventClientToServer::Action(act) => {
-                        if let Some(cur_action_group) = self.cur_action_group {
-                            self.action_groups.truncate(cur_action_group + 1);
-                        }
-
                         let mut valid_act = EditorActionGroup {
                             actions: Vec::new(),
                             identifier: act.identifier.clone(),
@@ -231,6 +231,8 @@ impl EditorServer {
                                 true,
                             ) {
                                 Ok(act) => {
+                                    self.action_log
+                                        .push_front(format!("[DO] {}", act.redo_info()));
                                     valid_act.actions.push(act);
                                 }
                                 Err(err) => {
@@ -239,12 +241,12 @@ impl EditorServer {
                                         EditorEvent::Server(EditorEventServerToClient::Error(
                                             format!(
                                                 "Failed to execute your action\n\
-                                            This is usually caused if a \
-                                            previous action invalidates \
-                                            this action, e.g. by a different user.\n\
-                                            If all users are inactive, executing \
-                                            the same action again should work; \
-                                            if not it means it's a bug.\n{err}"
+                                                This is usually caused if a \
+                                                previous action invalidates \
+                                                this action, e.g. by a different user.\n\
+                                                If all users are inactive, executing \
+                                                the same action again should work; \
+                                                if not it means it's a bug.\n{err}"
                                             ),
                                         )),
                                     );
@@ -252,48 +254,59 @@ impl EditorServer {
                                 }
                             }
                         }
-                        if self.action_groups.last_mut().is_some_and(|group| {
-                            group
-                                .identifier
-                                .as_ref()
-                                // explicitly check for some here
-                                .is_some_and(|identifier| {
-                                    Some(identifier) == valid_act.identifier.as_ref()
-                                })
-                        }) {
-                            let group = self.action_groups.last_mut().unwrap();
-                            group.actions.append(&mut valid_act.actions.clone());
-
-                            if let Err(err) = merge_actions(&mut group.actions) {
-                                log::error!("{err}");
-                                notifications.add_err(err.to_string(), Duration::from_secs(10));
+                        if !valid_act.actions.is_empty() {
+                            if let Some(cur_action_group) = self.cur_action_group {
+                                self.action_groups.truncate(cur_action_group + 1);
+                            } else {
+                                self.action_groups.clear();
                             }
-                        } else {
-                            let new_index = self.action_groups.len();
-                            self.action_groups.push(valid_act.clone());
-                            self.cur_action_group = Some(new_index);
-                        }
 
-                        // Make sure memory doesn't exhaust
-                        while self.action_groups.len() > 300 {
-                            self.action_groups.remove(0);
-                            self.cur_action_group =
-                                self.cur_action_group.map(|index| index.saturating_sub(1));
-                        }
+                            if self.action_groups.last_mut().is_some_and(|group| {
+                                group
+                                    .identifier
+                                    .as_ref()
+                                    // explicitly check for some here
+                                    .is_some_and(|identifier| {
+                                        Some(identifier) == valid_act.identifier.as_ref()
+                                    })
+                            }) {
+                                let group = self.action_groups.last_mut().unwrap();
+                                group.actions.append(&mut valid_act.actions.clone());
 
-                        self.clients
-                            .iter()
-                            .filter(|(_, client)| !client.is_local_client)
-                            .for_each(|(id, _)| {
-                                self.network.send_to(
-                                    id,
-                                    EditorEvent::Server(EditorEventServerToClient::RedoAction {
-                                        action: valid_act.clone(),
-                                        undo_label: self.undo_label(),
-                                        redo_label: self.redo_label(),
-                                    }),
-                                );
-                            });
+                                if let Err(err) = merge_actions(&mut group.actions) {
+                                    log::error!("{err}{}", err.backtrace());
+                                    notifications.add_err(err.to_string(), Duration::from_secs(10));
+                                }
+                            } else {
+                                let new_index = self.action_groups.len();
+                                self.action_groups.push(valid_act.clone());
+                                self.cur_action_group = Some(new_index);
+                            }
+
+                            // Make sure memory doesn't exhaust
+                            while self.action_groups.len() > 300 {
+                                self.action_groups.remove(0);
+                                self.cur_action_group =
+                                    self.cur_action_group.map(|index| index.saturating_sub(1));
+                            }
+                            self.action_log.truncate(4000);
+
+                            self.clients
+                                .iter()
+                                .filter(|(_, client)| !client.is_local_client)
+                                .for_each(|(id, _)| {
+                                    self.network.send_to(
+                                        id,
+                                        EditorEvent::Server(
+                                            EditorEventServerToClient::RedoAction {
+                                                action: valid_act.clone(),
+                                                undo_label: self.undo_label(),
+                                                redo_label: self.redo_label(),
+                                            },
+                                        ),
+                                    );
+                                });
+                        }
                     }
                     EditorEventClientToServer::Command(cmd) => match cmd {
                         EditorCommand::Undo | EditorCommand::Redo => {
@@ -327,9 +340,18 @@ impl EditorServer {
                                         Box::new(group.actions.iter())
                                     };
                                     for act in it {
+                                        let act_label = format!(
+                                            "[{}] {}",
+                                            if is_undo { "UNDO" } else { "REDO" },
+                                            if is_undo {
+                                                act.undo_info()
+                                            } else {
+                                                act.redo_info()
+                                            }
+                                        );
                                         let action_fn =
                                             if is_undo { undo_action } else { redo_action };
-                                        if let Err(err) = action_fn(
+                                        if let Err(act_err) = action_fn(
                                             tp,
                                             sound_mt,
                                             graphics_mt,
@@ -343,10 +365,26 @@ impl EditorServer {
                                                 "Failed to execute your action.\n\
                                                 Since it was an {} command, this \
                                                 probably indicates a bug in the code.\n\
-                                                {err}",
+                                                {act_err}",
                                                 if is_undo { "undo" } else { "redo" }
                                             );
-                                            log::error!("{err}");
+                                            log::error!("{err}{}", act_err.backtrace());
+                                            log::error!("current action: {}", act_label);
+                                            log::error!(
+                                                "latest action log starting with \
+                                                the most recent:\n{}",
+                                                self.action_log
+                                                    .iter()
+                                                    .cloned()
+                                                    .collect::<Vec<_>>()
+                                                    .join("\n")
+                                            );
+                                            log::error!(
+                                                "current actions index: {:?}, \
+                                                currently there is a history of size: {}",
+                                                self.cur_action_group,
+                                                self.action_groups.len()
+                                            );
                                             notifications.add_err(&err, Duration::from_secs(10));
                                             self.network.send_to(
                                                 &id,
@@ -355,10 +393,12 @@ impl EditorServer {
                                                 ),
                                             );
                                         }
+
+                                        self.action_log.push_front(act_label);
                                     }
-                                    Some(group.clone())
+                                    group.clone()
                                 } else {
-                                    None
+                                    panic!("action group did not exists. logic bug")
                                 };
 
                                 if is_undo {
@@ -370,30 +410,29 @@ impl EditorServer {
                                     };
                                 }
 
-                                if let Some(group) = group {
-                                    let undo_label = self.undo_label();
-                                    let redo_label = self.redo_label();
-                                    let act = if is_undo {
-                                        EditorEventServerToClient::UndoAction {
-                                            action: group,
-                                            redo_label,
-                                            undo_label,
-                                        }
-                                    } else {
-                                        EditorEventServerToClient::RedoAction {
-                                            action: group,
-                                            redo_label,
-                                            undo_label,
-                                        }
-                                    };
-                                    self.clients
-                                        .iter()
-                                        .filter(|(_, client)| !client.is_local_client)
-                                        .for_each(|(id, _)| {
-                                            self.network
-                                                .send_to(id, EditorEvent::Server(act.clone()));
-                                        });
-                                }
+                                let undo_label = self.undo_label();
+                                let redo_label = self.redo_label();
+                                let act = if is_undo {
+                                    EditorEventServerToClient::UndoAction {
+                                        action: group,
+                                        redo_label,
+                                        undo_label,
+                                    }
+                                } else {
+                                    EditorEventServerToClient::RedoAction {
+                                        action: group,
+                                        redo_label,
+                                        undo_label,
+                                    }
+                                };
+                                self.clients
+                                    .iter()
+                                    .filter(|(_, client)| !client.is_local_client)
+                                    .for_each(|(id, _)| {
+                                        self.network.send_to(id, EditorEvent::Server(act.clone()));
+                                    });
+
+                                self.action_log.truncate(4000);
                             }
                         }
                     },
