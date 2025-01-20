@@ -18,7 +18,7 @@ use network::network::types::NetworkClientCertCheckMode;
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::{do_action, undo_action},
+    action_logic::{redo_action, undo_action},
     actions::actions::{EditorAction, EditorActionGroup},
     event::{
         ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
@@ -126,90 +126,73 @@ impl EditorClient {
                 }
 
                 match event {
-                    EditorNetEvent::Editor(EditorEvent::Server(ev)) => match ev {
-                        EditorEventServerToClient::DoAction {
-                            action,
-                            redo_label,
-                            undo_label,
-                        } => {
-                            if !self.local_client {
-                                for act in action.actions {
-                                    if let Err(err) = do_action(
-                                        tp,
-                                        sound_mt,
-                                        graphics_mt,
-                                        buffer_object_handle,
-                                        backend_handle,
-                                        texture_handle,
-                                        act,
-                                        map,
-                                    ) {
-                                        self.notifications.push(EditorNotification::Error(
-                                            format!(
-                                                "There has been an critical error while \
+                    EditorNetEvent::Editor(EditorEvent::Server(ev)) => {
+                        let undo_event = matches!(ev, EditorEventServerToClient::UndoAction { .. });
+                        match ev {
+                            EditorEventServerToClient::RedoAction {
+                                action,
+                                redo_label,
+                                undo_label,
+                            }
+                            | EditorEventServerToClient::UndoAction {
+                                action,
+                                redo_label,
+                                undo_label,
+                            } => {
+                                if !self.local_client {
+                                    let actions: Box<dyn Iterator<Item = _>> = if undo_event {
+                                        Box::new(action.actions.into_iter().rev())
+                                    } else {
+                                        Box::new(action.actions.into_iter())
+                                    };
+                                    for act in actions {
+                                        let act_func =
+                                            if undo_event { undo_action } else { redo_action };
+                                        if let Err(err) = act_func(
+                                            tp,
+                                            sound_mt,
+                                            graphics_mt,
+                                            buffer_object_handle,
+                                            backend_handle,
+                                            texture_handle,
+                                            act,
+                                            map,
+                                        ) {
+                                            self.notifications.push(EditorNotification::Error(
+                                                format!(
+                                                    "There has been an critical error while \
                                                 processing an action of the server: {err}.\n\
                                                 This usually indicates a bug in the \
                                                 editor code.\nCan not continue."
-                                            ),
-                                        ));
-                                        return Err(anyhow!("critical error during do_action"));
+                                                ),
+                                            ));
+                                            return Err(anyhow!("critical error during do_action"));
+                                        }
                                     }
                                 }
+                                self.undo_label = undo_label;
+                                self.redo_label = redo_label;
                             }
-                            self.undo_label = undo_label;
-                            self.redo_label = redo_label;
-                        }
-                        EditorEventServerToClient::UndoAction {
-                            action,
-                            redo_label,
-                            undo_label,
-                        } => {
-                            if !self.local_client {
-                                for act in action.actions.into_iter().rev() {
-                                    if let Err(err) = undo_action(
-                                        tp,
-                                        sound_mt,
-                                        graphics_mt,
-                                        buffer_object_handle,
-                                        backend_handle,
-                                        texture_handle,
-                                        act,
-                                        map,
-                                    ) {
-                                        self.notifications.push(EditorNotification::Error(
-                                            format!(
-                                                "There has been an critical error while \
-                                                processing an action of the server: {err}.\n\
-                                                This usually indicates a bug in the editor code.\n\
-                                                Can not continue."
-                                            ),
-                                        ));
-                                        return Err(anyhow!("critical error during do_action"));
-                                    }
-                                }
+                            EditorEventServerToClient::Error(err) => {
+                                self.notifications.push(EditorNotification::Error(err));
                             }
-                            self.undo_label = undo_label;
-                            self.redo_label = redo_label;
+                            EditorEventServerToClient::Map(map) => {
+                                res = Some(map);
+                            }
+                            EditorEventServerToClient::Infos(infos) => {
+                                self.clients = infos;
+                            }
+                            EditorEventServerToClient::Info { server_id } => {
+                                self.server_id = server_id;
+                            }
+                            EditorEventServerToClient::Chat { from, msg } => {
+                                self.notifications
+                                    .push(EditorNotification::Info(format!("{from}: {msg}")));
+                                self.msgs.push_front((from, msg));
+                                self.msgs.truncate(30);
+                            }
                         }
-                        EditorEventServerToClient::Error(err) => {
-                            self.notifications.push(EditorNotification::Error(err));
-                        }
-                        EditorEventServerToClient::Map(map) => {
-                            res = Some(map);
-                        }
-                        EditorEventServerToClient::Infos(infos) => {
-                            self.clients = infos;
-                        }
-                        EditorEventServerToClient::Info { server_id } => {
-                            self.server_id = server_id;
-                        }
-                        EditorEventServerToClient::Chat { from, msg } => {
-                            self.notifications
-                                .push(EditorNotification::Info(format!("{from}: {msg}")));
-                            self.msgs.push_front((from, msg));
-                            self.msgs.truncate(30);
-                        }
-                    },
+                    }
 
                     EditorNetEvent::Editor(EditorEvent::Client(_)) => {
                         // ignore

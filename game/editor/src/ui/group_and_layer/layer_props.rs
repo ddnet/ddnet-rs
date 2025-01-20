@@ -339,7 +339,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 panic!("not a tile layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
-            let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_attr_cmp = layer_editor.attr;
             let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Tile Layer Attributes")
@@ -511,8 +511,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         is_background,
                         group_index: g,
                         layer_index: l,
-                        old_attr: layer.layer.attr.clone(),
-                        new_attr: layer_editor.attr.clone(),
+                        old_attr: layer.layer.attr,
+                        new_attr: layer_editor.attr,
 
                         old_tiles: layer.layer.tiles.clone(),
                         new_tiles: {
@@ -581,7 +581,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 panic!("not a quad layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
-            let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_attr_cmp = layer_editor.attr;
             let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Quad Layer Attributes")
@@ -665,8 +665,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         is_background,
                         group_index: g,
                         layer_index: l,
-                        old_attr: layer.layer.attr.clone(),
-                        new_attr: layer_editor.attr.clone(),
+                        old_attr: layer.layer.attr,
+                        new_attr: layer_editor.attr,
                     }),
                     Some(&format!("change-quad-layer-attr-{is_background}-{g}-{l}")),
                 );
@@ -711,7 +711,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 panic!("not a sound layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
-            let layer_attr_cmp = layer_editor.attr.clone();
+            let layer_attr_cmp = layer_editor.attr;
             let layer_name_cmp = layer_editor.name.clone();
 
             let window = egui::Window::new("Design Sound Layer Attributes")
@@ -795,8 +795,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         is_background,
                         group_index: g,
                         layer_index: l,
-                        old_attr: layer.layer.attr.clone(),
-                        new_attr: layer_editor.attr.clone(),
+                        old_attr: layer.layer.attr,
+                        new_attr: layer_editor.attr,
                     }),
                     Some(&format!("change-sound-layer-attr-{is_background}-{g}-{l}")),
                 );

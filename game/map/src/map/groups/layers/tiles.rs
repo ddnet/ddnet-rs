@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::NonZeroU16MinusOne;
 
-#[derive(Debug, Hiarc, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MapTileLayerAttr {
     pub width: NonZeroU16MinusOne,
     pub height: NonZeroU16MinusOne,
@@ -51,7 +51,7 @@ pub fn rotate_by_plus_90(flags: &mut TileFlags) {
     flags.toggle(ROTATION_90);
 }
 
-#[derive(Debug, Hiarc, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TileBase {
     pub index: u8,
     pub flags: TileFlags,
@@ -66,7 +66,7 @@ impl AsMut<TileBase> for TileBase {
 pub type Tile = TileBase;
 
 // ddrace
-#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TeleTile {
     pub base: TileBase,
     pub number: u8,
@@ -78,7 +78,7 @@ impl AsMut<TileBase> for TeleTile {
     }
 }
 
-#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SpeedupTile {
     pub base: TileBase,
     pub force: u8,
@@ -92,7 +92,7 @@ impl AsMut<TileBase> for SpeedupTile {
     }
 }
 
-#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SwitchTile {
     pub base: TileBase,
     pub number: u8,
@@ -105,7 +105,7 @@ impl AsMut<TileBase> for SwitchTile {
     }
 }
 
-#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Default, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TuneTile {
     pub base: TileBase,
     pub number: u8,
@@ -117,7 +117,7 @@ impl AsMut<TileBase> for TuneTile {
     }
 }
 
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MapTileLayerPhysicsTiles {
     Arbitrary(Vec<u8>),
     Game(Vec<Tile>),

@@ -318,7 +318,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         .show(ui, |ui| {
                             // render physics group attributes
                             let attr = group.user.selected.as_mut().unwrap();
-                            let attr_cmp = attr.clone();
+                            let attr_cmp = *attr;
                             // w
                             ui.label("width");
                             let mut w = attr.width.get();
@@ -374,8 +374,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 tab.client.execute(
                                     EditorAction::ChangePhysicsGroupAttr(
                                         ActChangePhysicsGroupAttr {
-                                            old_attr: group.attr.clone(),
-                                            new_attr: attr.clone(),
+                                            old_attr: group.attr,
+                                            new_attr: *attr,
 
                                             new_layer_tiles: {
                                                 let width_or_height_change = group.attr.width

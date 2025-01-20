@@ -58,7 +58,7 @@ pub fn render(
                     for (l, layer) in group.layers.iter().enumerate() {
                         if let EditorLayer::Tile(layer) = layer {
                             if layer.layer.attr.image_array >= Some(index) {
-                                let mut attr = layer.layer.attr.clone();
+                                let mut attr = layer.layer.attr;
                                 attr.image_array = if layer.layer.attr.image_array == Some(index) {
                                     None
                                 } else {
@@ -69,7 +69,7 @@ pub fn render(
                                         is_background,
                                         group_index: g,
                                         layer_index: l,
-                                        old_attr: layer.layer.attr.clone(),
+                                        old_attr: layer.layer.attr,
                                         new_attr: attr,
 
                                         old_tiles: layer.layer.tiles.clone(),

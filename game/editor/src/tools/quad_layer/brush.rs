@@ -180,7 +180,7 @@ impl QuadBrush {
                     || super::shared::in_box(&points[3], x0, y0, x1, y1)
                     || super::shared::in_box(&points[4], x0, y0, x1, y1)
                 {
-                    quads.push(quad.clone());
+                    quads.push(*quad);
                 }
             }
 
@@ -265,7 +265,7 @@ impl QuadBrush {
                             group: group_index,
                             layer: layer_index,
                             quad_index: q,
-                            quad: quad.clone(),
+                            quad: *quad,
                             point: down_point,
                             cursor_in_world_pos: None,
                         });
@@ -344,8 +344,8 @@ impl QuadBrush {
                                 is_background,
                                 group_index,
                                 layer_index,
-                                old_attr: edit_quad.clone(),
-                                new_attr: quad.clone(),
+                                old_attr: *edit_quad,
+                                new_attr: *quad,
 
                                 index,
                             })),

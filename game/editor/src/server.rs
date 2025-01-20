@@ -24,7 +24,7 @@ use network::network::{
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::{do_action, merge_actions, undo_action},
+    action_logic::{do_action, merge_actions, redo_action, undo_action},
     actions::actions::{EditorActionGroup, EditorActionInterface},
     event::{
         ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
@@ -198,30 +198,12 @@ impl EditorServer {
                             self.action_groups.truncate(cur_action_group + 1);
                         }
 
-                        if self
-                            .action_groups
-                            .last_mut()
-                            .is_some_and(|group| group.identifier == act.identifier)
-                        {
-                            let group = self.action_groups.last_mut().unwrap();
-                            group.actions.append(&mut act.actions.clone());
-
-                            if let Err(err) = merge_actions(&mut group.actions) {
-                                log::error!("{err}");
-                                notifications.add_err(err.to_string(), Duration::from_secs(10));
-                            }
-                        } else {
-                            let new_index = self.action_groups.len();
-                            self.action_groups.push(act.clone());
-                            self.cur_action_group = Some(new_index);
-                        }
-                        let mut send_act = EditorActionGroup {
+                        let mut valid_act = EditorActionGroup {
                             actions: Vec::new(),
                             identifier: act.identifier.clone(),
                         };
                         for act in act.actions {
-                            let sent_act = act.clone();
-                            if let Err(err) = do_action(
+                            match do_action(
                                 tp,
                                 sound_mt,
                                 graphics_mt,
@@ -230,22 +212,46 @@ impl EditorServer {
                                 texture_handle,
                                 act,
                                 map,
+                                true,
                             ) {
-                                self.network.send_to(
-                                    &id,
-                                    EditorEvent::Server(EditorEventServerToClient::Error(format!(
-                                        "Failed to execute your action\n\
-                                        This is usually caused if a \
-                                        previous action invalidates \
-                                        this action, e.g. by a different user.\n\
-                                        If all users are inactive, executing \
-                                        the same action again should work; \
-                                        if not it means it's a bug.\n{err}"
-                                    ))),
-                                );
-                            } else {
-                                send_act.actions.push(sent_act);
+                                Ok(act) => {
+                                    valid_act.actions.push(act);
+                                }
+                                Err(err) => {
+                                    self.network.send_to(
+                                        &id,
+                                        EditorEvent::Server(EditorEventServerToClient::Error(
+                                            format!(
+                                                "Failed to execute your action\n\
+                                            This is usually caused if a \
+                                            previous action invalidates \
+                                            this action, e.g. by a different user.\n\
+                                            If all users are inactive, executing \
+                                            the same action again should work; \
+                                            if not it means it's a bug.\n{err}"
+                                            ),
+                                        )),
+                                    );
+                                    break;
+                                }
                             }
+                        }
+                        if self
+                            .action_groups
+                            .last_mut()
+                            .is_some_and(|group| group.identifier == valid_act.identifier)
+                        {
+                            let group = self.action_groups.last_mut().unwrap();
+                            group.actions.append(&mut valid_act.actions.clone());
+
+                            if let Err(err) = merge_actions(&mut group.actions) {
+                                log::error!("{err}");
+                                notifications.add_err(err.to_string(), Duration::from_secs(10));
+                            }
+                        } else {
+                            let new_index = self.action_groups.len();
+                            self.action_groups.push(valid_act.clone());
+                            self.cur_action_group = Some(new_index);
                         }
 
                         // Make sure memory doesn't exhaust
@@ -261,8 +267,8 @@ impl EditorServer {
                             .for_each(|(id, _)| {
                                 self.network.send_to(
                                     id,
-                                    EditorEvent::Server(EditorEventServerToClient::DoAction {
-                                        action: send_act.clone(),
+                                    EditorEvent::Server(EditorEventServerToClient::RedoAction {
+                                        action: valid_act.clone(),
                                         undo_label: self.undo_label(),
                                         redo_label: self.redo_label(),
                                     }),
@@ -302,7 +308,7 @@ impl EditorServer {
                                     };
                                     for act in it {
                                         let action_fn =
-                                            if is_undo { undo_action } else { do_action };
+                                            if is_undo { undo_action } else { redo_action };
                                         if let Err(err) = action_fn(
                                             tp,
                                             sound_mt,
@@ -354,7 +360,7 @@ impl EditorServer {
                                             undo_label,
                                         }
                                     } else {
-                                        EditorEventServerToClient::DoAction {
+                                        EditorEventServerToClient::RedoAction {
                                             action: group,
                                             redo_label,
                                             undo_label,

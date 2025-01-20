@@ -409,7 +409,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         let window_res = match attr_mode {
             SoundAttrMode::Single => {
                 let (index, sound) = selected_sounds.pop_first().unwrap();
-                let sound_cmp = sound.clone();
+                let sound_cmp = *sound;
 
                 let window = egui::Window::new("Design Sound Attributes")
                     .resizable(false)
@@ -438,8 +438,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             is_background,
                             group_index,
                             layer_index,
-                            old_attr: layer_sound.clone(),
-                            new_attr: sound.clone(),
+                            old_attr: *layer_sound,
+                            new_attr: *sound,
 
                             index,
                         }),
@@ -456,9 +456,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     .iter_mut()
                     .peekable()
                     .next()
-                    .map(|(i, q)| (*i, q.clone()))
+                    .map(|(i, q)| (*i, **q))
                     .unwrap();
-                let sound_cmp = sound.clone();
+                let sound_cmp = sound;
 
                 let mut selected_sounds: Vec<_> = selected_sounds.into_iter().collect();
                 let can_change_pos_anim = selected_sounds
@@ -528,8 +528,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     is_background,
                                     group_index,
                                     layer_index,
-                                    old_attr: layer_sound.clone(),
-                                    new_attr: sound.clone(),
+                                    old_attr: *layer_sound,
+                                    new_attr: **sound,
 
                                     index,
                                 }),

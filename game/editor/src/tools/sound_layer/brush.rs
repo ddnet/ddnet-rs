@@ -152,7 +152,7 @@ impl SoundBrush {
 
             for sound in &layer.layer.sounds {
                 if super::super::quad_layer::shared::in_box(&sound.pos, x0, y0, x1, y1) {
-                    sounds.push(sound.clone());
+                    sounds.push(*sound);
                 }
             }
 
@@ -213,7 +213,7 @@ impl SoundBrush {
                             group: group_index,
                             layer: layer_index,
                             sound_index: s,
-                            sound: sound.clone(),
+                            sound: *sound,
                             point: down_point,
                             cursor_in_world_pos: None,
                         });
@@ -260,8 +260,8 @@ impl SoundBrush {
                                 is_background,
                                 group_index,
                                 layer_index,
-                                old_attr: edit_sound.clone(),
-                                new_attr: sound.clone(),
+                                old_attr: *edit_sound,
+                                new_attr: *sound,
 
                                 index: last_active.sound_index,
                             }),

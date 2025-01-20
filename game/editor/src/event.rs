@@ -72,7 +72,7 @@ pub enum EditorEventClientToServer {
 /// editor events are a collection of either actions or commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EditorEventServerToClient {
-    DoAction {
+    RedoAction {
         action: EditorActionGroup,
         redo_label: Option<String>,
         undo_label: Option<String>,

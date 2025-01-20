@@ -3226,6 +3226,7 @@ dependencies = [
  "game-interface",
  "graphics",
  "graphics-types",
+ "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
  "image-utils",
  "log",

@@ -2157,11 +2157,7 @@ impl Editor {
             let range = range.indices_checked(layer);
 
             if !range.is_empty() {
-                let (_, quad) = range
-                    .iter()
-                    .next()
-                    .map(|(i, q)| (*i, (*q).clone()))
-                    .unwrap();
+                let (_, quad) = range.iter().next().map(|(i, q)| (*i, *(*q))).unwrap();
 
                 if let Some(pos_anim) = quad.pos_anim {
                     enum ReplOrInsert {
