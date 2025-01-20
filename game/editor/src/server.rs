@@ -236,11 +236,15 @@ impl EditorServer {
                                 }
                             }
                         }
-                        if self
-                            .action_groups
-                            .last_mut()
-                            .is_some_and(|group| group.identifier == valid_act.identifier)
-                        {
+                        if self.action_groups.last_mut().is_some_and(|group| {
+                            group
+                                .identifier
+                                .as_ref()
+                                // explicitly check for some here
+                                .is_some_and(|identifier| {
+                                    Some(identifier) == valid_act.identifier.as_ref()
+                                })
+                        }) {
                             let group = self.action_groups.last_mut().unwrap();
                             group.actions.append(&mut valid_act.actions.clone());
 

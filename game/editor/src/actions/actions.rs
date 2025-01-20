@@ -174,14 +174,21 @@ impl EditorActionInterface for ActMoveLayer {
 
     fn redo_info(&self) -> String {
         format!(
-            "Move layer #{} of group #{} in {}",
+            "Move layer #{} of group #{} in {} to #{} of group #{} in {}",
             self.old_layer,
             self.old_group,
             if self.old_is_background {
                 "background"
             } else {
                 "foreground"
-            }
+            },
+            self.new_layer,
+            self.new_group,
+            if self.new_is_background {
+                "background"
+            } else {
+                "foreground"
+            },
         )
     }
 }
