@@ -21,12 +21,14 @@ use crate::{
     action_logic::{redo_action, undo_action},
     actions::actions::{EditorAction, EditorActionGroup},
     event::{
-        ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
-        EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+        AdminChangeConfig, AdminConfigState, ClientProps, EditorCommand, EditorEvent,
+        EditorEventClientToServer, EditorEventGenerator, EditorEventOverwriteMap,
+        EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
     network::{EditorNetwork, NetworkState},
     notifications::{EditorNotification, EditorNotifications},
+    tab::{EditorAdminPanel, EditorAdminPanelState},
 };
 
 /// the editor client handles events from the server if needed
@@ -41,6 +43,7 @@ pub struct EditorClient {
 
     pub(crate) clients: Vec<ClientProps>,
     pub(crate) server_id: u64,
+    pub(crate) allows_remote_admin: bool,
 
     pub(crate) msgs: VecDeque<(String, String)>,
 
@@ -79,6 +82,7 @@ impl EditorClient {
 
             clients: Default::default(),
             server_id: Default::default(),
+            allows_remote_admin: false,
             msgs: Default::default(),
 
             undo_label: None,
@@ -112,6 +116,7 @@ impl EditorClient {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        admin_panel: &mut EditorAdminPanel,
     ) -> anyhow::Result<Option<EditorEventOverwriteMap>> {
         let mut res = None;
 
@@ -182,14 +187,37 @@ impl EditorClient {
                             EditorEventServerToClient::Infos(infos) => {
                                 self.clients = infos;
                             }
-                            EditorEventServerToClient::Info { server_id } => {
+                            EditorEventServerToClient::Info {
+                                server_id,
+                                allows_remote_admin,
+                            } => {
                                 self.server_id = server_id;
+                                self.allows_remote_admin = allows_remote_admin;
                             }
                             EditorEventServerToClient::Chat { from, msg } => {
                                 self.notifications
                                     .push(EditorNotification::Info(format!("{from}: {msg}")));
                                 self.msgs.push_front((from, msg));
                                 self.msgs.truncate(30);
+                            }
+                            EditorEventServerToClient::AdminAuthed => {
+                                admin_panel.state = match admin_panel.state.clone() {
+                                    EditorAdminPanelState::NonAuthed(state) => {
+                                        EditorAdminPanelState::Authed(AdminChangeConfig {
+                                            password: state.password,
+                                            state: AdminConfigState { auto_save: None },
+                                        })
+                                    }
+                                    EditorAdminPanelState::Authed(state) => {
+                                        EditorAdminPanelState::Authed(state)
+                                    }
+                                }
+                            }
+                            EditorEventServerToClient::AdminState { cur_state } => {
+                                if let EditorAdminPanelState::Authed(state) = &mut admin_panel.state
+                                {
+                                    state.state = cur_state;
+                                }
                             }
                         }
                     }
@@ -271,5 +299,18 @@ impl EditorClient {
     pub fn send_chat(&self, msg: String) {
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Chat { msg }));
+    }
+
+    pub fn admin_auth(&self, password: String) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::AdminAuth {
+                password,
+            }));
+    }
+
+    pub fn admin_change_cfg(&self, state: AdminChangeConfig) {
+        self.network.send(EditorEvent::Client(
+            EditorEventClientToServer::AdminChangeConfig(state),
+        ));
     }
 }

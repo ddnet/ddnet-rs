@@ -1,13 +1,14 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Button, DragValue};
+use egui::{Align2, Button, DragValue, Grid, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::UiRenderPipe;
 
 use crate::{
     explain::TEXT_ANIM_PANEL_AND_PROPS,
+    tab::EditorAdminPanelState,
     ui::user_data::{
         EditorMenuDialogJoinProps, EditorMenuDialogMode, EditorMenuHostDialogMode,
         EditorMenuHostNetworkOptions, EditorUiEvent, EditorUiEventHostMap, UserData,
@@ -138,6 +139,67 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                     !tab.map.user.options.show_tile_numbers;
                             }
                         });
+
+                        if tab.client.allows_remote_admin
+                            && ui
+                                .add(Button::new("Server").selected(tab.admin_panel.open))
+                                .clicked()
+                        {
+                            tab.admin_panel.open = !tab.admin_panel.open;
+                        }
+
+                        if tab.admin_panel.open {
+                            Window::new("Admin panel")
+                                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
+                                .show(ui.ctx(), |ui| {
+                                    Grid::new("admin-panel-overview").num_columns(2).show(
+                                        ui,
+                                        |ui| match &mut tab.admin_panel.state {
+                                            EditorAdminPanelState::NonAuthed(state) => {
+                                                ui.label("Admin password:");
+                                                ui.text_edit_singleline(&mut state.password);
+                                                ui.end_row();
+
+                                                if ui.button("Auth").clicked() {
+                                                    pipe.user_data.ui_events.push(
+                                                        EditorUiEvent::AdminAuth {
+                                                            password: state.password.clone(),
+                                                        },
+                                                    );
+                                                }
+                                                ui.end_row();
+                                            }
+                                            EditorAdminPanelState::Authed(state) => {
+                                                ui.label("Do auto saves.");
+                                                let mut do_autosaves =
+                                                    state.state.auto_save.is_some();
+                                                ui.checkbox(&mut do_autosaves, "");
+                                                ui.end_row();
+                                                if !do_autosaves {
+                                                    state.state.auto_save = None;
+                                                }
+                                                if let Some(auto_save) = &mut state.state.auto_save
+                                                {
+                                                    ui.label("Save interval:");
+                                                    let mut secs = auto_save.as_secs();
+                                                    ui.add(DragValue::new(&mut secs));
+                                                    ui.end_row();
+                                                    *auto_save = Duration::from_secs(secs);
+                                                }
+
+                                                if ui.button("Apply").clicked() {
+                                                    pipe.user_data.ui_events.push(
+                                                        EditorUiEvent::AdminChangeConfig {
+                                                            state: state.clone(),
+                                                        },
+                                                    );
+                                                }
+                                                ui.end_row();
+                                            }
+                                        },
+                                    );
+                                });
+                        }
                     }
                 });
 

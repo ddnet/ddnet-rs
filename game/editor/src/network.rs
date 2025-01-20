@@ -53,7 +53,7 @@ impl EditorNetwork {
         event_generator: Arc<EditorEventGenerator>,
         cert: Option<NetworkServerCertMode>,
         port: Option<u16>,
-    ) -> (Self, NetworkServerCertModeResult, u16) {
+    ) -> anyhow::Result<(Self, NetworkServerCertModeResult, u16)> {
         let (network, server_cert, addr, _) = QuinnNetwork::init_server(
             &format!("0.0.0.0:{}", port.unwrap_or_default()),
             event_generator.clone(),
@@ -78,10 +78,9 @@ impl EditorNetwork {
                 )]),
                 ..Default::default()
             },
-        )
-        .unwrap();
+        )?;
         let port = addr.port();
-        (
+        Ok((
             Self {
                 network,
                 state: NetworkState::Server,
@@ -89,7 +88,7 @@ impl EditorNetwork {
             },
             server_cert,
             port,
-        )
+        ))
     }
 
     pub fn new_client(

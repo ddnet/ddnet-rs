@@ -143,6 +143,8 @@ struct MapLoadWithServerOptions {
     password: Option<String>,
     mapper_name: Option<String>,
     color: Option<[u8; 3]>,
+    /// If `Some` allows to change server settings remotely.
+    admin_password: Option<String>,
 }
 
 #[derive(Debug)]
@@ -165,6 +167,7 @@ impl Default for MapLoadOptions {
             password: None,
             mapper_name: None,
             color: None,
+            admin_password: None,
         })
     }
 }
@@ -370,55 +373,71 @@ impl Editor {
     }
 
     fn new_map(&mut self, name: &str, options: MapLoadOptions) {
-        let (server_addr, server_cert, password, local_client, server, mapper_name, color) =
-            match options {
-                MapLoadOptions::WithServer(MapLoadWithServerOptions {
-                    cert,
-                    port,
-                    password,
-                    mapper_name,
-                    color,
-                }) => {
-                    let server =
-                        EditorServer::new(&self.sys, cert, port, password.unwrap_or_default());
-                    (
-                        format!("127.0.0.1:{}", server.port,),
-                        match &server.cert {
-                            NetworkServerCertModeResult::Cert { cert } => {
-                                NetworkClientCertCheckMode::CheckByCert {
-                                    cert: cert.to_der().unwrap().into(),
-                                }
+        let res = match options {
+            MapLoadOptions::WithServer(MapLoadWithServerOptions {
+                cert,
+                port,
+                password,
+                mapper_name,
+                color,
+                admin_password,
+            }) => EditorServer::new(
+                &self.sys,
+                cert,
+                port,
+                password.unwrap_or_default(),
+                admin_password,
+            )
+            .map(|server| {
+                (
+                    format!("127.0.0.1:{}", server.port,),
+                    match &server.cert {
+                        NetworkServerCertModeResult::Cert { cert } => {
+                            NetworkClientCertCheckMode::CheckByCert {
+                                cert: cert.to_der().unwrap().into(),
                             }
-                            NetworkServerCertModeResult::PubKeyHash { hash } => {
-                                NetworkClientCertCheckMode::CheckByPubKeyHash {
-                                    hash: Cow::Owned(*hash),
-                                }
+                        }
+                        NetworkServerCertModeResult::PubKeyHash { hash } => {
+                            NetworkClientCertCheckMode::CheckByPubKeyHash {
+                                hash: Cow::Owned(*hash),
                             }
-                        },
-                        server.password.clone(),
-                        true,
-                        Some(server),
-                        mapper_name,
-                        color,
-                    )
-                }
-                MapLoadOptions::WithoutServer {
-                    server_addr,
-                    cert_hash,
-                    password,
-                    mapper_name,
-                    color,
-                } => (
-                    server_addr,
-                    NetworkClientCertCheckMode::CheckByPubKeyHash {
-                        hash: Cow::Owned(cert_hash),
+                        }
                     },
-                    password,
-                    false,
-                    None,
-                    Some(mapper_name),
-                    Some(color),
-                ),
+                    server.password.clone(),
+                    true,
+                    Some(server),
+                    mapper_name,
+                    color,
+                )
+            }),
+            MapLoadOptions::WithoutServer {
+                server_addr,
+                cert_hash,
+                password,
+                mapper_name,
+                color,
+            } => anyhow::Ok((
+                server_addr,
+                NetworkClientCertCheckMode::CheckByPubKeyHash {
+                    hash: Cow::Owned(cert_hash),
+                },
+                password,
+                false,
+                None,
+                Some(mapper_name),
+                Some(color),
+            )),
+        };
+        let (server_addr, server_cert, password, local_client, server, mapper_name, color) =
+            match res {
+                Ok(res) => res,
+                Err(err) => {
+                    self.notifications_overlay.add_err(
+                        format!("Failed to start server: {err}"),
+                        Duration::from_secs(10),
+                    );
+                    return;
+                }
             };
         let client = EditorClient::new(
             &self.sys,
@@ -533,6 +552,7 @@ impl Editor {
                     last_time: Some(self.sys.time_get()),
                 },
                 last_info_update: None,
+                admin_panel: Default::default(),
             },
         );
         self.active_tab = name.into();
@@ -1003,17 +1023,21 @@ impl Editor {
         )
     }
 
+    fn path_to_tab_name(path: &Path) -> anyhow::Result<String> {
+        Ok(path
+            .file_stem()
+            .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
+            .to_string_lossy()
+            .to_string())
+    }
+
     #[cfg(feature = "legacy")]
     fn load_legacy_map(
         &mut self,
         path: &Path,
         options: MapLoadWithServerOptions,
     ) -> anyhow::Result<()> {
-        let name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
-            .to_string_lossy()
-            .to_string();
+        let name = Self::path_to_tab_name(path)?;
 
         let tp = self.thread_pool.clone();
         let fs = self.io.fs.clone();
@@ -1054,7 +1078,8 @@ impl Editor {
             options.cert,
             options.port,
             options.password.clone().unwrap_or_default(),
-        );
+            options.admin_password,
+        )?;
         let client = EditorClient::new(
             &self.sys,
             &format!("127.0.0.1:{}", server.port),
@@ -1095,6 +1120,7 @@ impl Editor {
                     last_time: Some(self.sys.time_get()),
                 },
                 last_info_update: None,
+                admin_panel: Default::default(),
             },
         );
         self.active_tab = name;
@@ -1130,11 +1156,7 @@ impl Editor {
         path: &Path,
         options: MapLoadWithServerOptions,
     ) -> anyhow::Result<()> {
-        let name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
-            .to_string_lossy()
-            .to_string();
+        let name = Self::path_to_tab_name(path)?;
 
         let fs = self.io.fs.clone();
         let tp = self.thread_pool.clone();
@@ -1206,7 +1228,8 @@ impl Editor {
             options.cert,
             options.port,
             options.password.clone().unwrap_or_default(),
-        );
+            options.admin_password,
+        )?;
         let client = EditorClient::new(
             &self.sys,
             &format!("127.0.0.1:{}", server.port),
@@ -1247,6 +1270,7 @@ impl Editor {
                     last_time: Some(self.sys.time_get()),
                 },
                 last_info_update: None,
+                admin_panel: Default::default(),
             },
         );
         self.active_tab = name;
@@ -1507,6 +1531,7 @@ impl Editor {
                 &self.backend_handle,
                 &self.texture_handle,
                 &mut tab.map,
+                &mut tab.admin_panel,
             );
             if update_res.is_err() {
                 removed_tabs.push(tab_name.clone());
@@ -1534,6 +1559,7 @@ impl Editor {
                     &self.backend_handle,
                     &self.texture_handle,
                     &mut tab.map,
+                    &mut tab.auto_saver,
                     &mut self.notifications_overlay,
                 );
             }
@@ -2359,6 +2385,7 @@ impl Editor {
                             password: Some(password),
                             mapper_name: Some(mapper_name),
                             color: Some(color),
+                            admin_password: None,
                         },
                     );
                 }
@@ -2416,6 +2443,16 @@ impl Editor {
                         tab.client.send_chat(msg);
                     }
                 }
+                EditorUiEvent::AdminAuth { password } => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.admin_auth(password);
+                    }
+                }
+                EditorUiEvent::AdminChangeConfig { state } => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.admin_change_cfg(state);
+                    }
+                }
             }
         }
         (
@@ -2427,7 +2464,13 @@ impl Editor {
         )
     }
 
-    pub fn host_map(&mut self, path: &Path, port: u16, password: String) -> anyhow::Result<Hash> {
+    pub fn host_map(
+        &mut self,
+        path: &Path,
+        port: u16,
+        password: String,
+        admin_password: String,
+    ) -> anyhow::Result<Hash> {
         let (cert, key) = create_certifified_keys();
         let hash = cert
             .tbs_certificate
@@ -2446,8 +2489,17 @@ impl Editor {
                 password: Some(password),
                 mapper_name: Some("server".to_string()),
                 color: None,
+                admin_password: Some(admin_password),
             },
         );
+
+        if let Some(tab) = Self::path_to_tab_name(path)
+            .ok()
+            .and_then(|tab| self.tabs.get_mut(&tab))
+        {
+            tab.auto_saver.active = true;
+            tab.auto_saver.interval = Some(Duration::from_secs(60 * 5));
+        }
 
         Ok(hash)
     }

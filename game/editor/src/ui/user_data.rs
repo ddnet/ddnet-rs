@@ -18,7 +18,7 @@ use math::math::vector::vec2;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    tab::EditorTab,
+    tab::{EditorAdminPanelStateAuthed, EditorTab},
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     utils::UiCanvasSize,
 };
@@ -62,6 +62,12 @@ pub enum EditorUiEvent {
     },
     Chat {
         msg: String,
+    },
+    AdminAuth {
+        password: String,
+    },
+    AdminChangeConfig {
+        state: EditorAdminPanelStateAuthed,
     },
 }
 

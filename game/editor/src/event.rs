@@ -51,6 +51,17 @@ pub struct ClientProps {
     pub stats: Option<ConnectionStats>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdminConfigState {
+    pub auto_save: Option<Duration>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdminChangeConfig {
+    pub password: String,
+    pub state: AdminConfigState,
+}
+
 /// editor events are a collection of either actions or commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EditorEventClientToServer {
@@ -67,6 +78,10 @@ pub enum EditorEventClientToServer {
     Chat {
         msg: String,
     },
+    AdminAuth {
+        password: String,
+    },
+    AdminChangeConfig(AdminChangeConfig),
 }
 
 /// editor events are a collection of either actions or commands
@@ -87,10 +102,16 @@ pub enum EditorEventServerToClient {
     Infos(Vec<ClientProps>),
     Info {
         server_id: u64,
+        /// Allows remotely controlled administration (e.g. changing config)
+        allows_remote_admin: bool,
     },
     Chat {
         from: String,
         msg: String,
+    },
+    AdminAuthed,
+    AdminState {
+        cur_state: AdminConfigState,
     },
 }
 

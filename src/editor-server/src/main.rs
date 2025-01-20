@@ -111,6 +111,8 @@ struct Args {
     file: String,
     /// Password to join the server.
     password: String,
+    /// Password to modify some server config.
+    admin_password: String,
     /// Port of the server
     port: u16,
 }
@@ -127,7 +129,12 @@ fn main() {
     let mut editor = Editor::new(&sound, &graphics, &io, &tp, &Default::default());
 
     let hash = editor
-        .host_map(args.file.as_ref(), args.port, args.password)
+        .host_map(
+            args.file.as_ref(),
+            args.port,
+            args.password,
+            args.admin_password,
+        )
         .unwrap();
 
     log::info!("Cert hash: {}", base::hash::fmt_hash(&hash));

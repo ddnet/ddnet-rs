@@ -27,16 +27,18 @@ use crate::{
     action_logic::{do_action, merge_actions, redo_action, undo_action},
     actions::actions::{EditorActionGroup, EditorActionInterface},
     event::{
-        ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer, EditorEventGenerator,
-        EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+        AdminConfigState, ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer,
+        EditorEventGenerator, EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
     },
     map::EditorMap,
     network::EditorNetwork,
+    tools::auto_saver::AutoSaver,
 };
 
 #[derive(Debug, Default)]
 struct Client {
     is_authed: bool,
+    is_admin: bool,
     is_local_client: bool,
     props: ClientProps,
 }
@@ -60,6 +62,8 @@ pub struct EditorServer {
 
     pub password: String,
 
+    admin_password: Option<String>,
+
     clients: HashMap<NetworkConnectionId, Client>,
 
     client_ids: u64,
@@ -71,13 +75,14 @@ impl EditorServer {
         cert_mode: Option<NetworkServerCertMode>,
         port: Option<u16>,
         password: String,
-    ) -> Self {
+        admin_password: Option<String>,
+    ) -> anyhow::Result<Self> {
         let has_events: Arc<AtomicBool> = Default::default();
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
 
         let (network, cert, port) =
-            EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port);
-        Self {
+            EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port)?;
+        Ok(Self {
             action_groups: Default::default(),
             cur_action_group: None,
 
@@ -89,8 +94,10 @@ impl EditorServer {
             password,
             clients: Default::default(),
 
+            admin_password,
+
             client_ids: 0,
-        }
+        })
     }
 
     fn broadcast_client_infos(&self) {
@@ -111,6 +118,7 @@ impl EditorServer {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        auto_saver: &mut AutoSaver,
         notifications: &mut ClientNotifications,
     ) {
         // check if client exist and is authed
@@ -187,9 +195,17 @@ impl EditorServer {
                         &id,
                         EditorEvent::Server(EditorEventServerToClient::Info {
                             server_id: client.props.server_id,
+                            allows_remote_admin: self.admin_password.is_some(),
                         }),
                     );
                     self.broadcast_client_infos();
+                } else {
+                    self.network.send_to(
+                        &id,
+                        EditorEvent::Server(EditorEventServerToClient::Error(
+                            "wrong password".to_string(),
+                        )),
+                    );
                 }
             } else if client.is_authed {
                 match ev {
@@ -399,6 +415,40 @@ impl EditorServer {
                                 msg,
                             }));
                     }
+                    EditorEventClientToServer::AdminAuth { password } => {
+                        if self.admin_password == Some(password) {
+                            self.network
+                                .send(EditorEvent::Server(EditorEventServerToClient::AdminAuthed));
+                            client.is_admin = true;
+                            for (id, _) in self.clients.iter().filter(|(_, c)| c.is_admin) {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::AdminState {
+                                        cur_state: AdminConfigState {
+                                            auto_save: auto_saver
+                                                .active
+                                                .then_some(auto_saver.interval)
+                                                .flatten(),
+                                        },
+                                    }),
+                                );
+                            }
+                        }
+                    }
+                    EditorEventClientToServer::AdminChangeConfig(state) => {
+                        if self.admin_password == Some(state.password) {
+                            auto_saver.active = state.state.auto_save.is_some();
+                            auto_saver.interval = state.state.auto_save;
+                            for (id, _) in self.clients.iter().filter(|(_, c)| c.is_admin) {
+                                self.network.send_to(
+                                    id,
+                                    EditorEvent::Server(EditorEventServerToClient::AdminState {
+                                        cur_state: state.state.clone(),
+                                    }),
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -413,6 +463,7 @@ impl EditorServer {
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
         map: &mut EditorMap,
+        auto_saver: &mut AutoSaver,
         notifications: &mut ClientNotifications,
     ) {
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
@@ -431,6 +482,7 @@ impl EditorServer {
                             backend_handle,
                             texture_handle,
                             map,
+                            auto_saver,
                             notifications,
                         );
                     }
