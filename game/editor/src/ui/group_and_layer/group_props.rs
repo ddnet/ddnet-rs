@@ -1,4 +1,6 @@
-use egui::DragValue;
+use std::ops::RangeInclusive;
+
+use egui::{Checkbox, DragValue};
 use map::{map::groups::layers::tiles::MapTileLayerPhysicsTiles, types::NonZeroU16MinusOne};
 use math::math::vector::{ffixed, uffixed};
 use ui_base::{
@@ -11,7 +13,7 @@ use crate::{
         ActAddRemGroup, ActChangeGroupAttr, ActChangeGroupName, ActChangePhysicsGroupAttr,
         ActMoveGroup, ActRemGroup, EditorAction,
     },
-    map::{EditorMap, EditorMapInterface, EditorPhysicsLayer},
+    map::{EditorGroups, EditorMap, EditorMapInterface, EditorPhysicsLayer},
     ui::{group_and_layer::shared::copy_tiles, user_data::UserDataWithTab},
 };
 
@@ -21,19 +23,35 @@ enum MoveGroup {
     Group(usize),
 }
 
-fn render_group_move(ui: &mut egui::Ui, is_background: bool, g: usize) -> Option<MoveGroup> {
+fn render_group_move(
+    ui: &mut egui::Ui,
+    is_background: bool,
+    g: usize,
+
+    can_bg: bool,
+    g_range: RangeInclusive<usize>,
+) -> Option<MoveGroup> {
     let mut move_group = None;
 
     let mut new_is_background = is_background;
     ui.label("In background");
-    if ui.checkbox(&mut new_is_background, "").changed() {
+    if ui
+        .add_enabled(can_bg, Checkbox::new(&mut new_is_background, ""))
+        .changed()
+    {
         move_group = Some(MoveGroup::IsBackground(new_is_background));
     }
     ui.end_row();
 
     ui.label("Group");
     let mut new_group = g;
-    if ui.add(DragValue::new(&mut new_group)).changed() {
+    if ui
+        .add_enabled(
+            *g_range.start() != *g_range.end(),
+            DragValue::new(&mut new_group),
+        )
+        .changed()
+    {
         move_group = Some(MoveGroup::Group(new_group));
     }
     ui.end_row();
@@ -146,26 +164,52 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             attr_mode = GroupAttrMode::DesignAndPhysicsMulti;
         }
     }
+    fn move_limits(groups: &EditorGroups, is_background: bool) -> (bool, RangeInclusive<usize>) {
+        (
+            {
+                let groups = if !is_background {
+                    &groups.background
+                } else {
+                    &groups.foreground
+                };
+                !groups.is_empty()
+            },
+            {
+                let groups = if is_background {
+                    &groups.background
+                } else {
+                    &groups.foreground
+                };
+                0..=groups.len().saturating_sub(1)
+            },
+        )
+    }
 
     let mut bg_selection = map
         .groups
         .background
-        .iter_mut()
+        .iter()
         .enumerate()
         .filter(|(_, bg)| bg.user.selected.is_some())
-        .map(|(g, bg)| (true, g, bg));
+        .map(|(g, _)| (true, g));
     let mut fg_selection = map
         .groups
         .foreground
-        .iter_mut()
+        .iter()
         .enumerate()
         .filter(|(_, fg)| fg.user.selected.is_some())
-        .map(|(g, bg)| (false, g, bg));
+        .map(|(g, _)| (false, g));
     let window_res = match attr_mode {
         GroupAttrMode::Design => {
-            let (is_background, g, group) = bg_selection
+            let (is_background, g) = bg_selection
                 .next()
                 .unwrap_or_else(|| fg_selection.next().unwrap());
+            let (bg_move_limit, g_limit) = move_limits(&map.groups, is_background);
+            let group = if is_background {
+                &mut map.groups.background[g]
+            } else {
+                &mut map.groups.foreground[g]
+            };
 
             let window = egui::Window::new("Design Group Attributes")
                 .resizable(false)
@@ -261,7 +305,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.end_row();
 
                         // group moving
-                        move_group = render_group_move(ui, is_background, g);
+                        move_group =
+                            render_group_move(ui, is_background, g, bg_move_limit, g_limit);
                     });
             });
 
