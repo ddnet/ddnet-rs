@@ -1,7 +1,7 @@
 use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Align2, Button, DragValue, Grid, Window};
+use egui::{Align2, Button, DragValue, Grid, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::UiRenderPipe;
@@ -157,7 +157,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                         |ui| match &mut tab.admin_panel.state {
                                             EditorAdminPanelState::NonAuthed(state) => {
                                                 ui.label("Admin password:");
-                                                ui.text_edit_singleline(&mut state.password);
+                                                ui.add(
+                                                    TextEdit::singleline(&mut state.password)
+                                                        .password(true),
+                                                );
                                                 ui.end_row();
 
                                                 if ui.button("Auth").clicked() {
@@ -282,7 +285,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label(fmt_hash(&hash));
 
                         ui.label("Password:");
-                        ui.text_edit_singleline(password);
+                        ui.add(TextEdit::singleline(password).password(true));
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
@@ -370,7 +373,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         ui.label("Certificate hash:");
                         ui.text_edit_singleline(cert_hash);
                         ui.label("Password:");
-                        ui.text_edit_singleline(password);
+                        ui.add(TextEdit::singleline(password).password(true));
                         ui.label("Name:");
                         ui.text_edit_singleline(mapper_name);
                         ui.label("Color:");
