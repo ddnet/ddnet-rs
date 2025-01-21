@@ -59,6 +59,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     let prev_switch = map.groups.physics.user.active_switch;
                     let response = ui.add(
                         DragValue::new(&mut map.groups.physics.user.active_switch)
+                            .update_while_editing(false)
                             .prefix("Switch: "),
                     );
                     let context_menu_open = response.context_menu_opened();

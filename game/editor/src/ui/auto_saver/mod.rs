@@ -31,7 +31,7 @@ pub fn render(
                 let mut use_interval = auto_saver.interval.is_some();
                 ui.label("Use interval");
                 ui.checkbox(&mut use_interval, "");
-
+                ui.end_row();
                 if auto_saver.interval.is_some() != use_interval {
                     auto_saver.interval = match auto_saver.interval {
                         Some(_) => None,
@@ -42,8 +42,9 @@ pub fn render(
                 if let Some(interval) = &mut auto_saver.interval {
                     ui.label("Interval in seconds:");
                     let mut interval_secs = interval.as_secs();
-                    ui.add(DragValue::new(&mut interval_secs));
+                    ui.add(DragValue::new(&mut interval_secs).update_while_editing(false));
                     *interval = Duration::from_secs(interval_secs);
+                    ui.end_row();
                 }
             });
 

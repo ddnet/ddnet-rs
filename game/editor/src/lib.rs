@@ -4,6 +4,7 @@
 pub mod action_logic;
 pub mod actions;
 pub mod client;
+pub mod dbg;
 pub mod editor;
 pub mod editor_ui;
 pub mod event;

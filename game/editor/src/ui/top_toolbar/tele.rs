@@ -58,7 +58,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     ui.add_space(5.0);
                     let prev_tele = map.groups.physics.user.active_tele;
                     let response = ui.add(
-                        DragValue::new(&mut map.groups.physics.user.active_tele).prefix("Tele: "),
+                        DragValue::new(&mut map.groups.physics.user.active_tele)
+                            .update_while_editing(false)
+                            .prefix("Tele: "),
                     );
                     let context_menu_open = response.context_menu_opened();
 

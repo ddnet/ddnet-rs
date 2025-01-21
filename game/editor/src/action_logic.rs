@@ -85,57 +85,39 @@ fn merge_quad_rem_base(
     act1: ActQuadLayerAddRemQuads,
     act2: ActQuadLayerAddRemQuads,
 ) -> anyhow::Result<(ActQuadLayerAddRemQuads, Option<ActQuadLayerAddRemQuads>)> {
-    merge_quad_add_base(act2, act1)
+    merge_quad_add_base(act2, act1).map(|(act1, act2)| {
+        // if failed, restore order
+        match act2 {
+            Some(act2) => (act2, Some(act1)),
+            None => (act1, None),
+        }
+    })
 }
 
-fn merge_sound_addrem_base(
+fn merge_sound_add_base(
     mut act1: ActSoundLayerAddRemSounds,
     act2: ActSoundLayerAddRemSounds,
 ) -> anyhow::Result<(ActSoundLayerAddRemSounds, Option<ActSoundLayerAddRemSounds>)> {
-    // if both actions modify the same sound range they can be merged
-    let (min_index, mut min_index_sounds, max_index, max_index_sounds) = if act1.index < act2.index
-    {
-        (act1.index, act1.sounds, act2.index, act2.sounds)
-    } else {
-        (act2.index, act2.sounds, act1.index, act1.sounds)
-    };
-    if min_index + min_index_sounds.len() >= max_index {
-        act1.index = min_index;
-        act1.sounds = {
-            if act1.index == min_index {
-                min_index_sounds.splice((max_index - min_index).., max_index_sounds);
-                min_index_sounds
-            } else {
-                min_index_sounds.extend(max_index_sounds.into_iter().skip(max_index - min_index));
-                min_index_sounds
-            }
-        };
+    if act1.index <= act2.index && act1.index + act1.sounds.len() >= act2.index {
+        let index = act2.index - act1.index;
+        act1.sounds.splice(index..index, act2.sounds);
         Ok((act1, None))
     } else {
-        let is_background = act1.is_background;
-        let group_index = act1.group_index;
-        let layer_index = act1.layer_index;
-        let (mut act1, mut act2) = (
-            ActSoundLayerAddRemSounds {
-                is_background,
-                group_index,
-                layer_index,
-                index: min_index,
-                sounds: min_index_sounds,
-            },
-            ActSoundLayerAddRemSounds {
-                is_background,
-                group_index,
-                layer_index,
-                index: max_index,
-                sounds: max_index_sounds,
-            },
-        );
-        if act1.index != min_index {
-            std::mem::swap(&mut act1, &mut act2);
-        }
         Ok((act1, Some(act2)))
     }
+}
+
+fn merge_sound_rem_base(
+    act1: ActSoundLayerAddRemSounds,
+    act2: ActSoundLayerAddRemSounds,
+) -> anyhow::Result<(ActSoundLayerAddRemSounds, Option<ActSoundLayerAddRemSounds>)> {
+    merge_sound_add_base(act2, act1).map(|(act1, act2)| {
+        // if failed, restore order
+        match act2 {
+            Some(act2) => (act2, Some(act1)),
+            None => (act1, None),
+        }
+    })
 }
 
 /// returns at least one action
@@ -253,7 +235,7 @@ fn merge_actions_group(
                 && act1.base.group_index == act2.base.group_index
                 && act1.base.layer_index == act2.base.layer_index
             {
-                let (act1, act2) = merge_sound_addrem_base(act1.base, act2.base)?;
+                let (act1, act2) = merge_sound_add_base(act1.base, act2.base)?;
 
                 Ok((
                     EditorAction::SoundLayerAddSounds(ActSoundLayerAddSounds { base: act1 }),
@@ -293,7 +275,7 @@ fn merge_actions_group(
                 && act1.base.group_index == act2.base.group_index
                 && act1.base.layer_index == act2.base.layer_index
             {
-                let (act1, act2) = merge_sound_addrem_base(act1.base, act2.base)?;
+                let (act1, act2) = merge_sound_rem_base(act1.base, act2.base)?;
 
                 Ok((
                     EditorAction::SoundLayerRemSounds(ActSoundLayerRemSounds { base: act1 }),
@@ -557,11 +539,14 @@ fn merge_actions_group(
 /// that the actions should be merged.
 /// If two or more actions are not similar, this function still returns Ok(_),
 /// it will simply not merge them.
-pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
+///
+/// Returns `Ok(true)` if an action was merged.
+pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<bool> {
     if actions.is_empty() {
-        return Ok(());
+        return Ok(false);
     }
 
+    let mut had_merge = false;
     while actions.len() > 1 {
         let act2 = actions.pop();
         let act1 = actions.pop();
@@ -572,13 +557,15 @@ pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
             if let Some(act2) = act2 {
                 actions.push(act2);
                 break;
+            } else {
+                had_merge = true;
             }
         } else {
             unreachable!();
         }
     }
 
-    Ok(())
+    Ok(had_merge)
 }
 
 /// Validates and executes the action.
@@ -875,6 +862,28 @@ pub fn do_action(
                 "image resource props did not match\
                 the props given in the action"
             );
+            // ensure that the map is still valid
+            let layers_valid = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| match l {
+                        EditorLayer::Quad(layer) => layer
+                            .layer
+                            .attr
+                            .image
+                            .is_none_or(|i| i < map.resources.images.len().saturating_sub(1)),
+                        EditorLayer::Abritrary(_)
+                        | EditorLayer::Tile(_)
+                        | EditorLayer::Sound(_) => true,
+                    })
+                });
+            anyhow::ensure!(
+                layers_valid,
+                "deleting image would invalidate some quad layers."
+            );
             map.resources.images.remove(index);
         }
         EditorAction::RemImage2dArray(ActRemImage2dArray {
@@ -895,6 +904,28 @@ pub fn do_action(
                 map.resources.image_arrays[index].def == *res,
                 "image array resource props did not match\
                 the props given in the action"
+            );
+            // ensure that the map is still valid
+            let layers_valid = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| match l {
+                        EditorLayer::Tile(layer) => {
+                            layer.layer.attr.image_array.is_none_or(|i| {
+                                i < map.resources.image_arrays.len().saturating_sub(1)
+                            })
+                        }
+                        EditorLayer::Abritrary(_)
+                        | EditorLayer::Quad(_)
+                        | EditorLayer::Sound(_) => true,
+                    })
+                });
+            anyhow::ensure!(
+                layers_valid,
+                "deleting image 2d array would invalidate some tile layers."
             );
             map.resources.image_arrays.remove(index);
         }
@@ -917,6 +948,28 @@ pub fn do_action(
                 "sound resource props did not match\
                 the props given in the action"
             );
+            // ensure that the map is still valid
+            let layers_valid = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| match l {
+                        EditorLayer::Sound(layer) => layer
+                            .layer
+                            .attr
+                            .sound
+                            .is_none_or(|i| i < map.resources.sounds.len().saturating_sub(1)),
+                        EditorLayer::Abritrary(_) | EditorLayer::Quad(_) | EditorLayer::Tile(_) => {
+                            true
+                        }
+                    })
+                });
+            anyhow::ensure!(
+                layers_valid,
+                "deleting sound would invalidate some sound layers."
+            );
             map.resources.sounds.remove(index);
         }
         EditorAction::LayerChangeImageIndex(act) => {
@@ -933,6 +986,17 @@ pub fn do_action(
                 act.layer_index,
                 act.group_index
             ))?;
+            let images_len = if matches!(map_layer, EditorLayer::Tile(_)) {
+                map.resources.image_arrays.len()
+            } else {
+                map.resources.images.len()
+            };
+            anyhow::ensure!(
+                act.new_index.is_none_or(|i| i < images_len),
+                "image index is out of bounds: {:?}, len: {}",
+                act.new_index,
+                images_len
+            );
             if let EditorLayer::Tile(EditorLayerTile {
                 layer:
                     MapLayerTile {
@@ -953,6 +1017,10 @@ pub fn do_action(
                 ..
             }) = map_layer
             {
+                anyhow::ensure!(
+                    act.old_index == *image,
+                    "image in action did not match that of the layer"
+                );
                 let was_tex_changed = (image.is_none() && act.new_index.is_some())
                     || (act.new_index.is_none() && image.is_some());
                 *image = act.new_index;
@@ -1005,6 +1073,12 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_index.is_none_or(|i| i < map.resources.sounds.len()),
+                "sound index is out of bounds: {:?}, len: {}",
+                act.new_index,
+                map.resources.sounds.len()
+            );
             if let EditorLayer::Sound(EditorLayerSound {
                 layer:
                     MapLayerSound {
@@ -1023,6 +1097,10 @@ pub fn do_action(
                     act.group_index
                 ))?
             {
+                anyhow::ensure!(
+                    act.old_index == *sound,
+                    "sound in action did not match that of the layer"
+                );
                 *sound = act.new_index;
             }
         }
@@ -1179,6 +1257,14 @@ pub fn do_action(
                 act.base.index,
                 act.base.group_index
             );
+            anyhow::ensure!(
+                act.base
+                    .layer
+                    .attr
+                    .image_array
+                    .is_none_or(|i| i < map.resources.image_arrays.len()),
+                "given layer was wrong, image array index out of bounds."
+            );
             let layer = act.base.layer.clone();
             let visuals = {
                 let buffer = tp.install(|| {
@@ -1218,6 +1304,14 @@ pub fn do_action(
                 "layer index {} is out of bounds in group {}",
                 act.base.index,
                 act.base.group_index
+            );
+            anyhow::ensure!(
+                act.base
+                    .layer
+                    .attr
+                    .image
+                    .is_none_or(|i| i < map.resources.images.len()),
+                "given layer was wrong, image index out of bounds."
             );
             let layer = act.base.layer.clone();
             let visuals = {
@@ -1366,40 +1460,60 @@ pub fn do_action(
                 "layer index {} is out of bounds in physics group",
                 act.base.index,
             );
+            let tiles_count =
+                physics.attr.width.get() as usize * physics.attr.height.get() as usize;
             let layer = act.base.layer.clone();
-            let layer_of_ty_exists = match layer {
+            let layer_of_ty_exists = match &layer {
                 MapLayerPhysics::Arbitrary(_) => physics
                     .layers
                     .iter()
                     .any(|l| matches!(l, EditorPhysicsLayer::Arbitrary(_))),
-                MapLayerPhysics::Game(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Game(_))),
-                MapLayerPhysics::Front(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Front(_))),
-                MapLayerPhysics::Tele(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Tele(_))),
-                MapLayerPhysics::Speedup(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Speedup(_))),
-                MapLayerPhysics::Switch(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Switch(_))),
-                MapLayerPhysics::Tune(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Tune(_))),
+                MapLayerPhysics::Game(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Game(_)))
+                        || layer.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Front(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Front(_)))
+                        || layer.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Tele(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Tele(_)))
+                        || layer.base.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Speedup(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Speedup(_)))
+                        || layer.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Switch(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Switch(_)))
+                        || layer.base.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Tune(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Tune(_)))
+                        || layer.base.tiles.len() != tiles_count
+                }
             };
             anyhow::ensure!(
                 !layer_of_ty_exists,
-                "A layer of the given type already \
+                "Tile count was wrong or a layer of the given type already \
                 exists in the physics group."
             );
             let visuals = {
@@ -1512,6 +1626,10 @@ pub fn do_action(
             if fix_action {
                 act.base.layer = layer.clone();
             }
+            anyhow::ensure!(
+                !matches!(layer, MapLayerPhysics::Game(_)),
+                "deleting the game/main physics layer is forbidden."
+            );
             anyhow::ensure!(
                 layer == act.base.layer,
                 "physics layer in the action does not \
@@ -1871,7 +1989,7 @@ pub fn do_action(
             }
             anyhow::ensure!(
                 group.attr == act.old_attr,
-                "attr in action did not match the one in the map"
+                "group attr in action did not match the one in the map"
             );
             group.attr = act.new_attr;
         }
@@ -1898,6 +2016,8 @@ pub fn do_action(
         }
         EditorAction::ChangePhysicsGroupAttr(act) => {
             let group = &mut map.groups.physics;
+            let width_or_height_change =
+                group.attr.width != act.new_attr.width || group.attr.height != act.new_attr.height;
 
             // checks
             anyhow::ensure!(
@@ -1910,22 +2030,76 @@ pub fn do_action(
                         return Err(anyhow!("arbitrary physics layers are not supported."));
                     }
                     MapLayerPhysicsSkeleton::Game(_) => {
-                        anyhow::ensure!(matches!(new_tiles, MapTileLayerPhysicsTiles::Game(_)));
+                        let MapTileLayerPhysicsTiles::Game(tiles) = new_tiles else {
+                            anyhow::bail!("game layer expects game tiles");
+                        };
+                        anyhow::ensure!(
+                            tiles.len()
+                                == act.new_attr.width.get() as usize
+                                    * act.new_attr.height.get() as usize,
+                            "game tile layer new tiles len did not match new width * height"
+                        );
                     }
                     MapLayerPhysicsSkeleton::Front(_) => {
-                        anyhow::ensure!(matches!(new_tiles, MapTileLayerPhysicsTiles::Front(_)));
+                        let MapTileLayerPhysicsTiles::Front(tiles) = new_tiles else {
+                            anyhow::bail!("front layer expects front tiles");
+                        };
+                        anyhow::ensure!(
+                            tiles.len()
+                                == act.new_attr.width.get() as usize
+                                    * act.new_attr.height.get() as usize,
+                            "front tile layer new tiles len did not match new width * height"
+                        );
                     }
                     MapLayerPhysicsSkeleton::Tele(_) => {
                         anyhow::ensure!(matches!(new_tiles, MapTileLayerPhysicsTiles::Tele(_)));
+
+                        let MapTileLayerPhysicsTiles::Tele(tiles) = new_tiles else {
+                            anyhow::bail!("tele layer expects tele tiles");
+                        };
+                        anyhow::ensure!(
+                            tiles.len()
+                                == act.new_attr.width.get() as usize
+                                    * act.new_attr.height.get() as usize,
+                            "tele tile layer new tiles len did not match new width * height"
+                        );
                     }
                     MapLayerPhysicsSkeleton::Speedup(_) => {
                         anyhow::ensure!(matches!(new_tiles, MapTileLayerPhysicsTiles::Speedup(_)));
+
+                        let MapTileLayerPhysicsTiles::Speedup(tiles) = new_tiles else {
+                            anyhow::bail!("speedup layer expects speedup tiles");
+                        };
+                        anyhow::ensure!(
+                            tiles.len()
+                                == act.new_attr.width.get() as usize
+                                    * act.new_attr.height.get() as usize,
+                            "speedup tile layer new tiles len did not match new width * height"
+                        );
                     }
                     MapLayerPhysicsSkeleton::Switch(_) => {
                         anyhow::ensure!(matches!(new_tiles, MapTileLayerPhysicsTiles::Switch(_)));
+
+                        let MapTileLayerPhysicsTiles::Switch(tiles) = new_tiles else {
+                            anyhow::bail!("switch layer expects switch tiles");
+                        };
+                        anyhow::ensure!(
+                            tiles.len()
+                                == act.new_attr.width.get() as usize
+                                    * act.new_attr.height.get() as usize,
+                            "switch tile layer new tiles len did not match new width * height"
+                        );
                     }
                     MapLayerPhysicsSkeleton::Tune(_) => {
-                        anyhow::ensure!(matches!(new_tiles, MapTileLayerPhysicsTiles::Tune(_)));
+                        let MapTileLayerPhysicsTiles::Tune(tiles) = new_tiles else {
+                            anyhow::bail!("tune layer expects tune tiles");
+                        };
+                        anyhow::ensure!(
+                            tiles.len()
+                                == act.new_attr.width.get() as usize
+                                    * act.new_attr.height.get() as usize,
+                            "tune tile layer new tiles len did not match new width * height"
+                        );
                     }
                 }
             }
@@ -1963,15 +2137,13 @@ pub fn do_action(
             }
             anyhow::ensure!(
                 group.attr == act.old_attr,
-                "attr in action did not match the one in the map"
+                "phy group attr in action did not match the one in the map"
             );
             anyhow::ensure!(
                 layers == act.old_layer_tiles,
                 "physics layers in action did not match the one in the map"
             );
 
-            let width_or_height_change =
-                group.attr.width != act.new_attr.width || group.attr.height != act.new_attr.height;
             group.attr = act.new_attr;
             if width_or_height_change {
                 let width = group.attr.width;
@@ -2059,13 +2231,24 @@ pub fn do_action(
                     act.group_index
                 ))?
             {
+                anyhow::ensure!(
+                    act.new_tiles.len()
+                        == act.new_attr.width.get() as usize * act.new_attr.height.get() as usize,
+                    "design tile layer new tiles len did not match new width * height"
+                );
+                let width_or_height_change = layer.layer.attr.width != act.new_attr.width
+                    || layer.layer.attr.height != act.new_attr.height;
+
                 if fix_action {
                     act.old_attr = layer.layer.attr;
                     act.old_tiles = layer.layer.tiles.clone();
+                    if !width_or_height_change {
+                        act.new_tiles = layer.layer.tiles.clone();
+                    }
                 }
                 anyhow::ensure!(
                     layer.layer.attr == act.old_attr,
-                    "attr in action did not match the one in the map"
+                    "design tile layer attr in action did not match the one in the map"
                 );
                 anyhow::ensure!(
                     layer.layer.tiles == act.old_tiles,
@@ -2076,8 +2259,6 @@ pub fn do_action(
                     && act.new_attr.image_array.is_none())
                     || (layer.layer.attr.image_array.is_none()
                         && act.new_attr.image_array.is_some());
-                let width_or_height_change = layer.layer.attr.width != act.new_attr.width
-                    || layer.layer.attr.height != act.new_attr.height;
                 let needs_visual_recreate = width_or_height_change || has_tex_change;
                 layer.layer.attr = act.new_attr;
                 if needs_visual_recreate {
@@ -2129,7 +2310,7 @@ pub fn do_action(
                 }
                 anyhow::ensure!(
                     layer.layer.attr == act.old_attr,
-                    "attr in action did not match the one in the map"
+                    "quad layer attr in action did not match the one in the map"
                 );
 
                 let has_tex_change = (layer.layer.attr.image.is_none()
@@ -2182,7 +2363,7 @@ pub fn do_action(
                 }
                 anyhow::ensure!(
                     layer.layer.attr == act.old_attr,
-                    "attr in action did not match the one in the map"
+                    "sound layer attr in action did not match the one in the map"
                 );
                 layer.layer.attr = act.new_attr;
             } else {

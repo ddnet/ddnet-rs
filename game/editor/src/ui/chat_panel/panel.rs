@@ -1,4 +1,4 @@
-use egui::Layout;
+use egui::{Key, KeyboardShortcut, Layout, Modifiers};
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let map = &mut pipe.user_data.editor_tab.map;
-    if ui.input(|i| i.modifiers.shift && i.key_pressed(egui::Key::Enter)) {
+    if ui.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter))) {
         map.user.ui_values.chat_panel_open = Some(EditorChatState::default());
     }
 

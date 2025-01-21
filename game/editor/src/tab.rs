@@ -3,7 +3,10 @@ use std::time::Duration;
 use client_render_base::map::map::RenderMap;
 
 use crate::{
-    client::EditorClient, event::AdminChangeConfig, map::EditorMap, server::EditorServer,
+    client::EditorClient,
+    event::{ActionDbg, AdminChangeConfig},
+    map::EditorMap,
+    server::EditorServer,
     tools::auto_saver::AutoSaver,
 };
 
@@ -33,6 +36,16 @@ pub struct EditorAdminPanel {
     pub state: EditorAdminPanelState,
 }
 
+#[derive(Debug, Default)]
+pub struct DbgPanel {
+    /// Show the btn in the tools
+    pub show: bool,
+    pub open: bool,
+
+    pub props: ActionDbg,
+    pub run: bool,
+}
+
 /// a tab, representing a map that is currently edited
 pub struct EditorTab {
     pub map: EditorMap,
@@ -45,4 +58,6 @@ pub struct EditorTab {
     pub last_info_update: Option<Duration>,
 
     pub admin_panel: EditorAdminPanel,
+
+    pub dbg_panel: DbgPanel,
 }

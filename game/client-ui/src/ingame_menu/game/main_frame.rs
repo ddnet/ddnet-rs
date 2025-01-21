@@ -296,11 +296,13 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                             ui.label("Sceen width:");
                                             ui.add(
                                                 DragValue::new(&mut dummy.screen_width)
+                                                    .update_while_editing(false)
                                                     .range(1..=100),
                                             );
                                             ui.label("Sceen height:");
                                             ui.add(
                                                 DragValue::new(&mut dummy.screen_height)
+                                                    .update_while_editing(false)
                                                     .range(1..=100),
                                             );
 

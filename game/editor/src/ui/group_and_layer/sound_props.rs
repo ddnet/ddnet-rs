@@ -117,7 +117,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // x
                             ui.label("move x by");
                             ui.horizontal(|ui| {
-                                ui.add(egui::DragValue::new(&mut pos_offset.x));
+                                ui.add(
+                                    egui::DragValue::new(&mut pos_offset.x)
+                                        .update_while_editing(false),
+                                );
                                 if ui.button("move").clicked() {
                                     if let Some(pos_anim) = anim_pos.as_deref_mut() {
                                         pos_anim.value.x = ffixed::from_num(pos_offset.x);
@@ -132,7 +135,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // y
                             ui.label("move y by");
                             ui.horizontal(|ui| {
-                                ui.add(egui::DragValue::new(&mut pos_offset.y));
+                                ui.add(
+                                    egui::DragValue::new(&mut pos_offset.y)
+                                        .update_while_editing(false),
+                                );
                                 if ui.button("move").clicked() {
                                     if let Some(pos_anim) = anim_pos {
                                         pos_anim.value.y = ffixed::from_num(pos_offset.y);
@@ -148,13 +154,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // x
                             ui.label("x");
                             let mut x = sound.pos.x.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut x));
+                            ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
                             sound.pos.x = ffixed::from_num(x);
                             ui.end_row();
                             // y
                             ui.label("y");
                             let mut y = sound.pos.y.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut y));
+                            ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
                             sound.pos.y = ffixed::from_num(y);
                             ui.end_row();
                         }
@@ -220,7 +226,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // pos time offset
                             ui.label("pos anim time offset");
                             let mut millis = sound.pos_anim_offset.whole_milliseconds() as i64;
-                            if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                            if ui
+                                .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                                .changed()
+                            {
                                 sound.pos_anim_offset = Duration::milliseconds(millis);
                             }
                             ui.end_row();
@@ -280,7 +289,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // sound time offset
                             ui.label("sound anim time offset");
                             let mut millis = sound.sound_anim_offset.whole_milliseconds() as i64;
-                            if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                            if ui
+                                .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                                .changed()
+                            {
                                 sound.sound_anim_offset = Duration::milliseconds(millis);
                             }
                             ui.end_row();
@@ -350,7 +362,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // starting delay
                         ui.label("start delay (ms)");
                         let mut millis = sound.time_delay.as_millis() as u64;
-                        if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                        if ui
+                            .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                            .changed()
+                        {
                             sound.time_delay = std::time::Duration::from_millis(millis);
                         }
                         ui.end_row();
@@ -359,7 +374,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.label("falloff");
                         let mut falloff = sound.falloff.to_num::<f64>();
                         if ui
-                            .add(egui::DragValue::new(&mut falloff).speed(0.05))
+                            .add(
+                                egui::DragValue::new(&mut falloff)
+                                    .update_while_editing(false)
+                                    .speed(0.05),
+                            )
                             .changed()
                         {
                             sound.falloff = nffixed::from_num(falloff.clamp(0.0, 1.0));
@@ -371,13 +390,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             SoundShape::Rect { size } => {
                                 ui.label("width");
                                 let mut x = size.x.to_num::<f64>();
-                                if ui.add(egui::DragValue::new(&mut x)).changed() {
+                                if ui
+                                    .add(egui::DragValue::new(&mut x).update_while_editing(false))
+                                    .changed()
+                                {
                                     size.x = uffixed::from_num(x.clamp(0.0, f64::MAX));
                                 }
                                 ui.end_row();
                                 ui.label("height");
                                 let mut y = size.y.to_num::<f64>();
-                                if ui.add(egui::DragValue::new(&mut y)).changed() {
+                                if ui
+                                    .add(egui::DragValue::new(&mut y).update_while_editing(false))
+                                    .changed()
+                                {
                                     size.y = uffixed::from_num(y.clamp(0.0, f64::MAX));
                                 }
                                 ui.end_row();
@@ -385,7 +410,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             SoundShape::Circle { radius } => {
                                 ui.label("radius");
                                 let mut r = radius.to_num::<f64>();
-                                if ui.add(egui::DragValue::new(&mut r)).changed() {
+                                if ui
+                                    .add(egui::DragValue::new(&mut r).update_while_editing(false))
+                                    .changed()
+                                {
                                     *radius = uffixed::from_num(r.clamp(0.0, f64::MAX));
                                 }
                                 ui.end_row();

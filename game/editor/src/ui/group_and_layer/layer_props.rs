@@ -1,4 +1,6 @@
-use egui::{Color32, DragValue, InnerResponse};
+use std::ops::RangeInclusive;
+
+use egui::{Checkbox, Color32, DragValue, InnerResponse};
 use map::types::NonZeroU16MinusOne;
 use math::math::vector::{nffixed, nfvec4};
 use time::Duration;
@@ -16,8 +18,8 @@ use crate::{
     },
     explain::TEXT_LAYER_PROPS_COLOR,
     map::{
-        EditorDesignLayerInterface, EditorLayer, EditorMap, EditorMapInterface, EditorPhysicsLayer,
-        ResourceSelection,
+        EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorMap, EditorMapInterface,
+        EditorPhysicsLayer, ResourceSelection,
     },
     ui::{
         group_and_layer::{
@@ -40,26 +42,48 @@ fn render_layer_move(
     is_background: bool,
     g: usize,
     l: usize,
+    can_bg: bool,
+    g_range: RangeInclusive<usize>,
+    l_range: RangeInclusive<usize>,
 ) -> Option<MoveLayer> {
     let mut move_layer = None;
 
     let mut new_is_background = is_background;
     ui.label("In background");
-    if ui.checkbox(&mut new_is_background, "").changed() {
+    if ui
+        .add_enabled(can_bg, Checkbox::new(&mut new_is_background, ""))
+        .changed()
+    {
         move_layer = Some(MoveLayer::IsBackground(new_is_background));
     }
     ui.end_row();
 
     ui.label("Group");
     let mut new_group = g;
-    if ui.add(DragValue::new(&mut new_group)).changed() {
+    if ui
+        .add_enabled(
+            *g_range.start() != *g_range.end(),
+            DragValue::new(&mut new_group)
+                .update_while_editing(false)
+                .range(g_range),
+        )
+        .changed()
+    {
         move_layer = Some(MoveLayer::Group(new_group));
     }
     ui.end_row();
 
     ui.label("Layer");
     let mut new_layer = l;
-    if ui.add(DragValue::new(&mut new_layer)).changed() {
+    if ui
+        .add_enabled(
+            *l_range.start() != *l_range.end(),
+            DragValue::new(&mut new_layer)
+                .update_while_editing(false)
+                .range(l_range),
+        )
+        .changed()
+    {
         move_layer = Some(MoveLayer::Layer(new_layer));
     }
     ui.end_row();
@@ -300,26 +324,26 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
     let mut bg_selection = map
         .groups
         .background
-        .iter_mut()
+        .iter()
         .enumerate()
         .flat_map(|(g, bg)| {
             bg.layers
-                .iter_mut()
+                .iter()
                 .enumerate()
                 .filter(|(_, layer)| layer.is_selected())
-                .map(move |l| (true, g, l))
+                .map(move |(l, _)| (true, g, l))
         });
     let mut fg_selection = map
         .groups
         .foreground
-        .iter_mut()
+        .iter()
         .enumerate()
         .flat_map(|(g, fg)| {
             fg.layers
-                .iter_mut()
+                .iter()
                 .enumerate()
                 .filter(|(_, layer)| layer.is_selected())
-                .map(move |l| (false, g, l))
+                .map(move |(l, _)| (false, g, l))
         });
     let mut phy_selection = map
         .groups
@@ -329,13 +353,70 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         .enumerate()
         .filter(|(_, layer)| layer.user().selected.is_some());
 
+    fn move_limits(
+        groups: &EditorGroups,
+        is_background: bool,
+        g: usize,
+    ) -> (bool, RangeInclusive<usize>, RangeInclusive<usize>) {
+        (
+            {
+                let groups = if !is_background {
+                    &groups.background
+                } else {
+                    &groups.foreground
+                };
+                !groups.is_empty()
+            },
+            {
+                let groups = if is_background {
+                    &groups.background
+                } else {
+                    &groups.foreground
+                };
+                0..=groups.len().saturating_sub(1)
+            },
+            {
+                let groups = if is_background {
+                    &groups.background
+                } else {
+                    &groups.foreground
+                };
+                0..=groups
+                    .get(g)
+                    .map(|g| g.layers.len().saturating_sub(1))
+                    .unwrap_or_default()
+            },
+        )
+    }
+
+    fn layer_mut(
+        groups: &mut EditorGroups,
+        is_background: bool,
+        g: usize,
+        l: usize,
+    ) -> &mut EditorLayer {
+        let groups = if is_background {
+            &mut groups.background
+        } else {
+            &mut groups.foreground
+        };
+
+        groups
+            .get_mut(g)
+            .expect("group index out of bounds, logic error.")
+            .layers
+            .get_mut(l)
+            .expect("layer index out of bounds, logic error.")
+    }
+
     let mut resource_selector_was_outside = true;
     let window_res = match attr_mode {
         LayerAttrMode::DesignTile => {
-            let (is_background, g, (l, EditorLayer::Tile(layer))) = bg_selection
+            let (is_background, g, l) = bg_selection
                 .next()
-                .unwrap_or_else(|| fg_selection.next().unwrap())
-            else {
+                .unwrap_or_else(|| fg_selection.next().unwrap());
+            let (bg_move_limit, g_limit, l_limit) = move_limits(&map.groups, is_background, g);
+            let EditorLayer::Tile(layer) = layer_mut(&mut map.groups, is_background, g, l) else {
                 panic!("not a tile layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
@@ -362,13 +443,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // w
                         ui.label("Width");
                         let mut w = attr.width.get();
-                        ui.add(egui::DragValue::new(&mut w).range(1..=u16::MAX - 1));
+                        ui.add(
+                            egui::DragValue::new(&mut w)
+                                .update_while_editing(false)
+                                .range(1..=u16::MAX - 1),
+                        );
                         attr.width = NonZeroU16MinusOne::new(w).unwrap();
                         ui.end_row();
                         // h
                         ui.label("Height");
                         let mut h = attr.height.get();
-                        ui.add(egui::DragValue::new(&mut h).range(1..=u16::MAX - 1));
+                        ui.add(
+                            egui::DragValue::new(&mut h)
+                                .update_while_editing(false)
+                                .range(1..=u16::MAX - 1),
+                        );
                         attr.height = NonZeroU16MinusOne::new(h).unwrap();
                         ui.end_row();
                         // image
@@ -448,7 +537,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // color time offset
                         ui.label("color anim time offset");
                         let mut millis = attr.color_anim_offset.whole_milliseconds() as i64;
-                        if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                        if ui
+                            .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                            .changed()
+                        {
                             attr.color_anim_offset = Duration::milliseconds(millis);
                         }
                         ui.end_row();
@@ -477,7 +569,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.end_row();
 
                         // layer moving
-                        move_layer = render_layer_move(ui, is_background, g, l);
+                        move_layer = render_layer_move(
+                            ui,
+                            is_background,
+                            g,
+                            l,
+                            bg_move_limit,
+                            g_limit,
+                            l_limit,
+                        );
                     })
             });
 
@@ -574,10 +674,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             res
         }
         LayerAttrMode::DesignQuad => {
-            let (is_background, g, (l, EditorLayer::Quad(layer))) = bg_selection
+            let (is_background, g, l) = bg_selection
                 .next()
-                .unwrap_or_else(|| fg_selection.next().unwrap())
-            else {
+                .unwrap_or_else(|| fg_selection.next().unwrap());
+            let (bg_move_limit, g_limit, l_limit) = move_limits(&map.groups, is_background, g);
+            let EditorLayer::Quad(layer) = layer_mut(&mut map.groups, is_background, g, l) else {
                 panic!("not a quad layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
@@ -631,7 +732,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.end_row();
 
                         // layer moving
-                        move_layer = render_layer_move(ui, is_background, g, l);
+                        move_layer = render_layer_move(
+                            ui,
+                            is_background,
+                            g,
+                            l,
+                            bg_move_limit,
+                            g_limit,
+                            l_limit,
+                        );
                     })
             });
 
@@ -704,10 +813,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             res
         }
         LayerAttrMode::DesignSound => {
-            let (is_background, g, (l, EditorLayer::Sound(layer))) = bg_selection
+            let (is_background, g, l) = bg_selection
                 .next()
-                .unwrap_or_else(|| fg_selection.next().unwrap())
-            else {
+                .unwrap_or_else(|| fg_selection.next().unwrap());
+            let (bg_move_limit, g_limit, l_limit) = move_limits(&map.groups, is_background, g);
+            let EditorLayer::Sound(layer) = layer_mut(&mut map.groups, is_background, g, l) else {
                 panic!("not a sound layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
@@ -761,7 +871,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.end_row();
 
                         // layer moving
-                        move_layer = render_layer_move(ui, is_background, g, l);
+                        move_layer = render_layer_move(
+                            ui,
+                            is_background,
+                            g,
+                            l,
+                            bg_move_limit,
+                            g_limit,
+                            l_limit,
+                        );
                     })
             });
 

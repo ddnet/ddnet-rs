@@ -818,7 +818,12 @@ impl Timeline {
                                 .background_color(color)
                                 .color(Color32::WHITE),
                         );
-                        ui.add(DragValue::new(&mut val).range(range).speed(0.05));
+                        ui.add(
+                            DragValue::new(&mut val)
+                                .update_while_editing(false)
+                                .range(range)
+                                .speed(0.05),
+                        );
                         channel.set_value(val);
                     }
                 }
@@ -826,7 +831,11 @@ impl Timeline {
             PointSelectionMode::Multi => {
                 // time shifting for all selected points
                 ui.label("move time of points");
-                ui.add(DragValue::new(&mut self.drag_val).speed(0.1));
+                ui.add(
+                    DragValue::new(&mut self.drag_val)
+                        .update_while_editing(false)
+                        .speed(0.1),
+                );
                 if ui.button("move").clicked() {
                     let selected_points: Vec<_> = selected_points.collect();
                     for (g, p) in selected_points {

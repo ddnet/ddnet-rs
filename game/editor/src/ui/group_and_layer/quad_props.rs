@@ -135,7 +135,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // x
                             ui.label("move x by");
                             ui.horizontal(|ui| {
-                                ui.add(egui::DragValue::new(&mut pos_offset.x));
+                                ui.add(
+                                    egui::DragValue::new(&mut pos_offset.x)
+                                        .update_while_editing(false),
+                                );
                                 if ui.button("move").clicked() {
                                     if let Some(pos_anim) = &mut anim_pos {
                                         pos_anim.value.x = ffixed::from_num(pos_offset.x);
@@ -150,7 +153,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // y
                             ui.label("move y by");
                             ui.horizontal(|ui| {
-                                ui.add(egui::DragValue::new(&mut pos_offset.y));
+                                ui.add(
+                                    egui::DragValue::new(&mut pos_offset.y)
+                                        .update_while_editing(false),
+                                );
                                 if ui.button("move").clicked() {
                                     if let Some(pos_anim) = anim_pos {
                                         pos_anim.value.y = ffixed::from_num(pos_offset.y);
@@ -166,13 +172,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // x
                             ui.label("x");
                             let mut x = quad.points[p].x.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut x));
+                            ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
                             quad.points[p].x = ffixed::from_num(x);
                             ui.end_row();
                             // y
                             ui.label("y");
                             let mut y = quad.points[p].y.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut y));
+                            ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
                             quad.points[p].y = ffixed::from_num(y);
                             ui.end_row();
                         }
@@ -238,7 +244,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // pos time offset
                             ui.label("pos anim time offset");
                             let mut millis = quad.pos_anim_offset.whole_milliseconds() as i64;
-                            if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                            if ui
+                                .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                                .changed()
+                            {
                                 quad.pos_anim_offset = Duration::milliseconds(millis);
                             }
                             ui.end_row();
@@ -297,7 +306,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // color time offset
                             ui.label("color anim time offset");
                             let mut millis = quad.color_anim_offset.whole_milliseconds() as i64;
-                            if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                            if ui
+                                .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                                .changed()
+                            {
                                 quad.color_anim_offset = Duration::milliseconds(millis);
                             }
                             ui.end_row();

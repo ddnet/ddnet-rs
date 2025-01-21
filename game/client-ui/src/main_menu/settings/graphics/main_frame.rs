@@ -72,6 +72,7 @@ fn render_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
         if ui
             .add(
                 DragValue::new(&mut msaa_step)
+                    .update_while_editing(false)
                     .range(0..=max_step)
                     .custom_formatter(|v, _| {
                         let samples = 2_u32.pow(v as u32);
