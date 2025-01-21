@@ -48,7 +48,7 @@ fn render_group_move(
     if ui
         .add_enabled(
             *g_range.start() != *g_range.end(),
-            DragValue::new(&mut new_group),
+            DragValue::new(&mut new_group).update_while_editing(false),
         )
         .changed()
     {
@@ -232,25 +232,25 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // pos x
                         ui.label("Pos x");
                         let mut x = attr.offset.x.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut x));
+                        ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
                         attr.offset.x = ffixed::from_num(x);
                         ui.end_row();
                         // pos y
                         ui.label("Pos y");
                         let mut y = attr.offset.y.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut y));
+                        ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
                         attr.offset.y = ffixed::from_num(y);
                         ui.end_row();
                         // para x
                         ui.label("Parallax x");
                         let mut x = attr.parallax.x.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut x));
+                        ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
                         attr.parallax.x = ffixed::from_num(x);
                         ui.end_row();
                         // para y
                         ui.label("Parallax y");
                         let mut y = attr.parallax.y.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut y));
+                        ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
                         attr.parallax.y = ffixed::from_num(y);
                         ui.end_row();
                         // clipping on/off
@@ -269,25 +269,33 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // clipping x
                             ui.label("Clipping - x");
                             let mut x = clipping.pos.x.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut x));
+                            ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
                             clipping.pos.x = ffixed::from_num(x);
                             ui.end_row();
                             // clipping y
                             ui.label("Clipping - y");
                             let mut y = clipping.pos.y.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut y));
+                            ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
                             clipping.pos.y = ffixed::from_num(y);
                             ui.end_row();
                             // clipping w
                             ui.label("Clipping - width");
                             let mut x = clipping.size.x.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut x).range(0.0..=f64::MAX));
+                            ui.add(
+                                egui::DragValue::new(&mut x)
+                                    .update_while_editing(false)
+                                    .range(0.0..=f64::MAX),
+                            );
                             clipping.size.x = uffixed::from_num(x);
                             ui.end_row();
                             // clipping h
                             ui.label("Clipping - height");
                             let mut y = clipping.size.y.to_num::<f64>();
-                            ui.add(egui::DragValue::new(&mut y).range(0.0..=f64::MAX));
+                            ui.add(
+                                egui::DragValue::new(&mut y)
+                                    .update_while_editing(false)
+                                    .range(0.0..=f64::MAX),
+                            );
                             clipping.size.y = uffixed::from_num(y);
                             ui.end_row();
                         }
@@ -367,13 +375,23 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             // w
                             ui.label("width");
                             let mut w = attr.width.get();
-                            ui.add(egui::DragValue::new(&mut w).range(1..=u16::MAX - 1));
+                            ui.add(
+                                egui::DragValue::new(&mut w)
+                                    .update_while_editing(false)
+                                    .update_while_editing(false)
+                                    .range(1..=u16::MAX - 1),
+                            );
                             attr.width = NonZeroU16MinusOne::new(w).unwrap();
                             ui.end_row();
                             // h
                             ui.label("height");
                             let mut h = attr.height.get();
-                            ui.add(egui::DragValue::new(&mut h).range(1..=u16::MAX - 1));
+                            ui.add(
+                                egui::DragValue::new(&mut h)
+                                    .update_while_editing(false)
+                                    .update_while_editing(false)
+                                    .range(1..=u16::MAX - 1),
+                            );
                             attr.height = NonZeroU16MinusOne::new(h).unwrap();
                             ui.end_row();
                             if *attr != attr_cmp {

@@ -59,12 +59,18 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                 if config.inp.use_dyncam {
                     ui.label("Mouse sensitivity");
                     ui.add(
-                        DragValue::new(&mut config.inp.dyncam_mouse.sensitivity).range(1..=100000),
+                        DragValue::new(&mut config.inp.dyncam_mouse.sensitivity)
+                            .update_while_editing(false)
+                            .range(1..=100000),
                     );
                     ui.end_row();
                 } else {
                     ui.label("Mouse sensitivity");
-                    ui.add(DragValue::new(&mut config.inp.mouse.sensitivity).range(1..=100000));
+                    ui.add(
+                        DragValue::new(&mut config.inp.mouse.sensitivity)
+                            .update_while_editing(false)
+                            .range(1..=100000),
+                    );
                     ui.end_row();
                 }
 

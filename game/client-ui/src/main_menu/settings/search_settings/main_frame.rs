@@ -143,7 +143,11 @@ fn render_conf_val(
                 .parse()
                 .unwrap_or_default();
                 if ui
-                    .add(DragValue::new(&mut val).range(min..=max.clamp(0, i64::MAX as u64) as i64))
+                    .add(
+                        DragValue::new(&mut val)
+                            .update_while_editing(false)
+                            .range(min..=max.clamp(0, i64::MAX as u64) as i64),
+                    )
                     .changed()
                 {
                     set(
@@ -162,7 +166,14 @@ fn render_conf_val(
                 )
                 .parse()
                 .unwrap_or_default();
-                if ui.add(DragValue::new(&mut val).range(min..=max)).changed() {
+                if ui
+                    .add(
+                        DragValue::new(&mut val)
+                            .update_while_editing(false)
+                            .range(min..=max),
+                    )
+                    .changed()
+                {
                     set(
                         &value.config.name,
                         &mut pipe.user_data.config.game,

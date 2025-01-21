@@ -22,18 +22,30 @@ pub fn render(
             .show(ui, |ui| {
                 let dbg_panel = &mut editor_tab.dbg_panel;
                 ui.label("Generate actions count:");
-                ui.add(DragValue::new(&mut dbg_panel.props.num_actions));
+                ui.add(
+                    DragValue::new(&mut dbg_panel.props.num_actions).update_while_editing(false),
+                );
                 ui.end_row();
 
                 ui.label("Shuffle action probability:");
                 let mut v = dbg_panel.props.action_shuffle_probability as f64 / 255.0;
-                ui.add(DragValue::new(&mut v).speed(1.0 / 255.0).range(0.0..=1.0));
+                ui.add(
+                    DragValue::new(&mut v)
+                        .update_while_editing(false)
+                        .speed(1.0 / 255.0)
+                        .range(0.0..=1.0),
+                );
                 dbg_panel.props.action_shuffle_probability = (v * 255.0) as u8;
                 ui.end_row();
 
                 ui.label("Undo/redo probability:");
                 let mut v = dbg_panel.props.undo_redo_probability as f64 / 255.0;
-                ui.add(DragValue::new(&mut v).speed(1.0 / 255.0).range(0.0..=1.0));
+                ui.add(
+                    DragValue::new(&mut v)
+                        .update_while_editing(false)
+                        .speed(1.0 / 255.0)
+                        .range(0.0..=1.0),
+                );
                 dbg_panel.props.undo_redo_probability = (v * 255.0) as u8;
                 ui.end_row();
 

@@ -33,23 +33,30 @@ fn record_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                 ui.end_row();
 
                 ui.label("Fps:");
-                ui.add(DragValue::new(&mut config.cl.recorder.fps));
+                ui.add(DragValue::new(&mut config.cl.recorder.fps).update_while_editing(false));
                 ui.end_row();
 
                 ui.label("Width:");
-                ui.add(DragValue::new(&mut config.cl.recorder.width));
+                ui.add(DragValue::new(&mut config.cl.recorder.width).update_while_editing(false));
                 ui.end_row();
 
                 ui.label("Height:");
-                ui.add(DragValue::new(&mut config.cl.recorder.height));
+                ui.add(DragValue::new(&mut config.cl.recorder.height).update_while_editing(false));
                 ui.end_row();
 
                 ui.label("Pixels per point (similar to DPI):");
-                ui.add(DragValue::new(&mut config.cl.recorder.pixels_per_point));
+                ui.add(
+                    DragValue::new(&mut config.cl.recorder.pixels_per_point)
+                        .update_while_editing(false),
+                );
                 ui.end_row();
 
                 ui.label("Crf (0 = lossless, 51 = worst):");
-                ui.add(DragValue::new(&mut config.cl.recorder.crf).range(0..=51));
+                ui.add(
+                    DragValue::new(&mut config.cl.recorder.crf)
+                        .update_while_editing(false)
+                        .range(0..=51),
+                );
                 ui.end_row();
 
                 ui.label("Hardware acceleration (GPU):");

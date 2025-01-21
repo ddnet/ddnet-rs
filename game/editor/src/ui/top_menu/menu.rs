@@ -188,7 +188,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                                 {
                                                     ui.label("Save interval:");
                                                     let mut secs = auto_save.as_secs();
-                                                    ui.add(DragValue::new(&mut secs));
+                                                    ui.add(
+                                                        DragValue::new(&mut secs)
+                                                            .update_while_editing(false),
+                                                    );
                                                     ui.end_row();
                                                     *auto_save = Duration::from_secs(secs);
                                                 }
@@ -284,7 +287,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     let mut cancel = false;
                     let window_res = window.show(ui.ctx(), |ui| {
                         ui.label("Port: (0 = random port)");
-                        ui.add(DragValue::new(port));
+                        ui.add(DragValue::new(port).update_while_editing(false));
 
                         ui.label("Certificate hash:");
                         // TODO: cache this

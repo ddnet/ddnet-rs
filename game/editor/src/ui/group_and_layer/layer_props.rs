@@ -63,7 +63,9 @@ fn render_layer_move(
     if ui
         .add_enabled(
             *g_range.start() != *g_range.end(),
-            DragValue::new(&mut new_group).range(g_range),
+            DragValue::new(&mut new_group)
+                .update_while_editing(false)
+                .range(g_range),
         )
         .changed()
     {
@@ -76,7 +78,9 @@ fn render_layer_move(
     if ui
         .add_enabled(
             *l_range.start() != *l_range.end(),
-            DragValue::new(&mut new_layer).range(l_range),
+            DragValue::new(&mut new_layer)
+                .update_while_editing(false)
+                .range(l_range),
         )
         .changed()
     {
@@ -439,13 +443,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // w
                         ui.label("Width");
                         let mut w = attr.width.get();
-                        ui.add(egui::DragValue::new(&mut w).range(1..=u16::MAX - 1));
+                        ui.add(
+                            egui::DragValue::new(&mut w)
+                                .update_while_editing(false)
+                                .range(1..=u16::MAX - 1),
+                        );
                         attr.width = NonZeroU16MinusOne::new(w).unwrap();
                         ui.end_row();
                         // h
                         ui.label("Height");
                         let mut h = attr.height.get();
-                        ui.add(egui::DragValue::new(&mut h).range(1..=u16::MAX - 1));
+                        ui.add(
+                            egui::DragValue::new(&mut h)
+                                .update_while_editing(false)
+                                .range(1..=u16::MAX - 1),
+                        );
                         attr.height = NonZeroU16MinusOne::new(h).unwrap();
                         ui.end_row();
                         // image
@@ -525,7 +537,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // color time offset
                         ui.label("color anim time offset");
                         let mut millis = attr.color_anim_offset.whole_milliseconds() as i64;
-                        if ui.add(egui::DragValue::new(&mut millis)).changed() {
+                        if ui
+                            .add(egui::DragValue::new(&mut millis).update_while_editing(false))
+                            .changed()
+                        {
                             attr.color_anim_offset = Duration::milliseconds(millis);
                         }
                         ui.end_row();

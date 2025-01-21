@@ -62,6 +62,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     let prev_tune = map.groups.physics.user.active_tune_zone;
                     let response = ui.add(
                         DragValue::new(&mut map.groups.physics.user.active_tune_zone)
+                            .update_while_editing(false)
                             .prefix("Tune zone: "),
                     );
                     let context_menu_open = response.context_menu_opened();

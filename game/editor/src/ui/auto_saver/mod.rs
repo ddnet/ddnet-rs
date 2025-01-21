@@ -42,7 +42,7 @@ pub fn render(
                 if let Some(interval) = &mut auto_saver.interval {
                     ui.label("Interval in seconds:");
                     let mut interval_secs = interval.as_secs();
-                    ui.add(DragValue::new(&mut interval_secs));
+                    ui.add(DragValue::new(&mut interval_secs).update_while_editing(false));
                     *interval = Duration::from_secs(interval_secs);
                     ui.end_row();
                 }
