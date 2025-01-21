@@ -198,7 +198,7 @@ pub fn ddnet_main(
             let cmds = command_parser::parser::parse(
                 line,
                 &parser_entries,
-                &mut local_console_builder.parser_cache.borrow_mut(),
+                &local_console_builder.parser_cache,
             );
             let mut res = String::default();
             let cur_cmds_succeeded = run_commands(
@@ -226,7 +226,7 @@ pub fn ddnet_main(
                             &mut config_engine,
                             &mut config_game,
                             &local_console_builder.entries,
-                            &mut local_console_builder.parser_cache.borrow_mut(),
+                            &local_console_builder.parser_cache,
                             |err| {
                                 log::error!("{}", err);
                                 has_startup_errors = true;
@@ -2063,7 +2063,7 @@ impl ClientNativeImpl {
         config_game: &mut ConfigGame,
 
         entries: &[ConsoleEntry],
-        parser_cache: &mut ParserCache,
+        parser_cache: &ParserCache,
         mut on_err: impl FnMut(String),
         mut on_log: impl FnMut(String),
     ) {
@@ -2172,7 +2172,7 @@ impl ClientNativeImpl {
                                 &mut local_player.binds,
                                 !was_player_profile,
                                 &self.local_console.entries,
-                                &mut game.parser_cache,
+                                &game.parser_cache,
                             );
                         };
 
@@ -2199,7 +2199,7 @@ impl ClientNativeImpl {
                     &mut self.config.engine,
                     &mut self.config.game,
                     &self.local_console.entries,
-                    &mut self.local_console.user.borrow_mut(),
+                    &self.local_console.user,
                     |err| {
                         self.notifications.add_err(err, Duration::from_secs(10));
                     },

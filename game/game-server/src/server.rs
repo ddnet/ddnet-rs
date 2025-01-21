@@ -538,7 +538,7 @@ impl Server {
         config: &mut ConfigGame,
         io: &Io,
         rcon_chain: &CommandChain<ServerRconCommand>,
-        cache: &mut ParserCache,
+        cache: &ParserCache,
         cmd: parser::Command,
     ) -> anyhow::Result<ReponsesAndSkipped> {
         let Syn::Text(file_path) = &cmd.args[0].0 else {
@@ -573,7 +573,7 @@ impl Server {
         config: &mut ConfigGame,
         io: &Io,
         rcon_chain: &CommandChain<ServerRconCommand>,
-        cache: &mut ParserCache,
+        cache: &ParserCache,
         lines: Vec<String>,
     ) -> ReponsesAndSkipped {
         let mut skipped_lines = Vec::default();
@@ -1940,7 +1940,7 @@ impl Server {
                         &mut self.config_game,
                         &self.io,
                         &self.rcon_chain,
-                        &mut self.cache,
+                        &self.cache,
                         cmd,
                     ) {
                         Ok((mut res, mut res_skipped_lines)) => {
@@ -2182,7 +2182,7 @@ impl Server {
                 )
                 .collect()
         });
-        let cmds = command_parser::parser::parse(line, parser_entries, &mut self.cache);
+        let cmds = command_parser::parser::parse(line, parser_entries, &self.cache);
         let mut skipped_lines = Vec::default();
         let mut responses = Vec::default();
         let mut res: Vec<Result<NetworkString<65536>, NetworkString<65536>>> = Default::default();
@@ -3681,9 +3681,9 @@ pub fn ddnet_server_main<const IS_INTERNAL_SERVER: bool>(
 
     let rcon_chain = Server::new_rcon_cmd_chain();
 
-    let mut cache: ParserCache = Default::default();
+    let cache: ParserCache = Default::default();
     let (msgs, skipped_lines) =
-        Server::handle_config_cmd_lines(&mut config_game, &io, &rcon_chain, &mut cache, args);
+        Server::handle_config_cmd_lines(&mut config_game, &io, &rcon_chain, &cache, args);
     for msg in msgs {
         match msg {
             Ok(msg) => {

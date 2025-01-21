@@ -458,7 +458,7 @@ impl GameData {
         binds: &mut Binds<Vec<BindAction>>,
         is_dummy: bool,
         console_entries: &[ConsoleEntry],
-        cache: &mut ParserCache,
+        cache: &ParserCache,
     ) {
         let map = gen_local_player_action_hash_map();
 
@@ -510,7 +510,7 @@ impl GameData {
         config: &mut ConfigGame,
         console_entries: &[ConsoleEntry],
         mut snap_local_players: SnapshotLocalPlayers,
-        cache: &mut ParserCache,
+        cache: &ParserCache,
         options: &GameStateServerOptions,
     ) {
         local_players.retain_with_order(|player_id, _| {

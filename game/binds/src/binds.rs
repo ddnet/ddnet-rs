@@ -433,7 +433,7 @@ pub fn str_to_bind_lossy(
     bind: &str,
     entries: &[ConsoleEntry],
     map: &HashMap<&'static str, BindActionsLocalPlayer>,
-    cache: &mut ParserCache,
+    cache: &ParserCache,
 ) -> Vec<(Vec<BindKey>, Vec<BindAction>)> {
     let cmds = parser::parse(bind, &entries_to_parser(entries), cache);
 
@@ -460,7 +460,7 @@ pub fn str_list_to_binds_lossy(
     binds: &[String],
     entries: &[ConsoleEntry],
     map: &HashMap<&'static str, BindActionsLocalPlayer>,
-    cache: &mut ParserCache,
+    cache: &ParserCache,
 ) -> Vec<(Vec<BindKey>, Vec<BindAction>)> {
     binds
         .iter()

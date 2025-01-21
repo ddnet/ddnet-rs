@@ -1,5 +1,4 @@
 use std::{
-    cell::RefCell,
     collections::HashMap,
     net::{SocketAddr, ToSocketAddrs},
     ops::Range,
@@ -91,13 +90,13 @@ impl super::console::ConsoleEvents<LocalConsoleEvent> for LocalConsoleEvents {
     }
 }
 
-pub type LocalConsole = ConsoleRender<LocalConsoleEvent, Rc<RefCell<ParserCache>>>;
+pub type LocalConsole = ConsoleRender<LocalConsoleEvent, Rc<ParserCache>>;
 
 #[derive(Debug)]
 pub struct LocalConsoleBuilder {
     pub entries: Vec<ConsoleEntry>,
     pub console_events: LocalConsoleEvents,
-    pub parser_cache: Rc<RefCell<ParserCache>>,
+    pub parser_cache: Rc<ParserCache>,
 }
 
 impl Default for LocalConsoleBuilder {
@@ -143,7 +142,7 @@ impl Default for LocalConsoleBuilder {
             "".into(),
             Default::default(),
         );
-        let parser_cache = Rc::new(RefCell::new(ParserCache::default()));
+        let parser_cache = Rc::new(ParserCache::default());
         Self::register_commands(console_events.clone(), &mut entries, parser_cache.clone());
 
         Self {
@@ -158,7 +157,7 @@ impl LocalConsoleBuilder {
     fn register_commands(
         console_events: LocalConsoleEvents,
         list: &mut Vec<ConsoleEntry>,
-        parser_cache: Rc<RefCell<ParserCache>>,
+        parser_cache: Rc<ParserCache>,
     ) {
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "push".into(),
@@ -495,7 +494,7 @@ impl LocalConsoleBuilder {
 
         fn str_to_bind_keys_lossy(
             keys_arg: &CommandArg,
-            cache: &RefCell<ParserCache>,
+            cache: &ParserCache,
             bind: &str,
         ) -> Vec<Vec<BindKey>> {
             let cmds = parser::parse(
@@ -508,7 +507,7 @@ impl LocalConsoleBuilder {
                     args: vec![keys_arg.clone()],
                     allows_partial_cmds: false,
                 })]),
-                &mut cache.borrow_mut(),
+                cache,
             );
 
             let mut res: Vec<_> = Default::default();
@@ -538,7 +537,7 @@ impl LocalConsoleBuilder {
             config_game: &mut ConfigGame,
             path: &[(Syn, Range<usize>)],
             keys_arg: &CommandArg,
-            cache: &RefCell<ParserCache>,
+            cache: &ParserCache,
             events: &LocalConsoleEvents,
         ) -> anyhow::Result<Vec<String>> {
             let mut keys = syn_to_bind_keys(&mut path.iter())?;
@@ -589,7 +588,7 @@ impl LocalConsoleBuilder {
             config_game: &mut ConfigGame,
             path: &[(Syn, Range<usize>)],
             keys_arg: &CommandArg,
-            cache: &RefCell<ParserCache>,
+            cache: &ParserCache,
             actions_map: &HashMap<&'static str, BindActionsLocalPlayer>,
             actions_map_rev: &HashMap<BindActionsLocalPlayer, &'static str>,
             events: &LocalConsoleEvents,
