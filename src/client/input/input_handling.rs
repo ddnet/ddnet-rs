@@ -242,9 +242,9 @@ impl InputHandling {
                         BindActionsCharacter::Jump => character.jump = true,
                         BindActionsCharacter::Fire => character.fire = true,
                         BindActionsCharacter::Hook => character.hook = true,
-                        BindActionsCharacter::NextWeapon => character.weapon_diff += 1,
-                        BindActionsCharacter::PrevWeapon => character.weapon_diff -= 1,
-                        BindActionsCharacter::Weapon(_) => {
+                        BindActionsCharacter::NextWeapon
+                        | BindActionsCharacter::PrevWeapon
+                        | BindActionsCharacter::Weapon(_) => {
                             // only listen for press
                         }
                     }
@@ -333,6 +333,12 @@ impl InputHandling {
                 let mut handle_action = |action: &BindActionsLocalPlayer| match action {
                     BindActionsLocalPlayer::Character(BindActionsCharacter::Weapon(weapon)) => {
                         character.next_weapon = Some(*weapon);
+                    }
+                    BindActionsLocalPlayer::Character(BindActionsCharacter::NextWeapon) => {
+                        character.weapon_diff += 1;
+                    }
+                    BindActionsLocalPlayer::Character(BindActionsCharacter::PrevWeapon) => {
+                        character.weapon_diff -= 1;
                     }
                     BindActionsLocalPlayer::Dummy(BindActionsCharacter::Weapon(weapon)) => {
                         dummy.next_weapon = Some(*weapon);
