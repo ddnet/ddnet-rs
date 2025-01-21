@@ -250,7 +250,7 @@ pub mod state {
             lines: Vec<String>,
             config: &mut ConfigVanilla,
             rcon_chain: &CommandChain<VanillaRconCommand>,
-            cache: &mut ParserCache,
+            cache: &ParserCache,
         ) -> (
             Vec<Result<NetworkString<65536>, NetworkString<65536>>>,
             Vec<parser::Command>,
@@ -404,7 +404,7 @@ pub mod state {
                 rcon_vars.into_iter().collect(),
             );
 
-            let mut cache = Default::default();
+            let cache = Default::default();
 
             let rcon_commands = RconEntries {
                 cmds: rcon_chain
@@ -432,7 +432,7 @@ pub mod state {
                     .collect(),
                 &mut config,
                 &rcon_chain,
-                &mut cache,
+                &cache,
             );
 
             let db_task = io_rt.spawn(async move {
@@ -2459,7 +2459,7 @@ pub mod state {
                     let cmds = command_parser::parser::parse(
                         &cmd.raw,
                         &self.chat_commands.cmds,
-                        &mut self.cache,
+                        &self.cache,
                     );
                     self.handle_chat_commands(player_id, cmds);
                 }
@@ -2605,11 +2605,8 @@ pub mod state {
             cmd: ExecRconInput,
         ) -> Vec<Result<NetworkString<65536>, NetworkString<65536>>> {
             if !matches!(cmd.auth_level, AuthLevel::None) {
-                let cmds = command_parser::parser::parse(
-                    &cmd.raw,
-                    &self.rcon_chain.parser,
-                    &mut self.cache,
-                );
+                let cmds =
+                    command_parser::parser::parse(&cmd.raw, &self.rcon_chain.parser, &self.cache);
                 self.handle_rcon_commands(player_id.as_ref(), cmd.auth_level, cmds)
             } else {
                 vec![Err("Only moderators or admins can execute rcon commands"
@@ -2638,11 +2635,8 @@ pub mod state {
                     }
                 }
                 VoteCommand::Misc(cmd) => {
-                    let cmds = command_parser::parser::parse(
-                        &cmd,
-                        &self.rcon_chain.parser,
-                        &mut self.cache,
-                    );
+                    let cmds =
+                        command_parser::parser::parse(&cmd, &self.rcon_chain.parser, &self.cache);
                     self.handle_rcon_commands(None, AuthLevel::Admin, cmds);
                 }
                 VoteCommand::RandomUnfinishedMap(_) => {

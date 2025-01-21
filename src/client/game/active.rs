@@ -479,7 +479,7 @@ impl ActiveGame {
                             pipe.config_game,
                             pipe.console_entries,
                             local_players,
-                            &mut self.parser_cache,
+                            &self.parser_cache,
                             &game.info.options,
                         );
                         let prev_state_tick = *prev_state_tick;
@@ -509,7 +509,7 @@ impl ActiveGame {
                             pipe.config_game,
                             pipe.console_entries,
                             local_players,
-                            &mut self.parser_cache,
+                            &self.parser_cache,
                             &game.info.options,
                         );
 

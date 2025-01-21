@@ -552,7 +552,7 @@ impl Game {
                             &mut p.binds,
                             p.is_dummy,
                             entries,
-                            &mut game.parser_cache,
+                            &game.parser_cache,
                         );
                     }
                 }

@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt::Display,
     ops::{Deref, Range},
@@ -911,17 +912,16 @@ fn generate_token_stack_entries(
 /// Creating this cache is free.
 #[derive(Debug, Default)]
 pub struct ParserCache {
-    reg: Option<regex::Regex>,
+    reg: RefCell<Option<regex::Regex>>,
 }
 
 pub fn parse<const S: usize>(
     raw: &str,
     commands: &HashMap<NetworkString<S>, Vec<CommandArg>>,
-    state: &mut ParserCache,
+    state: &ParserCache,
 ) -> CommandsTyped {
-    let reg = state
-        .reg
-        .get_or_insert_with(|| regex::Regex::new(r"\[([^\]]+)\]").unwrap());
+    let mut reg = state.reg.borrow_mut();
+    let reg = reg.get_or_insert_with(|| regex::Regex::new(r"\[([^\]]+)\]").unwrap());
 
     let (tokens, token_err) = tokenize(raw)
         .map(|tokens| (tokens, None))
@@ -980,7 +980,7 @@ mod test {
 
     #[test]
     fn console_tests() {
-        let mut cache = ParserCache::default();
+        let cache = ParserCache::default();
         let lex = parse::<65536>(
             "cl.map \"name with\\\" spaces\"",
             &vec![(
@@ -992,7 +992,7 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1024,7 +1024,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1060,7 +1060,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1103,7 +1103,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1124,7 +1124,7 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1147,7 +1147,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1173,7 +1173,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1208,7 +1208,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1235,7 +1235,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1265,7 +1265,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1275,7 +1275,7 @@ mod test {
 
     #[test]
     fn console_test_index() {
-        let mut cache = ParserCache::default();
+        let cache = ParserCache::default();
         let lex = parse::<65536>(
             "players[0] something",
             &vec![(
@@ -1287,7 +1287,7 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
         dbg!(&lex);
         assert!(lex[0].unwrap_ref_full().args[0].0 == Syn::Text("something".to_string()));
@@ -1297,7 +1297,7 @@ mod test {
             &vec![("players$INDEX$".try_into().unwrap(), vec![])]
                 .into_iter()
                 .collect(),
-            &mut cache,
+            &cache,
         );
         dbg!(&lex);
         assert!(matches!(lex[0], CommandType::Full(_)));
@@ -1313,7 +1313,7 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1322,7 +1322,7 @@ mod test {
 
     #[test]
     fn err_console_tests() {
-        let mut cache = ParserCache::default();
+        let cache = ParserCache::default();
         let lex = parse::<65536>(
             "cl.map \"name with\\\" ",
             &vec![(
@@ -1334,7 +1334,7 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1364,7 +1364,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1397,7 +1397,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1433,7 +1433,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1466,7 +1466,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1502,7 +1502,7 @@ mod test {
             ]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
@@ -1519,7 +1519,7 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            &mut cache,
+            &cache,
         );
 
         dbg!(&lex);
