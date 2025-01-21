@@ -21,7 +21,7 @@ use crate::{
     action_logic::{redo_action, undo_action},
     actions::actions::{EditorAction, EditorActionGroup},
     event::{
-        AdminChangeConfig, AdminConfigState, ClientProps, EditorCommand, EditorEvent,
+        ActionDbg, AdminChangeConfig, AdminConfigState, ClientProps, EditorCommand, EditorEvent,
         EditorEventClientToServer, EditorEventGenerator, EditorEventOverwriteMap,
         EditorEventServerToClient, EditorNetEvent,
     },
@@ -248,7 +248,7 @@ impl EditorClient {
         Ok(res)
     }
 
-    pub fn execute(&mut self, action: EditorAction, group_identifier: Option<&str>) {
+    pub fn execute(&self, action: EditorAction, group_identifier: Option<&str>) {
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Action(
                 EditorActionGroup {
@@ -258,7 +258,7 @@ impl EditorClient {
             )));
     }
 
-    pub fn execute_group(&mut self, action_group: EditorActionGroup) {
+    pub fn execute_group(&self, action_group: EditorActionGroup) {
         self.network
             .send(EditorEvent::Client(EditorEventClientToServer::Action(
                 action_group,
@@ -312,5 +312,12 @@ impl EditorClient {
         self.network.send(EditorEvent::Client(
             EditorEventClientToServer::AdminChangeConfig(state),
         ));
+    }
+
+    pub fn dbg_action(&self, props: ActionDbg) {
+        self.network
+            .send(EditorEvent::Client(EditorEventClientToServer::DbgAction(
+                props,
+            )));
     }
 }

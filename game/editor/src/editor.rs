@@ -553,6 +553,7 @@ impl Editor {
                 },
                 last_info_update: None,
                 admin_panel: Default::default(),
+                dbg_panel: Default::default(),
             },
         );
         self.active_tab = name.into();
@@ -1121,6 +1122,7 @@ impl Editor {
                 },
                 last_info_update: None,
                 admin_panel: Default::default(),
+                dbg_panel: Default::default(),
             },
         );
         self.active_tab = name;
@@ -1271,6 +1273,7 @@ impl Editor {
                 },
                 last_info_update: None,
                 admin_panel: Default::default(),
+                dbg_panel: Default::default(),
             },
         );
         self.active_tab = name;
@@ -2451,6 +2454,11 @@ impl Editor {
                 EditorUiEvent::AdminChangeConfig { state } => {
                     if let Some(tab) = self.tabs.get(&self.active_tab) {
                         tab.client.admin_change_cfg(state);
+                    }
+                }
+                EditorUiEvent::DbgAction(props) => {
+                    if let Some(tab) = self.tabs.get(&self.active_tab) {
+                        tab.client.dbg_action(props);
                     }
                 }
             }

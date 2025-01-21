@@ -85,7 +85,13 @@ fn merge_quad_rem_base(
     act1: ActQuadLayerAddRemQuads,
     act2: ActQuadLayerAddRemQuads,
 ) -> anyhow::Result<(ActQuadLayerAddRemQuads, Option<ActQuadLayerAddRemQuads>)> {
-    merge_quad_add_base(act2, act1)
+    merge_quad_add_base(act2, act1).map(|(act1, act2)| {
+        // if failed, restore order
+        match act2 {
+            Some(act2) => (act2, Some(act1)),
+            None => (act1, None),
+        }
+    })
 }
 
 fn merge_sound_add_base(
@@ -105,7 +111,13 @@ fn merge_sound_rem_base(
     act1: ActSoundLayerAddRemSounds,
     act2: ActSoundLayerAddRemSounds,
 ) -> anyhow::Result<(ActSoundLayerAddRemSounds, Option<ActSoundLayerAddRemSounds>)> {
-    merge_sound_add_base(act2, act1)
+    merge_sound_add_base(act2, act1).map(|(act1, act2)| {
+        // if failed, restore order
+        match act2 {
+            Some(act2) => (act2, Some(act1)),
+            None => (act1, None),
+        }
+    })
 }
 
 /// returns at least one action
@@ -527,11 +539,14 @@ fn merge_actions_group(
 /// that the actions should be merged.
 /// If two or more actions are not similar, this function still returns Ok(_),
 /// it will simply not merge them.
-pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
+///
+/// Returns `Ok(true)` if an action was merged.
+pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<bool> {
     if actions.is_empty() {
-        return Ok(());
+        return Ok(false);
     }
 
+    let mut had_merge = false;
     while actions.len() > 1 {
         let act2 = actions.pop();
         let act1 = actions.pop();
@@ -542,13 +557,15 @@ pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<()> {
             if let Some(act2) = act2 {
                 actions.push(act2);
                 break;
+            } else {
+                had_merge = true;
             }
         } else {
             unreachable!();
         }
     }
 
-    Ok(())
+    Ok(had_merge)
 }
 
 /// Validates and executes the action.
@@ -845,6 +862,28 @@ pub fn do_action(
                 "image resource props did not match\
                 the props given in the action"
             );
+            // ensure that the map is still valid
+            let layers_valid = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| match l {
+                        EditorLayer::Quad(layer) => layer
+                            .layer
+                            .attr
+                            .image
+                            .is_none_or(|i| i < map.resources.images.len().saturating_sub(1)),
+                        EditorLayer::Abritrary(_)
+                        | EditorLayer::Tile(_)
+                        | EditorLayer::Sound(_) => true,
+                    })
+                });
+            anyhow::ensure!(
+                layers_valid,
+                "deleting image would invalidate some quad layers."
+            );
             map.resources.images.remove(index);
         }
         EditorAction::RemImage2dArray(ActRemImage2dArray {
@@ -865,6 +904,28 @@ pub fn do_action(
                 map.resources.image_arrays[index].def == *res,
                 "image array resource props did not match\
                 the props given in the action"
+            );
+            // ensure that the map is still valid
+            let layers_valid = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| match l {
+                        EditorLayer::Tile(layer) => {
+                            layer.layer.attr.image_array.is_none_or(|i| {
+                                i < map.resources.image_arrays.len().saturating_sub(1)
+                            })
+                        }
+                        EditorLayer::Abritrary(_)
+                        | EditorLayer::Quad(_)
+                        | EditorLayer::Sound(_) => true,
+                    })
+                });
+            anyhow::ensure!(
+                layers_valid,
+                "deleting image 2d array would invalidate some tile layers."
             );
             map.resources.image_arrays.remove(index);
         }
@@ -887,6 +948,28 @@ pub fn do_action(
                 "sound resource props did not match\
                 the props given in the action"
             );
+            // ensure that the map is still valid
+            let layers_valid = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| match l {
+                        EditorLayer::Sound(layer) => layer
+                            .layer
+                            .attr
+                            .sound
+                            .is_none_or(|i| i < map.resources.sounds.len().saturating_sub(1)),
+                        EditorLayer::Abritrary(_) | EditorLayer::Quad(_) | EditorLayer::Tile(_) => {
+                            true
+                        }
+                    })
+                });
+            anyhow::ensure!(
+                layers_valid,
+                "deleting sound would invalidate some sound layers."
+            );
             map.resources.sounds.remove(index);
         }
         EditorAction::LayerChangeImageIndex(act) => {
@@ -903,6 +986,17 @@ pub fn do_action(
                 act.layer_index,
                 act.group_index
             ))?;
+            let images_len = if matches!(map_layer, EditorLayer::Tile(_)) {
+                map.resources.image_arrays.len()
+            } else {
+                map.resources.images.len()
+            };
+            anyhow::ensure!(
+                act.new_index.is_none_or(|i| i < images_len),
+                "image index is out of bounds: {:?}, len: {}",
+                act.new_index,
+                images_len
+            );
             if let EditorLayer::Tile(EditorLayerTile {
                 layer:
                     MapLayerTile {
@@ -923,6 +1017,10 @@ pub fn do_action(
                 ..
             }) = map_layer
             {
+                anyhow::ensure!(
+                    act.old_index == *image,
+                    "image in action did not match that of the layer"
+                );
                 let was_tex_changed = (image.is_none() && act.new_index.is_some())
                     || (act.new_index.is_none() && image.is_some());
                 *image = act.new_index;
@@ -975,6 +1073,12 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_index.is_none_or(|i| i < map.resources.sounds.len()),
+                "sound index is out of bounds: {:?}, len: {}",
+                act.new_index,
+                map.resources.sounds.len()
+            );
             if let EditorLayer::Sound(EditorLayerSound {
                 layer:
                     MapLayerSound {
@@ -993,6 +1097,10 @@ pub fn do_action(
                     act.group_index
                 ))?
             {
+                anyhow::ensure!(
+                    act.old_index == *sound,
+                    "sound in action did not match that of the layer"
+                );
                 *sound = act.new_index;
             }
         }
@@ -1149,6 +1257,14 @@ pub fn do_action(
                 act.base.index,
                 act.base.group_index
             );
+            anyhow::ensure!(
+                act.base
+                    .layer
+                    .attr
+                    .image_array
+                    .is_none_or(|i| i < map.resources.image_arrays.len()),
+                "given layer was wrong, image array index out of bounds."
+            );
             let layer = act.base.layer.clone();
             let visuals = {
                 let buffer = tp.install(|| {
@@ -1188,6 +1304,14 @@ pub fn do_action(
                 "layer index {} is out of bounds in group {}",
                 act.base.index,
                 act.base.group_index
+            );
+            anyhow::ensure!(
+                act.base
+                    .layer
+                    .attr
+                    .image
+                    .is_none_or(|i| i < map.resources.images.len()),
+                "given layer was wrong, image index out of bounds."
             );
             let layer = act.base.layer.clone();
             let visuals = {
@@ -1336,40 +1460,60 @@ pub fn do_action(
                 "layer index {} is out of bounds in physics group",
                 act.base.index,
             );
+            let tiles_count =
+                physics.attr.width.get() as usize * physics.attr.height.get() as usize;
             let layer = act.base.layer.clone();
-            let layer_of_ty_exists = match layer {
+            let layer_of_ty_exists = match &layer {
                 MapLayerPhysics::Arbitrary(_) => physics
                     .layers
                     .iter()
                     .any(|l| matches!(l, EditorPhysicsLayer::Arbitrary(_))),
-                MapLayerPhysics::Game(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Game(_))),
-                MapLayerPhysics::Front(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Front(_))),
-                MapLayerPhysics::Tele(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Tele(_))),
-                MapLayerPhysics::Speedup(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Speedup(_))),
-                MapLayerPhysics::Switch(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Switch(_))),
-                MapLayerPhysics::Tune(_) => physics
-                    .layers
-                    .iter()
-                    .any(|l| matches!(l, EditorPhysicsLayer::Tune(_))),
+                MapLayerPhysics::Game(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Game(_)))
+                        || layer.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Front(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Front(_)))
+                        || layer.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Tele(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Tele(_)))
+                        || layer.base.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Speedup(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Speedup(_)))
+                        || layer.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Switch(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Switch(_)))
+                        || layer.base.tiles.len() != tiles_count
+                }
+                MapLayerPhysics::Tune(layer) => {
+                    physics
+                        .layers
+                        .iter()
+                        .any(|l| matches!(l, EditorPhysicsLayer::Tune(_)))
+                        || layer.base.tiles.len() != tiles_count
+                }
             };
             anyhow::ensure!(
                 !layer_of_ty_exists,
-                "A layer of the given type already \
+                "Tile count was wrong or a layer of the given type already \
                 exists in the physics group."
             );
             let visuals = {
@@ -1482,6 +1626,10 @@ pub fn do_action(
             if fix_action {
                 act.base.layer = layer.clone();
             }
+            anyhow::ensure!(
+                !matches!(layer, MapLayerPhysics::Game(_)),
+                "deleting the game/main physics layer is forbidden."
+            );
             anyhow::ensure!(
                 layer == act.base.layer,
                 "physics layer in the action does not \

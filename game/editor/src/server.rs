@@ -21,11 +21,13 @@ use network::network::{
     event::NetworkEvent,
     types::{NetworkServerCertMode, NetworkServerCertModeResult},
 };
+use rand::{seq::SliceRandom, RngCore};
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
     action_logic::{do_action, merge_actions, redo_action, undo_action},
-    actions::actions::{EditorActionGroup, EditorActionInterface},
+    actions::actions::{EditorAction, EditorActionGroup, EditorActionInterface},
+    dbg::valid::random_valid_action,
     event::{
         AdminConfigState, ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer,
         EditorEventGenerator, EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
@@ -273,9 +275,21 @@ impl EditorServer {
                                 let group = self.action_groups.last_mut().unwrap();
                                 group.actions.append(&mut valid_act.actions.clone());
 
-                                if let Err(err) = merge_actions(&mut group.actions) {
-                                    log::error!("{err}{}", err.backtrace());
-                                    notifications.add_err(err.to_string(), Duration::from_secs(10));
+                                match merge_actions(&mut group.actions) {
+                                    Ok(had_merge) => {
+                                        if had_merge {
+                                            let merged_action = group.actions.last().unwrap();
+                                            self.action_log.push_front(format!(
+                                                "[MERGED] {}",
+                                                merged_action.redo_info()
+                                            ));
+                                        }
+                                    }
+                                    Err(err) => {
+                                        log::error!("{err}{}", err.backtrace());
+                                        notifications
+                                            .add_err(err.to_string(), Duration::from_secs(10));
+                                    }
                                 }
                             } else {
                                 let new_index = self.action_groups.len();
@@ -485,6 +499,87 @@ impl EditorServer {
                                         cur_state: state.state.clone(),
                                     }),
                                 );
+                            }
+                        }
+                    }
+                    EditorEventClientToServer::DbgAction(props) => {
+                        if self.admin_password.is_none()
+                            && self.clients.values().any(|c| c.is_local_client)
+                        {
+                            let allows_identifier = !props.no_actions_identifier;
+                            let mut run_actions = |map: &mut _, actions: Vec<EditorAction>| {
+                                self.handle_client_ev(
+                                    id,
+                                    EditorEventClientToServer::Action(EditorActionGroup {
+                                        actions,
+                                        identifier: allows_identifier
+                                            .then_some("dbg-action".into()),
+                                    }),
+                                    tp,
+                                    sound_mt,
+                                    graphics_mt,
+                                    buffer_object_handle,
+                                    backend_handle,
+                                    texture_handle,
+                                    map,
+                                    auto_saver,
+                                    notifications,
+                                );
+                            };
+                            let gen_actions = |map: &mut _| {
+                                let actions = random_valid_action(map);
+                                let res = bincode::serde::decode_from_slice::<Vec<EditorAction>, _>(
+                                    &bincode::serde::encode_to_vec(
+                                        &actions,
+                                        bincode::config::standard(),
+                                    )
+                                    .unwrap(),
+                                    bincode::config::standard(),
+                                );
+                                assert!(res.is_ok(), "failed to de-/serialize the valid actions");
+                                actions
+                            };
+
+                            let undo_redo = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                            if undo_redo < props.undo_redo_probability as u64
+                                || props.undo_redo_probability == u8::MAX
+                            {
+                                let is_undo = (rand::rngs::OsRng.next_u64() % 2) == 0;
+                                self.handle_client_ev(
+                                    id,
+                                    EditorEventClientToServer::Command(if is_undo {
+                                        EditorCommand::Undo
+                                    } else {
+                                        EditorCommand::Redo
+                                    }),
+                                    tp,
+                                    sound_mt,
+                                    graphics_mt,
+                                    buffer_object_handle,
+                                    backend_handle,
+                                    texture_handle,
+                                    map,
+                                    auto_saver,
+                                    notifications,
+                                );
+                            } else {
+                                let shuffle_action = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                                if shuffle_action < props.action_shuffle_probability as u64
+                                    || props.action_shuffle_probability == u8::MAX
+                                {
+                                    let mut actions: Vec<_> =
+                                        (0..props.num_actions).map(|_| gen_actions(map)).collect();
+                                    actions.shuffle(&mut rand::rngs::OsRng);
+
+                                    for actions in actions {
+                                        run_actions(map, actions);
+                                    }
+                                } else {
+                                    for _ in 0..props.num_actions {
+                                        let actions = gen_actions(map);
+                                        run_actions(map, actions);
+                                    }
+                                }
                             }
                         }
                     }

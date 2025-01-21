@@ -62,6 +62,15 @@ pub struct AdminChangeConfig {
     pub state: AdminConfigState,
 }
 
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+pub struct ActionDbg {
+    pub num_actions: usize,
+
+    pub action_shuffle_probability: u8,
+    pub undo_redo_probability: u8,
+    pub no_actions_identifier: bool,
+}
+
 /// editor events are a collection of either actions or commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EditorEventClientToServer {
@@ -82,6 +91,7 @@ pub enum EditorEventClientToServer {
         password: String,
     },
     AdminChangeConfig(AdminChangeConfig),
+    DbgAction(ActionDbg),
 }
 
 /// editor events are a collection of either actions or commands

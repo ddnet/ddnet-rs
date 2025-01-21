@@ -120,7 +120,7 @@ fn fill_tmp_tile_speedup(
     scale: i32,
     angle_rotate: i16,
 ) {
-    let angle = angle_rotate % 360;
+    let angle = angle_rotate.unsigned_abs() % 360;
     fill_tmp_tile(
         tmp_tile,
         if angle >= 270 {
@@ -135,7 +135,7 @@ fn fill_tmp_tile_speedup(
         if index == 0 {
             0
         } else {
-            (angle_rotate % 90) as u8 + 1
+            (angle % 90) as u8 + 1
         },
         x,
         y,

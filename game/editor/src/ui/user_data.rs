@@ -18,6 +18,7 @@ use math::math::vector::vec2;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    event::ActionDbg,
     tab::{EditorAdminPanelStateAuthed, EditorTab},
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     utils::UiCanvasSize,
@@ -69,6 +70,7 @@ pub enum EditorUiEvent {
     AdminChangeConfig {
         state: EditorAdminPanelStateAuthed,
     },
+    DbgAction(ActionDbg),
 }
 
 pub struct EditorMenuHostNetworkOptions {

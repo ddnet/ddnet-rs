@@ -180,6 +180,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                                 ui.end_row();
                                                 if !do_autosaves {
                                                     state.state.auto_save = None;
+                                                } else if state.state.auto_save.is_none() {
+                                                    state.state.auto_save =
+                                                        Some(Duration::from_secs(60));
                                                 }
                                                 if let Some(auto_save) = &mut state.state.auto_save
                                                 {
@@ -202,6 +205,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                         },
                                     );
                                 });
+                        }
+
+                        if tab.dbg_panel.show
+                            && ui
+                                .add(Button::new("Dbg").selected(tab.dbg_panel.open))
+                                .clicked()
+                        {
+                            tab.dbg_panel.open = !tab.dbg_panel.open;
                         }
                     }
                 });
@@ -459,6 +470,22 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     if tab.auto_saver.active {
                         crate::ui::auto_saver::render(
                             pipe.cur_time,
+                            tab,
+                            pipe.user_data.pointer_is_used,
+                            ui,
+                        );
+                    }
+
+                    if tab.server.is_some()
+                        && ui.input_mut(|i| {
+                            i.consume_shortcut(&KeyboardShortcut::new(Modifiers::ALT, Key::F12))
+                        })
+                    {
+                        tab.dbg_panel.show = true;
+                    }
+                    if tab.dbg_panel.open {
+                        crate::ui::dbg_panel::render(
+                            pipe.user_data.ui_events,
                             tab,
                             pipe.user_data.pointer_is_used,
                             ui,
