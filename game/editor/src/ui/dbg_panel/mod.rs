@@ -49,8 +49,33 @@ pub fn render(
                 dbg_panel.props.undo_redo_probability = (v * 255.0) as u8;
                 ui.end_row();
 
+                ui.label("Invalid action probability:");
+                let mut v = dbg_panel.props.invalid_action_probability as f64 / 255.0;
+                ui.add(
+                    DragValue::new(&mut v)
+                        .update_while_editing(false)
+                        .speed(1.0 / 255.0)
+                        .range(0.0..=1.0),
+                );
+                dbg_panel.props.invalid_action_probability = (v * 255.0) as u8;
+                ui.end_row();
+
+                ui.label("Full map validation probability:");
+                let mut v = dbg_panel.props.full_map_validation_probability as f64 / 255.0;
+                ui.add(
+                    DragValue::new(&mut v)
+                        .update_while_editing(false)
+                        .speed(1.0 / 255.0)
+                        .range(0.0..=1.0),
+                );
+                dbg_panel.props.full_map_validation_probability = (v * 255.0) as u8;
+                ui.end_row();
+
                 ui.label("Don't group actions (increases undo/redo history per generated action):");
                 ui.checkbox(&mut dbg_panel.props.no_actions_identifier, "");
+                ui.end_row();
+
+                ui.label("If no invalid or reordered actions are made, then all errors are bugs");
                 ui.end_row();
 
                 if ui.button("Step").clicked() {

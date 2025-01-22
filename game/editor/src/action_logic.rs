@@ -1,6 +1,7 @@
 use std::{rc::Rc, sync::Arc};
 
 use anyhow::anyhow;
+use base::hash::generate_hash_for;
 use client_render_base::map::map_buffered::SoundLayerSounds;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -744,6 +745,18 @@ pub fn do_action(
                 "{} is out of bounds for image resources",
                 act.base.index
             );
+            anyhow::ensure!(
+                act.base.res.meta.ty.as_str() == "png",
+                "currently only png images are allowed",
+            );
+            anyhow::ensure!(
+                act.base.res.meta.blake3_hash == generate_hash_for(&act.base.file),
+                "resource hash did not match file hash",
+            );
+            anyhow::ensure!(
+                act.base.res.hq_meta.is_none(),
+                "hq assets are currently not supported",
+            );
             let mut img_mem = None;
             let _ = load_png_image_as_rgba(&act.base.file, |width, height, _| {
                 img_mem = Some(backend_handle.mem_alloc(
@@ -773,6 +786,18 @@ pub fn do_action(
                 act.base.index <= map.resources.image_arrays.len(),
                 "{} is out of bounds for image 2d array resources",
                 act.base.index
+            );
+            anyhow::ensure!(
+                act.base.res.meta.ty.as_str() == "png",
+                "currently only png images are allowed",
+            );
+            anyhow::ensure!(
+                act.base.res.meta.blake3_hash == generate_hash_for(&act.base.file),
+                "resource hash did not match file hash",
+            );
+            anyhow::ensure!(
+                act.base.res.hq_meta.is_none(),
+                "hq assets are currently not supported",
             );
             let mut png = Vec::new();
             let img = load_png_image_as_rgba(&act.base.file, |width, height, _| {
@@ -826,6 +851,18 @@ pub fn do_action(
                 act.base.index <= map.resources.sounds.len(),
                 "{} is out of bounds for sound resources",
                 act.base.index
+            );
+            anyhow::ensure!(
+                act.base.res.meta.ty.as_str() == "ogg",
+                "currently only ogg sounds are allowed",
+            );
+            anyhow::ensure!(
+                act.base.res.meta.blake3_hash == generate_hash_for(&act.base.file),
+                "resource hash did not match file hash",
+            );
+            anyhow::ensure!(
+                act.base.res.hq_meta.is_none(),
+                "hq assets are currently not supported",
             );
             map.resources.sounds.insert(
                 act.base.index,
@@ -1122,6 +1159,13 @@ pub fn do_action(
                 ))?
             {
                 anyhow::ensure!(
+                    act.base.quads.iter().all(|q| q
+                        .color_anim
+                        .is_none_or(|i| i < map.animations.color.len())
+                        && q.pos_anim.is_none_or(|i| i < map.animations.pos.len())),
+                    "color or pos animation of at least one quad is out of bounds."
+                );
+                anyhow::ensure!(
                     act.base.index <= layer.quads.len(),
                     "quad index {} out of bounds",
                     act.base.index
@@ -1157,6 +1201,13 @@ pub fn do_action(
                     act.base.group_index
                 ))?
             {
+                anyhow::ensure!(
+                    act.base.sounds.iter().all(|s| s
+                        .sound_anim
+                        .is_none_or(|i| i < map.animations.sound.len())
+                        && s.pos_anim.is_none_or(|i| i < map.animations.pos.len())),
+                    "sound or pos animation of at least one sound is out of bounds."
+                );
                 anyhow::ensure!(
                     act.base.index <= sounds.len(),
                     "sound index {} out of bounds",
@@ -1265,6 +1316,14 @@ pub fn do_action(
                     .is_none_or(|i| i < map.resources.image_arrays.len()),
                 "given layer was wrong, image array index out of bounds."
             );
+            anyhow::ensure!(
+                act.base
+                    .layer
+                    .attr
+                    .color_anim
+                    .is_none_or(|i| i < map.animations.color.len()),
+                "color animation is out of bounds."
+            );
             let layer = act.base.layer.clone();
             let visuals = {
                 let buffer = tp.install(|| {
@@ -1313,6 +1372,13 @@ pub fn do_action(
                     .is_none_or(|i| i < map.resources.images.len()),
                 "given layer was wrong, image index out of bounds."
             );
+            anyhow::ensure!(
+                act.base.layer.quads.iter().all(|q| q
+                    .color_anim
+                    .is_none_or(|i| i < map.animations.color.len())
+                    && q.pos_anim.is_none_or(|i| i < map.animations.pos.len())),
+                "color or pos animation of at least one quad is out of bounds."
+            );
             let layer = act.base.layer.clone();
             let visuals = {
                 let buffer = tp.install(|| {
@@ -1356,6 +1422,13 @@ pub fn do_action(
                 "the sound used in this layer is out bounds {} vs. length of {}",
                 act.base.layer.attr.sound.unwrap_or_default(),
                 map.resources.sounds.len()
+            );
+            anyhow::ensure!(
+                act.base.layer.sounds.iter().all(|s| s
+                    .sound_anim
+                    .is_none_or(|i| i < map.animations.sound.len())
+                    && s.pos_anim.is_none_or(|i| i < map.animations.pos.len())),
+                "sound or pos animation of at least one sound is out of bounds."
             );
             group.layers.insert(
                 act.base.index,
@@ -2220,6 +2293,18 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_attr
+                    .image_array
+                    .is_none_or(|i| i < map.resources.image_arrays.len()),
+                "image array is out of bounds."
+            );
+            anyhow::ensure!(
+                act.new_attr
+                    .color_anim
+                    .is_none_or(|i| i < map.animations.color.len()),
+                "color animation is out of bounds."
+            );
             if let EditorLayer::Tile(layer) = groups
                 .get_mut(act.group_index)
                 .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
@@ -2294,6 +2379,12 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_attr
+                    .image
+                    .is_none_or(|i| i < map.resources.images.len()),
+                "image is out of bounds."
+            );
             if let EditorLayer::Quad(layer) = groups
                 .get_mut(act.group_index)
                 .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
@@ -2347,6 +2438,12 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_attr
+                    .sound
+                    .is_none_or(|i| i < map.resources.sounds.len()),
+                "sound is out of bounds."
+            );
             if let EditorLayer::Sound(layer) = groups
                 .get_mut(act.group_index)
                 .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
@@ -2408,6 +2505,18 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_attr
+                    .pos_anim
+                    .is_none_or(|i| i < map.animations.pos.len()),
+                "pos anim is out of bounds"
+            );
+            anyhow::ensure!(
+                act.new_attr
+                    .color_anim
+                    .is_none_or(|i| i < map.animations.color.len()),
+                "color anim is out of bounds"
+            );
             if let EditorLayer::Quad(layer) = groups
                 .get_mut(act.group_index)
                 .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
@@ -2443,6 +2552,18 @@ pub fn do_action(
             } else {
                 &mut map.groups.foreground
             };
+            anyhow::ensure!(
+                act.new_attr
+                    .pos_anim
+                    .is_none_or(|i| i < map.animations.pos.len()),
+                "pos anim is out of bounds"
+            );
+            anyhow::ensure!(
+                act.new_attr
+                    .sound_anim
+                    .is_none_or(|i| i < map.animations.sound.len()),
+                "sound anim is out of bounds"
+            );
             if let EditorLayer::Sound(layer) = groups
                 .get_mut(act.group_index)
                 .ok_or(anyhow!("group {} is out of bounds", act.group_index))?
@@ -2623,6 +2744,33 @@ pub fn do_action(
             if fix_action {
                 act.base.anim = map.animations.pos[act.base.index].def.clone();
             }
+            // make sure no potential layer is still using the invalid index
+            let expected_len = map.animations.pos.len().saturating_sub(1);
+            let not_in_use = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| {
+                        if let EditorLayer::Quad(layer) = l {
+                            layer
+                                .layer
+                                .quads
+                                .iter()
+                                .all(|q| q.pos_anim.is_none_or(|i| i < expected_len))
+                        } else if let EditorLayer::Sound(layer) = l {
+                            layer
+                                .layer
+                                .sounds
+                                .iter()
+                                .all(|s| s.pos_anim.is_none_or(|i| i < expected_len))
+                        } else {
+                            true
+                        }
+                    })
+                });
+            anyhow::ensure!(not_in_use, "pos animation is still in use");
             anyhow::ensure!(
                 map.animations.pos[act.base.index].def == act.base.anim,
                 "anim in action was not equal to the anim in the map."
@@ -2652,6 +2800,29 @@ pub fn do_action(
             if fix_action {
                 act.base.anim = map.animations.color[act.base.index].def.clone();
             }
+            // make sure no potential layer is still using the invalid index
+            let expected_len = map.animations.color.len().saturating_sub(1);
+            let not_in_use = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| {
+                        if let EditorLayer::Quad(layer) = l {
+                            layer
+                                .layer
+                                .quads
+                                .iter()
+                                .all(|q| q.color_anim.is_none_or(|i| i < expected_len))
+                        } else if let EditorLayer::Tile(layer) = l {
+                            layer.layer.attr.color_anim.is_none_or(|i| i < expected_len)
+                        } else {
+                            true
+                        }
+                    })
+                });
+            anyhow::ensure!(not_in_use, "color animation is still in use");
             anyhow::ensure!(
                 map.animations.color[act.base.index].def == act.base.anim,
                 "anim in action was not equal to the anim in the map."
@@ -2681,6 +2852,27 @@ pub fn do_action(
             if fix_action {
                 act.base.anim = map.animations.sound[act.base.index].def.clone();
             }
+            // make sure no potential layer is still using the invalid index
+            let expected_len = map.animations.sound.len().saturating_sub(1);
+            let not_in_use = map
+                .groups
+                .background
+                .iter()
+                .chain(map.groups.foreground.iter())
+                .all(|g| {
+                    g.layers.iter().all(|l| {
+                        if let EditorLayer::Sound(layer) = l {
+                            layer
+                                .layer
+                                .sounds
+                                .iter()
+                                .all(|s| s.sound_anim.is_none_or(|i| i < expected_len))
+                        } else {
+                            true
+                        }
+                    })
+                });
+            anyhow::ensure!(not_in_use, "sound animation is still in use");
             anyhow::ensure!(
                 map.animations.sound[act.base.index].def == act.base.anim,
                 "anim in action was not equal to the anim in the map."

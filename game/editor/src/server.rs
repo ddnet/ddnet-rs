@@ -27,7 +27,7 @@ use sound::sound_mt::SoundMultiThreaded;
 use crate::{
     action_logic::{do_action, merge_actions, redo_action, undo_action},
     actions::actions::{EditorAction, EditorActionGroup, EditorActionInterface},
-    dbg::valid::random_valid_action,
+    dbg::{invalid::random_invalid_action, valid::random_valid_action},
     event::{
         AdminConfigState, ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer,
         EditorEventGenerator, EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
@@ -527,7 +527,15 @@ impl EditorServer {
                                 );
                             };
                             let gen_actions = |map: &mut _| {
-                                let actions = random_valid_action(map);
+                                let invalid_action = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                                let is_invalid = invalid_action
+                                    < props.invalid_action_probability as u64
+                                    || props.invalid_action_probability == u8::MAX;
+                                let actions = if is_invalid {
+                                    random_invalid_action(map)
+                                } else {
+                                    random_valid_action(map)
+                                };
                                 let res = bincode::serde::decode_from_slice::<Vec<EditorAction>, _>(
                                     &bincode::serde::encode_to_vec(
                                         &actions,
@@ -536,7 +544,17 @@ impl EditorServer {
                                     .unwrap(),
                                     bincode::config::standard(),
                                 );
-                                assert!(res.is_ok(), "failed to de-/serialize the valid actions");
+                                if is_invalid && res.is_err() {
+                                    log::info!(
+                                        "would have caught invalid action during deserialization"
+                                    );
+                                    return Default::default();
+                                } else {
+                                    assert!(
+                                        res.is_ok(),
+                                        "failed to de-/serialize the valid actions"
+                                    );
+                                }
                                 actions
                             };
 
@@ -577,9 +595,21 @@ impl EditorServer {
                                 } else {
                                     for _ in 0..props.num_actions {
                                         let actions = gen_actions(map);
-                                        run_actions(map, actions);
+                                        if !actions.is_empty() {
+                                            run_actions(map, actions);
+                                        }
                                     }
                                 }
+                            }
+
+                            let full_map_validation = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                            if full_map_validation < props.full_map_validation_probability as u64
+                                || props.full_map_validation_probability == u8::MAX
+                            {
+                                let map: Map = map.clone().into();
+                                let mut map_file: Vec<_> = Default::default();
+                                map.write(&mut map_file, tp).unwrap();
+                                Map::read(&map_file, tp).unwrap();
                             }
                         }
                     }
