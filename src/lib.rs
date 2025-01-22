@@ -14,10 +14,19 @@ pub use client::*;
 use game_base::local_server_info::LocalServerInfo;
 use native::native::app::NativeApp;
 
-#[cfg(feature = "alloc-track")]
+#[cfg(all(feature = "alloc_track", feature = "alloc_stats"))]
+std::compile_error!(
+    "Only one of the features alloc_track & alloc_stats can be activated at a time"
+);
+
+#[cfg(feature = "alloc_track")]
 #[global_allocator]
 static GLOBAL_ALLOC: alloc_track::AllocTrack<std::alloc::System> =
     alloc_track::AllocTrack::new(std::alloc::System, alloc_track::BacktraceMode::Short);
+
+#[cfg(feature = "alloc_stats")]
+#[global_allocator]
+static GLOBAL: &stats_alloc::StatsAlloc<std::alloc::System> = &stats_alloc::INSTRUMENTED_SYSTEM;
 
 fn main_impl(app: NativeApp) {
     let _ = thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max);
