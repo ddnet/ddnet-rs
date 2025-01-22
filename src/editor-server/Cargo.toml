@@ -9,6 +9,7 @@ base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 base-fs = { path = "../../lib/base-fs" }
 base-http = { path = "../../lib/base-http" }
+network = { path = "../../lib/network" }
 graphics = { path = "../../lib/graphics" }
 graphics-backend = { path = "../../lib/graphics-backend" }
 graphics-types = { path = "../../lib/graphics-types" }
@@ -22,3 +23,9 @@ clap = { version = "4.5.23", features = ["derive"] }
 rayon = "1.10.0"
 env_logger = "0.11.6"
 log = "0.4.22"
+serde_json = "1.0.134"
+serde = { version = "1.0.217", features = ["derive"] }
+chrono = { version = "0.4.39" }
+x509-cert = { version = "0.2.5" }
+ed25519-dalek = { version = "2.1.1", features = ["serde"] }
+anyhow = { version = "1.0.95", features = ["backtrace"] }

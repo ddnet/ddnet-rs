@@ -3267,12 +3267,15 @@ dependencies = [
 name = "editor-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base",
  "base-fs",
  "base-http",
  "base-io",
+ "chrono",
  "clap 4.5.23",
  "config",
+ "ed25519-dalek",
  "editor",
  "env_logger",
  "graphics",
@@ -3280,9 +3283,13 @@ dependencies = [
  "graphics-base-traits",
  "graphics-types",
  "log",
+ "network",
  "rayon",
+ "serde",
+ "serde_json",
  "sound",
  "sound-backend",
+ "x509-cert",
 ]
 
 [[package]]
