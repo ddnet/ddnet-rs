@@ -68,6 +68,8 @@ pub struct ActionDbg {
 
     pub action_shuffle_probability: u8,
     pub undo_redo_probability: u8,
+    pub invalid_action_probability: u8,
+    pub full_map_validation_probability: u8,
     pub no_actions_identifier: bool,
 }
 

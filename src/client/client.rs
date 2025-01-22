@@ -311,7 +311,7 @@ pub fn ddnet_main(
     Ok(())
 }
 
-#[cfg(feature = "alloc-track")]
+#[cfg(feature = "alloc_track")]
 fn track_report() {
     let total_consumption = std::cell::Cell::new(0);
     let report = alloc_track::backtrace_report(|_, stats| {
@@ -322,6 +322,20 @@ fn track_report() {
     std::fs::write(
         "trace.txt",
         format!("BACKTRACES\n{report}\nTotal:{}", total_consumption.get()),
+    )
+    .unwrap();
+}
+
+#[cfg(feature = "alloc_stats")]
+fn stats_report() {
+    let alloc: &stats_alloc::StatsAlloc<std::alloc::System> = &stats_alloc::INSTRUMENTED_SYSTEM;
+    let stats = alloc.stats();
+    let cur_alloc = stats
+        .bytes_allocated
+        .saturating_sub(stats.bytes_deallocated);
+    std::fs::write(
+        "trace.txt",
+        format!("Stats:\n{:?}\nCur usage:{}", stats, cur_alloc),
     )
     .unwrap();
 }
@@ -2853,9 +2867,13 @@ impl InputEventHandler for ClientNativeImpl {
         device: &native::native::DeviceId,
         key: PhysicalKey,
     ) {
-        #[cfg(feature = "alloc-track")]
+        #[cfg(feature = "alloc_track")]
         if key == PhysicalKey::Code(KeyCode::Pause) {
             track_report();
+        }
+        #[cfg(feature = "alloc_stats")]
+        if key == PhysicalKey::Code(KeyCode::Pause) {
+            stats_report();
         }
         self.inp_manager.key_up(window, device, &key)
     }
@@ -3381,7 +3399,7 @@ impl FromNativeImpl for ClientNativeImpl {
     }
 
     fn destroy(mut self) {
-        #[cfg(feature = "alloc-track")]
+        #[cfg(feature = "alloc_track")]
         track_report();
 
         if !self.config.engine.ui.keep {
