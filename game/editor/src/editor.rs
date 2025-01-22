@@ -76,12 +76,9 @@ use map::{
     types::NonZeroU16MinusOne,
 };
 use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
-use network::network::{
-    types::{
-        NetworkClientCertCheckMode, NetworkServerCertAndKey, NetworkServerCertMode,
-        NetworkServerCertModeResult,
-    },
-    utils::create_certifified_keys,
+use network::network::types::{
+    NetworkClientCertCheckMode, NetworkServerCertAndKey, NetworkServerCertMode,
+    NetworkServerCertModeResult,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -2478,21 +2475,12 @@ impl Editor {
         port: u16,
         password: String,
         admin_password: String,
-    ) -> anyhow::Result<Hash> {
-        let (cert, key) = create_certifified_keys();
-        let hash = cert
-            .tbs_certificate
-            .subject_public_key_info
-            .fingerprint_bytes()?;
+        cert_mode: NetworkServerCertMode,
+    ) {
         self.load_map(
             path,
             MapLoadWithServerOptions {
-                cert: Some(NetworkServerCertMode::FromCertAndPrivateKey(Box::new(
-                    NetworkServerCertAndKey {
-                        cert,
-                        private_key: key,
-                    },
-                ))),
+                cert: Some(cert_mode),
                 port: Some(port),
                 password: Some(password),
                 mapper_name: Some("server".to_string()),
@@ -2508,8 +2496,6 @@ impl Editor {
             tab.auto_saver.active = true;
             tab.auto_saver.interval = Some(Duration::from_secs(60 * 5));
         }
-
-        Ok(hash)
     }
 }
 

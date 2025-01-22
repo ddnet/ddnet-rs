@@ -4,6 +4,7 @@ use base_fs::filesys::FileSystem;
 use base_http::http::HttpClient;
 use base_io::io::{Io, IoFileSys};
 use clap::Parser;
+use ed25519_dalek::{SecretKey, SigningKey};
 use editor::editor::{Editor, EditorInterface};
 use graphics::graphics::graphics::Graphics;
 use graphics_backend::{
@@ -14,9 +15,15 @@ use graphics_backend::{
 };
 use graphics_base_traits::traits::GraphicsStreamedData;
 use graphics_types::types::WindowProps;
+use network::network::{
+    types::{NetworkServerCertAndKey, NetworkServerCertMode},
+    utils::create_certifified_keys,
+};
 use rayon::ThreadPool;
+use serde::{Deserialize, Serialize};
 use sound::sound::SoundManager;
 use sound_backend::sound_backend::SoundBackend;
+use x509_cert::der::{Decode, Encode};
 
 fn prepare_backend(io: &Io, tp: &Arc<ThreadPool>) -> (Rc<GraphicsBackend>, GraphicsStreamedData) {
     let config_gfx = config::config::ConfigGfx {
@@ -128,14 +135,87 @@ fn main() {
     let args = Args::parse();
     let mut editor = Editor::new(&sound, &graphics, &io, &tp, &Default::default());
 
-    let hash = editor
-        .host_map(
-            args.file.as_ref(),
-            args.port,
-            args.password,
-            args.admin_password,
-        )
+    #[derive(Debug, Serialize, Deserialize)]
+    struct EditorCertFile {
+        cert_der: Vec<u8>,
+        secret_key: SecretKey,
+        created_at: chrono::DateTime<chrono::Utc>,
+    }
+
+    #[derive(Debug)]
+    struct EditorCert {
+        cert: x509_cert::Certificate,
+        key: SigningKey,
+    }
+
+    const CERT_PATH: &str = "editor-server-cert.json";
+
+    let fs = io.fs.clone();
+    let load_cert = io
+        .rt
+        .spawn(async move {
+            let cert_file = fs.read_file(CERT_PATH.as_ref()).await?;
+            let cert_file: EditorCertFile = serde_json::from_slice(&cert_file)?;
+
+            anyhow::ensure!(
+                chrono::Utc::now().signed_duration_since(cert_file.created_at)
+                    < chrono::TimeDelta::seconds(60 * 60 * 24 * 365),
+                "cert was not valid anymore (> 1 year)"
+            );
+
+            Ok(EditorCert {
+                cert: x509_cert::Certificate::from_der(&cert_file.cert_der)?,
+                key: SigningKey::from_bytes(&cert_file.secret_key),
+            })
+        })
+        .get_storage();
+
+    let (cert, key) = if let Ok(load_cert) = load_cert {
+        (load_cert.cert, load_cert.key)
+    } else {
+        let (cert, key) = create_certifified_keys();
+
+        // write the new cert & key to disk
+        let fs = io.fs.clone();
+        let cert_write = cert.clone();
+        let key_write = key.clone();
+        if let Err(err) = io
+            .rt
+            .spawn(async move {
+                Ok(fs
+                    .write_file(
+                        CERT_PATH.as_ref(),
+                        serde_json::to_vec(&EditorCertFile {
+                            cert_der: cert_write.to_der()?,
+                            secret_key: key_write.to_bytes(),
+                            created_at: chrono::Utc::now(),
+                        })?,
+                    )
+                    .await?)
+            })
+            .get_storage()
+        {
+            log::error!("failed to write cert to disk: {err}");
+        }
+
+        (cert, key)
+    };
+    let hash = cert
+        .tbs_certificate
+        .subject_public_key_info
+        .fingerprint_bytes()
         .unwrap();
+
+    editor.host_map(
+        args.file.as_ref(),
+        args.port,
+        args.password,
+        args.admin_password,
+        NetworkServerCertMode::FromCertAndPrivateKey(Box::new(NetworkServerCertAndKey {
+            cert,
+            private_key: key,
+        })),
+    );
 
     log::info!("Cert hash: {}", base::hash::fmt_hash(&hash));
 
