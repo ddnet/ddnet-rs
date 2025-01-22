@@ -50,6 +50,8 @@ pub struct EditorClient {
     pub(crate) undo_label: Option<String>,
     pub(crate) redo_label: Option<String>,
 
+    pub(crate) should_save: bool,
+
     mapper_name: String,
     color: [u8; 3],
 }
@@ -90,6 +92,8 @@ impl EditorClient {
 
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
+
+            should_save: !local_client,
         };
 
         res.network
@@ -144,6 +148,7 @@ impl EditorClient {
                                 redo_label,
                                 undo_label,
                             } => {
+                                self.should_save = true;
                                 if !self.local_client {
                                     let actions: Box<dyn Iterator<Item = _>> = if undo_event {
                                         Box::new(action.actions.into_iter().rev())

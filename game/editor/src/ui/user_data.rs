@@ -46,6 +46,11 @@ pub enum EditorUiEvent {
         name: PathBuf,
     },
     SaveCurMap,
+    SaveMapAndClose {
+        tab: String,
+    },
+    SaveAll,
+    SaveAllAndClose,
     HostMap(Box<EditorUiEventHostMap>),
     Join {
         ip_port: String,
@@ -56,6 +61,7 @@ pub enum EditorUiEvent {
     },
     Minimize,
     Close,
+    ForceClose,
     Undo,
     Redo,
     CursorWorldPos {
@@ -178,6 +184,13 @@ impl EditorMenuDialogMode {
     }
 }
 
+#[derive(Debug)]
+pub enum EditorModalDialogMode {
+    None,
+    CloseTab { tab: String },
+    CloseEditor,
+}
+
 pub struct EditorTabsRefMut<'a> {
     pub tabs: &'a mut FxLinkedHashMap<String, EditorTab>,
     pub active_tab: &'a mut String,
@@ -199,6 +212,7 @@ pub struct UserData<'a> {
     pub input_state: &'a mut Option<InputState>,
     pub canvas_size: &'a mut Option<UiCanvasSize>,
     pub menu_dialog_mode: &'a mut EditorMenuDialogMode,
+    pub modal_dialog_mode: &'a mut EditorModalDialogMode,
     pub tools: &'a mut Tools,
     pub auto_mapper: &'a mut TileLayerAutoMapper,
     pub pointer_is_used: &'a mut bool,

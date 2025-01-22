@@ -126,6 +126,7 @@ impl EditorServer {
         map: &mut EditorMap,
         auto_saver: &mut AutoSaver,
         notifications: &mut ClientNotifications,
+        should_save: &mut bool,
     ) {
         // check if client exist and is authed
         if let Some(client) = self.clients.get_mut(&id) {
@@ -257,6 +258,7 @@ impl EditorServer {
                             }
                         }
                         if !valid_act.actions.is_empty() {
+                            *should_save = true;
                             if let Some(cur_action_group) = self.cur_action_group {
                                 self.action_groups.truncate(cur_action_group + 1);
                             } else {
@@ -333,6 +335,7 @@ impl EditorServer {
                                     })))
                                 && !self.action_groups.is_empty()
                             {
+                                *should_save = true;
                                 if !is_undo {
                                     self.cur_action_group =
                                         match self.cur_action_group {
@@ -524,6 +527,7 @@ impl EditorServer {
                                     map,
                                     auto_saver,
                                     notifications,
+                                    should_save,
                                 );
                             };
                             let gen_actions = |map: &mut _| {
@@ -579,6 +583,7 @@ impl EditorServer {
                                     map,
                                     auto_saver,
                                     notifications,
+                                    should_save,
                                 );
                             } else {
                                 let shuffle_action = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
@@ -629,6 +634,7 @@ impl EditorServer {
         map: &mut EditorMap,
         auto_saver: &mut AutoSaver,
         notifications: &mut ClientNotifications,
+        should_save: &mut bool,
     ) {
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
             let events = self.event_generator.take();
@@ -648,6 +654,7 @@ impl EditorServer {
                             map,
                             auto_saver,
                             notifications,
+                            should_save,
                         );
                     }
                     EditorNetEvent::Editor(EditorEvent::Server(_)) => {
