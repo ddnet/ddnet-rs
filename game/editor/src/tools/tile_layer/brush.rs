@@ -338,7 +338,7 @@ impl TileBrush {
                                             })
                                             .collect(),
                                     ),
-                                    EditorPhysicsLayer::Speedup(_) => {
+                                    EditorPhysicsLayer::Speedup(layer) => {
                                         MapTileLayerPhysicsTiles::Speedup(
                                             tile_indices
                                                 .into_iter()
@@ -347,12 +347,14 @@ impl TileBrush {
                                                         index,
                                                         flags: TileFlags::empty(),
                                                     },
-                                                    ..Default::default()
+                                                    angle: layer.user.speedup_angle,
+                                                    force: layer.user.speedup_force,
+                                                    max_speed: layer.user.speedup_max_speed,
                                                 })
                                                 .collect(),
                                         )
                                     }
-                                    EditorPhysicsLayer::Switch(_) => {
+                                    EditorPhysicsLayer::Switch(layer) => {
                                         MapTileLayerPhysicsTiles::Switch(
                                             tile_indices
                                                 .into_iter()
@@ -362,7 +364,7 @@ impl TileBrush {
                                                         flags: TileFlags::empty(),
                                                     },
                                                     number: physics_group_editor.active_switch,
-                                                    ..Default::default()
+                                                    delay: layer.user.switch_delay,
                                                 })
                                                 .collect(),
                                         )

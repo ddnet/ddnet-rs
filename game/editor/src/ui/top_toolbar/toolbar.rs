@@ -399,5 +399,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
 
     super::tune::render(ui, pipe, ui_state);
     super::switch::render(ui, pipe, ui_state);
+    super::speedup::render(ui, pipe, ui_state);
     super::tele::render(ui, pipe, ui_state);
 }

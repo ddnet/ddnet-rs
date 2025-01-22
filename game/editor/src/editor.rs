@@ -507,8 +507,12 @@ impl Editor {
                                         attr: EditorCommonGroupOrLayerAttr::default(),
                                         selected: Default::default(),
                                         number_extra: Default::default(),
-                                        number_extra_texts: Default::default(),
+                                        number_extra_text: Default::default(),
                                         context_menu_open: false,
+                                        switch_delay: Default::default(),
+                                        speedup_force: Default::default(),
+                                        speedup_angle: Default::default(),
+                                        speedup_max_speed: Default::default(),
                                     },
                                 },
                             )],
@@ -943,8 +947,12 @@ impl Editor {
                                 attr: EditorCommonGroupOrLayerAttr::default(),
                                 selected: Default::default(),
                                 number_extra: Default::default(),
-                                number_extra_texts: Default::default(),
+                                number_extra_text: Default::default(),
                                 context_menu_open: false,
+                                switch_delay: Default::default(),
+                                speedup_force: Default::default(),
+                                speedup_angle: Default::default(),
+                                speedup_max_speed: Default::default(),
                             };
                             match layer {
                                 MapLayerPhysics::Arbitrary(layer) => EditorPhysicsLayer::Arbitrary(
