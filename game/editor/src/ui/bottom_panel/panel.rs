@@ -1,4 +1,4 @@
-use egui::{text::LayoutJob, Color32};
+use egui::{text::LayoutJob, Button, Color32};
 use egui_extras::Size;
 use math::math::vector::vec2;
 use ui_base::types::{UiRenderPipe, UiState};
@@ -38,7 +38,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         editor_tab.map.user.ui_values.animations_panel_open =
                                             !editor_tab.map.user.ui_values.animations_panel_open;
                                     }
-                                    if ui.button("Server settings").clicked() {
+                                    if ui
+                                        .add(Button::new("Server settings").selected(
+                                            editor_tab.map.user.ui_values.server_settings_open,
+                                        ))
+                                        .clicked()
+                                    {
                                         editor_tab.map.user.ui_values.server_settings_open =
                                             !editor_tab.map.user.ui_values.server_settings_open;
                                     }

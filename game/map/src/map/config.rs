@@ -7,6 +7,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// commands that can be interpreted by server or theoretically even client
-    /// e.g. sv_team_size 2
+    /// e.g. `sv_team_size 2`
     pub commands: LinkedHashMap<String, String>,
 }

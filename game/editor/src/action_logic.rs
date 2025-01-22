@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, rc::Rc, sync::Arc};
 
 use anyhow::anyhow;
 use base::hash::generate_hash_for;
@@ -49,9 +49,9 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds,
-        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
-        ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands,
+        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
+        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     map::{
@@ -530,6 +530,10 @@ fn merge_actions_group(
             EditorAction::RemSoundAnim(act1),
             Some(EditorAction::RemSoundAnim(act2)),
         )),
+        (EditorAction::SetCommands(mut act1), EditorAction::SetCommands(act2)) => {
+            act1.new_commands = act2.new_commands;
+            Ok((EditorAction::SetCommands(act1), None))
+        }
         (act1, act2) => Ok((act1, Some(act2))),
     }
 }
@@ -2879,6 +2883,18 @@ pub fn do_action(
             );
             map.animations.sound.remove(act.base.index);
         }
+        EditorAction::SetCommands(act) => {
+            if fix_action {
+                act.old_commands = map.config.def.commands.clone();
+            }
+            let old_cmds: BTreeMap<_, _> = act.old_commands.clone().into_iter().collect();
+            let cur_cmds: BTreeMap<_, _> = map.config.def.commands.clone().into_iter().collect();
+            anyhow::ensure!(
+                old_cmds == cur_cmds,
+                "commands in action did not match the ones in map."
+            );
+            map.config.def.commands = act.new_commands.clone();
+        }
     }
     Ok(action)
 }
@@ -3491,6 +3507,20 @@ pub fn undo_action(
             backend_handle,
             texture_handle,
             EditorAction::AddSoundAnim(ActAddSoundAnim { base: act.base }),
+            map,
+            false,
+        ),
+        EditorAction::SetCommands(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::SetCommands(ActSetCommands {
+                old_commands: act.new_commands,
+                new_commands: act.old_commands,
+            }),
             map,
             false,
         ),

@@ -1,5 +1,6 @@
 use base::linked_hash_map_view::FxLinkedHashMap;
 use enum_dispatch::enum_dispatch;
+use hashlink::LinkedHashMap;
 use map::{
     map::{
         animations::{ColorAnimation, PosAnimation, SoundAnimation},
@@ -95,6 +96,8 @@ pub enum EditorAction {
     RemColorAnim(ActRemColorAnim),
     AddSoundAnim(ActAddSoundAnim),
     RemSoundAnim(ActRemSoundAnim),
+    // server settings
+    SetCommands(ActSetCommands),
 }
 
 /// actions are always grouped, even single actions
@@ -1800,5 +1803,29 @@ impl EditorActionInterface for ActRemSoundAnim {
         } else {
             format!("Remove sound animation @{}", self.base.index)
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActSetCommands {
+    pub old_commands: LinkedHashMap<String, String>,
+    pub new_commands: LinkedHashMap<String, String>,
+}
+
+impl EditorActionInterface for ActSetCommands {
+    fn undo_info(&self) -> String {
+        format!(
+            "Replace (back) {} commands with {} commands",
+            self.new_commands.len(),
+            self.old_commands.len()
+        )
+    }
+
+    fn redo_info(&self) -> String {
+        format!(
+            "Replace {} commands with {} commands",
+            self.old_commands.len(),
+            self.new_commands.len()
+        )
     }
 }

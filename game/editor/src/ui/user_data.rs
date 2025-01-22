@@ -4,7 +4,7 @@ use base::linked_hash_map_view::FxLinkedHashMap;
 use base_io::io::Io;
 use config::config::ConfigEngine;
 use ed25519_dalek::SigningKey;
-use egui::InputState;
+use egui::{Align2, InputState};
 use egui_file_dialog::FileDialog;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -119,6 +119,7 @@ impl EditorMenuDialogMode {
         let mut file_dialog = Box::new(
             FileDialog::new()
                 .title("Open Map File")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
                 .default_file_name("ctf1.twmap"),
@@ -135,6 +136,7 @@ impl EditorMenuDialogMode {
         let mut file_dialog = Box::new(
             FileDialog::new()
                 .title("Save Map File")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
                 .default_file_name("ctf1.twmap"),
@@ -151,6 +153,7 @@ impl EditorMenuDialogMode {
         let mut file_dialog = Box::new(
             FileDialog::new()
                 .title("Map File to host")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
                 .default_file_name("ctf1.twmap"),

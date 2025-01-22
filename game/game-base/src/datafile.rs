@@ -1849,7 +1849,7 @@ impl CDatafileWrapper {
                             tune_zone.tunes.insert(tune_param, tune_val);
 
                             None
-                        } else {
+                        } else if !setting.is_empty() {
                             Some(
                                 setting
                                     .trim()
@@ -1857,6 +1857,8 @@ impl CDatafileWrapper {
                                     .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
                                     .unwrap_or_else(|| (setting.clone(), "".to_string())),
                             )
+                        } else {
+                            None
                         }
                     })
                     .collect(),
@@ -3386,17 +3388,18 @@ impl CDatafileWrapper {
                         global_map_settings.push(setting);
                     }
                     let data_offset = data_compressed_data.len() as i32;
-                    let uncompressed_size =
-                        global_map_settings.len() * std::mem::size_of::<[u8; 256]>();
-                    let compressed_data = Self::compress_data(
-                        &global_map_settings
-                            .into_iter()
-                            .map(|v| v.to_vec())
-                            .collect::<Vec<_>>()
-                            .into_iter()
-                            .flatten()
-                            .collect::<Vec<_>>(),
-                    );
+                    let uncompressed_data = global_map_settings
+                        .into_iter()
+                        .filter_map(|v| {
+                            CString::from_vec_with_nul(
+                                v.into_iter().take_while_inclusive(|v| *v != 0).collect(),
+                            )
+                            .ok()
+                        })
+                        .flat_map(|s| s.as_bytes_with_nul().to_vec())
+                        .collect::<Vec<_>>();
+                    let uncompressed_size = uncompressed_data.len();
+                    let compressed_data = Self::compress_data(&uncompressed_data);
                     data_compressed_data.extend(compressed_data);
                     let data_index = res.data_file.info.data_offsets.len();
                     res.data_file.info.data_offsets.push(data_offset);

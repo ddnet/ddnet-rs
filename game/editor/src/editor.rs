@@ -525,7 +525,7 @@ impl Editor {
                         def: Config {
                             commands: Default::default(),
                         },
-                        user: (),
+                        user: Default::default(),
                     },
                     meta: EditorMetadata {
                         def: Metadata {
@@ -1001,7 +1001,7 @@ impl Editor {
             },
             config: EditorConfig {
                 def: map.config,
-                user: (),
+                user: Default::default(),
             },
             meta: EditorMetadata {
                 def: map.meta,

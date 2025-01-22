@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use base::hash::generate_hash_for;
+use hashlink::LinkedHashMap;
 use map::map::{
     animations::{AnimBase, AnimPoint, AnimPointCurveType},
     groups::{
@@ -35,9 +36,9 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds,
-        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
-        ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands,
+        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
+        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     dbg::valid::{
@@ -1182,10 +1183,28 @@ fn rem_sound_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     })]
 }
 
+fn set_commands_invalid(_map: &EditorMap) -> Vec<EditorAction> {
+    vec![EditorAction::SetCommands(ActSetCommands {
+        old_commands: Default::default(),
+        new_commands: {
+            let mut cmds: LinkedHashMap<_, _> = Default::default();
+
+            for _ in 0..rand::rngs::OsRng.next_u64() % 20 {
+                cmds.insert(
+                    format!("{}", rand::rngs::OsRng.next_u64()),
+                    format!("{}", rand::rngs::OsRng.next_u64()),
+                );
+            }
+
+            cmds
+        },
+    })]
+}
+
 /// Invalid here still makes sure that no memory exhaustion happens.
 pub fn random_invalid_action(map: &EditorMap) -> Vec<EditorAction> {
     // must match the last value in the `match` + 1
-    const TOTAL_ACTIONS: u64 = 44;
+    const TOTAL_ACTIONS: u64 = 45;
     loop {
         match match rand::rngs::OsRng.next_u64() % TOTAL_ACTIONS {
             0 => move_group_invalid(map),
@@ -1230,6 +1249,7 @@ pub fn random_invalid_action(map: &EditorMap) -> Vec<EditorAction> {
             41 => rem_color_anim_invalid(map),
             42 => add_sound_anim_invalid(map),
             43 => rem_sound_anim_invalid(map),
+            44 => set_commands_invalid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,

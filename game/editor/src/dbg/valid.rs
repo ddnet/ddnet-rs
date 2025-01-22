@@ -1,4 +1,5 @@
 use base::hash::generate_hash_for;
+use hashlink::LinkedHashMap;
 use map::map::{
     animations::AnimBase,
     groups::{
@@ -33,9 +34,9 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSoundLayerAddRemSounds,
-        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
-        ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands,
+        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
+        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     map::{EditorLayer, EditorMap, EditorPhysicsLayer},
@@ -2132,9 +2133,27 @@ fn rem_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     .concat()
 }
 
+fn set_commands_valid(map: &EditorMap) -> Vec<EditorAction> {
+    vec![EditorAction::SetCommands(ActSetCommands {
+        old_commands: map.config.def.commands.clone(),
+        new_commands: {
+            let mut cmds: LinkedHashMap<_, _> = Default::default();
+
+            for _ in 0..rand::rngs::OsRng.next_u64() % 20 {
+                cmds.insert(
+                    format!("{}", rand::rngs::OsRng.next_u64()),
+                    format!("{}", rand::rngs::OsRng.next_u64()),
+                );
+            }
+
+            cmds
+        },
+    })]
+}
+
 pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
     // must match the last value in the `match` + 1
-    const TOTAL_ACTIONS: u64 = 44;
+    const TOTAL_ACTIONS: u64 = 45;
     loop {
         match match rand::rngs::OsRng.next_u64() % TOTAL_ACTIONS {
             0 => move_group_valid(map),
@@ -2179,6 +2198,7 @@ pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
             41 => rem_color_anim_valid(map),
             42 => add_sound_anim_valid(map),
             43 => rem_sound_anim_valid(map),
+            44 => set_commands_valid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,

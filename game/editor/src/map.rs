@@ -507,7 +507,12 @@ pub trait EditorMapGroupsInterface {
     fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
 }
 
-pub type EditorConfig = ConfigSkeleton<()>;
+#[derive(Debug, Clone, Default)]
+pub struct EditorMapConfig {
+    pub cmd_string: String,
+    pub selected_cmd: Option<usize>,
+}
+pub type EditorConfig = ConfigSkeleton<EditorMapConfig>;
 pub type EditorMetadata = MetadataSkeleton<()>;
 
 #[derive(Default)]
@@ -601,7 +606,7 @@ pub type EditorMap = MapSkeleton<
     EditorArbitraryLayerProps,
     EditorAnimationsProps,
     EditorAnimationProps,
-    (),
+    EditorMapConfig,
     (),
 >;
 

@@ -226,6 +226,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     mode: EditorMenuHostDialogMode::SelectMap { file_dialog },
                 } = menu_dialog_mode
                 {
+                    *pipe.user_data.pointer_is_used = true;
                     if file_dialog.state() == DialogState::Open {
                         let mode = file_dialog.mode();
                         if let Some(selected) = file_dialog.update(ui.ctx()).picked() {
@@ -248,6 +249,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                             .push(EditorUiEvent::SaveFile { name: selected });
                                     }
                                 }
+                                *menu_dialog_mode = EditorMenuDialogMode::None;
                             } else if let EditorMenuDialogMode::Host { mode } = menu_dialog_mode {
                                 let (cert, private_key) = create_certifified_keys();
 
@@ -264,6 +266,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 ));
                             }
                         }
+                    } else {
+                        *menu_dialog_mode = EditorMenuDialogMode::None;
                     }
                 }
 
@@ -271,6 +275,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     mode: EditorMenuHostDialogMode::HostNetworkOptions(mode),
                 } = menu_dialog_mode
                 {
+                    *pipe.user_data.pointer_is_used = true;
                     let EditorMenuHostNetworkOptions {
                         port,
                         password,
@@ -375,6 +380,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     color,
                 }) = menu_dialog_mode
                 {
+                    *pipe.user_data.pointer_is_used = true;
                     let window = egui::Window::new("Join map network options")
                         .resizable(false)
                         .collapsible(false);
