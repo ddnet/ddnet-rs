@@ -842,7 +842,7 @@ pub fn do_action(
                 EditorImage2dArray {
                     user: EditorResource {
                         user: texture_handle
-                            .load_texture_3d_rgba_u8(mem, act.base.res.name.as_str())?,
+                            .load_texture_2d_array_rgba_u8(mem, act.base.res.name.as_str())?,
                         file: Rc::new(act.base.file.clone()),
                         hq: None,
                     },

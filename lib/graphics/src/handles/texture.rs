@@ -69,7 +69,7 @@ pub mod texture {
             ))
         }
 
-        pub fn load_texture_3d_rgba_u8(
+        pub fn load_texture_2d_array_rgba_u8(
             &mut self,
             data: GraphicsBackendMemory,
             tex_name: &str,

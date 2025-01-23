@@ -150,7 +150,7 @@ impl LoadEntities {
         name: &str,
     ) -> TextureContainer2dArray {
         texture_handle
-            .load_texture_3d_rgba_u8(img.data, name)
+            .load_texture_2d_array_rgba_u8(img.data, name)
             .unwrap()
     }
 }

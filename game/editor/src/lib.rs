@@ -14,6 +14,7 @@ pub mod map;
 pub mod map_tools;
 pub mod network;
 pub mod notifications;
+pub mod physics_layers;
 pub mod server;
 pub mod tab;
 pub mod tools;

@@ -108,6 +108,7 @@ use crate::{
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
     notifications::{EditorNotification, EditorNotifications},
+    physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
     tab::EditorTab,
     tools::{
@@ -273,7 +274,7 @@ impl Editor {
 
         let fake_texture_array = graphics
             .texture_handle
-            .load_texture_3d_rgba_u8(mem, "fake-editor-texture")
+            .load_texture_2d_array_rgba_u8(mem, "fake-editor-texture")
             .unwrap();
 
         // fake texture texture for non textured quads
@@ -299,6 +300,9 @@ impl Editor {
         let mut ui_creator = UiCreator::default();
         ui_creator.load_font(font_data);
 
+        let overlays = PhysicsLayerOverlaysDdnet::new(io, tp, graphics)
+            .expect("Data files for editor are wrong");
+
         let mut res = Self {
             tabs: Default::default(),
             active_tab: "".into(),
@@ -312,6 +316,7 @@ impl Editor {
                         &graphics_mt,
                         &graphics.buffer_object_handle,
                         &graphics.backend_handle,
+                        &overlays,
                     ),
                     selection: TileSelection::new(),
                 },
@@ -875,14 +880,14 @@ impl Editor {
                     .map(|((mem, file), hq_mem_file, i)| EditorImage2dArray {
                         user: EditorResource {
                             user: texture_handle
-                                .load_texture_3d_rgba_u8(mem, i.name.as_str())
+                                .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
                                 .unwrap(),
                             file: file.into(),
                             hq: hq_mem_file.map(|(mem, file)| {
                                 (
                                     file.into(),
                                     texture_handle
-                                        .load_texture_3d_rgba_u8(mem, i.name.as_str())
+                                        .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
                                         .unwrap(),
                                 )
                             }),

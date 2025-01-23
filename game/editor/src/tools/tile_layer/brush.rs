@@ -1,4 +1,4 @@
-use std::{cell::Cell, collections::HashSet, sync::Arc};
+use std::{cell::Cell, collections::HashSet, rc::Rc, sync::Arc};
 
 use client_containers::{container::ContainerKey, entities::EntitiesContainer};
 use client_render_base::map::{
@@ -46,6 +46,7 @@ use crate::{
         finish_design_tile_layer_buffer, finish_physics_layer_buffer,
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
+    physics_layers::PhysicsLayerOverlaysDdnet,
     tools::utils::{
         render_checkerboard_background, render_filled_rect, render_filled_rect_from_state,
         render_rect, render_rect_from_state,
@@ -106,6 +107,8 @@ pub struct TileBrushTiles {
 pub struct TileBrushTilePicker {
     pub render: TileLayerVisuals,
     pub map_render: MapGraphics,
+
+    physics_overlay: Rc<PhysicsLayerOverlaysDdnet>,
 }
 
 impl TileBrushTilePicker {
@@ -113,6 +116,7 @@ impl TileBrushTilePicker {
         graphics_mt: &GraphicsMultiThreaded,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
+        physics_overlay: Rc<PhysicsLayerOverlaysDdnet>,
     ) -> Self {
         let map_render = MapGraphics::new(backend_handle);
 
@@ -123,6 +127,7 @@ impl TileBrushTilePicker {
                 backend_handle,
             ),
             map_render,
+            physics_overlay,
         }
     }
 }
@@ -151,6 +156,7 @@ impl TileBrush {
         graphics_mt: &GraphicsMultiThreaded,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
+        physics_overlay: &Rc<PhysicsLayerOverlaysDdnet>,
     ) -> Self {
         Self {
             brush: None,
@@ -159,6 +165,7 @@ impl TileBrush {
                 graphics_mt,
                 buffer_object_handle,
                 backend_handle,
+                physics_overlay.clone(),
             ),
 
             pointer_down_world_pos: None,
@@ -382,11 +389,20 @@ impl TileBrush {
                                             .collect(),
                                     ),
                                 }),
-                                entities_container
-                                    .get_or_default::<ContainerKey>(&"default".try_into().unwrap())
-                                    // TODO:
-                                    .get_or_default("ddnet")
-                                    .clone(),
+                                {
+                                    let physics = entities_container
+                                        .get_or_default::<ContainerKey>(
+                                            &"default".try_into().unwrap(),
+                                        );
+                                    if matches!(layer, EditorPhysicsLayer::Speedup(_)) {
+                                        physics.speedup.clone()
+                                    } else {
+                                        physics
+                                            // TODO:
+                                            .get_or_default("ddnet")
+                                            .clone()
+                                    }
+                                },
                             ),
                             EditorLayerUnionRef::Design { layer, .. } => {
                                 let EditorLayer::Tile(layer) = layer else {
@@ -582,11 +598,20 @@ impl TileBrush {
                                         ))
                                     }
                                 }),
-                                entities_container
-                                    .get_or_default::<ContainerKey>(&"default".try_into().unwrap())
-                                    // TODO:
-                                    .get_or_default("ddnet")
-                                    .clone(),
+                                {
+                                    let physics = entities_container
+                                        .get_or_default::<ContainerKey>(
+                                            &"default".try_into().unwrap(),
+                                        );
+                                    if matches!(layer, EditorPhysicsLayer::Speedup(_)) {
+                                        physics.speedup.clone()
+                                    } else {
+                                        physics
+                                            // TODO:
+                                            .get_or_default("ddnet")
+                                            .clone()
+                                    }
+                                },
                             ),
                             EditorLayerUnionRef::Design { layer, .. } => {
                                 let EditorLayer::Tile(layer) = layer else {
@@ -1644,12 +1669,16 @@ impl TileBrush {
                 tl_y + ui_canvas.height() * size_ratio_y,
             );
             let texture = match layer.as_ref().unwrap() {
-                EditorLayerUnionRef::Physics { .. } => {
-                    entities_container
-                        .get_or_default::<ContainerKey>(&"default".try_into().unwrap())
-                        // TODO:
-                        .get_or_default("ddnet")
-                }
+                EditorLayerUnionRef::Physics { layer, .. } => match layer {
+                    EditorPhysicsLayer::Arbitrary(_) | EditorPhysicsLayer::Game(_) => {
+                        &self.tile_picker.physics_overlay.game
+                    }
+                    EditorPhysicsLayer::Front(_) => &self.tile_picker.physics_overlay.front,
+                    EditorPhysicsLayer::Tele(_) => &self.tile_picker.physics_overlay.tele,
+                    EditorPhysicsLayer::Speedup(_) => &self.tile_picker.physics_overlay.speedup,
+                    EditorPhysicsLayer::Switch(_) => &self.tile_picker.physics_overlay.switch,
+                    EditorPhysicsLayer::Tune(_) => &self.tile_picker.physics_overlay.tune,
+                },
                 EditorLayerUnionRef::Design { layer, .. } => match layer {
                     EditorLayer::Tile(layer) => layer
                         .layer

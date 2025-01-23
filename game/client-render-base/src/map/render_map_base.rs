@@ -562,7 +562,7 @@ impl ClientMapRender {
                             .map(|img| {
                                 map_upload
                                     .texture_handle
-                                    .load_texture_3d_rgba_u8(img.mem, &img.name)
+                                    .load_texture_2d_array_rgba_u8(img.mem, &img.name)
                             })
                             .collect::<anyhow::Result<Vec<TextureContainer2dArray>>>()?;
 
