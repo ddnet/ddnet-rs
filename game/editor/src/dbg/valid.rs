@@ -16,6 +16,7 @@ use map::map::{
         },
         MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
     },
+    metadata::Metadata,
     resources::{MapResourceMetaData, MapResourceRef},
 };
 use math::math::vector::uffixed;
@@ -34,7 +35,7 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands, ActSetMetadata,
         ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
         ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
@@ -2151,9 +2152,38 @@ fn set_commands_valid(map: &EditorMap) -> Vec<EditorAction> {
     })]
 }
 
+fn set_metadata_valid(map: &EditorMap) -> Vec<EditorAction> {
+    vec![EditorAction::SetMetadata(ActSetMetadata {
+        old_meta: map.meta.def.clone(),
+        new_meta: Metadata {
+            authors: {
+                let mut s: Vec<_> = Default::default();
+
+                for _ in 0..rand::rngs::OsRng.next_u64() % 5 {
+                    s.push(format!("{}", rand::rngs::OsRng.next_u64()));
+                }
+
+                s
+            },
+            licenses: {
+                let mut s: Vec<_> = Default::default();
+
+                for _ in 0..rand::rngs::OsRng.next_u64() % 5 {
+                    s.push(format!("{}", rand::rngs::OsRng.next_u64()));
+                }
+
+                s
+            },
+            version: format!("{}", rand::rngs::OsRng.next_u64()),
+            credits: format!("{}", rand::rngs::OsRng.next_u64()),
+            memo: format!("{}", rand::rngs::OsRng.next_u64()),
+        },
+    })]
+}
+
 pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
     // must match the last value in the `match` + 1
-    const TOTAL_ACTIONS: u64 = 45;
+    const TOTAL_ACTIONS: u64 = 46;
     loop {
         match match rand::rngs::OsRng.next_u64() % TOTAL_ACTIONS {
             0 => move_group_valid(map),
@@ -2199,6 +2229,7 @@ pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
             42 => add_sound_anim_valid(map),
             43 => rem_sound_anim_valid(map),
             44 => set_commands_valid(map),
+            45 => set_metadata_valid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,

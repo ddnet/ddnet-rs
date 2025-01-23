@@ -49,7 +49,7 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands, ActSetMetadata,
         ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
         ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
@@ -533,6 +533,10 @@ fn merge_actions_group(
         (EditorAction::SetCommands(mut act1), EditorAction::SetCommands(act2)) => {
             act1.new_commands = act2.new_commands;
             Ok((EditorAction::SetCommands(act1), None))
+        }
+        (EditorAction::SetMetadata(mut act1), EditorAction::SetMetadata(act2)) => {
+            act1.new_meta = act2.new_meta;
+            Ok((EditorAction::SetMetadata(act1), None))
         }
         (act1, act2) => Ok((act1, Some(act2))),
     }
@@ -2919,6 +2923,16 @@ pub fn do_action(
             );
             map.config.def.commands = act.new_commands.clone();
         }
+        EditorAction::SetMetadata(act) => {
+            if fix_action {
+                act.old_meta = map.meta.def.clone();
+            }
+            anyhow::ensure!(
+                act.old_meta == map.meta.def,
+                "metadata in action did not match the ones in map."
+            );
+            map.meta.def = act.new_meta.clone();
+        }
     }
     Ok(action)
 }
@@ -3544,6 +3558,20 @@ pub fn undo_action(
             EditorAction::SetCommands(ActSetCommands {
                 old_commands: act.new_commands,
                 new_commands: act.old_commands,
+            }),
+            map,
+            false,
+        ),
+        EditorAction::SetMetadata(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::SetMetadata(ActSetMetadata {
+                old_meta: act.new_meta,
+                new_meta: act.old_meta,
             }),
             map,
             false,

@@ -15,6 +15,7 @@ use map::{
             },
             MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
         },
+        metadata::Metadata,
         resources::MapResourceRef,
     },
     types::NonZeroU16MinusOne,
@@ -98,6 +99,7 @@ pub enum EditorAction {
     RemSoundAnim(ActRemSoundAnim),
     // server settings
     SetCommands(ActSetCommands),
+    SetMetadata(ActSetMetadata),
 }
 
 /// actions are always grouped, even single actions
@@ -1827,5 +1829,21 @@ impl EditorActionInterface for ActSetCommands {
             self.old_commands.len(),
             self.new_commands.len()
         )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActSetMetadata {
+    pub old_meta: Metadata,
+    pub new_meta: Metadata,
+}
+
+impl EditorActionInterface for ActSetMetadata {
+    fn undo_info(&self) -> String {
+        "Replace (back) meta data change".to_string()
+    }
+
+    fn redo_info(&self) -> String {
+        "Replace meta data change".to_string()
     }
 }
