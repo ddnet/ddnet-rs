@@ -32,7 +32,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         let mut panel = egui::TopBottomPanel::bottom("animations_panel")
             .resizable(true)
             .height_range(300.0..=600.0);
-        panel = panel.default_height(200.0);
+        panel = panel.default_height(300.0);
 
         // if anim panel is open, and quads/sounds are selected
         // they basically automatically select their active animations

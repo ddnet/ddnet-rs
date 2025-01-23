@@ -175,7 +175,14 @@ pub struct EditorPhysicsLayerProps {
     /// for physics layers that have numbers that reference other stuff
     /// e.g. tele, switch & tune zone layer
     pub number_extra: FxLinkedHashMap<u8, EditorPhysicsLayerNumberExtra>,
-    pub number_extra_texts: (String, String),
+    pub number_extra_text: String,
+
+    pub switch_delay: u8,
+
+    pub speedup_force: u8,
+    pub speedup_angle: i16,
+    pub speedup_max_speed: u8,
+
     pub context_menu_open: bool,
 }
 
@@ -507,7 +514,12 @@ pub trait EditorMapGroupsInterface {
     fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
 }
 
-pub type EditorConfig = ConfigSkeleton<()>;
+#[derive(Debug, Clone, Default)]
+pub struct EditorMapConfig {
+    pub cmd_string: String,
+    pub selected_cmd: Option<usize>,
+}
+pub type EditorConfig = ConfigSkeleton<EditorMapConfig>;
 pub type EditorMetadata = MetadataSkeleton<()>;
 
 #[derive(Default)]
@@ -601,7 +613,7 @@ pub type EditorMap = MapSkeleton<
     EditorArbitraryLayerProps,
     EditorAnimationsProps,
     EditorAnimationProps,
-    (),
+    EditorMapConfig,
     (),
 >;
 

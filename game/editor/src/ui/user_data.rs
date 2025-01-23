@@ -4,7 +4,7 @@ use base::linked_hash_map_view::FxLinkedHashMap;
 use base_io::io::Io;
 use config::config::ConfigEngine;
 use ed25519_dalek::SigningKey;
-use egui::InputState;
+use egui::{Align2, InputState};
 use egui_file_dialog::FileDialog;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -46,6 +46,11 @@ pub enum EditorUiEvent {
         name: PathBuf,
     },
     SaveCurMap,
+    SaveMapAndClose {
+        tab: String,
+    },
+    SaveAll,
+    SaveAllAndClose,
     HostMap(Box<EditorUiEventHostMap>),
     Join {
         ip_port: String,
@@ -56,6 +61,7 @@ pub enum EditorUiEvent {
     },
     Minimize,
     Close,
+    ForceClose,
     Undo,
     Redo,
     CursorWorldPos {
@@ -106,17 +112,74 @@ pub enum EditorMenuDialogMode {
 }
 
 impl EditorMenuDialogMode {
+    fn icons(dialog: FileDialog) -> FileDialog {
+        dialog
+            .err_icon("\u{f06a}")
+            .device_icon("\u{f390}")
+            .default_file_icon("\u{f15b}")
+            .default_folder_icon("\u{f07c}")
+            .removable_device_icon("\u{f1f8}")
+            .labels(egui_file_dialog::FileDialogLabels {
+                title_select_directory: "\u{f07c} Select Folder".to_string(),
+                title_select_file: "\u{f07c} Open File".to_string(),
+                title_select_multiple: "\u{f24d} Select Multiple".to_string(),
+                title_save_file: "\u{f0c7} Save File".to_string(),
+
+                cancel: "Cancel".to_string(),
+                overwrite: "Overwrite".to_string(),
+
+                reload: "\u{f2f9}  Reload".to_string(),
+                show_hidden: " Show hidden".to_string(),
+                show_system_files: " Show system files".to_string(),
+
+                heading_pinned: "Pinned".to_string(),
+                heading_places: "Places".to_string(),
+                heading_devices: "Devices".to_string(),
+                heading_removable_devices: "Removable Devices".to_string(),
+
+                home_dir: "\u{f015}  Home".to_string(),
+                desktop_dir: "\u{f390}  Desktop".to_string(),
+                documents_dir: "\u{f15c}  Documents".to_string(),
+                downloads_dir: "\u{f0c7}  Downloads".to_string(),
+                audio_dir: "🎵  Audio".to_string(),
+                pictures_dir: "\u{f03e}  Pictures".to_string(),
+                videos_dir: "\u{f008}  Videos".to_string(),
+
+                pin_folder: "\u{f08d} Pin folder".to_string(),
+                unpin_folder: "\u{e68f} Unpin folder".to_string(),
+
+                selected_directory: "Selected directory:".to_string(),
+                selected_file: "Selected file:".to_string(),
+                selected_items: "Selected items:".to_string(),
+                file_name: "File name:".to_string(),
+                file_filter_all_files: "All Files".to_string(),
+
+                open_button: "\u{f07b}  Open".to_string(),
+                save_button: "\u{f0c7}  Save".to_string(),
+                cancel_button: "\u{f05e} Cancel".to_string(),
+
+                overwrite_file_modal_text: "already exists. Do you want to overwrite it?"
+                    .to_string(),
+
+                err_empty_folder_name: "Name of the folder cannot be empty".to_string(),
+                err_empty_file_name: "The file name cannot be empty".to_string(),
+                err_directory_exists: "A directory with the name already exists".to_string(),
+                err_file_exists: "A file with the name already exists".to_string(),
+            })
+    }
+
     pub fn open(io: &Io) -> Self {
         let mut open_path = io.fs.get_save_path();
         open_path.push("map/maps");
 
-        let mut file_dialog = Box::new(
+        let mut file_dialog = Box::new(Self::icons(
             FileDialog::new()
                 .title("Open Map File")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
                 .default_file_name("ctf1.twmap"),
-        );
+        ));
 
         file_dialog.pick_file();
 
@@ -126,13 +189,14 @@ impl EditorMenuDialogMode {
         let mut open_path = io.fs.get_save_path();
         open_path.push("map/maps");
 
-        let mut file_dialog = Box::new(
+        let mut file_dialog = Box::new(Self::icons(
             FileDialog::new()
                 .title("Save Map File")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
                 .default_file_name("ctf1.twmap"),
-        );
+        ));
 
         file_dialog.save_file();
 
@@ -142,13 +206,14 @@ impl EditorMenuDialogMode {
         let mut open_path = io.fs.get_save_path();
         open_path.push("map/maps");
 
-        let mut file_dialog = Box::new(
+        let mut file_dialog = Box::new(Self::icons(
             FileDialog::new()
                 .title("Map File to host")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
                 .default_file_name("ctf1.twmap"),
-        );
+        ));
 
         file_dialog.pick_file();
 
@@ -178,6 +243,13 @@ impl EditorMenuDialogMode {
     }
 }
 
+#[derive(Debug)]
+pub enum EditorModalDialogMode {
+    None,
+    CloseTab { tab: String },
+    CloseEditor,
+}
+
 pub struct EditorTabsRefMut<'a> {
     pub tabs: &'a mut FxLinkedHashMap<String, EditorTab>,
     pub active_tab: &'a mut String,
@@ -199,6 +271,7 @@ pub struct UserData<'a> {
     pub input_state: &'a mut Option<InputState>,
     pub canvas_size: &'a mut Option<UiCanvasSize>,
     pub menu_dialog_mode: &'a mut EditorMenuDialogMode,
+    pub modal_dialog_mode: &'a mut EditorModalDialogMode,
     pub tools: &'a mut Tools,
     pub auto_mapper: &'a mut TileLayerAutoMapper,
     pub pointer_is_used: &'a mut bool,

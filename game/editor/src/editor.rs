@@ -108,6 +108,7 @@ use crate::{
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
     notifications::{EditorNotification, EditorNotifications},
+    physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
     tab::EditorTab,
     tools::{
@@ -123,7 +124,10 @@ use crate::{
         },
         utils::{render_rect, render_rect_from_state, render_rect_state},
     },
-    ui::user_data::{EditorTabsRefMut, EditorUiEvent, EditorUiEventHostMap},
+    ui::user_data::{
+        EditorMenuDialogMode, EditorModalDialogMode, EditorTabsRefMut, EditorUiEvent,
+        EditorUiEventHostMap,
+    },
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
@@ -270,7 +274,7 @@ impl Editor {
 
         let fake_texture_array = graphics
             .texture_handle
-            .load_texture_3d_rgba_u8(mem, "fake-editor-texture")
+            .load_texture_2d_array_rgba_u8(mem, "fake-editor-texture")
             .unwrap();
 
         // fake texture texture for non textured quads
@@ -296,6 +300,9 @@ impl Editor {
         let mut ui_creator = UiCreator::default();
         ui_creator.load_font(font_data);
 
+        let overlays = PhysicsLayerOverlaysDdnet::new(io, tp, graphics)
+            .expect("Data files for editor are wrong");
+
         let mut res = Self {
             tabs: Default::default(),
             active_tab: "".into(),
@@ -309,6 +316,7 @@ impl Editor {
                         &graphics_mt,
                         &graphics.buffer_object_handle,
                         &graphics.backend_handle,
+                        &overlays,
                     ),
                     selection: TileSelection::new(),
                 },
@@ -504,8 +512,12 @@ impl Editor {
                                         attr: EditorCommonGroupOrLayerAttr::default(),
                                         selected: Default::default(),
                                         number_extra: Default::default(),
-                                        number_extra_texts: Default::default(),
+                                        number_extra_text: Default::default(),
                                         context_menu_open: false,
+                                        switch_delay: Default::default(),
+                                        speedup_force: Default::default(),
+                                        speedup_angle: Default::default(),
+                                        speedup_max_speed: Default::default(),
                                     },
                                 },
                             )],
@@ -522,7 +534,7 @@ impl Editor {
                         def: Config {
                             commands: Default::default(),
                         },
-                        user: (),
+                        user: Default::default(),
                     },
                     meta: EditorMetadata {
                         def: Metadata {
@@ -868,14 +880,14 @@ impl Editor {
                     .map(|((mem, file), hq_mem_file, i)| EditorImage2dArray {
                         user: EditorResource {
                             user: texture_handle
-                                .load_texture_3d_rgba_u8(mem, i.name.as_str())
+                                .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
                                 .unwrap(),
                             file: file.into(),
                             hq: hq_mem_file.map(|(mem, file)| {
                                 (
                                     file.into(),
                                     texture_handle
-                                        .load_texture_3d_rgba_u8(mem, i.name.as_str())
+                                        .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
                                         .unwrap(),
                                 )
                             }),
@@ -940,8 +952,12 @@ impl Editor {
                                 attr: EditorCommonGroupOrLayerAttr::default(),
                                 selected: Default::default(),
                                 number_extra: Default::default(),
-                                number_extra_texts: Default::default(),
+                                number_extra_text: Default::default(),
                                 context_menu_open: false,
+                                switch_delay: Default::default(),
+                                speedup_force: Default::default(),
+                                speedup_angle: Default::default(),
+                                speedup_max_speed: Default::default(),
                             };
                             match layer {
                                 MapLayerPhysics::Arbitrary(layer) => EditorPhysicsLayer::Arbitrary(
@@ -998,7 +1014,7 @@ impl Editor {
             },
             config: EditorConfig {
                 def: map.config,
-                user: (),
+                user: Default::default(),
             },
             meta: EditorMetadata {
                 def: map.meta,
@@ -1464,6 +1480,7 @@ impl Editor {
         notifications_overlay: &mut ClientNotifications,
         path: &Path,
     ) {
+        tab.client.should_save = false;
         if path.extension().is_some_and(|ext| ext == "map") {
             match Self::save_map_legacy(tab, io, tp, path) {
                 Ok(task) => {
@@ -1515,6 +1532,62 @@ impl Editor {
         }
     }
 
+    fn save_tab(&mut self, tab: &str) -> bool {
+        if let Some((path, tab)) = self
+            .tabs
+            .get_mut(tab)
+            .and_then(|tab| tab.auto_saver.path.clone().map(|path| (path.clone(), tab)))
+        {
+            Self::save_map_tab(
+                tab,
+                &self.io,
+                &self.thread_pool,
+                &mut self.save_tasks,
+                &mut self.notifications_overlay,
+                &path,
+            );
+            true
+        } else {
+            let msg = "The current map has never been saved.\n\
+            It has to be saved using the GUI at least once.";
+            log::info!("{msg}");
+            self.notifications_overlay
+                .add_err(msg, Duration::from_secs(10));
+
+            self.ui.menu_dialog_mode = EditorMenuDialogMode::save(&self.io);
+            false
+        }
+    }
+
+    fn save_all_tabs(&mut self) -> bool {
+        let mut all_saved = true;
+        for (path, tab) in self
+            .tabs
+            .values_mut()
+            .map(|tab| (tab.auto_saver.path.clone(), tab))
+        {
+            if let Some(path) = path {
+                Self::save_map_tab(
+                    tab,
+                    &self.io,
+                    &self.thread_pool,
+                    &mut self.save_tasks,
+                    &mut self.notifications_overlay,
+                    &path,
+                );
+            } else {
+                let msg = "Some maps have never been saved.\n\
+                    It has to be saved using the GUI at least once.";
+                log::info!("{msg}");
+                self.notifications_overlay
+                    .add_err(msg, Duration::from_secs(10));
+                all_saved = false;
+            }
+        }
+
+        all_saved
+    }
+
     fn update(&mut self) {
         let time_now = self.sys.time_get();
         let time_diff = time_now - self.last_time;
@@ -1561,6 +1634,7 @@ impl Editor {
                     &mut tab.map,
                     &mut tab.auto_saver,
                     &mut self.notifications_overlay,
+                    &mut tab.client.should_save,
                 );
             }
 
@@ -2351,18 +2425,19 @@ impl Editor {
                     self.save_map(&name);
                 }
                 EditorUiEvent::SaveCurMap => {
-                    if let Some(path) = self
-                        .tabs
-                        .get(&self.active_tab)
-                        .and_then(|tab| tab.auto_saver.path.clone())
-                    {
-                        self.save_map(&path);
-                    } else {
-                        let msg = "The current map has never been saved.\n\
-                            It has to be saved using the GUI at least once.";
-                        log::info!("{msg}");
-                        self.notifications_overlay
-                            .add_err(msg, Duration::from_secs(10));
+                    self.save_tab(&self.active_tab.clone());
+                }
+                EditorUiEvent::SaveMapAndClose { tab } => {
+                    if self.save_tab(&tab) {
+                        self.tabs.remove(&self.active_tab);
+                    }
+                }
+                EditorUiEvent::SaveAll => {
+                    self.save_all_tabs();
+                }
+                EditorUiEvent::SaveAllAndClose => {
+                    if self.save_all_tabs() {
+                        forced_result = Some(EditorResult::Close);
                     }
                 }
                 EditorUiEvent::HostMap(host_map) => {
@@ -2411,6 +2486,13 @@ impl Editor {
                     },
                 ),
                 EditorUiEvent::Close => {
+                    if self.tabs.values().any(|t| t.client.should_save) {
+                        self.ui.modal_dialog_mode = EditorModalDialogMode::CloseEditor;
+                    } else {
+                        forced_result = Some(EditorResult::Close);
+                    }
+                }
+                EditorUiEvent::ForceClose => {
                     forced_result = Some(EditorResult::Close);
                 }
                 EditorUiEvent::Minimize => {

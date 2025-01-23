@@ -137,6 +137,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }
                     layer.user.context_menu_open = context_menu_open;
 
+                    ui.add(
+                        DragValue::new(&mut layer.user.switch_delay)
+                            .update_while_editing(false)
+                            .prefix("Delay: "),
+                    );
+
                     map.groups.physics.user.active_switch = active_switch;
                     if prev_switch != map.groups.physics.user.active_switch {
                         // recheck used

@@ -23,7 +23,9 @@ use crate::{
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     ui::{
         page::EditorUi,
-        user_data::{EditorMenuDialogMode, EditorTabsRefMut, EditorUiEvent, UserData},
+        user_data::{
+            EditorMenuDialogMode, EditorModalDialogMode, EditorTabsRefMut, EditorUiEvent, UserData,
+        },
     },
     utils::UiCanvasSize,
 };
@@ -46,7 +48,8 @@ pub struct EditorUiRender {
     pub ui: UiContainer,
     editor_ui: EditorUi,
 
-    menu_dialog_mode: EditorMenuDialogMode,
+    pub menu_dialog_mode: EditorMenuDialogMode,
+    pub modal_dialog_mode: EditorModalDialogMode,
 
     backend_handle: GraphicsBackendHandle,
     canvas_handle: GraphicsCanvasHandle,
@@ -68,6 +71,7 @@ impl EditorUiRender {
             editor_ui: EditorUi::new(),
 
             menu_dialog_mode: EditorMenuDialogMode::None,
+            modal_dialog_mode: EditorModalDialogMode::None,
 
             backend_handle: graphics.backend_handle.clone(),
             canvas_handle: graphics.canvas_handle.clone(),
@@ -104,6 +108,7 @@ impl EditorUiRender {
                     canvas_size: pipe.canvas_size,
 
                     menu_dialog_mode: &mut self.menu_dialog_mode,
+                    modal_dialog_mode: &mut self.modal_dialog_mode,
                     tools: pipe.tools,
 
                     auto_mapper: pipe.auto_mapper,

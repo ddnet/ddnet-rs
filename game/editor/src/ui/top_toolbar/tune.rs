@@ -120,7 +120,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 old_tunes: old_zones,
                                                 new_tunes: tune.extra.clone(),
                                             }),
-                                            Some("tune_zone_change_zones"),
+                                            Some(&format!(
+                                                "tune_zone_change_zones-{}",
+                                                active_tune
+                                            )),
                                         );
                                     }
                                     tune.name = tune_name;
@@ -144,46 +147,79 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }
                     layer.user.context_menu_open = context_menu_open;
 
-                    ui.menu_button("tunes", |ui| {
-                        let tune = layer
-                            .user
-                            .number_extra
-                            .entry(active_tune)
-                            .or_insert_with(Default::default);
-
-                        for (tune, val) in tune.extra.iter_mut() {
-                            ui.horizontal(|ui| {
-                                ui.label(tune);
-                                ui.text_edit_singleline(val);
-                                ui.label("delete_icon");
-                            });
-                        }
-                        let (name, val) = &mut layer.user.number_extra_texts;
-                        ui.horizontal(|ui| {
-                            ui.text_edit_singleline(name);
-                            ui.text_edit_singleline(val);
-                            if ui.button("add_btn").clicked() && !name.is_empty() {
-                                tune.extra.insert(name.clone(), val.clone());
-
-                                let (old_name, old_zones) = layer
-                                    .layer
-                                    .tune_zones
-                                    .get(&active_tune)
-                                    .map(|zone| (zone.name.clone(), zone.tunes.clone()))
-                                    .unwrap_or_default();
-                                pipe.user_data.editor_tab.client.execute(
-                                    EditorAction::ChangeTuneZone(ActChangeTuneZone {
-                                        index: active_tune,
-                                        old_name,
-                                        new_name: tune.name.clone(),
-                                        old_tunes: old_zones,
-                                        new_tunes: tune.extra.clone(),
-                                    }),
-                                    Some("tune_zone_change_zones"),
-                                );
+                    let tune = layer
+                        .user
+                        .number_extra
+                        .entry(active_tune)
+                        .or_insert_with(Default::default);
+                    ui.menu_button(
+                        format!(
+                            "Tunes of {}",
+                            if tune.name.is_empty() {
+                                active_tune.to_string()
+                            } else {
+                                tune.name.clone()
+                            },
+                        ),
+                        |ui| {
+                            let tunes_clone = tune.extra.clone();
+                            for (cmd_name, val) in tunes_clone.iter() {
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("Command: {} {}", cmd_name, val));
+                                    if ui.button("\u{f1f8}").clicked() {
+                                        let old_tunes = tune.extra.clone();
+                                        tune.extra.remove(cmd_name);
+                                        pipe.user_data.editor_tab.client.execute(
+                                            EditorAction::ChangeTuneZone(ActChangeTuneZone {
+                                                index: active_tune,
+                                                old_name: tune.name.clone(),
+                                                new_name: tune.name.clone(),
+                                                old_tunes,
+                                                new_tunes: tune.extra.clone(),
+                                            }),
+                                            Some(&format!(
+                                                "tune_zone_change_zones-{}",
+                                                active_tune
+                                            )),
+                                        );
+                                    }
+                                });
                             }
-                        });
-                    });
+                            let val = &mut layer.user.number_extra_text;
+                            ui.add_space(10.0);
+                            ui.separator();
+                            ui.label("Add commands");
+                            ui.horizontal(|ui| {
+                                ui.label("Tune command:");
+                                ui.text_edit_singleline(val);
+                                if ui.button("\u{f0fe}").clicked() && !val.is_empty() {
+                                    if let Some((name, val)) = val.split_once(" ") {
+                                        tune.extra.insert(name.to_string(), val.to_string());
+
+                                        let (old_name, old_zones) = layer
+                                            .layer
+                                            .tune_zones
+                                            .get(&active_tune)
+                                            .map(|zone| (zone.name.clone(), zone.tunes.clone()))
+                                            .unwrap_or_default();
+                                        pipe.user_data.editor_tab.client.execute(
+                                            EditorAction::ChangeTuneZone(ActChangeTuneZone {
+                                                index: active_tune,
+                                                old_name,
+                                                new_name: tune.name.clone(),
+                                                old_tunes: old_zones,
+                                                new_tunes: tune.extra.clone(),
+                                            }),
+                                            Some(&format!(
+                                                "tune_zone_change_zones-{}",
+                                                active_tune
+                                            )),
+                                        );
+                                    }
+                                }
+                            });
+                        },
+                    );
 
                     map.groups.physics.user.active_tune_zone = active_tune;
                     if prev_tune != map.groups.physics.user.active_tune_zone {
