@@ -1,10 +1,11 @@
 use std::{
     collections::VecDeque,
     sync::{atomic::AtomicBool, Arc},
+    time::Duration,
 };
 
 use anyhow::anyhow;
-use base::system::System;
+use base::system::{System, SystemTimeInterface};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -14,7 +15,7 @@ use graphics::{
     },
 };
 use math::math::vector::vec2;
-use network::network::types::NetworkClientCertCheckMode;
+use network::network::{event::NetworkEvent, types::NetworkClientCertCheckMode};
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
@@ -51,6 +52,9 @@ pub struct EditorClient {
     pub(crate) redo_label: Option<String>,
 
     pub(crate) should_save: bool,
+
+    last_keep_alive_id_and_time: (Option<u64>, Duration),
+    sys: System,
 
     mapper_name: String,
     color: [u8; 3],
@@ -93,6 +97,9 @@ impl EditorClient {
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
 
+            last_keep_alive_id_and_time: (None, sys.time_get()),
+            sys: sys.clone(),
+
             should_save: !local_client,
         };
 
@@ -128,9 +135,9 @@ impl EditorClient {
             let mut generated_events = self.event_generator.events.blocking_lock();
 
             let events = std::mem::take(&mut *generated_events);
-            for (id, time, event) in events {
+            for (id, timestamp, event) in events {
                 if res.is_some() {
-                    generated_events.push_back((id, time, event));
+                    generated_events.push_back((id, timestamp, event));
                     continue;
                 }
 
@@ -231,6 +238,18 @@ impl EditorClient {
                         // ignore
                     }
                     EditorNetEvent::NetworkEvent(ev) => {
+                        if let NetworkEvent::NetworkStats(stats) = &ev {
+                            if self
+                                .last_keep_alive_id_and_time
+                                .0
+                                .is_none_or(|last_id| stats.last_keep_alive_id != last_id)
+                                && timestamp >= self.last_keep_alive_id_and_time.1
+                            {
+                                self.last_keep_alive_id_and_time =
+                                    (Some(stats.last_keep_alive_id), timestamp);
+                            }
+                        }
+
                         match self.network.handle_network_ev(id, ev) {
                             Ok(None) => {
                                 // ignore
@@ -324,5 +343,13 @@ impl EditorClient {
             .send(EditorEvent::Client(EditorEventClientToServer::DbgAction(
                 props,
             )));
+    }
+
+    /// Whether the connection to the server is most likely dead
+    pub fn is_likely_distconnected(&self) -> bool {
+        self.sys
+            .time_get()
+            .saturating_sub(self.last_keep_alive_id_and_time.1)
+            > Duration::from_secs(6)
     }
 }

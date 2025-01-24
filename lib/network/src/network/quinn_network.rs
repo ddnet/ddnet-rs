@@ -339,6 +339,8 @@ impl NetworkConnectionInterface for QuinnNetworkConnectionWrapper {
             packets_sent: stats.path.sent_packets,
             bytes_sent: stats.udp_tx.bytes,
             bytes_recv: stats.udp_rx.bytes,
+
+            last_keep_alive_id: stats.frame_tx.acks,
         }
     }
 }
