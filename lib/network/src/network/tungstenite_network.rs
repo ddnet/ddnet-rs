@@ -230,6 +230,8 @@ impl NetworkConnectionInterface for TungsteniteNetworkConnectionWrapper {
             packets_sent: Default::default(),
             bytes_sent: 0,
             bytes_recv: 0,
+
+            last_keep_alive_id: 0,
         }
     }
 }

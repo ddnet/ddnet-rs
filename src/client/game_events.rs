@@ -144,6 +144,17 @@ impl GameEventsClient {
                                 byte_stats.last_timestamp = timestamp;
                                 byte_stats.last_bytes_sent = stats.bytes_sent;
                                 byte_stats.last_bytes_recv = stats.bytes_recv;
+
+                                if game
+                                    .game_data
+                                    .last_keep_alive_id_and_time
+                                    .0
+                                    .is_none_or(|last_id| stats.last_keep_alive_id != last_id)
+                                    && timestamp >= game.game_data.last_keep_alive_id_and_time.1
+                                {
+                                    game.game_data.last_keep_alive_id_and_time =
+                                        (Some(stats.last_keep_alive_id), timestamp);
+                                }
                             }
                         }
                         NetworkEvent::ConnectingFailed(reason) => {

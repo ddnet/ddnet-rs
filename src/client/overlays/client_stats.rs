@@ -258,6 +258,7 @@ impl ClientStatsData {
 
 pub struct ClientStatsRenderPipe<'a> {
     pub debug_hud: Option<DebugHudRenderPipe<'a>>,
+    pub connection_issues: bool,
     pub force_bottom: bool,
     pub show_fps: bool,
 }
@@ -306,11 +307,25 @@ impl ClientStats {
         }
     }
 
+    pub fn render_connection_issues(ui: &mut egui::Ui) {
+        ui.painter().text(
+            ui.ctx().screen_rect().center(),
+            egui::Align2::CENTER_CENTER,
+            "\u{f071} Connection to the server unstable or lost.",
+            FontId::proportional(25.0),
+            Color32::from_rgb(255, 255, 255),
+        );
+    }
+
     pub fn render(&mut self, pipe: &mut ClientStatsRenderPipe) {
+        let dbg_hud_open = self.ui.ui_state.is_ui_open;
+        if !dbg_hud_open && !pipe.show_fps && !pipe.connection_issues {
+            return;
+        }
+
         let window_width = self.canvas_handle.window_width();
         let window_height = self.canvas_handle.window_height();
         let window_pixels_per_point = self.canvas_handle.window_pixels_per_point();
-        let dbg_hud_open = self.ui.ui_state.is_ui_open;
         let (screen_rect, full_output, zoom_level) = self.ui.render(
             window_width,
             window_height,
@@ -332,6 +347,9 @@ impl ClientStats {
                         inner_pipe,
                         dbg_hud_open || !game_active || pipe.force_bottom,
                     );
+                }
+                if pipe.connection_issues {
+                    Self::render_connection_issues(ui);
                 }
             },
             &mut UiRenderPipe::new(self.sys.time_get(), &mut ()),

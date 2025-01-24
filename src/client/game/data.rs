@@ -162,6 +162,7 @@ pub struct GameData {
 
     pub prediction_timer: PredictionTimer,
     pub net_byte_stats: NetworkByteStats,
+    pub last_keep_alive_id_and_time: (Option<u64>, Duration),
 
     pub last_game_tick: Duration,
     pub last_frame_time: Duration,
@@ -230,6 +231,8 @@ impl GameData {
             player_snap_pool: Pool::with_capacity(2),
             player_inputs_state_pool: Pool::with_capacity(2),
             player_ids_pool: Pool::with_capacity(4),
+
+            last_keep_alive_id_and_time: (None, cur_time),
 
             vote: None,
             map_votes: Default::default(),
@@ -709,5 +712,10 @@ impl GameData {
                 *last_hammer = Some(cur_time);
             }
         }
+    }
+
+    /// Whether the connection to the server is most likely dead
+    pub fn is_likely_distconnected(&self, now: Duration) -> bool {
+        now.saturating_sub(self.last_keep_alive_id_and_time.1) > Duration::from_secs(4)
     }
 }

@@ -2023,6 +2023,11 @@ impl ClientNativeImpl {
             } else {
                 None
             },
+            connection_issues: if let Game::Active(game) = &self.game {
+                game.game_data.is_likely_distconnected(self.cur_time)
+            } else {
+                false
+            },
             force_bottom: self.ui_manager.ui.ui_state.is_ui_open,
             show_fps: self.config.game.cl.show_fps,
         });

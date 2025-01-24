@@ -57,7 +57,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                             ui.label("The client will try to connect for around 2 minutes before timing out.");
                         });
                 }
-                NetworkClientState::Connected => {}
+                NetworkClientState::Connected => {
+                    if tab.client.is_likely_distconnected() {
+                        Window::new("Network")
+                            .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
+                            .show(ui.ctx(), |ui| {
+                                ui.label("The server did not respond in the last few seconds.");
+                                ui.label("The connection might be dead.");
+                                ui.label("Timeout happens after around 2 minutes.");
+                            });
+                    }
+                }
                 NetworkClientState::Disconnected(reason) => {
                     Window::new("Network")
                         .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
