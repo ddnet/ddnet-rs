@@ -114,7 +114,7 @@ pub mod collision {
                 explosion_strength: 6.0,
                 hammer_strength: 1.0,
                 hook_duration: 1.25,
-                hammer_fire_delay: 125.0,
+                hammer_fire_delay: 333.0,
                 gun_fire_delay: 125.0,
                 shotgun_fire_delay: 500.0,
                 grenade_fire_delay: 500.0,
