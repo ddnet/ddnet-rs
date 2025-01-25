@@ -1,0 +1,15 @@
+[package]
+name = "editor-auto-mapper-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+editor-interface = { path = "../editor-interface" }
+
+wasm-runtime = { path = "../../lib/wasm-runtime" }
+api-wasm-macros = { path = "../../lib/api-wasm-macros" }
+base-io-traits = { path = "../../lib/base-io-traits" }
+cache = { path = "../../lib/cache" }
+
+wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
+anyhow = { version = "1.0.95", features = ["backtrace"] }

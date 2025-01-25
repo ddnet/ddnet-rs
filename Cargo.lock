@@ -335,6 +335,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "api-auto-mapper"
+version = "0.1.0"
+dependencies = [
+ "api",
+ "api-wasm-macros",
+ "editor-interface",
+ "once_cell",
+]
+
+[[package]]
 name = "api-editor"
 version = "0.1.0"
 dependencies = [
@@ -672,6 +682,19 @@ dependencies = [
  "cmake",
  "log",
  "pkg-config",
+]
+
+[[package]]
+name = "auto-mapper"
+version = "0.1.0"
+dependencies = [
+ "api",
+ "api-auto-mapper",
+ "api-macros",
+ "editor-interface",
+ "log",
+ "math",
+ "rustc-hash 2.1.0",
 ]
 
 [[package]]
@@ -3214,8 +3237,11 @@ dependencies = [
  "client-containers",
  "client-notifications",
  "client-render-base",
+ "client-ui",
  "config",
  "ed25519-dalek",
+ "editor-auto-mapper-wasm",
+ "editor-interface",
  "egui",
  "egui-file-dialog",
  "egui-timeline",
@@ -3246,6 +3272,28 @@ dependencies = [
  "ui-base",
  "ui-generic",
  "x509-cert",
+]
+
+[[package]]
+name = "editor-auto-mapper-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "api-wasm-macros",
+ "base-io-traits",
+ "cache",
+ "editor-interface",
+ "wasm-runtime",
+ "wasmer",
+]
+
+[[package]]
+name = "editor-interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "map",
+ "serde",
 ]
 
 [[package]]

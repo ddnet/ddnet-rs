@@ -577,6 +577,89 @@ pub fn merge_actions(actions: &mut Vec<EditorAction>) -> anyhow::Result<bool> {
     Ok(had_merge)
 }
 
+pub fn check_and_copy_tiles<T: Copy + PartialEq>(
+    layer_index: usize,
+    dst_tiles: &mut [T],
+    check_tiles: &mut [T],
+    copy_tiles: &[T],
+    w: usize,
+    h: usize,
+    sub_x: usize,
+    sub_y: usize,
+    sub_w: usize,
+    sub_h: usize,
+    fix_check_tiles: bool,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        (sub_x + sub_w) <= w,
+        "{} + {} was out of bounds for layer {} with width {}",
+        sub_x,
+        sub_w,
+        layer_index,
+        w
+    );
+    anyhow::ensure!(
+        (sub_y + sub_h) <= h,
+        "{} + {} was out of bounds for layer {} with height {}",
+        sub_y,
+        sub_h,
+        layer_index,
+        h
+    );
+    anyhow::ensure!(
+        sub_h * sub_w == copy_tiles.len(),
+        "brush tiles were not equal to the copy w * h in layer {}",
+        layer_index,
+    );
+    anyhow::ensure!(
+        sub_h * sub_w == check_tiles.len(),
+        "brush old tiles were not equal to the copy w * h in layer {}",
+        layer_index,
+    );
+    if fix_check_tiles {
+        // fix tiles if wanted
+        dst_tiles
+            .chunks(w)
+            .skip(sub_y)
+            .take(sub_h)
+            .enumerate()
+            .for_each(|(index, chunk)| {
+                let copy_tiles_y_offset = index * sub_w;
+                check_tiles[copy_tiles_y_offset..copy_tiles_y_offset + sub_w]
+                    .copy_from_slice(&chunk[sub_x..sub_x + sub_w]);
+            });
+    }
+
+    // check tiles
+    let tiles_matches = dst_tiles
+        .chunks_mut(w)
+        .skip(sub_y)
+        .take(sub_h)
+        .enumerate()
+        .all(|(index, chunk)| {
+            let copy_tiles_y_offset = index * sub_w;
+            chunk[sub_x..sub_x + sub_w]
+                == check_tiles[copy_tiles_y_offset..copy_tiles_y_offset + sub_w]
+        });
+    anyhow::ensure!(
+        tiles_matches,
+        "previous tiles in action did not \
+            match the current ones in the map."
+    );
+    // apply tiles
+    dst_tiles
+        .chunks_mut(w)
+        .skip(sub_y)
+        .take(sub_h)
+        .enumerate()
+        .for_each(|(index, chunk)| {
+            let copy_tiles_y_offset = index * sub_w;
+            chunk[sub_x..sub_x + sub_w]
+                .copy_from_slice(&copy_tiles[copy_tiles_y_offset..copy_tiles_y_offset + sub_w]);
+        });
+    Ok(())
+}
+
 /// Validates and executes the action.
 ///
 /// If `fix_action` is true the action will try
@@ -618,60 +701,6 @@ pub fn do_action(
             group.layers.remove(index);
             anyhow::Ok(())
         };
-    fn check_and_copy_tiles<T: Copy + PartialEq>(
-        dst_tiles: &mut [T],
-        check_tiles: &mut [T],
-        copy_tiles: &[T],
-        w: usize,
-        sub_x: usize,
-        sub_y: usize,
-        sub_w: usize,
-        sub_h: usize,
-        fix_check_tiles: bool,
-    ) -> anyhow::Result<()> {
-        if fix_check_tiles {
-            // fix tiles if wanted
-            dst_tiles
-                .chunks(w)
-                .skip(sub_y)
-                .take(sub_h)
-                .enumerate()
-                .for_each(|(index, chunk)| {
-                    let copy_tiles_y_offset = index * sub_w;
-                    check_tiles[copy_tiles_y_offset..copy_tiles_y_offset + sub_w]
-                        .copy_from_slice(&chunk[sub_x..sub_x + sub_w]);
-                });
-        }
-
-        // check tiles
-        let tiles_matches = dst_tiles
-            .chunks_mut(w)
-            .skip(sub_y)
-            .take(sub_h)
-            .enumerate()
-            .all(|(index, chunk)| {
-                let copy_tiles_y_offset = index * sub_w;
-                chunk[sub_x..sub_x + sub_w]
-                    == check_tiles[copy_tiles_y_offset..copy_tiles_y_offset + sub_w]
-            });
-        anyhow::ensure!(
-            tiles_matches,
-            "previous tiles in action did not \
-                match the current ones in the map."
-        );
-        // apply tiles
-        dst_tiles
-            .chunks_mut(w)
-            .skip(sub_y)
-            .take(sub_h)
-            .enumerate()
-            .for_each(|(index, chunk)| {
-                let copy_tiles_y_offset = index * sub_w;
-                chunk[sub_x..sub_x + sub_w]
-                    .copy_from_slice(&copy_tiles[copy_tiles_y_offset..copy_tiles_y_offset + sub_w]);
-            });
-        Ok(())
-    }
 
     match &mut action {
         EditorAction::MoveGroup(act) => {
@@ -1353,6 +1382,9 @@ pub fn do_action(
                         visuals,
                         attr: EditorCommonGroupOrLayerAttr::default(),
                         selected: Default::default(),
+                        auto_mapper_rule: Default::default(),
+                        auto_mapper_seed: Default::default(),
+                        live_edit: None,
                     },
                 }),
             );
@@ -1761,35 +1793,13 @@ pub fn do_action(
             {
                 let copy_tiles = &act.base.new_tiles;
                 let check_tiles = &mut act.base.old_tiles;
-                anyhow::ensure!(
-                    (act.base.x as usize + act.base.w.get() as usize)
-                        <= layer.layer.attr.width.get() as usize,
-                    "{} + {} was out of bounds for layer {} with width {}",
-                    act.base.x,
-                    act.base.w,
-                    act.base.layer_index,
-                    layer.layer.attr.width
-                );
-                anyhow::ensure!(
-                    (act.base.y as usize + act.base.h.get() as usize)
-                        <= layer.layer.attr.height.get() as usize,
-                    "{} + {} was out of bounds for layer {} with height {}",
-                    act.base.x,
-                    act.base.w,
-                    act.base.layer_index,
-                    layer.layer.attr.height
-                );
-                anyhow::ensure!(
-                    act.base.h.get() as usize * act.base.w.get() as usize
-                        == act.base.new_tiles.len(),
-                    "brush tiles were not equal to the copy w * h in layer {}",
-                    act.base.layer_index,
-                );
                 check_and_copy_tiles(
+                    act.base.layer_index,
                     &mut layer.layer.tiles,
                     check_tiles,
                     copy_tiles,
                     layer.layer.attr.width.get() as usize,
+                    layer.layer.attr.height.get() as usize,
                     act.base.x as usize,
                     act.base.y as usize,
                     act.base.w.get() as usize,
@@ -1811,31 +1821,6 @@ pub fn do_action(
                 act.base.layer_index,
             ))?;
 
-            anyhow::ensure!(
-                (act.base.x as usize + act.base.w.get() as usize)
-                    <= group.attr.width.get() as usize,
-                "{} + {} was out of bounds for layer {} with width {}",
-                act.base.x,
-                act.base.w,
-                act.base.layer_index,
-                group.attr.width
-            );
-            anyhow::ensure!(
-                (act.base.y as usize + act.base.h.get() as usize)
-                    <= group.attr.height.get() as usize,
-                "{} + {} was out of bounds for layer {} with height {}",
-                act.base.x,
-                act.base.w,
-                act.base.layer_index,
-                group.attr.height
-            );
-            anyhow::ensure!(
-                act.base.h.get() as usize * act.base.w.get() as usize
-                    == act.base.new_tiles.tiles_count(),
-                "brush tiles were not equal to the copy w * h in layer {}",
-                act.base.layer_index,
-            );
-
             match layer {
                 MapLayerPhysicsSkeleton::Arbitrary(_) => {
                     return Err(anyhow!("arbitrary tiles are not supported by this editor."));
@@ -1849,10 +1834,12 @@ pub fn do_action(
                         return Err(anyhow!("tiles are not compatible"));
                     };
                     check_and_copy_tiles(
+                        act.base.layer_index,
                         &mut layer.layer.tiles,
                         check_tiles,
                         copy_tiles,
                         group.attr.width.get() as usize,
+                        group.attr.height.get() as usize,
                         act.base.x as usize,
                         act.base.y as usize,
                         act.base.w.get() as usize,
@@ -1869,10 +1856,12 @@ pub fn do_action(
                         return Err(anyhow!("tiles are not compatible"));
                     };
                     check_and_copy_tiles(
+                        act.base.layer_index,
                         &mut layer.layer.tiles,
                         check_tiles,
                         copy_tiles,
                         group.attr.width.get() as usize,
+                        group.attr.height.get() as usize,
                         act.base.x as usize,
                         act.base.y as usize,
                         act.base.w.get() as usize,
@@ -1889,10 +1878,12 @@ pub fn do_action(
                         return Err(anyhow!("tiles are not compatible"));
                     };
                     check_and_copy_tiles(
+                        act.base.layer_index,
                         &mut layer.layer.base.tiles,
                         check_tiles,
                         copy_tiles,
                         group.attr.width.get() as usize,
+                        group.attr.height.get() as usize,
                         act.base.x as usize,
                         act.base.y as usize,
                         act.base.w.get() as usize,
@@ -1909,10 +1900,12 @@ pub fn do_action(
                         return Err(anyhow!("tiles are not compatible"));
                     };
                     check_and_copy_tiles(
+                        act.base.layer_index,
                         &mut layer.layer.tiles,
                         check_tiles,
                         copy_tiles,
                         group.attr.width.get() as usize,
+                        group.attr.height.get() as usize,
                         act.base.x as usize,
                         act.base.y as usize,
                         act.base.w.get() as usize,
@@ -1929,10 +1922,12 @@ pub fn do_action(
                         return Err(anyhow!("tiles are not compatible"));
                     };
                     check_and_copy_tiles(
+                        act.base.layer_index,
                         &mut layer.layer.base.tiles,
                         check_tiles,
                         copy_tiles,
                         group.attr.width.get() as usize,
+                        group.attr.height.get() as usize,
                         act.base.x as usize,
                         act.base.y as usize,
                         act.base.w.get() as usize,
@@ -1949,10 +1944,12 @@ pub fn do_action(
                         return Err(anyhow!("tiles are not compatible"));
                     };
                     check_and_copy_tiles(
+                        act.base.layer_index,
                         &mut layer.layer.base.tiles,
                         check_tiles,
                         copy_tiles,
                         group.attr.width.get() as usize,
+                        group.attr.height.get() as usize,
                         act.base.x as usize,
                         act.base.y as usize,
                         act.base.w.get() as usize,
@@ -2019,6 +2016,9 @@ pub fn do_action(
                                         },
                                         attr: EditorCommonGroupOrLayerAttr::default(),
                                         selected: Default::default(),
+                                        auto_mapper_rule: Default::default(),
+                                        auto_mapper_seed: Default::default(),
+                                        live_edit: None,
                                     },
                                     layer,
                                 }),

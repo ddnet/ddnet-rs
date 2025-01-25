@@ -12,7 +12,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         &mut pipe.user_data.editor_tabs,
     );
 
-    super::top_menu::menu::render(ui, pipe);
+    super::top_menu::menu::render(ui, ui_state, pipe);
     super::top_tabs::main_frame::render(ui, pipe);
 
     // groups & layers attr
@@ -27,6 +27,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             pointer_is_used: pipe.user_data.pointer_is_used,
             io: pipe.user_data.io,
             tp: pipe.user_data.tp,
+            auto_mapper: pipe.user_data.auto_mapper,
             graphics_mt: pipe.user_data.graphics_mt,
             buffer_object_handle: pipe.user_data.buffer_object_handle,
             backend_handle: pipe.user_data.backend_handle,

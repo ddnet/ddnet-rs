@@ -501,6 +501,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                             Some(ui.clip_rect()),
                                             pos,
                                             vec2::new(width * scale, height * scale),
+                                            None,
                                         );
                                         ui.painter().text(
                                             egui::pos2(pos.x, pos.y + size / 2.0 - 9.0),

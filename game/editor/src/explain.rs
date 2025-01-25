@@ -16,9 +16,12 @@ The `Alt`-key will always try to snap the above actions to the [`Grid`](#grid) (
 Press `right click` on no quad to unset the selection.\n\n\
 ### Animations\n\
 \n\
-If one or more quads are selected with at least one shared pos/color animation and the [`Animations`](#animations)-panel is open you can \
-control the animation properties using the quads directly. In other words: instead of changing the animation point values \
-inside the [`Animations`](#animations)-panel you can simply drag the [`Animations`](#animations)-panel's time dragger to where you want to insert \
+If one or more quads are selected with at least one shared \
+pos/color animation and the [`Animations`](#animations)-panel is open you can \
+control the animation properties using the quads directly. \
+In other words: instead of changing the animation point values \
+inside the [`Animations`](#animations)-panel you can \
+simply drag the [`Animations`](#animations)-panel's time dragger to where you want to insert \
 the next animation point -> change your quad properties -> insert the animation point at this position.\n\
 > Keep in mind that moving the [`Animations`](#animations)-panel's time dragger resets the quad to the \
 evaluated position/color etc.  \n\
@@ -156,5 +159,37 @@ To opt-out of this behavior, enable this option.\
 pub const TEXT_TILE_BRUSH_MIRROR: &str = "\
 # Tile brush mirror\n\
 \n\
-Mirrors the tile brush horizontal or vertically.
+Mirrors the tile brush horizontal or vertically.\
+";
+
+pub const AUTO_MAPPER_CREATOR_EXPLAIN: &str = "\
+# Auto mapper creator overview\
+\n\
+The auto mapper works by checking adjacent tiles.  \n\
+The full process is as follows:\n\
+- There are mutliple runs in a auto mapper rule.\n\
+- Every run can change or spawn multiple tiles.\n\
+- For every spawnable/changeable tile there are adjacent tile groups \
+of boolean expressions, that check if a matches \
+the given conditions (tile index & optional flags).\n\
+- A condition can be negated or not. It can optionally be used as \
+expression using an OR or NOT boolean operand\
+and a second condition. (So it allows basic boolean algebra).\n\
+- If the given condition fully evaluates to _true_, then the tile is spawned/changed.\n\
+- Optionally a randomness parameter can be used to skip the above \
+calculation based on the random probability.\n\
+";
+
+pub const AUTO_MAPPER_CREATOR_EXPRESSION_LIST_EXPLAIN: &str = "\
+# Overview over all expressions for a adjacent tile\
+\n\
+Every adjacent tile group is a list of expressions using\
+the OR and NOT operator.  \n\
+The order of evaluation is always bottom to top, which means \
+that the most bottom expression will evaluate first, and the \
+OR or NOT operator is that applied on the second most bottom \
+expression, this whole expression is then evaluated with the operator \
+of the third most bottom expression and so on.  \n\
+If an expression is _negated_, then this negation operator is applied on the \
+expression itself and not on expressions below or above.  \n\
 ";

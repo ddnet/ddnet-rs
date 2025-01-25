@@ -89,18 +89,25 @@ pub fn wasm_mod_prepare_state(attr: TokenStream, tokens: TokenStream) -> TokenSt
     wasm_mod_prepare(attr, tokens, "GameStateInterface")
 }
 
-/// automatically fill the state of the Self object with typed function exports from
+/// automatically fill the render_game of the Self object with typed function exports from
 /// the wasm module
 #[proc_macro_attribute]
 pub fn wasm_mod_prepare_render_game(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     wasm_mod_prepare(attr, tokens, "RenderGameInterface")
 }
 
-/// automatically fill the state of the Self object with typed function exports from
+/// automatically fill the editor of the Self object with typed function exports from
 /// the wasm module
 #[proc_macro_attribute]
 pub fn wasm_mod_prepare_editor(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     wasm_mod_prepare(attr, tokens, "EditorInterface")
+}
+
+/// automatically fill the auto_mapper of the Self object with typed function exports from
+/// the wasm module
+#[proc_macro_attribute]
+pub fn wasm_mod_prepare_auto_mapper(attr: TokenStream, tokens: TokenStream) -> TokenStream {
+    wasm_mod_prepare(attr, tokens, "AutoMapperInterface")
 }
 
 /// prepare a wasm function to automatically call a host function
@@ -134,4 +141,9 @@ pub fn impl_guest_functions_render_game(attr: TokenStream, tokens: TokenStream) 
 #[proc_macro_attribute]
 pub fn impl_guest_functions_editor(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     impl_guest_functions(attr, tokens, "API_EDITOR")
+}
+
+#[proc_macro_attribute]
+pub fn impl_guest_functions_auto_mapper(attr: TokenStream, tokens: TokenStream) -> TokenStream {
+    impl_guest_functions(attr, tokens, "API_AUTO_MAPPER")
 }

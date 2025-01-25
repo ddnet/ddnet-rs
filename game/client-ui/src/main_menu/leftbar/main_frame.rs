@@ -191,6 +191,7 @@ pub fn render(
                                     Some(clip_rect),
                                     vec2::new(rect.center().x, rect.center().y),
                                     vec2::new(rect.width() / ratio_w, rect.height() / ratio_h),
+                                    None,
                                 );
                             }
                             CustomRender::Custom(mut render) => {

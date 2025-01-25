@@ -93,6 +93,7 @@ pub fn render(
                                 rect.min.y + rect.height() / 2.0,
                             ),
                             vec2::new(tee_size * 3.0 / 2.0, tee_size / 2.0),
+                            None,
                         );
                         ui.add_space(5.0);
                     }

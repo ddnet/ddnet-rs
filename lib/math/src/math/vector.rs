@@ -34,22 +34,24 @@ impl<T: Copy + Clone> IndexMut<usize> for vec1_base<T> {
 }
 
 #[repr(C)]
-#[derive(Debug, Hiarc, Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Hash, Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 pub struct vec2_base<T> {
     pub x: T,
     pub y: T,
 }
 
-impl<T: Copy + Clone> vec2_base<T>
-where
-    T: std::default::Default,
-{
+impl<T> vec2_base<T> {
     #[inline]
     pub fn new(x: T, y: T) -> vec2_base<T> {
         vec2_base::<T> { x, y }
     }
+}
 
+impl<T: Copy + Clone> vec2_base<T>
+where
+    T: std::default::Default,
+{
     pub fn r(&mut self) -> &mut T {
         &mut self.x
     }
