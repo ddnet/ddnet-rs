@@ -56,6 +56,7 @@ pub fn ctf_list(
                     Some(ui.clip_rect()),
                     pos + vec2::new(x * item_size, 0.0),
                     vec2::new(item_size, asset_size),
+                    None,
                 );
             };
             let mut index = 0;

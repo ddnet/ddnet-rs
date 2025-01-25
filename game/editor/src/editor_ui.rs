@@ -20,6 +20,7 @@ use ui_base::{
 use ui_generic::generic_ui_renderer;
 
 use crate::{
+    notifications::EditorNotifications,
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     ui::{
         page::EditorUi,
@@ -41,6 +42,7 @@ pub struct EditorUiRenderPipe<'a> {
     pub canvas_size: &'a mut Option<UiCanvasSize>,
     pub tools: &'a mut Tools,
     pub auto_mapper: &'a mut TileLayerAutoMapper,
+    pub notifications: &'a EditorNotifications,
     pub io: &'a Io,
 }
 
@@ -97,7 +99,10 @@ impl EditorUiRender {
                 pipe.cur_time,
                 &mut UserData {
                     config: pipe.config,
+
                     editor_tabs: pipe.editor_tabs,
+                    notifications: pipe.notifications,
+
                     ui_events: pipe.ui_events,
 
                     canvas_handle: &self.canvas_handle,

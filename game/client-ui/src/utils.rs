@@ -613,6 +613,8 @@ pub fn render_texture_for_ui(
     clip_rect: Option<Rect>,
     pos: vec2,
     size: vec2,
+    // tl, tr, br, bl
+    uv: Option<(vec2, vec2, vec2, vec2)>,
 ) {
     #[derive(Debug)]
     struct RenderTextureCb {
@@ -623,6 +625,7 @@ pub fn render_texture_for_ui(
         size: vec2,
         canvas_handle: GraphicsCanvasHandle,
         stream_handle: GraphicsStreamHandle,
+        uv: Option<(vec2, vec2, vec2, vec2)>,
     }
     impl CustomCallbackTrait for RenderTextureCb {
         fn render(&self) {
@@ -648,6 +651,7 @@ pub fn render_texture_for_ui(
                 stream_handle: &GraphicsStreamHandle,
                 center: &vec2,
                 size: &vec2,
+                uv: &Option<(vec2, vec2, vec2, vec2)>,
                 state: State,
                 texture: &TextureContainer,
             ) {
@@ -655,12 +659,12 @@ pub fn render_texture_for_ui(
                     hi_closure!([
                         center: &vec2,
                         size: &vec2,
+                        uv: &Option<(vec2, vec2, vec2, vec2)>,
                         texture: &TextureContainer
                     ], |mut stream_handle: QuadStreamHandle<'_>| -> () {
                         stream_handle.set_texture(texture);
-                        stream_handle
-                            .add_vertices(
-                                StreamedQuad::default()
+                        let quad =
+                            StreamedQuad::default()
                                 .from_pos_and_size(
                                     vec2::new(
                                         center.x - size.x / 2.0,
@@ -668,14 +672,22 @@ pub fn render_texture_for_ui(
                                     ),
                                     *size
                                 )
-                                .color(ubvec4::new(255, 255, 255, 255))
-                                .tex_free_form(
+                                .color(ubvec4::new(255, 255, 255, 255));
+                        let quad = if let Some((tl, tr, br, bl)) = *uv {
+                                quad.tex_free_form(
+                                    tl, tr, br, bl
+                                )
+                            } else {
+                                quad.tex_free_form(
                                     vec2::new(0.0, 0.0),
                                     vec2::new(1.0, 0.0),
                                     vec2::new(1.0, 1.0),
                                     vec2::new(0.0, 1.0),
                                 )
-                                .into()
+                            };
+                        stream_handle
+                            .add_vertices(
+                                quad.into()
                             );
                     }),
                     state,
@@ -686,6 +698,7 @@ pub fn render_texture_for_ui(
                 &self.stream_handle,
                 &self.pos,
                 &self.size,
+                &self.uv,
                 state,
                 &self.texture,
             );
@@ -698,6 +711,7 @@ pub fn render_texture_for_ui(
         texture: texture.clone(),
         pos,
         size,
+        uv,
         canvas_handle: canvas_handle.clone(),
         stream_handle: stream_handle.clone(),
     };

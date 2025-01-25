@@ -1353,6 +1353,7 @@ pub fn do_action(
                         visuals,
                         attr: EditorCommonGroupOrLayerAttr::default(),
                         selected: Default::default(),
+                        auto_mapper_rule: Default::default(),
                     },
                 }),
             );
@@ -2019,6 +2020,7 @@ pub fn do_action(
                                         },
                                         attr: EditorCommonGroupOrLayerAttr::default(),
                                         selected: Default::default(),
+                                        auto_mapper_rule: Default::default(),
                                     },
                                     layer,
                                 }),

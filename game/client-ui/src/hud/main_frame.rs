@@ -201,6 +201,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                                 rect.center().y - tee_size / 4.0,
                                             ),
                                             vec2::new(tee_size / 2.0, tee_size),
+                                            None,
                                         );
                                     }
 

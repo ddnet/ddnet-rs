@@ -3,6 +3,8 @@ use std::ops::{Index, IndexMut};
 use map::map::groups::layers::tiles::{rotation_180, rotation_270, TileFlags, ROTATION_90};
 use math::math::vector::{ivec2, ubvec4, vec2};
 
+use super::graphic_tile::tile_flags_to_uv;
+
 pub(super) type GraphicsBorderTilePos = vec2;
 pub(super) type GraphicsBorderTileTex = ubvec4;
 
@@ -154,41 +156,7 @@ fn fill_tmp_tile(
     scale: i32,
 ) {
     // tile tex
-    let mut x0: u8 = 0;
-    let mut y0: u8 = 0;
-    let mut x1: u8 = x0 + 1;
-    let mut y1: u8 = y0;
-    let mut x2: u8 = x0 + 1;
-    let mut y2: u8 = y0 + 1;
-    let mut x3: u8 = x0;
-    let mut y3: u8 = y0 + 1;
-
-    if !(flags & TileFlags::XFLIP).is_empty() {
-        x0 = x2;
-        x1 = x3;
-        x2 = x3;
-        x3 = x0;
-    }
-
-    if !(flags & TileFlags::YFLIP).is_empty() {
-        y0 = y3;
-        y2 = y1;
-        y3 = y1;
-        y1 = y0;
-    }
-
-    if !(flags & TileFlags::ROTATE).is_empty() {
-        let mut tmp = x0;
-        x0 = x3;
-        x3 = x2;
-        x2 = x1;
-        x1 = tmp;
-        tmp = y0;
-        y0 = y3;
-        y3 = y2;
-        y2 = y1;
-        y1 = tmp;
-    }
+    let (x0, y0, x1, y1, x2, y2, x3, y3) = tile_flags_to_uv(flags);
 
     tmp_tile.tex_coord_top_left.x = x0;
     tmp_tile.tex_coord_top_left.y = y0;
