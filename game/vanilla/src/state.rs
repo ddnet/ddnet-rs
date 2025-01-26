@@ -423,6 +423,7 @@ pub mod state {
                 .config
                 .and_then(|config| serde_json::from_slice(&config).ok())
                 .unwrap_or_default();
+            let write_config = config.clone();
 
             let (mut initial_args_res, remaining_cmds) = Self::handle_initial_args(
                 options
@@ -593,7 +594,7 @@ pub mod state {
                     chat_commands,
                     rcon_commands,
 
-                    config: serde_json::to_vec(&config).ok(),
+                    config: serde_json::to_vec(&write_config).ok(),
                     initial_rcon_response: initial_args_res,
 
                     mod_name: Self::get_mod_name_from_conf(config.game_type),
