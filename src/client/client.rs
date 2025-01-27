@@ -3093,7 +3093,18 @@ impl FromNativeImpl for ClientNativeImpl {
                 }
 
                 let player = game.game_data.local.active_local_player();
-                let needs_abs_cursor = player.is_some_and(|(_, p)| p.spectator_selection_active);
+                let needs_abs_cursor = player.is_some_and(|(_, p)| {
+                    p.spectator_selection_active
+                        && (game.map.game.info.options.has_ingame_freecam
+                            || match p.input_cam_mode {
+                                PlayerCameraMode::Default => false,
+                                PlayerCameraMode::Free => true,
+                                PlayerCameraMode::LockedTo { locked_ingame, .. }
+                                | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
+                                    !locked_ingame
+                                }
+                            })
+                });
                 native.relative_mouse(!needs_abs_cursor);
 
                 self.inp_manager.set_last_known_cursor(
