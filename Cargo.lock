@@ -3214,8 +3214,10 @@ dependencies = [
  "client-containers",
  "client-notifications",
  "client-render-base",
+ "client-ui",
  "config",
  "ed25519-dalek",
+ "editor-interface",
  "egui",
  "egui-file-dialog",
  "egui-timeline",
@@ -3246,6 +3248,15 @@ dependencies = [
  "ui-base",
  "ui-generic",
  "x509-cert",
+]
+
+[[package]]
+name = "editor-interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "map",
+ "serde",
 ]
 
 [[package]]

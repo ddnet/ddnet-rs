@@ -1,4 +1,5 @@
 use client_render_base::map::render_tools::RenderTools;
+use egui::Color32;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle,
     stream::stream::{GraphicsStreamHandle, LinesStreamHandle, QuadStreamHandle},
@@ -105,6 +106,33 @@ pub fn render_checkerboard_background(
             let color = if (row + col) % 2 == 0 { color1 } else { color2 };
 
             render_filled_rect_from_state(stream_handle, checker_rect, color, *state, false);
+        }
+    }
+}
+
+pub fn render_checkerboard_ui(ui: &mut egui::Ui, render_rect: egui::Rect, field_size: f32) {
+    let cols = (render_rect.width() / field_size).ceil() as i32;
+    let rows = (render_rect.height() / field_size).ceil() as i32;
+
+    let color1 = Color32::from_rgba_unmultiplied(180, 180, 180, 255);
+    let color2 = Color32::from_rgba_unmultiplied(140, 140, 140, 255);
+
+    for row in 0..rows {
+        for col in 0..cols {
+            let x = col as f32 * field_size;
+            let y = row as f32 * field_size;
+
+            let checker_rect = egui::Rect::from_min_size(
+                render_rect.min + egui::vec2(x, y),
+                egui::vec2(
+                    field_size.min(render_rect.max.x - x),
+                    field_size.min(render_rect.max.y - y),
+                ),
+            );
+
+            let color = if (row + col) % 2 == 0 { color1 } else { color2 };
+
+            ui.painter().rect_filled(checker_rect, 0.0, color);
         }
     }
 }

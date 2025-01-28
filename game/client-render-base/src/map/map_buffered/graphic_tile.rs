@@ -132,8 +132,7 @@ fn fill_tmp_tile_speedup(
     );
 }
 
-fn fill_tmp_tile(tmp_tile: &mut GraphicTile, flags: TileFlags, index: u8, x: i32, y: i32) {
-    // tile tex
+pub fn tile_flags_to_uv(flags: TileFlags) -> (u8, u8, u8, u8, u8, u8, u8, u8) {
     let mut x0: u8 = 0;
     let mut y0: u8 = 0;
     let mut x1: u8 = x0 + 1;
@@ -169,6 +168,13 @@ fn fill_tmp_tile(tmp_tile: &mut GraphicTile, flags: TileFlags, index: u8, x: i32
         y2 = y1;
         y1 = tmp;
     }
+
+    (x0, y0, x1, y1, x2, y2, x3, y3)
+}
+
+fn fill_tmp_tile(tmp_tile: &mut GraphicTile, flags: TileFlags, index: u8, x: i32, y: i32) {
+    // tile tex
+    let (x0, y0, x1, y1, x2, y2, x3, y3) = tile_flags_to_uv(flags);
 
     tmp_tile.tex_coord_top_left.x |= x0;
     tmp_tile.tex_coord_top_left.x |= y0 << 1;

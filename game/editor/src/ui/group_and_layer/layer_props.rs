@@ -1,6 +1,7 @@
 use std::ops::RangeInclusive;
 
-use egui::{Checkbox, Color32, DragValue, InnerResponse};
+use base::hash::fmt_hash;
+use egui::{Checkbox, Color32, ComboBox, DragValue, InnerResponse};
 use map::types::NonZeroU16MinusOne;
 use math::math::vector::{nffixed, nfvec4};
 use time::Duration;
@@ -21,6 +22,7 @@ use crate::{
         EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorMap, EditorMapInterface,
         EditorPhysicsLayer, ResourceSelection,
     },
+    tools::tile_layer::auto_mapper::EditorAutoMapperInterface,
     ui::{
         group_and_layer::{
             resource_selector::ResourceSelectionMode,
@@ -427,7 +429,28 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .resizable(false)
                 .collapsible(false);
 
+            let image_array = layer.layer.attr.image_array;
+            let resource_name = if let Some(image_array) =
+                image_array.and_then(|image_array| map.resources.image_arrays.get(image_array))
+            {
+                let res = format!(
+                    "{}_{}",
+                    image_array.def.name.as_str(),
+                    fmt_hash(&image_array.def.meta.blake3_hash)
+                );
+                pipe.user_data.auto_mapper.try_load(
+                    &res,
+                    image_array.def.name.as_str(),
+                    &image_array.def.meta.blake3_hash,
+                    &image_array.user.file,
+                );
+                Some(res)
+            } else {
+                None
+            };
+
             let mut delete_layer = false;
+            let mut auto_mapper = false;
             let mut move_layer = None;
 
             let res = window.show(ui.ctx(), |ui| {
@@ -565,6 +588,34 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         ui.end_row();
 
+                        // auto mapper
+                        if let Some(rule) = resource_name
+                            .as_ref()
+                            .and_then(|r| pipe.user_data.auto_mapper.resources.get(r))
+                        {
+                            ComboBox::new("auto-mapper-rule-selector-tile-layer", "")
+                                .selected_text(
+                                    layer.user.auto_mapper_rule.as_deref().unwrap_or("None"),
+                                )
+                                .show_ui(ui, |ui| {
+                                    for rule in rule.rules.keys() {
+                                        if ui.button(rule).clicked() {
+                                            layer.user.auto_mapper_rule = Some(rule.clone());
+                                        }
+                                    }
+                                });
+                            if layer.user.auto_mapper_rule.is_some()
+                                && ui.button("Auto mapper").clicked()
+                            {
+                                auto_mapper = true;
+                            }
+
+                            ui.end_row();
+                        } else {
+                            ui.label("No auto mapper rules found..");
+                            ui.end_row();
+                        }
+
                         ui.label("Move layer");
                         ui.end_row();
 
@@ -665,6 +716,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }),
                     None,
                 );
+            } else if auto_mapper {
+                let rule = layer.user.auto_mapper_rule.clone();
+                if let Some(rule) = resource_name
+                    .as_ref()
+                    .and_then(|r| pipe.user_data.auto_mapper.resources.get_mut(r))
+                    .and_then(|rules| rule.and_then(|r| rules.rules.get_mut(&r)))
+                {
+                    rule.run_layer(layer, is_background, g, l, &mut tab.client);
+                }
             } else if let Some(move_act) =
                 move_layer.and_then(|mv| layer_move_to_act(mv, is_background, g, l, map))
             {

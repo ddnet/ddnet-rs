@@ -87,6 +87,8 @@ pub struct EditorTileLayerProps {
     pub attr: EditorCommonGroupOrLayerAttr,
     // selected e.g. by a right-click or by a SHIFT/CTRL + left-click in a multi select
     pub selected: Option<EditorTileLayerPropsSelection>,
+
+    pub auto_mapper_rule: Option<String>,
 }
 
 impl Borrow<TileLayerVisuals> for EditorTileLayerProps {
