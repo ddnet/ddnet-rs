@@ -32,6 +32,12 @@ pub fn render(ui: &mut egui::Ui, msg: &str, cmds: &CommandsTyped) {
             }
         });
 
+        start_chars += err_range.start.saturating_sub(msg.len());
+        err_chars += err_range
+            .end
+            .saturating_sub(msg.len())
+            .saturating_sub(err_range.start.saturating_sub(msg.len()));
+
         ui.horizontal_top(|ui| {
             ui.add_space(9.0);
             // two whitespaces for `>` console prefix
