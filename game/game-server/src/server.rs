@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Debug,
     net::IpAddr,
     num::NonZeroUsize,
@@ -1364,7 +1364,7 @@ impl Server {
                                         let stage_id = own_char_info.stage_id;
 
                                         // Send the msg to all players in own stage, and if a side is given only to those
-                                        for net_id in self
+                                        let send_ids: HashSet<_> = self
                                             .game_server
                                             .cached_character_infos
                                             .iter()
@@ -1381,7 +1381,8 @@ impl Server {
                                                 }
                                                 None
                                             })
-                                        {
+                                            .collect();
+                                        for net_id in send_ids {
                                             self.network.send_in_order_to(
                                                 &pkt,
                                                 &net_id,
