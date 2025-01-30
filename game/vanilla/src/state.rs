@@ -1533,7 +1533,7 @@ pub mod state {
         fn add_from_spectator(
             &mut self,
             player_id: &PlayerId,
-            stage_id: Option<StageId>,
+            stage_id: StageId,
             side: Option<MatchSide>,
         ) {
             let mut default_eyes = TeeEye::Normal;
@@ -1555,25 +1555,22 @@ pub mod state {
             ) {
                 return;
             }
-            if stage_id.is_some() {
-                let player = self.game.spectator_players.remove(player_id).unwrap();
-                let stage_id = stage_id.unwrap_or(self.stage_0_id);
-                Self::add_char_to_stage(
-                    &mut self.game.stages,
-                    &stage_id,
-                    player_id,
-                    player.player_info,
-                    player.player_input,
-                    self.game.players.clone(),
-                    self.game.spectator_players.clone(),
-                    player.network_stats,
-                    side,
-                    0,
-                    *default_eyes,
-                    *default_eyes_reset_in,
-                    &self.game_pools,
-                );
-            }
+            let player = self.game.spectator_players.remove(player_id).unwrap();
+            Self::add_char_to_stage(
+                &mut self.game.stages,
+                &stage_id,
+                player_id,
+                player.player_info,
+                player.player_input,
+                self.game.players.clone(),
+                self.game.spectator_players.clone(),
+                player.network_stats,
+                side,
+                0,
+                *default_eyes,
+                *default_eyes_reset_in,
+                &self.game_pools,
+            );
         }
 
         fn check_player_info(
@@ -2544,7 +2541,7 @@ pub mod state {
                                 &self.game_pools,
                             );
                         } else {
-                            self.add_from_spectator(player_id, Some(stage_id), None);
+                            self.add_from_spectator(player_id, stage_id, None);
                         }
                     }
                 }
@@ -2559,7 +2556,7 @@ pub mod state {
                                 }
                             }
                         } else {
-                            self.add_from_spectator(player_id, None, Some(side));
+                            self.add_from_spectator(player_id, self.stage_0_id, Some(side));
                         }
                     }
                 }
