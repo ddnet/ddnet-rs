@@ -250,6 +250,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                     Some(ui.clip_rect()),
                                     vec2::new(center.x, center.y),
                                     vec2::new(width * scale, height * scale),
+                                    None,
                                 );
 
                                 ui.painter().rect_stroke(

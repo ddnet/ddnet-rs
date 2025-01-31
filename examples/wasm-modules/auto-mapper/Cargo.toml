@@ -1,0 +1,18 @@
+[package]
+name = "auto-mapper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+math = { path = "../../../lib/math" }
+api = { path = "../../../lib/api" }
+api-macros = { path = "../../../lib/api-macros" }
+
+api-auto-mapper = { path = "../../../game/api-auto-mapper" }
+editor-interface = { path = "../../../game/editor-interface" }
+
+log = "0.4.22"
+rustc-hash = "2.1.0"
+
+[lib]
+crate-type = ["cdylib"]

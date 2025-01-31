@@ -22,11 +22,14 @@ sound = { path = "../../lib/sound" }
 egui-timeline = { path = "../egui-timeline" }
 map = { path = "../map" }
 client-containers = { path = "../client-containers" }
+client-ui = { path = "../client-ui" }
 client-render-base = { path = "../client-render-base" }
 client-notifications = { path = "../client-notifications" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 game-base = { path = "../game-base" }
+editor-interface = { path = "../editor-interface" }
+editor-auto-mapper-wasm = { path = "../editor-auto-mapper-wasm" }
 
 map-convert-lib = { path = "../map-convert-lib", optional = true }
 

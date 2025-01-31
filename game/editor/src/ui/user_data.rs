@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     event::ActionDbg,
+    notifications::EditorNotifications,
     tab::{EditorAdminPanelStateAuthed, EditorTab},
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     utils::UiCanvasSize,
@@ -264,7 +265,10 @@ impl EditorTabsRefMut<'_> {
 pub struct UserData<'a> {
     pub ui_events: &'a mut Vec<EditorUiEvent>,
     pub config: &'a ConfigEngine,
+
     pub editor_tabs: EditorTabsRefMut<'a>,
+    pub notifications: &'a EditorNotifications,
+
     pub canvas_handle: &'a GraphicsCanvasHandle,
     pub stream_handle: &'a GraphicsStreamHandle,
     pub unused_rect: &'a mut Option<egui::Rect>,
@@ -292,6 +296,8 @@ pub struct UserDataWithTab<'a> {
     pub tools: &'a mut Tools,
     pub pointer_is_used: &'a mut bool,
     pub io: &'a Io,
+
+    pub auto_mapper: &'a mut TileLayerAutoMapper,
 
     pub tp: &'a Arc<rayon::ThreadPool>,
     pub graphics_mt: &'a GraphicsMultiThreaded,

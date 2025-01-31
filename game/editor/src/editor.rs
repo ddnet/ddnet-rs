@@ -329,7 +329,7 @@ impl Editor {
                 },
                 active_tool: ActiveTool::Tiles(ActiveToolTiles::Brush),
             },
-            auto_mapper: TileLayerAutoMapper::new(io.clone().into(), tp.clone()),
+            auto_mapper: TileLayerAutoMapper::new(graphics, io.clone().into(), tp.clone()),
             middle_down_pointer_pos: None,
             current_scroll_delta: Default::default(),
             current_pointer_pos: Default::default(),
@@ -392,6 +392,7 @@ impl Editor {
                 port,
                 password.unwrap_or_default(),
                 admin_password,
+                self.io.clone(),
             )
             .map(|server| {
                 (
@@ -810,6 +811,9 @@ impl Editor {
                                         ),
                                         attr: EditorCommonGroupOrLayerAttr::default(),
                                         selected: Default::default(),
+                                        auto_mapper_rule: Default::default(),
+                                        auto_mapper_seed: Default::default(),
+                                        live_edit: None,
                                     },
                                     layer,
                                 })
@@ -1093,6 +1097,7 @@ impl Editor {
             options.port,
             options.password.clone().unwrap_or_default(),
             options.admin_password,
+            self.io.clone(),
         )?;
         let client = EditorClient::new(
             &self.sys,
@@ -1244,6 +1249,7 @@ impl Editor {
             options.port,
             options.password.clone().unwrap_or_default(),
             options.admin_password,
+            self.io.clone(),
         )?;
         let client = EditorClient::new(
             &self.sys,
@@ -1605,11 +1611,17 @@ impl Editor {
                 &self.texture_handle,
                 &mut tab.map,
                 &mut tab.admin_panel,
+                &self.auto_mapper,
             );
             if update_res.is_err() {
                 removed_tabs.push(tab_name.clone());
             }
-            if let Ok(Some(EditorEventOverwriteMap { map, resources })) = update_res {
+            if let Ok(Some(EditorEventOverwriteMap {
+                map,
+                resources,
+                live_edited_layers,
+            })) = update_res
+            {
                 let map = Map::read(&map, &self.thread_pool).unwrap();
                 tab.map = Self::map_to_editor_map_impl(
                     self.graphics_mt.clone(),
@@ -1622,6 +1634,10 @@ impl Editor {
                     map,
                     resources,
                 );
+                for layer_index in live_edited_layers {
+                    tab.client
+                        .set_live_edit_layer(&mut tab.map, layer_index, true);
+                }
             }
             if let Some(server) = &mut tab.server {
                 server.update(
@@ -2403,6 +2419,7 @@ impl Editor {
                 tabs: &mut self.tabs,
                 active_tab: &mut self.active_tab,
             },
+            notifications: &self.notifications,
             ui_events: &mut self.ui_events,
             unused_rect: &mut unused_rect,
             input_state: &mut input_state,

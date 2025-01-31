@@ -30,10 +30,20 @@ pub enum EditorCommand {
     Redo,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct EditorEventLayerIndex {
+    pub is_background: bool,
+    pub group_index: usize,
+    pub layer_index: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditorEventOverwriteMap {
     pub map: Vec<u8>,
     pub resources: HashMap<Hash, Vec<u8>>,
+
+    /// Currently live edited layers (auto mapper)
+    pub live_edited_layers: Vec<EditorEventLayerIndex>,
 }
 
 /// The client props the server knows about.
@@ -73,6 +83,24 @@ pub struct ActionDbg {
     pub no_actions_identifier: bool,
 }
 
+/// Editor event related to auto mapping
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditorEventAutoMap {
+    pub is_background: bool,
+    pub group_index: usize,
+    pub layer_index: usize,
+    pub resource_and_hash: String,
+    pub name: String,
+    pub hash: Hash,
+    pub seed: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditorEventRuleTy {
+    EditorRuleJson(Vec<u8>),
+    Wasm(Vec<u8>),
+}
+
 /// editor events are a collection of either actions or commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EditorEventClientToServer {
@@ -85,6 +113,17 @@ pub enum EditorEventClientToServer {
         color: [u8; 3],
     },
     Command(EditorCommand),
+    LoadAutoMap {
+        resource_and_hash: String,
+        name: String,
+        hash: Hash,
+        rule: EditorEventRuleTy,
+    },
+    AutoMap(EditorEventAutoMap),
+    AutoMapLiveEdit {
+        auto_map: EditorEventAutoMap,
+        live_edit: bool,
+    },
     Info(ClientProps),
     Chat {
         msg: String,
@@ -108,6 +147,15 @@ pub enum EditorEventServerToClient {
         action: EditorActionGroup,
         redo_label: Option<String>,
         undo_label: Option<String>,
+    },
+    AutoMapRuleNotFound(EditorEventAutoMap),
+    AutoMapRuleLiveEditNotFound {
+        auto_mapper: EditorEventAutoMap,
+        live_edit: bool,
+    },
+    AutoMapLiveEdit {
+        layer_index: EditorEventLayerIndex,
+        live_edit: bool,
     },
     Error(String),
     Map(EditorEventOverwriteMap),

@@ -63,6 +63,7 @@ pub fn community_list(
                 Some(ui.clip_rect()),
                 pos,
                 vec2::new(asset_size / ratio_w, asset_size / ratio_h),
+                None,
             );
         },
         |_, name| {

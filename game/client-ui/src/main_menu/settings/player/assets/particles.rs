@@ -61,6 +61,7 @@ pub fn particles_list(
                     Some(ui.clip_rect()),
                     pos + vec2::new(x * item_size, y * item_size),
                     vec2::new(item_size, item_size),
+                    None,
                 );
             };
             let mut index = 0;

@@ -4,7 +4,7 @@ use base::hash::fmt_hash;
 use egui::{Align2, Button, DragValue, Grid, Key, KeyboardShortcut, Modifiers, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
-use ui_base::types::UiRenderPipe;
+use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
     explain::TEXT_ANIM_PANEL_AND_PROPS,
@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
+pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     let style = ui.style();
     let height = style.spacing.interact_size.y + style.spacing.item_spacing.y;
     egui::TopBottomPanel::top("top_menu")
@@ -471,8 +471,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     };
                 }
 
+                pipe.user_data
+                    .auto_mapper
+                    .update(pipe.user_data.notifications);
                 if pipe.user_data.auto_mapper.active {
-                    crate::ui::auto_mapper::auto_mapper::render(pipe, ui);
+                    crate::ui::auto_mapper::auto_mapper::render(pipe, ui, ui_state);
                 }
 
                 if let Some(tab) = pipe.user_data.editor_tabs.active_tab() {

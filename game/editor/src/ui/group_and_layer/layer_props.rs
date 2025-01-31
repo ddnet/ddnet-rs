@@ -1,8 +1,10 @@
 use std::ops::RangeInclusive;
 
-use egui::{Checkbox, Color32, DragValue, InnerResponse};
+use base::hash::fmt_hash;
+use egui::{Button, Checkbox, Color32, ComboBox, DragValue, InnerResponse};
 use map::types::NonZeroU16MinusOne;
 use math::math::vector::{nffixed, nfvec4};
+use rand::RngCore;
 use time::Duration;
 use ui_base::{
     types::{UiRenderPipe, UiState},
@@ -16,6 +18,7 @@ use crate::{
         ActChangeTileLayerDesignAttr, ActMoveLayer, ActRemPhysicsTileLayer, ActRemQuadLayer,
         ActRemSoundLayer, ActRemTileLayer, EditorAction,
     },
+    event::EditorEventAutoMap,
     explain::TEXT_LAYER_PROPS_COLOR,
     map::{
         EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorMap, EditorMapInterface,
@@ -427,7 +430,29 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .resizable(false)
                 .collapsible(false);
 
+            let image_array = layer.layer.attr.image_array;
+            let resource_name = if let Some(image_array) =
+                image_array.and_then(|image_array| map.resources.image_arrays.get(image_array))
+            {
+                let res = format!(
+                    "{}_{}",
+                    image_array.def.name.as_str(),
+                    fmt_hash(&image_array.def.meta.blake3_hash)
+                );
+                pipe.user_data.auto_mapper.try_load(
+                    &res,
+                    image_array.def.name.as_str(),
+                    &image_array.def.meta.blake3_hash,
+                    &image_array.user.file,
+                );
+                Some(res)
+            } else {
+                None
+            };
+
             let mut delete_layer = false;
+            let mut auto_mapper = None;
+            let mut auto_mapper_live = None;
             let mut move_layer = None;
 
             let res = window.show(ui.ctx(), |ui| {
@@ -565,6 +590,54 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         ui.end_row();
 
+                        // auto mapper
+                        if let Some(rule) = resource_name
+                            .as_ref()
+                            .and_then(|r| pipe.user_data.auto_mapper.resources.get(r))
+                        {
+                            ui.label("Select auto mapper rule");
+                            ComboBox::new("auto-mapper-rule-selector-tile-layer", "")
+                                .selected_text(
+                                    layer.user.auto_mapper_rule.as_deref().unwrap_or("None"),
+                                )
+                                .show_ui(ui, |ui| {
+                                    for rule in rule.rules.keys() {
+                                        if ui.button(rule).clicked() {
+                                            layer.user.auto_mapper_rule = Some(rule.clone());
+                                        }
+                                    }
+                                });
+                            ui.end_row();
+                            ui.label("Auto mapper seed");
+                            let mut seed = layer
+                                .user
+                                .auto_mapper_seed
+                                .unwrap_or_else(|| rand::rngs::OsRng.next_u64());
+                            ui.add(DragValue::new(&mut seed));
+                            layer.user.auto_mapper_seed = Some(seed);
+                            ui.end_row();
+                            if layer.user.auto_mapper_rule.is_some() {
+                                if ui.button("Run once").clicked() {
+                                    auto_mapper = Some(seed);
+                                }
+                                if ui
+                                    .add(
+                                        Button::new("Live edit")
+                                            .selected(layer.user.live_edit.is_some()),
+                                    )
+                                    .clicked()
+                                {
+                                    auto_mapper_live =
+                                        Some(layer.user.live_edit.is_none().then_some(seed));
+                                }
+                            }
+
+                            ui.end_row();
+                        } else {
+                            ui.label("No auto mapper rules found..");
+                            ui.end_row();
+                        }
+
                         ui.label("Move layer");
                         ui.end_row();
 
@@ -665,6 +738,59 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     }),
                     None,
                 );
+            } else if let Some(seed) = auto_mapper {
+                let rule = layer.user.auto_mapper_rule.clone();
+                if let Some((resource, rule_name, rule)) = resource_name
+                    .as_ref()
+                    .and_then(|r| {
+                        pipe.user_data
+                            .auto_mapper
+                            .resources
+                            .get_mut(r)
+                            .map(|rule| (r, rule))
+                    })
+                    .and_then(|(res, rules)| {
+                        rule.and_then(|r| rules.rules.get_mut(&r).map(|rule| (res, r, rule)))
+                    })
+                {
+                    tab.client.auto_map(EditorEventAutoMap {
+                        is_background,
+                        group_index: g,
+                        layer_index: l,
+                        resource_and_hash: resource.to_string(),
+                        name: rule_name,
+                        hash: rule.hash(),
+                        seed,
+                    });
+                }
+            } else if let Some(seed) = auto_mapper_live {
+                let rule = layer.user.auto_mapper_rule.clone();
+                if let Some((resource, rule_name, rule)) = resource_name
+                    .as_ref()
+                    .and_then(|r| {
+                        pipe.user_data
+                            .auto_mapper
+                            .resources
+                            .get_mut(r)
+                            .map(|rule| (r, rule))
+                    })
+                    .and_then(|(res, rules)| {
+                        rule.and_then(|r| rules.rules.get_mut(&r).map(|rule| (res, r, rule)))
+                    })
+                {
+                    tab.client.toggle_auto_map_live(
+                        EditorEventAutoMap {
+                            is_background,
+                            group_index: g,
+                            layer_index: l,
+                            resource_and_hash: resource.to_string(),
+                            name: rule_name,
+                            hash: rule.hash(),
+                            seed: seed.unwrap_or_default(),
+                        },
+                        seed.is_some(),
+                    );
+                }
             } else if let Some(move_act) =
                 move_layer.and_then(|mv| layer_move_to_act(mv, is_background, g, l, map))
             {

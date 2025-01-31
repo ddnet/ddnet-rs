@@ -4,8 +4,14 @@ use std::{
     time::Duration,
 };
 
-use base::system::System;
+use anyhow::anyhow;
+use base::{
+    hash::{generate_hash_for, Hash},
+    system::System,
+};
+use base_io::io::Io;
 use client_notifications::overlay::ClientNotifications;
+use editor_auto_mapper_wasm::manager::AutoMapperWasmManager;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -25,16 +31,24 @@ use rand::{seq::SliceRandom, RngCore};
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{
-    action_logic::{do_action, merge_actions, redo_action, undo_action},
-    actions::actions::{EditorAction, EditorActionGroup, EditorActionInterface},
+    action_logic::{check_and_copy_tiles, do_action, merge_actions, redo_action, undo_action},
+    actions::actions::{
+        ActTileLayerReplaceTiles, EditorAction, EditorActionGroup, EditorActionInterface,
+    },
     dbg::{invalid::random_invalid_action, valid::random_valid_action},
     event::{
-        AdminConfigState, ClientProps, EditorCommand, EditorEvent, EditorEventClientToServer,
-        EditorEventGenerator, EditorEventOverwriteMap, EditorEventServerToClient, EditorNetEvent,
+        AdminConfigState, ClientProps, EditorCommand, EditorEvent, EditorEventAutoMap,
+        EditorEventClientToServer, EditorEventGenerator, EditorEventLayerIndex,
+        EditorEventOverwriteMap, EditorEventRuleTy, EditorEventServerToClient, EditorNetEvent,
     },
-    map::EditorMap,
+    map::{EditorLayer, EditorMap, EditorMapGroupsInterface},
     network::EditorNetwork,
-    tools::auto_saver::AutoSaver,
+    tools::{
+        auto_saver::AutoSaver,
+        tile_layer::auto_mapper::{
+            EditorAutoMapperInterface, TileLayerAutoMapperRuleType, TileLayerAutoMapperWasm,
+        },
+    },
 };
 
 #[derive(Debug, Default)]
@@ -70,7 +84,11 @@ pub struct EditorServer {
 
     clients: HashMap<NetworkConnectionId, Client>,
 
+    auto_mapper_rules: HashMap<(String, String, Hash), TileLayerAutoMapperRuleType>,
+
     client_ids: u64,
+
+    io: Io,
 }
 
 impl EditorServer {
@@ -80,6 +98,7 @@ impl EditorServer {
         port: Option<u16>,
         password: String,
         admin_password: Option<String>,
+        io: Io,
     ) -> anyhow::Result<Self> {
         let has_events: Arc<AtomicBool> = Default::default();
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
@@ -102,7 +121,11 @@ impl EditorServer {
 
             admin_password,
 
+            auto_mapper_rules: Default::default(),
+
             client_ids: 0,
+
+            io,
         })
     }
 
@@ -111,6 +134,142 @@ impl EditorServer {
             .send(EditorEvent::Server(EditorEventServerToClient::Infos(
                 self.clients.values().map(|c| c.props.clone()).collect(),
             )));
+    }
+
+    fn auto_map(
+        rule: &mut TileLayerAutoMapperRuleType,
+        auto_map: EditorEventAutoMap,
+        map: &mut EditorMap,
+    ) -> anyhow::Result<ActTileLayerReplaceTiles> {
+        let groups = if auto_map.is_background {
+            &mut map.groups.background
+        } else {
+            &mut map.groups.foreground
+        };
+        let group = groups
+            .get_mut(auto_map.group_index)
+            .ok_or_else(|| anyhow!("Group index out of bounds"))?;
+        let layer = group
+            .layers
+            .get_mut(auto_map.layer_index)
+            .ok_or_else(|| anyhow!("Layer index is out of bounds"))?;
+        let EditorLayer::Tile(layer) = layer else {
+            anyhow::bail!("Layer is not of type tile");
+        };
+
+        let action = rule.run_layer(
+            auto_map.seed,
+            layer.layer.attr,
+            layer.layer.tiles.clone(),
+            0,
+            0,
+            layer.layer.attr.width,
+            layer.layer.attr.height,
+            auto_map.is_background,
+            auto_map.group_index,
+            auto_map.layer_index,
+        )?;
+
+        Ok(action)
+    }
+
+    fn live_edit(
+        auto_map: EditorEventAutoMap,
+        live_edit: bool,
+        map: &mut EditorMap,
+    ) -> anyhow::Result<EditorEventLayerIndex> {
+        let groups = if auto_map.is_background {
+            &mut map.groups.background
+        } else {
+            &mut map.groups.foreground
+        };
+        let group = groups
+            .get_mut(auto_map.group_index)
+            .ok_or_else(|| anyhow!("Group index out of bounds"))?;
+        let layer = group
+            .layers
+            .get_mut(auto_map.layer_index)
+            .ok_or_else(|| anyhow!("Layer index is out of bounds"))?;
+        let EditorLayer::Tile(layer) = layer else {
+            anyhow::bail!("Layer is not of type tile");
+        };
+
+        layer.user.live_edit = live_edit.then_some((
+            auto_map.seed,
+            (auto_map.resource_and_hash, auto_map.name, auto_map.hash),
+        ));
+
+        Ok(EditorEventLayerIndex {
+            is_background: auto_map.is_background,
+            group_index: auto_map.group_index,
+            layer_index: auto_map.layer_index,
+        })
+    }
+
+    fn prepare_action(&mut self, map: &mut EditorMap, act: EditorAction) -> EditorAction {
+        if let EditorAction::TileLayerReplaceTiles(act) = act {
+            let groups = if act.base.is_background {
+                &mut map.groups.background
+            } else {
+                &mut map.groups.foreground
+            };
+            if let Some(EditorLayer::Tile(layer)) = groups
+                .get(act.base.group_index)
+                .and_then(|g| g.layers.get(act.base.layer_index))
+            {
+                // execute the auto mapper is required
+                if let Some((seed, key)) = layer.user.live_edit.as_ref() {
+                    let rule = self
+                        .auto_mapper_rules
+                        .get_mut(key)
+                        .expect("Auto mapper rule was not found");
+
+                    let mut act = act;
+                    let mut tiles = layer.layer.tiles.clone();
+                    match check_and_copy_tiles(
+                        act.base.layer_index,
+                        &mut tiles,
+                        &mut act.base.old_tiles,
+                        &act.base.new_tiles,
+                        layer.layer.attr.width.get() as usize,
+                        layer.layer.attr.height.get() as usize,
+                        act.base.x as usize,
+                        act.base.y as usize,
+                        act.base.w.get() as usize,
+                        act.base.h.get() as usize,
+                        true,
+                    ) {
+                        Ok(_) => {
+                            match rule.run_layer(
+                                *seed,
+                                layer.layer.attr,
+                                tiles,
+                                act.base.x,
+                                act.base.y,
+                                act.base.w,
+                                act.base.h,
+                                act.base.is_background,
+                                act.base.group_index,
+                                act.base.layer_index,
+                            ) {
+                                Ok(act) => EditorAction::TileLayerReplaceTiles(act),
+                                Err(err) => {
+                                    log::error!("failed to execute auto mapper: {err}");
+                                    EditorAction::TileLayerReplaceTiles(act)
+                                }
+                            }
+                        }
+                        Err(_) => EditorAction::TileLayerReplaceTiles(act),
+                    }
+                } else {
+                    EditorAction::TileLayerReplaceTiles(act)
+                }
+            } else {
+                EditorAction::TileLayerReplaceTiles(act)
+            }
+        } else {
+            act
+        }
     }
 
     fn handle_client_ev(
@@ -182,10 +341,10 @@ impl EditorServer {
                             }))
                             .collect();
 
-                        let map: Map = map.clone().into();
+                        let send_map: Map = map.clone().into();
 
                         let mut map_bytes = Vec::new();
-                        map.write(&mut map_bytes, tp).unwrap();
+                        send_map.write(&mut map_bytes, tp).unwrap();
 
                         self.network.send_to(
                             &id,
@@ -193,6 +352,7 @@ impl EditorServer {
                                 EditorEventOverwriteMap {
                                     map: map_bytes,
                                     resources,
+                                    live_edited_layers: map.groups.live_edited_layers(),
                                 },
                             )),
                         );
@@ -229,7 +389,7 @@ impl EditorServer {
                                 buffer_object_handle,
                                 backend_handle,
                                 texture_handle,
-                                act,
+                                self.prepare_action(map, act),
                                 map,
                                 true,
                             ) {
@@ -618,6 +778,156 @@ impl EditorServer {
                                 let mut map_file: Vec<_> = Default::default();
                                 map.write(&mut map_file, tp).unwrap();
                                 Map::read(&map_file, tp).unwrap();
+                            }
+                        }
+                    }
+                    EditorEventClientToServer::LoadAutoMap {
+                        resource_and_hash,
+                        name,
+                        hash,
+                        rule,
+                    } => {
+                        if let Some(rule) = match rule {
+                            EditorEventRuleTy::EditorRuleJson(rule) => (generate_hash_for(&rule)
+                                == hash)
+                                .then(|| {
+                                    serde_json::from_slice(&rule)
+                                        .ok()
+                                        .map(TileLayerAutoMapperRuleType::EditorRule)
+                                })
+                                .flatten(),
+                            EditorEventRuleTy::Wasm(wasm_file) => (generate_hash_for(&wasm_file)
+                                == hash)
+                                .then(|| {
+                                    let fs = self.io.fs.clone();
+                                    let wasm_file_task = wasm_file.clone();
+                                    self.io
+                                        .rt
+                                        .spawn(async move {
+                                            AutoMapperWasmManager::load_module(&fs, wasm_file_task)
+                                                .await
+                                        })
+                                        .get_storage()
+                                        .ok()
+                                        .and_then(|wasm_module| {
+                                            TileLayerAutoMapperWasm::new(
+                                                wasm_module,
+                                                wasm_file,
+                                                hash,
+                                            )
+                                            .ok()
+                                        })
+                                        .map(TileLayerAutoMapperRuleType::Wasm)
+                                })
+                                .flatten(),
+                        } {
+                            self.auto_mapper_rules
+                                .insert((resource_and_hash, name, hash), rule);
+                        } else {
+                            // else send error
+                            self.network.send_to(
+                                &id,
+                                EditorEvent::Server(EditorEventServerToClient::Error(
+                                    "editor rule was invalid".into(),
+                                )),
+                            );
+                        }
+                    }
+                    EditorEventClientToServer::AutoMap(auto_mapper) => {
+                        match self.auto_mapper_rules.get_mut(&(
+                            auto_mapper.resource_and_hash.clone(),
+                            auto_mapper.name.clone(),
+                            auto_mapper.hash,
+                        )) {
+                            Some(rule) => match Self::auto_map(rule, auto_mapper, map) {
+                                Ok(action) => {
+                                    self.handle_client_ev(
+                                        id,
+                                        EditorEventClientToServer::Action(EditorActionGroup {
+                                            actions: vec![EditorAction::TileLayerReplaceTiles(
+                                                action,
+                                            )],
+                                            identifier: Some("auto-mapper".to_string()),
+                                        }),
+                                        tp,
+                                        sound_mt,
+                                        graphics_mt,
+                                        buffer_object_handle,
+                                        backend_handle,
+                                        texture_handle,
+                                        map,
+                                        auto_saver,
+                                        notifications,
+                                        should_save,
+                                    );
+                                }
+                                Err(err) => {
+                                    log::error!("Auto mapper failed: {err}");
+                                    self.network.send_to(
+                                        &id,
+                                        EditorEvent::Server(EditorEventServerToClient::Error(
+                                            err.to_string(),
+                                        )),
+                                    );
+                                }
+                            },
+                            None => {
+                                self.network.send_to(
+                                    &id,
+                                    EditorEvent::Server(
+                                        EditorEventServerToClient::AutoMapRuleNotFound(auto_mapper),
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                    EditorEventClientToServer::AutoMapLiveEdit {
+                        auto_map,
+                        live_edit,
+                    } => {
+                        match self.auto_mapper_rules.get_mut(&(
+                            auto_map.resource_and_hash.clone(),
+                            auto_map.name.clone(),
+                            auto_map.hash,
+                        )) {
+                            Some(_) => {
+                                match Self::live_edit(auto_map, live_edit, map) {
+                                    Ok(layer_index) => {
+                                        // if rule & layer was found, tell all clients that this layer is now live edited
+                                        for (id, _) in
+                                            self.clients.iter().filter(|(_, c)| !c.is_local_client)
+                                        {
+                                            self.network.send_to(
+                                                id,
+                                                EditorEvent::Server(
+                                                    EditorEventServerToClient::AutoMapLiveEdit {
+                                                        layer_index,
+                                                        live_edit,
+                                                    },
+                                                ),
+                                            );
+                                        }
+                                    }
+                                    Err(err) => {
+                                        self.network.send_to(
+                                            &id,
+                                            EditorEvent::Server(EditorEventServerToClient::Error(
+                                                err.to_string(),
+                                            )),
+                                        );
+                                    }
+                                }
+                            }
+                            None => {
+                                self.network.send_to(
+                                    &id,
+                                    EditorEvent::Server(
+                                        EditorEventServerToClient::AutoMapRuleLiveEditNotFound {
+                                            auto_mapper: auto_map,
+                                            live_edit,
+                                        },
+                                    ),
+                                );
                             }
                         }
                     }

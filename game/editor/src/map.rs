@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use base::linked_hash_map_view::FxLinkedHashMap;
+use base::{hash::Hash, linked_hash_map_view::FxLinkedHashMap};
 use base_io::runtime::IoRuntimeTask;
 use client_render_base::map::{
     map::RenderMap,
@@ -52,6 +52,8 @@ use map::{
 use math::math::vector::{ffixed, fvec2, vec2};
 use sound::{scene_object::SceneObject, sound_listener::SoundListener, sound_object::SoundObject};
 
+use crate::event::EditorEventLayerIndex;
+
 pub trait EditorCommonLayerOrGroupAttrInterface {
     fn editor_attr(&self) -> &EditorCommonGroupOrLayerAttr;
     fn editor_attr_mut(&mut self) -> &mut EditorCommonGroupOrLayerAttr;
@@ -87,6 +89,12 @@ pub struct EditorTileLayerProps {
     pub attr: EditorCommonGroupOrLayerAttr,
     // selected e.g. by a right-click or by a SHIFT/CTRL + left-click in a multi select
     pub selected: Option<EditorTileLayerPropsSelection>,
+
+    pub auto_mapper_rule: Option<String>,
+    pub auto_mapper_seed: Option<u64>,
+
+    /// This field is also used by the server, care!
+    pub live_edit: Option<(u64, (String, String, Hash))>,
 }
 
 impl Borrow<TileLayerVisuals> for EditorTileLayerProps {
@@ -512,6 +520,8 @@ pub trait EditorMapInterface {
 pub trait EditorMapGroupsInterface {
     fn active_layer(&self) -> Option<EditorLayerUnionRef>;
     fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
+
+    fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex>;
 }
 
 #[derive(Debug, Clone, Default)]
@@ -733,6 +743,42 @@ impl EditorMapGroupsInterface for EditorGroups {
             return layer;
         }
         None
+    }
+
+    fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex> {
+        self.background
+            .iter()
+            .enumerate()
+            .map(|(group_index, g)| (true, group_index, g))
+            .chain(
+                self.foreground
+                    .iter()
+                    .enumerate()
+                    .map(|(group_index, g)| (false, group_index, g)),
+            )
+            .flat_map(|(is_background, group_index, group)| {
+                group
+                    .layers
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(layer_index, layer)| {
+                        if let EditorLayer::Tile(layer) = layer {
+                            if layer.user.live_edit.is_some() {
+                                Some(EditorEventLayerIndex {
+                                    is_background,
+                                    group_index,
+                                    layer_index,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
     }
 }
 
