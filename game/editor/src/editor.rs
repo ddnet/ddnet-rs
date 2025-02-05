@@ -529,6 +529,7 @@ impl Editor {
                         user: EditorGroupsProps {
                             pos: Default::default(),
                             zoom: 1.0,
+                            parallax_aware_zoom: false,
                         },
                     },
                     config: EditorConfig {
@@ -1014,6 +1015,7 @@ impl Editor {
                 user: EditorGroupsProps {
                     pos: Default::default(),
                     zoom: 1.0,
+                    parallax_aware_zoom: false,
                 },
             },
             config: EditorConfig {
@@ -1714,6 +1716,7 @@ impl Editor {
                 &mut state,
                 &map.groups.user.pos,
                 map.groups.user.zoom,
+                map.groups.user.parallax_aware_zoom,
                 None,
                 clipping,
             ) {
@@ -1911,6 +1914,7 @@ impl Editor {
                             &Camera {
                                 pos: map.groups.user.pos,
                                 zoom: map.groups.user.zoom,
+                                parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
                                 forced_aspect_ratio: None,
                             },
                             0.3,
@@ -1951,6 +1955,7 @@ impl Editor {
             &Camera {
                 pos: map.groups.user.pos,
                 zoom: map.groups.user.zoom,
+                parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
                 forced_aspect_ratio: None,
             },
             &map.user.time,
@@ -2026,6 +2031,7 @@ impl Editor {
                         0.0,
                         100.0,
                         100.0,
+                        false,
                     );
                     let old_pos = ui_pos_to_world_pos(
                         &self.canvas_handle,
@@ -2038,6 +2044,7 @@ impl Editor {
                         0.0,
                         100.0,
                         100.0,
+                        false,
                     );
 
                     tab.map.groups.user.pos.x -= pos.x - old_pos.x;

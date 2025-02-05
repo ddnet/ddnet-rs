@@ -71,6 +71,7 @@ pub fn render_sound_points(
             offset.y.to_num::<f32>(),
             parallax.x.to_num::<f32>(),
             parallax.y.to_num::<f32>(),
+            map.groups.user.parallax_aware_zoom,
         );
         for sound in &layer.layer.sounds {
             let point = get_sound_point_animated(sound, map, map.user.time);
@@ -83,6 +84,7 @@ pub fn render_sound_points(
                 map.groups.user.pos.y,
                 Some(&group.attr),
                 map.groups.user.zoom,
+                map.groups.user.parallax_aware_zoom,
             );
             stream_handle.render_quads(
                 hi_closure!([point: fvec2, x: f32, y: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {

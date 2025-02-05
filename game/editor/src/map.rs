@@ -247,6 +247,7 @@ pub struct EditorPhysicsGroupProps {
 pub struct EditorGroupsProps {
     pub pos: vec2,
     pub zoom: f32,
+    pub parallax_aware_zoom: bool,
 }
 
 #[derive(Debug, Hiarc, Default, Clone)]
@@ -979,6 +980,7 @@ impl EditorMapInterface for EditorMap {
         Camera {
             pos: self.groups.user.pos,
             zoom: self.groups.user.zoom,
+            parallax_aware_zoom: self.groups.user.parallax_aware_zoom,
             forced_aspect_ratio: None,
         }
     }

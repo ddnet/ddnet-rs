@@ -148,6 +148,7 @@ impl QuadSelection {
             offset.y,
             parallax.x,
             parallax.y,
+            map.groups.user.parallax_aware_zoom,
         );
 
         // check if selection phase ended
@@ -212,6 +213,7 @@ impl QuadSelection {
                 offset.y,
                 parallax.x,
                 parallax.y,
+                map.groups.user.parallax_aware_zoom,
             );
             self.pointer_down_state = QuadPointerDownState::Selection(pos);
         }
@@ -253,6 +255,7 @@ impl QuadSelection {
             offset.y,
             parallax.x,
             parallax.y,
+            map.groups.user.parallax_aware_zoom,
         );
 
         if let Some(QuadPointerDownState::Point {
@@ -287,6 +290,7 @@ impl QuadSelection {
                         offset.y,
                         parallax.x,
                         parallax.y,
+                        map.groups.user.parallax_aware_zoom,
                     );
 
                     let radius = QUAD_POINT_RADIUS;
@@ -353,6 +357,7 @@ impl QuadSelection {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 let pos = egui::pos2(pos.x, pos.y);
 
@@ -401,6 +406,7 @@ impl QuadSelection {
             center.y,
             group_attr.as_ref(),
             map.groups.user.zoom,
+            map.groups.user.parallax_aware_zoom,
         );
 
         let range_size = vec2::new(range.w, range.h);

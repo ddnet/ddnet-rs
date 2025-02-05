@@ -26,6 +26,7 @@ pub fn render(
                 0.0,
                 0.0,
                 tab.map.groups.user.zoom,
+                tab.map.groups.user.parallax_aware_zoom,
             );
             let mut state = State::new();
             state.map_canvas(points[0], points[1], points[2], points[3]);

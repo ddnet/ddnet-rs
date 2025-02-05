@@ -58,6 +58,7 @@ pub fn render_rect_state(
         offset.y,
         canvas_handle.canvas_aspect(),
         map.groups.user.zoom,
+        map.groups.user.parallax_aware_zoom,
     );
     state.map_canvas(points[0], points[1], points[2], points[3]);
     state

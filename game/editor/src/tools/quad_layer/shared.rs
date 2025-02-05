@@ -107,6 +107,7 @@ pub fn render_quad_points(
             offset.y.to_num::<f32>(),
             parallax.x.to_num::<f32>(),
             parallax.y.to_num::<f32>(),
+            map.groups.user.parallax_aware_zoom,
         );
         for quad in &layer.layer.quads {
             let points = get_quad_points_animated(quad, map, map.user.time);
@@ -119,6 +120,7 @@ pub fn render_quad_points(
                 map.groups.user.pos.y,
                 Some(&group.attr),
                 map.groups.user.zoom,
+                map.groups.user.parallax_aware_zoom,
             );
             stream_handle.render_quads(
                 hi_closure!([points: [fvec2; 5], x: f32, y: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {

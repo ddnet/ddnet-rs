@@ -572,6 +572,7 @@ impl ClientNativeImpl {
                         camera: &Camera {
                             pos: vec2::new(21.0, 15.0),
                             zoom: 1.0,
+                            parallax_aware_zoom: true,
                             forced_aspect_ratio: None,
                         },
                         entities_container: &mut self.entities_container,

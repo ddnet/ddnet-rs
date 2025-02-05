@@ -504,6 +504,7 @@ impl TileBrush {
                         offset.y,
                         parallax.x,
                         parallax.y,
+                        map.groups.user.parallax_aware_zoom,
                     );
 
                     let x_needs_offset = x0 < x1;
@@ -696,6 +697,7 @@ impl TileBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 self.pointer_down_world_pos = Some(TileBrushDownPos {
                     world: pos,
@@ -1131,6 +1133,7 @@ impl TileBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
 
                 let pos_old = ivec2::new(
@@ -1179,6 +1182,7 @@ impl TileBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 self.shift_pointer_down_world_pos = Some(TileBrushDownPos {
                     world: pos,
@@ -1206,6 +1210,7 @@ impl TileBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
 
                 let x = (x / TILE_VISUAL_SIZE).floor() as i32;
@@ -1317,6 +1322,7 @@ impl TileBrush {
                             map.groups.user.pos.y,
                             group_attr.as_ref(),
                             map.groups.user.zoom,
+                            map.groups.user.parallax_aware_zoom,
                         );
                         state.canvas_br.x += center.x - pos_x;
                         state.canvas_br.y += center.y - pos_y;
@@ -1383,6 +1389,7 @@ impl TileBrush {
                 map.groups.user.pos.y,
                 group_attr.as_ref(),
                 map.groups.user.zoom,
+                map.groups.user.parallax_aware_zoom,
             );
             state.canvas_br.x += center.x;
             state.canvas_br.y += center.y;
@@ -1432,6 +1439,7 @@ impl TileBrush {
             offset.y,
             parallax.x,
             parallax.y,
+            map.groups.user.parallax_aware_zoom,
         );
         let pos_on_map = vec2::new(
             (pos_on_map.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,

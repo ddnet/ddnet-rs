@@ -90,12 +90,17 @@ impl RenderTools {
         offset_y: f32,
         aspect: f32,
         zoom: f32,
+        parallax_aware_zoom: bool,
     ) -> [f32; 4] {
         let mut width = 0.0;
         let mut height = 0.0;
         Self::calc_canvas_params(aspect, zoom, &mut width, &mut height);
 
-        let parallax_zoom = parallax_x.max(parallax_y).clamp(0.0, 100.0);
+        let parallax_zoom = if parallax_aware_zoom {
+            parallax_x.max(parallax_y).clamp(0.0, 100.0)
+        } else {
+            100.0
+        };
         let scale = (parallax_zoom * (zoom - 1.0) + 100.0) / 100.0 / zoom;
         width *= scale;
         height *= scale;
@@ -120,6 +125,7 @@ impl RenderTools {
         offset_x: f32,
         offset_y: f32,
         zoom: f32,
+        parallax_aware_zoom: bool,
     ) -> [f32; 4] {
         Self::map_canvas_to_world(
             center_x,
@@ -133,6 +139,7 @@ impl RenderTools {
                 CanvasType::Custom { aspect_ratio } => aspect_ratio,
             },
             zoom,
+            parallax_aware_zoom,
         )
     }
 
@@ -159,10 +166,19 @@ impl RenderTools {
         center_y: f32,
         design_group: Option<&MapGroupAttr>,
         zoom: f32,
+        parallax_aware_zoom: bool,
     ) -> [f32; 4] {
         let (parallax, offset) = Self::para_and_offset_of_group(design_group);
         Self::canvas_points_of_group_attr(
-            canvas, center_x, center_y, parallax.x, parallax.y, offset.x, offset.y, zoom,
+            canvas,
+            center_x,
+            center_y,
+            parallax.x,
+            parallax.y,
+            offset.x,
+            offset.y,
+            zoom,
+            parallax_aware_zoom,
         )
     }
 
@@ -179,8 +195,16 @@ impl RenderTools {
         center_y: f32,
         design_group: Option<&MapGroupAttr>,
         zoom: f32,
+        parallax_aware_zoom: bool,
     ) {
-        let points = Self::canvas_points_of_group(canvas, center_x, center_y, design_group, zoom);
+        let points = Self::canvas_points_of_group(
+            canvas,
+            center_x,
+            center_y,
+            design_group,
+            zoom,
+            parallax_aware_zoom,
+        );
         state.map_canvas(points[0], points[1], points[2], points[3]);
     }
 

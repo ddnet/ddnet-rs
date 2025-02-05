@@ -809,6 +809,7 @@ impl RenderMap {
         state: &mut State,
         center: &vec2,
         zoom: f32,
+        parallax_aware_zoom: bool,
         forced_aspect_ratio: Option<f32>,
         clipping: &MapGroupAttrClipping,
     ) -> bool {
@@ -821,6 +822,7 @@ impl RenderMap {
             center.y,
             None,
             zoom,
+            parallax_aware_zoom,
         );
         let (canvas_x0, canvas_y0, canvas_x1, canvas_y1) = state.get_canvas_mapping();
         let points: [f32; 4] = [canvas_x0, canvas_y0, canvas_x1, canvas_y1];
@@ -971,6 +973,7 @@ impl RenderMap {
                 &mut state,
                 center,
                 camera.zoom,
+                camera.parallax_aware_zoom,
                 camera.forced_aspect_ratio,
                 clipping,
             ) {
@@ -988,6 +991,7 @@ impl RenderMap {
             center.y,
             Some(group_attr),
             camera.zoom,
+            camera.parallax_aware_zoom,
         );
 
         match layer {
@@ -1112,6 +1116,7 @@ impl RenderMap {
             camera.pos.y,
             None,
             camera.zoom,
+            camera.parallax_aware_zoom,
         );
 
         let is_main_physics_layer = matches!(layer, MapLayerPhysicsSkeleton::Game(_));
