@@ -56,7 +56,7 @@ use map::{
                 physics::{MapLayerPhysics, MapLayerTilePhysicsBase},
                 tiles::{MapTileLayerPhysicsTilesRef, TileBase},
             },
-            MapGroup, MapGroupAttr, MapGroupAttrClipping, MapGroupPhysicsAttr,
+            MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
         },
         metadata::Metadata,
         resources::MapResourceMetaData,
@@ -226,7 +226,6 @@ pub struct Editor {
 
 #[derive(Debug, Clone)]
 struct LayerRect {
-    group_clip: Option<MapGroupAttrClipping>,
     width: NonZeroU16MinusOne,
     height: NonZeroU16MinusOne,
     parallax: fvec2,
@@ -1688,9 +1687,7 @@ impl Editor {
 
     fn render_tile_layer_rect(
         &self,
-        map_render: &RenderMap,
         map: &EditorMap,
-        group_clip: Option<MapGroupAttrClipping>,
         parallax: fvec2,
         offset: fvec2,
         layer_width: NonZeroU16MinusOne,
@@ -1705,24 +1702,12 @@ impl Editor {
             max: Pos2::new(x.max(x + w), y.max(y + h)),
         };
         let color = ubvec4::new(255, 255, 255, 255);
-        let mut state = render_rect_state(
+        let state = render_rect_state(
             &self.canvas_handle,
             map,
             &vec2::new(parallax.x.to_num(), parallax.y.to_num()),
             &vec2::new(offset.x.to_num(), offset.y.to_num()),
         );
-        if let Some(clipping) = &group_clip {
-            if !map_render.set_group_clipping(
-                &mut state,
-                &map.groups.user.pos,
-                map.groups.user.zoom,
-                map.groups.user.parallax_aware_zoom,
-                None,
-                clipping,
-            ) {
-                return;
-            }
-        }
         render_rect_from_state(&self.stream_handle, state, rect, color);
     }
 
@@ -1812,7 +1797,6 @@ impl Editor {
 
         if let Some(MapLayerSkeleton::Tile(layer)) = layer.editor_attr().active.then_some(layer) {
             layer_rect.push(LayerRect {
-                group_clip: group.attr.clipping,
                 parallax: group.attr.parallax,
                 offset: group.attr.offset,
                 width: layer.layer.attr.width,
@@ -1999,7 +1983,6 @@ impl Editor {
 
             if layer.editor_attr().active {
                 layer_rect.push(LayerRect {
-                    group_clip: None,
                     parallax: fvec2::new(ffixed::from_num(100.0), ffixed::from_num(100.0)),
                     offset: fvec2::default(),
                     width: group.attr.width,
@@ -2379,22 +2362,13 @@ impl Editor {
             }
             // layer rects
             for LayerRect {
-                group_clip,
                 parallax,
                 offset,
                 width,
                 height,
             } in layer_rects
             {
-                self.render_tile_layer_rect(
-                    &tab.map_render,
-                    &tab.map,
-                    group_clip,
-                    parallax,
-                    offset,
-                    width,
-                    height,
-                );
+                self.render_tile_layer_rect(&tab.map, parallax, offset, width, height);
             }
             // sound update
             tab.map

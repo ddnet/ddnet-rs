@@ -813,19 +813,16 @@ impl RenderMap {
         forced_aspect_ratio: Option<f32>,
         clipping: &MapGroupAttrClipping,
     ) -> bool {
-        RenderTools::map_canvas_of_group(
+        let points = RenderTools::canvas_points_of_group(
             forced_aspect_ratio
                 .map(|aspect_ratio| CanvasType::Custom { aspect_ratio })
                 .unwrap_or(CanvasType::Handle(&self.canvas_handle)),
-            state,
             center.x,
             center.y,
             None,
             zoom,
             parallax_aware_zoom,
         );
-        let (canvas_x0, canvas_y0, canvas_x1, canvas_y1) = state.get_canvas_mapping();
-        let points: [f32; 4] = [canvas_x0, canvas_y0, canvas_x1, canvas_y1];
 
         let x0 = (clipping.pos.x.to_num::<f32>() - points[0]) / (points[2] - points[0]);
         let y0 = (clipping.pos.y.to_num::<f32>() - points[1]) / (points[3] - points[1]);
