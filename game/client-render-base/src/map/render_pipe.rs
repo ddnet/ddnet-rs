@@ -15,6 +15,7 @@ pub struct Camera {
     pub pos: vec2,
     pub zoom: f32,
     pub forced_aspect_ratio: Option<f32>,
+    pub parallax_aware_zoom: bool,
 }
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]

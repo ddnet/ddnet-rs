@@ -39,6 +39,7 @@ impl CanvasMappingIngame {
             center_y,
             forced_aspect_ratio.unwrap_or(self.canvas_handle.canvas_aspect()),
             zoom,
+            true,
         );
         state.map_canvas(points[0], points[1], points[2], points[3]);
     }

@@ -88,6 +88,7 @@ impl TileSelection {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
 
                 if x0 > x1 {
@@ -140,6 +141,7 @@ impl TileSelection {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 self.pointer_down_state = Some(TileBrushDownPos {
                     world: pos,
@@ -180,6 +182,7 @@ impl TileSelection {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
 
                 let down_pos = world;

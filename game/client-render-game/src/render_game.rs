@@ -578,6 +578,7 @@ impl RenderGame {
             pos: Default::default(),
             zoom: 1.0,
             forced_aspect_ratio: render_info.settings.ingame_aspect,
+            parallax_aware_zoom: true,
         };
 
         let camera_player_id = player_info.and_then(|(player_id, p)| match &p.cam_mode {

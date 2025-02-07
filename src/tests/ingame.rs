@@ -108,6 +108,7 @@ pub fn test_ingame(
             let camera = Camera {
                 pos: Default::default(),
                 zoom: 1.0,
+                parallax_aware_zoom: true,
                 forced_aspect_ratio: None,
             };
 
@@ -262,6 +263,7 @@ pub fn test_ingame_skins(
             let camera = Camera {
                 pos: vec2::new(ppr as f32, ppr as f32),
                 zoom: 2.5,
+                parallax_aware_zoom: true,
                 forced_aspect_ratio: None,
             };
 

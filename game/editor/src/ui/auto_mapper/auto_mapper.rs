@@ -596,7 +596,8 @@ pub fn render(pipe: &mut UiRenderPipe<UserData>, ui: &mut egui::Ui, ui_state: &m
             }
 
             ui.horizontal(|ui| {
-                ui.label("Run:");
+                ui.label("Run:")
+                    .on_hover_text("The run, that runs the rules for all tiles");
 
                 // prev run
                 if ui.button("\u{f060}").clicked() {
@@ -627,7 +628,7 @@ pub fn render(pipe: &mut UiRenderPipe<UserData>, ui: &mut egui::Ui, ui_state: &m
             });
             if let Some(run) = rule.runs.get_mut(rule.active_run) {
                 ui.horizontal(|ui| {
-                    ui.label("Tile:");
+                    ui.label("Tile:").on_hover_text("The tile to spawn/change");
 
                     // prev tile
                     if ui.button("\u{f060}").clicked() {

@@ -7,7 +7,7 @@ use std::{
 use anyhow::anyhow;
 use base::{
     hash::{generate_hash_for, Hash},
-    system::System,
+    system::{System, SystemTimeInterface},
 };
 use base_io::io::Io;
 use client_notifications::overlay::ClientNotifications;
@@ -88,6 +88,10 @@ pub struct EditorServer {
 
     client_ids: u64,
 
+    sys: System,
+    last_client_infos: Duration,
+    needs_client_info_update: bool,
+
     io: Io,
 }
 
@@ -124,6 +128,10 @@ impl EditorServer {
             auto_mapper_rules: Default::default(),
 
             client_ids: 0,
+
+            needs_client_info_update: false,
+            last_client_infos: sys.time_get(),
+            sys: sys.clone(),
 
             io,
         })
@@ -622,7 +630,7 @@ impl EditorServer {
                         info.stats = client.props.stats;
                         client.props = info;
 
-                        self.broadcast_client_infos();
+                        self.needs_client_info_update = true;
                     }
                     EditorEventClientToServer::Chat { msg } => {
                         if !msg.is_empty() {
@@ -949,6 +957,15 @@ impl EditorServer {
         notifications: &mut ClientNotifications,
         should_save: &mut bool,
     ) {
+        let now = self.sys.time_get();
+        if self.needs_client_info_update
+            && now.saturating_sub(self.last_client_infos) > Duration::from_millis(10)
+        {
+            self.broadcast_client_infos();
+            self.needs_client_info_update = false;
+            self.last_client_infos = now;
+        }
+
         if self.has_events.load(std::sync::atomic::Ordering::Relaxed) {
             let events = self.event_generator.take();
 

@@ -135,6 +135,8 @@ impl QuadBrush {
             return;
         };
 
+        let parallax_aware_zoom = map.groups.user.parallax_aware_zoom;
+
         let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
         let vec2 {
@@ -151,6 +153,7 @@ impl QuadBrush {
             offset.y,
             parallax.x,
             parallax.y,
+            parallax_aware_zoom,
         );
 
         // if pointer was already down
@@ -240,6 +243,7 @@ impl QuadBrush {
                         offset.y,
                         parallax.x,
                         parallax.y,
+                        parallax_aware_zoom,
                     );
 
                     let radius = QUAD_POINT_RADIUS;
@@ -289,6 +293,7 @@ impl QuadBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    parallax_aware_zoom,
                 );
                 self.pointer_down_state = QuadPointerDownState::Selection(pos);
             }
@@ -397,6 +402,7 @@ impl QuadBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
 
                 let mut quads = brush.quads.clone();
@@ -466,6 +472,7 @@ impl QuadBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 let pos = egui::pos2(pos.x, pos.y);
 
@@ -516,6 +523,7 @@ impl QuadBrush {
             offset.y,
             parallax.x,
             parallax.y,
+            map.groups.user.parallax_aware_zoom,
         );
         let pos = pos_on_map;
         let pos = egui::pos2(pos.x, pos.y);
@@ -529,6 +537,7 @@ impl QuadBrush {
             map.groups.user.pos.y,
             layer.map(|layer| layer.get_or_fake_group_attr()).as_ref(),
             map.groups.user.zoom,
+            map.groups.user.parallax_aware_zoom,
         );
         let center = -pos_on_map;
         state.canvas_br.x += center.x;

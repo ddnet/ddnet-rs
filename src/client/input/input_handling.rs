@@ -755,6 +755,7 @@ impl InputHandling {
                         0.0,
                         None,
                         local_player.zoom,
+                        true,
                     );
                     let vp_width = points[2] as f64 - points[0] as f64;
                     let vp_height = points[3] as f64 - points[1] as f64;

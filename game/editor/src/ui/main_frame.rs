@@ -48,6 +48,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
 
         super::chat_panel::panel::render(ui, &mut pipe, ui_state);
 
+        super::tool_overlays::tile_brush::render(ui, &mut pipe);
+
         if let NetworkState::Client(state) = tab.client.net_state() {
             match state {
                 NetworkClientState::Connecting(to) => {
