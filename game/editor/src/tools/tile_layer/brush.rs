@@ -132,7 +132,7 @@ impl TileBrushTilePicker {
     }
 }
 
-#[derive(Debug, Hiarc)]
+#[derive(Debug, Hiarc, Clone, Copy)]
 pub struct TileBrushDownPos {
     pub world: vec2,
     pub ui: egui::Pos2,
@@ -1408,6 +1408,49 @@ impl TileBrush {
         }
     }
 
+    pub fn selection_size(old: &vec2, cur: &vec2) -> (vec2, vec2, vec2, u16, u16) {
+        let pos_old = vec2::new(
+            (old.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
+            (old.y / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
+        );
+        let pos_cur = vec2::new(
+            (cur.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
+            (cur.y / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
+        );
+        let width = (pos_cur.x - pos_old.x).abs() as u16 + 1;
+        let height = (pos_cur.y - pos_old.y).abs() as u16 + 1;
+        let pos_min = vec2::new(pos_cur.x.min(pos_old.x), pos_cur.y.min(pos_old.y));
+
+        (pos_min, pos_old, pos_cur, width, height)
+    }
+
+    pub fn pos_on_map(
+        map: &EditorMap,
+        ui_canvas: &UiCanvasSize,
+        canvas_handle: &GraphicsCanvasHandle,
+        pos: &egui::Pos2,
+        offset: &vec2,
+        parallax: &vec2,
+    ) -> vec2 {
+        let pos_on_map = ui_pos_to_world_pos(
+            canvas_handle,
+            ui_canvas,
+            map.groups.user.zoom,
+            vec2::new(pos.x, pos.y),
+            map.groups.user.pos.x,
+            map.groups.user.pos.y,
+            offset.x,
+            offset.y,
+            parallax.x,
+            parallax.y,
+            map.groups.user.parallax_aware_zoom,
+        );
+        vec2::new(
+            (pos_on_map.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
+            (pos_on_map.y / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
+        )
+    }
+
     fn render_brush(
         &self,
         ui_canvas: &UiCanvasSize,
@@ -1428,23 +1471,8 @@ impl TileBrush {
         let brush = self.brush.as_ref().unwrap();
 
         let pos = current_pointer_pos;
-        let pos_on_map = ui_pos_to_world_pos(
-            canvas_handle,
-            ui_canvas,
-            map.groups.user.zoom,
-            vec2::new(pos.x, pos.y),
-            map.groups.user.pos.x,
-            map.groups.user.pos.y,
-            offset.x,
-            offset.y,
-            parallax.x,
-            parallax.y,
-            map.groups.user.parallax_aware_zoom,
-        );
-        let pos_on_map = vec2::new(
-            (pos_on_map.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
-            (pos_on_map.y / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
-        );
+
+        let pos_on_map = Self::pos_on_map(map, ui_canvas, canvas_handle, pos, &offset, &parallax);
         let pos = pos_on_map;
         let mut pos = vec2::new(
             pos.x - brush.negative_offset.x as f32 * TILE_VISUAL_SIZE,
@@ -1468,17 +1496,8 @@ impl TileBrush {
             egui::Rect::from_min_max(pos, egui::pos2(pos.x + brush_size.x, pos.y + brush_size.y));
 
         if let Some(TileBrushDownPos { world, .. }) = &self.shift_pointer_down_world_pos {
-            let pos_old = vec2::new(
-                (world.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
-                (world.y / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
-            );
-            let pos_cur = vec2::new(
-                (pos_on_map.x / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
-                (pos_on_map.y / TILE_VISUAL_SIZE).floor() * TILE_VISUAL_SIZE,
-            );
-            let width = (pos_cur.x - pos_old.x).abs() as u16 + 1;
-            let height = (pos_cur.y - pos_old.y).abs() as u16 + 1;
-            let pos_min = vec2::new(pos_cur.x.min(pos_old.x), pos_cur.y.min(pos_old.y));
+            let (pos_min, pos_old, pos_cur, width, height) =
+                Self::selection_size(world, &pos_on_map);
 
             let rect = egui::Rect::from_min_max(
                 egui::pos2(pos_min.x, pos_min.y),
@@ -1514,7 +1533,6 @@ impl TileBrush {
                 brush,
                 map,
                 canvas_handle,
-                //map.groups.user.pos - pos_min,
                 -vec2::new(pos_min.x, pos_min.y),
                 layer.map(|layer| layer.get_or_fake_group_attr()),
                 usvec2::new(

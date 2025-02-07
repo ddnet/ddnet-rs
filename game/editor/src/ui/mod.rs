@@ -11,6 +11,7 @@ pub mod main_frame;
 pub mod mapper_cursors;
 pub mod page;
 pub mod server_settings;
+pub mod tool_overlays;
 pub mod top_menu;
 pub mod top_tabs;
 pub mod top_toolbar;
