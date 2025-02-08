@@ -1,10 +1,28 @@
+pub const TEXT_QUAD_BRUSH: &str =
+"\
+# Quad brush\n\
+\n\
+The quad brush allows to select a range of quads (`left click`) and paste the selection again (`left click`)  \n\
+Clicking the corner or center points of a quad has special meanings  \n\
+Center point:\n\
+- `Left click` allows dragging the whole quad.\n\
+- `Shift + Left click` allows dragging the center point itself.\n\
+- `Control + Left click` allows rotating the quad.\n\
+- `Right click` opens the quad property panel.\n\n\
+Corner points:\n\
+- `Left click` allows dragging the quad's corner.\n\
+- `Right click` opens the corner property panel.\n\n\
+---\n\n\
+Press `right click` to unset the selection.\
+";
+
 pub const TEXT_QUAD_SELECTION: &str =
 "\
 # Quad selection\n\
 \n\
 The quad selection is a specialized tool that focuses on making working with existing quads easier.\n\n\
 You can change many shared properties at once to many quads. E.g. the color of one of the quad corners.\n\
-Align many quads at once and so on similar to the [`Quad brush`](#quad-brush).  \n\
+Align many quads at once and so on similar to the `Quad brush`.  \n\
 First select your quad(s) using `left click`:\n\
 - `right click` on a quad corner or center _point_ to open the property\
 window for all selected quads for the given _point_.\n\
@@ -12,18 +30,18 @@ window for all selected quads for the given _point_.\n\
 - `left click` on a center point to drag all quads.\n\
 - `shift + left click` on a center point to drag the center point of all quads.\n\
 - `ctrl + left click` on a center point to rotate all quads.\n\n\
-The `Alt`-key will always try to snap the above actions to the [`Grid`](#grid) (if active).\n\n\
+The `Alt`-key will always try to snap the above actions to the `Grid` (if active).\n\n\
 Press `right click` on no quad to unset the selection.\n\n\
 ### Animations\n\
 \n\
 If one or more quads are selected with at least one shared \
-pos/color animation and the [`Animations`](#animations)-panel is open you can \
+pos/color animation and the `Animations`-panel is open you can \
 control the animation properties using the quads directly. \
 In other words: instead of changing the animation point values \
-inside the [`Animations`](#animations)-panel you can \
-simply drag the [`Animations`](#animations)-panel's time dragger to where you want to insert \
+inside the `Animations`-panel you can \
+simply drag the `Animations`-panel's time dragger to where you want to insert \
 the next animation point -> change your quad properties -> insert the animation point at this position.\n\
-> Keep in mind that moving the [`Animations`](#animations)-panel's time dragger resets the quad to the \
+> Keep in mind that moving the `Animations`-panel's time dragger resets the quad to the \
 evaluated position/color etc.  \n\
 The property's value is the interpreted as `value = base-value * animation-point-value` \
 to calculate the value of the animation points.\
@@ -33,12 +51,33 @@ pub const TEXT_TILE_BRUSH: &str =
 "\
 # Tile brush\n\
 \n\
-The tile brush allows to select a range of tiles (`left click`) and apply different action on this selection:\n\
+The tile brush allows to select a range of tiles (`left click`) and apply different actions on this selection:\n\
 - `Left click` -> Draws this selection anywhere within a tile layer.\n\
 - `Shift + left click selection` -> Creates a repeated pattern of the selected tiles.\n\n\
 ---\n\n\
 Press `right click` to unset the selection.  \n\
 Hold `space` to open the tile picker, which is basically an overview of all tiles within a tile layer image.\
+";
+
+pub const TEXT_TILE_SELECT: &str =
+"\
+# Tile selection\n\
+\n\
+The tile selection allows to select a range of tiles (`left click`) and apply different actions on this selection,
+which can be found in the tool bar below.  \n\
+Press `right click` to unset the selection.\
+";
+
+pub const TEXT_SOUND_BRUSH: &str =
+"\
+# Sound brush\n\
+\n\
+The sound brush allows to select a range of sounds (`left click`) and paste the selection again (`left click`)  \n\
+Clicking the center point of a sound has special meanings:\n\
+- `Left click` allows dragging the whole sound.\n\
+- `Right click` opens the sound property panel.\n\n\
+---\n\n\
+Press `right click` to unset the selection.\
 ";
 
 pub const TEXT_ADD_QUAD: &str = "\
@@ -53,19 +92,18 @@ pub const TEXT_ADD_SOUND: &str = "\
 Adds a new sound to the active sound layer.\
 ";
 
-pub const TEXT_LAYER_PROPS_COLOR: &str =
-"\
+pub const TEXT_LAYER_PROPS_COLOR: &str = "\
 # Layer's color\n\
 This controls the base color of the tile layer.\n\
 \n\
 ### Animations\n\
 \n\
-If the [`Animations`](#animations)-panel is open and this layer has a color \
+If the `Animations`-panel is open and this layer has a color \
 animation active, then you can change this property and \
-insert a new animation point at the current [`Animations`](#animations)-panel's \
+insert a new animation point at the current `Animations`-panel's \
 time value (move the time dragger) instead of changing the animation points inside
-the [`Animations`](#animations)-panel.\n\
-> Keep in mind that moving the [`Animations`](#animations)-panel's time dragger resets the color to the \
+the `Animations`-panel.\n\
+> Keep in mind that moving the `Animations`-panel's time dragger resets the color to the \
 evaluated color of the animation.  \n\
 The color-property's value is the interpreted as `color = base-color * animation-point-color` \
 to calculate the values of the animation points.
@@ -75,7 +113,7 @@ pub const TEXT_ANIM_PANEL_OPEN: &str =
 "\
 # Animations panel + properties\n\n\
 To make animating easier to use properties that are effected by animations like position, color & sound volume \
-are entering a different mode when the [`Animations`](#animations)-panel is open.  \n\
+are entering a different mode when the `Animations`-panel is open.  \n\
 Instead of changing the properties directly it will leave the base properties as is and modifies a temporary \
 property.  \n\
 This temporary property is the sum/product of the base property with animations applied:\n\
@@ -91,19 +129,18 @@ calculate the animation point values using the above equasion.\n\n\
     In other words that means that the base color reduces the color range (0.5 => anim point is 0.5 at most).\
 ";
 
-pub const TEXT_QUAD_PROP_COLOR: &str =
-"\
+pub const TEXT_QUAD_PROP_COLOR: &str = "\
 # Quad's color\n\
 This controls the base color of the selected quads.\n\
 \n\
 ### Animations\n\
 \n\
-If the [`Animations`](#animations)-panel is open and this quad has a color \
+If the `Animations`-panel is open and this quad has a color \
 animation active, then you can change this property and \
-insert a new animation point at the current [`Animations`](#animations)-panel's \
+insert a new animation point at the current `Animations`-panel's \
 time value (move the time dragger) instead of changing the animation points inside
-the [`Animations`](#animations)-panel.\n\
-> Keep in mind that moving the [`Animations`](#animations)-panel's time dragger resets the color to the \
+the `Animations`-panel.\n\
+> Keep in mind that moving the `Animations`-panel's time dragger resets the color to the \
 evaluated color of the animation.  \n\
 The color-property's value is the interpreted as `color = base-color * animation-point-color` \
 to calculate the values of the animation points.
