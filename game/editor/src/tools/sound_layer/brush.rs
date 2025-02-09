@@ -174,6 +174,8 @@ impl SoundBrush {
                     w: x1 - x0,
                     h: y1 - y0,
                 });
+            } else {
+                self.brush = None;
             }
 
             if !latest_pointer.primary_down() {

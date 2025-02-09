@@ -218,6 +218,9 @@ impl QuadBrush {
                         .map(|img| map.resources.images[img].user.user.clone())
                         .unwrap_or_else(|| fake_texture.clone()),
                 });
+            } else {
+                // else unset
+                self.brush = None;
             }
 
             if !latest_pointer.primary_down() {
