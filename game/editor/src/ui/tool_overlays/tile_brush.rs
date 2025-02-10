@@ -29,12 +29,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
             ActiveToolTiles::Brush => {
                 let brush = &tools.tiles.brush;
                 let draw = |text: String, pointer_pos: &TileBrushDownPos| {
-                    let pos = pos(pointer_pos.ui) - egui::vec2(0.0, 20.0);
+                    let pos = pos(pointer_pos.ui) + egui::vec2(20.0, 20.0);
                     // draw amount of tiles selected/drawn whatever
                     let bg = ui.painter().add(Shape::Noop);
                     let rect = ui.painter().text(
                         pos,
-                        egui::Align2::CENTER_BOTTOM,
+                        egui::Align2::LEFT_TOP,
                         text,
                         FontId::monospace(24.0),
                         Color32::WHITE,
@@ -85,12 +85,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let selection = &tools.tiles.selection;
                 if let Some(range) = selection.range.as_ref() {
                     if let Some(pointer_pos) = &selection.pointer_down_state {
-                        let pos = pos(pointer_pos.ui) - egui::vec2(0.0, 20.0);
+                        let pos = pos(pointer_pos.ui) + egui::vec2(20.0, 20.0);
                         // draw amount of tiles selected/drawn whatever
                         let bg = ui.painter().add(Shape::Noop);
                         let rect = ui.painter().text(
                             pos,
-                            egui::Align2::CENTER_BOTTOM,
+                            egui::Align2::LEFT_TOP,
                             format!("{}x{}", range.w.get(), range.h.get()),
                             FontId::monospace(24.0),
                             Color32::WHITE,
@@ -139,12 +139,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 }
             };
             if let Some((count, pointer_pos)) = count {
-                let pos = pos(egui::pos2(pointer_pos.x, pointer_pos.y)) - egui::vec2(0.0, 20.0);
+                let pos = pos(egui::pos2(pointer_pos.x, pointer_pos.y)) + egui::vec2(20.0, 20.0);
                 // draw amount of tiles selected/drawn whatever
                 let bg = ui.painter().add(Shape::Noop);
                 let rect = ui.painter().text(
                     pos,
-                    egui::Align2::CENTER_BOTTOM,
+                    egui::Align2::LEFT_TOP,
                     format!("{}x", count),
                     FontId::monospace(24.0),
                     Color32::WHITE,
@@ -173,12 +173,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 }
             };
             if let Some((count, pointer_pos)) = count {
-                let pos = pos(egui::pos2(pointer_pos.x, pointer_pos.y)) - egui::vec2(0.0, 20.0);
+                let pos = pos(egui::pos2(pointer_pos.x, pointer_pos.y)) + egui::vec2(20.0, 20.0);
                 // draw amount of tiles selected/drawn whatever
                 let bg = ui.painter().add(Shape::Noop);
                 let rect = ui.painter().text(
                     pos,
-                    egui::Align2::CENTER_BOTTOM,
+                    egui::Align2::LEFT_TOP,
                     format!("{}x", count),
                     FontId::monospace(24.0),
                     Color32::WHITE,
