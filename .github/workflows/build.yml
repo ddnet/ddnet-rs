@@ -77,6 +77,8 @@ jobs:
         brew install pkg-config autoconf automake || true
         # for ffmpeg
         brew install ffmpeg || true
+        # for building molten vk
+        brew install python-setuptools || true
 
     - name: Prepare msys dependencies
       if: contains(matrix.os, 'windows')
@@ -134,11 +136,15 @@ jobs:
         cargo clippy --release --verbose --features ${{ matrix.features }} -- -D warnings
         cargo clippy -p server --release --verbose --features bundled_data_dir -- -D warnings
 
+    - name: Screenshots
+      run: cargo test --release -- "tests::screenshots::create_screenshots"
+
     - name: Prepare artifacts
       run: |
         mkdir bin-artifacts || true
         mv target/release/${{ matrix.bin }} bin-artifacts
         mv target/release/${{ matrix.server-bin }} bin-artifacts
+        mv artifacts bin-artifacts || true
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
