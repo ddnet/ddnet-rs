@@ -6,7 +6,7 @@ use crate::{
     tools::{
         quad_layer::{self, selection::QuadPointerDownState},
         sound_layer,
-        tile_layer::brush::{TileBrush, TileBrushDownPos},
+        tile_layer::brush::{TileBrush, TileBrushDown, TileBrushDownPos},
         tool::{ActiveTool, ActiveToolQuads, ActiveToolSounds, ActiveToolTiles},
     },
     ui::user_data::UserDataWithTab,
@@ -45,7 +45,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                     );
                 };
                 if let Some(brush_tiles) = brush.brush.as_ref() {
-                    if let Some(pointer_pos) = brush.pointer_down_world_pos {
+                    if let Some(TileBrushDown {
+                        pos: pointer_pos, ..
+                    }) = brush.pointer_down_world_pos
+                    {
                         draw(
                             format!("{}x{}", brush_tiles.w.get(), brush_tiles.h.get()),
                             &pointer_pos,

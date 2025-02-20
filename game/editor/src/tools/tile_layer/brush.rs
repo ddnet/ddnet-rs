@@ -138,13 +138,19 @@ pub struct TileBrushDownPos {
     pub ui: egui::Pos2,
 }
 
+#[derive(Debug, Hiarc, Clone, Copy)]
+pub struct TileBrushDown {
+    pub pos: TileBrushDownPos,
+    pub shift: bool,
+}
+
 #[derive(Debug, Hiarc)]
 pub struct TileBrush {
     pub brush: Option<TileBrushTiles>,
 
     pub tile_picker: TileBrushTilePicker,
 
-    pub pointer_down_world_pos: Option<TileBrushDownPos>,
+    pub pointer_down_world_pos: Option<TileBrushDown>,
     pub shift_pointer_down_world_pos: Option<TileBrushDownPos>,
 
     /// Random id counted up, used for action identifiers
@@ -279,9 +285,11 @@ impl TileBrush {
         fake_texture_2d_array: &TextureContainer2dArray,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         latest_keys_down: &HashSet<egui::Key>,
         current_pointer_pos: &egui::Pos2,
         available_rect: &egui::Rect,
+        client: &mut EditorClient,
     ) {
         let layer = map.active_layer();
         let (offset, parallax) = if let Some(layer) = &layer {
@@ -290,7 +298,11 @@ impl TileBrush {
             Default::default()
         };
         // if pointer was already down
-        if let Some(TileBrushDownPos { world, ui }) = &self.pointer_down_world_pos {
+        if let Some(TileBrushDown {
+            pos: TileBrushDownPos { world, ui },
+            ..
+        }) = &self.pointer_down_world_pos
+        {
             // find current layer
             if let Some(layer) = layer {
                 // if space is hold down, pick from a tile selector
@@ -676,6 +688,212 @@ impl TileBrush {
                     } else {
                         self.brush = None;
                     }
+
+                    if !latest_pointer.primary_down() {
+                        // if shift, then delete the selection
+                        if self.pointer_down_world_pos.is_some_and(|t| t.shift) {
+                            if let Some(brush) = &self.brush {
+                                let x = x0;
+                                let y = y0;
+                                let brush_w = brush.w.get();
+                                let brush_h = brush.h.get();
+                                let brush_len = brush_w as usize * brush_h as usize;
+                                let (action, group_indentifier) = match &layer {
+                                    EditorLayerUnionRef::Physics {
+                                        layer,
+                                        group_attr,
+                                        layer_index,
+                                    } => {
+                                        let old_tiles = match layer {
+                                            EditorPhysicsLayer::Arbitrary(_) => {
+                                                panic!(
+                                                    "not implemented for \
+                                        arbitrary layer"
+                                                )
+                                            }
+                                            EditorPhysicsLayer::Game(layer) => {
+                                                MapTileLayerPhysicsTiles::Game(Self::collect_tiles(
+                                                    &layer.layer.tiles,
+                                                    group_attr.width.get() as usize,
+                                                    x as usize,
+                                                    brush_w as usize,
+                                                    y as usize,
+                                                    brush_h as usize,
+                                                ))
+                                            }
+                                            EditorPhysicsLayer::Front(layer) => {
+                                                MapTileLayerPhysicsTiles::Front(
+                                                    Self::collect_tiles(
+                                                        &layer.layer.tiles,
+                                                        group_attr.width.get() as usize,
+                                                        x as usize,
+                                                        brush_w as usize,
+                                                        y as usize,
+                                                        brush_h as usize,
+                                                    ),
+                                                )
+                                            }
+                                            EditorPhysicsLayer::Tele(layer) => {
+                                                MapTileLayerPhysicsTiles::Tele(Self::collect_tiles(
+                                                    &layer.layer.base.tiles,
+                                                    group_attr.width.get() as usize,
+                                                    x as usize,
+                                                    brush_w as usize,
+                                                    y as usize,
+                                                    brush_h as usize,
+                                                ))
+                                            }
+                                            EditorPhysicsLayer::Speedup(layer) => {
+                                                MapTileLayerPhysicsTiles::Speedup(
+                                                    Self::collect_tiles(
+                                                        &layer.layer.tiles,
+                                                        group_attr.width.get() as usize,
+                                                        x as usize,
+                                                        brush_w as usize,
+                                                        y as usize,
+                                                        brush_h as usize,
+                                                    ),
+                                                )
+                                            }
+                                            EditorPhysicsLayer::Switch(layer) => {
+                                                MapTileLayerPhysicsTiles::Switch(
+                                                    Self::collect_tiles(
+                                                        &layer.layer.base.tiles,
+                                                        group_attr.width.get() as usize,
+                                                        x as usize,
+                                                        brush_w as usize,
+                                                        y as usize,
+                                                        brush_h as usize,
+                                                    ),
+                                                )
+                                            }
+                                            EditorPhysicsLayer::Tune(layer) => {
+                                                MapTileLayerPhysicsTiles::Tune(Self::collect_tiles(
+                                                    &layer.layer.base.tiles,
+                                                    group_attr.width.get() as usize,
+                                                    x as usize,
+                                                    brush_w as usize,
+                                                    y as usize,
+                                                    brush_h as usize,
+                                                ))
+                                            }
+                                        };
+                                        let new_tiles = match &brush.tiles {
+                                            MapTileLayerTiles::Design(_) => todo!(
+                                                "currently design tiles can't \
+                                                be pasted on a physics layer"
+                                            ),
+                                            MapTileLayerTiles::Physics(tiles) => match tiles {
+                                                MapTileLayerPhysicsTiles::Arbitrary(_) => panic!(
+                                                    "this operation is \
+                                                     not supported"
+                                                ),
+                                                MapTileLayerPhysicsTiles::Game(_) => {
+                                                    MapTileLayerPhysicsTiles::Game(
+                                                        vec![Default::default(); brush_len],
+                                                    )
+                                                }
+                                                MapTileLayerPhysicsTiles::Front(_) => {
+                                                    MapTileLayerPhysicsTiles::Front(
+                                                        vec![Default::default(); brush_len],
+                                                    )
+                                                }
+                                                MapTileLayerPhysicsTiles::Tele(_) => {
+                                                    MapTileLayerPhysicsTiles::Tele(
+                                                        vec![Default::default(); brush_len],
+                                                    )
+                                                }
+                                                MapTileLayerPhysicsTiles::Speedup(_) => {
+                                                    MapTileLayerPhysicsTiles::Speedup(
+                                                        vec![Default::default(); brush_len],
+                                                    )
+                                                }
+                                                MapTileLayerPhysicsTiles::Switch(_) => {
+                                                    MapTileLayerPhysicsTiles::Switch(
+                                                        vec![Default::default(); brush_len],
+                                                    )
+                                                }
+                                                MapTileLayerPhysicsTiles::Tune(_) => {
+                                                    MapTileLayerPhysicsTiles::Tune(
+                                                        vec![Default::default(); brush_len],
+                                                    )
+                                                }
+                                            },
+                                        };
+                                        (
+                                            EditorAction::TilePhysicsLayerReplaceTiles(
+                                                ActTilePhysicsLayerReplaceTiles {
+                                                    base: ActTilePhysicsLayerReplTilesBase {
+                                                        layer_index: *layer_index,
+                                                        old_tiles,
+                                                        new_tiles,
+                                                        x,
+                                                        y,
+                                                        w: NonZeroU16MinusOne::new(brush_w)
+                                                            .unwrap(),
+                                                        h: NonZeroU16MinusOne::new(brush_h)
+                                                            .unwrap(),
+                                                    },
+                                                },
+                                            ),
+                                            format!("tile-brush phy {}", layer_index),
+                                        )
+                                    }
+                                    EditorLayerUnionRef::Design {
+                                        layer,
+                                        layer_index,
+                                        group_index,
+                                        is_background,
+                                        ..
+                                    } => {
+                                        let EditorLayer::Tile(layer) = layer else {
+                                            panic!("not a tile layer")
+                                        };
+                                        (
+                                            EditorAction::TileLayerReplaceTiles(
+                                                ActTileLayerReplaceTiles {
+                                                    base: ActTileLayerReplTilesBase {
+                                                        is_background: *is_background,
+                                                        group_index: *group_index,
+                                                        layer_index: *layer_index,
+                                                        old_tiles: Self::collect_tiles(
+                                                            &layer.layer.tiles,
+                                                            layer.layer.attr.width.get() as usize,
+                                                            x as usize,
+                                                            brush_w as usize,
+                                                            y as usize,
+                                                            brush_h as usize,
+                                                        ),
+                                                        new_tiles: vec![
+                                                            Default::default();
+                                                            brush_w as usize
+                                                                * brush_h as usize
+                                                        ],
+                                                        x,
+                                                        y,
+                                                        w: NonZeroU16MinusOne::new(brush_w)
+                                                            .unwrap(),
+                                                        h: NonZeroU16MinusOne::new(brush_h)
+                                                            .unwrap(),
+                                                    },
+                                                },
+                                            ),
+                                            format!(
+                                                "tile-brush {}-{}-{}",
+                                                group_index, layer_index, is_background
+                                            ),
+                                        )
+                                    }
+                                };
+                                client.execute(
+                                    action,
+                                    Some(&format!("{group_indentifier}-{}", self.brush_id_counter)),
+                                );
+                            }
+                            self.brush = None;
+                        }
+                        self.pointer_down_world_pos = None;
+                    }
                 }
             }
 
@@ -699,9 +917,12 @@ impl TileBrush {
                     parallax.y,
                     map.groups.user.parallax_aware_zoom,
                 );
-                self.pointer_down_world_pos = Some(TileBrushDownPos {
-                    world: pos,
-                    ui: *current_pointer_pos,
+                self.pointer_down_world_pos = Some(TileBrushDown {
+                    pos: TileBrushDownPos {
+                        world: pos,
+                        ui: *current_pointer_pos,
+                    },
+                    shift: latest_modifiers.shift,
                 });
             }
         }
@@ -1246,18 +1467,19 @@ impl TileBrush {
         current_pointer_pos: &egui::Pos2,
     ) {
         // if pointer was already down
-        if let Some(TileBrushDownPos { .. }) = &self.pointer_down_world_pos {
-            if latest_pointer.primary_down() && self.brush.is_some() {
-                self.render_brush(
-                    ui_canvas,
-                    backend_handle,
-                    canvas_handle,
-                    stream_handle,
-                    map,
-                    current_pointer_pos,
-                    true,
-                );
-            }
+        if self.pointer_down_world_pos.is_some()
+            && latest_pointer.primary_down()
+            && self.brush.is_some()
+        {
+            self.render_brush(
+                ui_canvas,
+                backend_handle,
+                canvas_handle,
+                stream_handle,
+                map,
+                current_pointer_pos,
+                true,
+            );
         }
     }
 
@@ -1568,7 +1790,7 @@ impl TileBrush {
                 true,
             );
             // render blur during selection phase, to make the selection clear to the user.
-            if self.pointer_down_world_pos.is_some() {
+            if let Some(TileBrushDown { shift, .. }) = self.pointer_down_world_pos {
                 render_blur(
                     backend_handle,
                     stream_handle,
@@ -1576,7 +1798,11 @@ impl TileBrush {
                     true,
                     DEFAULT_BLUR_RADIUS,
                     DEFAULT_BLUR_MIX_LENGTH,
-                    &vec4::new(1.0, 1.0, 1.0, 1.0 / 255.0),
+                    &if shift {
+                        vec4::new(1.0, 0.0, 0.0, 25.0 / 255.0)
+                    } else {
+                        vec4::new(1.0, 1.0, 1.0, 1.0 / 255.0)
+                    },
                 );
             }
             render_swapped_frame(canvas_handle, stream_handle);
@@ -1639,9 +1865,11 @@ impl TileBrush {
                 fake_texture_2d_array,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 latest_keys_down,
                 current_pointer_pos,
                 available_rect,
+                client,
             );
         } else {
             self.handle_brush_draw(
@@ -1762,7 +1990,11 @@ impl TileBrush {
                 ubvec4::new(0, 0, 255, 255),
             );
 
-            if let Some(TileBrushDownPos { ui, .. }) = &self.pointer_down_world_pos {
+            if let Some(TileBrushDown {
+                pos: TileBrushDownPos { ui, .. },
+                ..
+            }) = &self.pointer_down_world_pos
+            {
                 let pointer_down = pos2(ui.x, ui.y);
                 let pointer_rect = egui::Rect::from_min_max(
                     current_pointer_pos.min(pointer_down),
