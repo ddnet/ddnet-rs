@@ -1567,15 +1567,18 @@ impl TileBrush {
                 &offset,
                 true,
             );
-            render_blur(
-                backend_handle,
-                stream_handle,
-                canvas_handle,
-                true,
-                DEFAULT_BLUR_RADIUS,
-                DEFAULT_BLUR_MIX_LENGTH,
-                &vec4::new(1.0, 1.0, 1.0, 0.05),
-            );
+            // render blur during selection phase, to make the selection clear to the user.
+            if self.pointer_down_world_pos.is_some() {
+                render_blur(
+                    backend_handle,
+                    stream_handle,
+                    canvas_handle,
+                    true,
+                    DEFAULT_BLUR_RADIUS,
+                    DEFAULT_BLUR_MIX_LENGTH,
+                    &vec4::new(1.0, 1.0, 1.0, 1.0 / 255.0),
+                );
+            }
             render_swapped_frame(canvas_handle, stream_handle);
 
             self.render_brush_internal(
