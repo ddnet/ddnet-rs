@@ -649,6 +649,16 @@ impl Timeline {
         pos2(time_offset, 0.0)
     }
 
+    fn pos_point(&self, ui: &egui::Ui, point_time: &Duration, y: f32) -> (f32, f32) {
+        let point_center = self.offset_of_point(point_time);
+        let rect = ui.available_rect_before_wrap();
+
+        let x_off = rect.min.x + point_center.x;
+        let y_off = rect.min.y + point_center.y + y;
+
+        (x_off, y_off)
+    }
+
     fn draw_point_radius_scale(
         &mut self,
         ui: &egui::Ui,
@@ -659,12 +669,7 @@ impl Timeline {
     ) {
         let painter = ui.painter();
 
-        let point_center = self.offset_of_point(point_time);
-        let rect = ui.available_rect_before_wrap();
-
-        let x_off = rect.min.x + point_center.x;
-        let y_off = rect.min.y + point_center.y + y;
-
+        let (x_off, y_off) = self.pos_point(ui, point_time, y);
         painter.circle_filled(pos2(x_off, y_off), self.point_radius * scale_radius, color);
     }
 
@@ -743,15 +748,38 @@ impl Timeline {
                 let time_min = self.props.offset.x / zoom_x;
                 let time_range = time_min..time_min + width / zoom_x;
                 for points_group in point_groups.iter_mut() {
-                    for (p, point) in points_group
+                    let points_copy: Vec<_> = points_group
+                        .points
+                        .iter_mut()
+                        .map(|p| {
+                            (
+                                *p.time(),
+                                p.channels()
+                                    .into_iter()
+                                    .map(|(_, _, _, c)| c.value())
+                                    .collect::<Vec<_>>(),
+                            )
+                        })
+                        .collect();
+                    let mut points = Vec::default();
+                    let mut it = points_group
                         .points
                         .iter_mut()
                         .enumerate()
                         .filter(|(_, point)| time_range.contains(&point.time().as_secs_f32()))
-                    {
+                        .peekable();
+                    while let Some((p, point)) = it.next() {
+                        let next_point = points_copy.get(p + 1);
                         let point_time = *point.time();
-                        let channels = point.channels();
-                        for (index, (_, color, _, channel)) in channels.into_iter().enumerate() {
+                        let channels: Vec<_> = point
+                            .channels()
+                            .into_iter()
+                            .map(|(_, color, _, channel)| (color, channel.value()))
+                            .collect();
+                        points.resize_with(channels.len(), || {
+                            (Color32::BLACK, Vec::<Pos2>::default())
+                        });
+                        for (index, (color, channel_value)) in channels.into_iter().enumerate() {
                             let selected = points_group
                                 .selected_point_channels
                                 .get(&p)
@@ -760,7 +788,7 @@ impl Timeline {
                                 .hovered_point_channel
                                 .get(&p)
                                 .is_some_and(|m| m.contains(&index));
-                            let y = y_extra - channel.value() * zoom_y;
+                            let y = y_extra - channel_value * zoom_y;
                             if hovered || selected {
                                 self.draw_point_radius_scale(
                                     ui,
@@ -777,7 +805,36 @@ impl Timeline {
                                 );
                             }
                             self.draw_point(ui, &point_time, color, y);
+
+                            if let (Some((next_time, _)), Some((_, next_point))) = (
+                                next_point.and_then(|(next_time, channel_values)| {
+                                    channel_values.get(index).map(|v| (next_time, v))
+                                }),
+                                it.peek_mut(),
+                            ) {
+                                let start_time = point_time.as_nanos();
+                                let end_time = next_time.as_nanos();
+                                let time_diff = end_time.saturating_sub(start_time) / 20;
+
+                                for i in 0..=20 {
+                                    let point_time =
+                                        Duration::from_nanos((start_time + time_diff * i) as u64);
+
+                                    let y =
+                                        point.channel_value_at(index, **next_point, &point_time);
+                                    let next_y = y_extra - y * zoom_y;
+                                    let (x, y) = self.pos_point(ui, &point_time, next_y);
+
+                                    let (points_color, points) = &mut points[index];
+                                    *points_color = color;
+                                    points.push(Pos2::new(x, y));
+                                }
+                            }
                         }
+                    }
+                    let painter = ui.painter();
+                    for (color, points) in points {
+                        painter.line(points, Stroke::new(2.0, color));
                     }
                 }
             },

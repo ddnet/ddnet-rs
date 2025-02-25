@@ -28,7 +28,6 @@ pub fn get_sound_point_animated(snd: &Sound, map: &EditorMap, time: Duration) ->
         let anim_pos = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
-            3,
         );
 
         point += fvec2::new(ffixed::from_num(anim_pos.x), ffixed::from_num(anim_pos.y));

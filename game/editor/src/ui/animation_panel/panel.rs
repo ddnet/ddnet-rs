@@ -252,7 +252,6 @@ fn handle_anim_time_change(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let anim_pos = RenderTools::render_eval_anim(
                     anim.def.points.as_slice(),
                     time::Duration::try_from(map.user.ui_values.timeline.time()).unwrap(),
-                    3,
                 );
                 *anim_point_pos = AnimPointPos {
                     time: Duration::ZERO,
@@ -265,7 +264,6 @@ fn handle_anim_time_change(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let anim_color = RenderTools::render_eval_anim(
                     anim.def.points.as_slice(),
                     time::Duration::try_from(map.user.ui_values.timeline.time()).unwrap(),
-                    4,
                 );
                 *anim_point_color = AnimPointColor {
                     time: Duration::ZERO,

@@ -13,6 +13,14 @@ use serde::{Deserialize, Serialize};
 pub struct vec1_base<T> {
     pub x: T,
 }
+
+impl<T> vec1_base<T> {
+    #[inline]
+    pub fn new(x: T) -> vec1_base<T> {
+        vec1_base::<T> { x }
+    }
+}
+
 impl<T: Copy + Clone> Index<usize> for vec1_base<T> {
     type Output = T;
 

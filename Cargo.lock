@@ -5970,6 +5970,7 @@ dependencies = [
  "bitflags 2.6.0",
  "brotli",
  "difference",
+ "fixed",
  "flate2",
  "hashlink 0.9.1 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",

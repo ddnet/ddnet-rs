@@ -5,8 +5,11 @@ use std::{
 };
 
 use egui::Color32;
-use map::map::animations::{AnimPointColor, AnimPointPos, AnimPointSound};
-use math::math::vector::{ffixed, nffixed};
+use map::map::animations::{
+    AnimBezier, AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound,
+    TimeDuration,
+};
+use math::math::vector::{ffixed, nffixed, vec1_base, vec3_base, vec4_base};
 
 /// a channel of a graph [`Point`].
 /// This could for example be the R channel in a RGBA point
@@ -35,6 +38,38 @@ impl PointChannel for nffixed {
     }
 }
 
+/// Curve type of the point to the next point
+#[derive(Debug)]
+pub enum PointCurve {
+    Step,
+    Linear,
+    Slow,
+    Fast,
+    Smooth,
+    Bezier(Vec<AnimBezier>),
+}
+
+impl<T, const CHANNELS: usize> From<AnimPoint<T, CHANNELS>> for PointCurve {
+    fn from(value: AnimPoint<T, CHANNELS>) -> Self {
+        match value.curve_type {
+            AnimPointCurveType::Step => PointCurve::Step,
+            AnimPointCurveType::Linear => PointCurve::Linear,
+            AnimPointCurveType::Slow => PointCurve::Slow,
+            AnimPointCurveType::Fast => PointCurve::Fast,
+            AnimPointCurveType::Smooth => PointCurve::Smooth,
+            AnimPointCurveType::Bezier(bezier) => Self::Bezier({
+                let mut res = vec![];
+
+                for i in 0..CHANNELS {
+                    res.push(bezier.value[i]);
+                }
+
+                res
+            }),
+        }
+    }
+}
+
 /// information about points in the graph
 pub trait Point {
     /// time axis value of the point
@@ -43,6 +78,11 @@ pub trait Point {
     /// e.g. for a color value this would be R, G, B(, A)
     /// (name, color, range of possible/allowed values, interface to interact with channel)
     fn channels(&mut self) -> Vec<(&str, Color32, RangeInclusive<f32>, &mut dyn PointChannel)>;
+
+    fn channel_value_at(&self, channel_index: usize, other: &mut dyn Point, time: &Duration)
+        -> f32;
+
+    fn curve(&self) -> PointCurve;
 }
 
 impl Point for AnimPointPos {
@@ -59,6 +99,31 @@ impl Point for AnimPointPos {
             ("y", Color32::KHAKI, f32::MIN..=f32::MAX, &mut self.value.y),
             ("r", Color32::BROWN, f32::MIN..=f32::MAX, &mut self.value.z),
         ]
+    }
+
+    fn channel_value_at(
+        &self,
+        channel_index: usize,
+        other: &mut dyn Point,
+        time: &Duration,
+    ) -> f32 {
+        let other_values = other.channels();
+        let other_value = vec3_base::new(
+            ffixed::from_num(other_values[0].3.value()),
+            ffixed::from_num(other_values[1].3.value()),
+            ffixed::from_num(other_values[2].3.value()),
+        );
+        AnimPoint::eval_curve_for(
+            self,
+            other.time(),
+            &other_value,
+            TimeDuration::new(time.as_secs() as i64, time.subsec_nanos() as i32),
+        )[channel_index]
+            .to_num()
+    }
+
+    fn curve(&self) -> PointCurve {
+        self.clone().into()
     }
 }
 
@@ -78,6 +143,32 @@ impl Point for AnimPointColor {
             ("a", Color32::GRAY, 0.0..=1.0, &mut self.value.w),
         ]
     }
+
+    fn channel_value_at(
+        &self,
+        channel_index: usize,
+        other: &mut dyn Point,
+        time: &Duration,
+    ) -> f32 {
+        let other_values = other.channels();
+        let other_value = vec4_base::new(
+            nffixed::from_num(other_values[0].3.value()),
+            nffixed::from_num(other_values[1].3.value()),
+            nffixed::from_num(other_values[2].3.value()),
+            nffixed::from_num(other_values[3].3.value()),
+        );
+        AnimPoint::eval_curve_for(
+            self,
+            other.time(),
+            &other_value,
+            TimeDuration::new(time.as_secs() as i64, time.subsec_nanos() as i32),
+        )[channel_index]
+            .to_num()
+    }
+
+    fn curve(&self) -> PointCurve {
+        self.clone().into()
+    }
 }
 
 impl Point for AnimPointSound {
@@ -90,6 +181,27 @@ impl Point for AnimPointSound {
 
     fn channels(&mut self) -> Vec<(&str, Color32, RangeInclusive<f32>, &mut dyn PointChannel)> {
         vec![("v", Color32::GOLD, 0.0..=1.0, &mut self.value.x)]
+    }
+
+    fn channel_value_at(
+        &self,
+        channel_index: usize,
+        other: &mut dyn Point,
+        time: &Duration,
+    ) -> f32 {
+        let other_values = other.channels();
+        let other_value = vec1_base::new(nffixed::from_num(other_values[0].3.value()));
+        AnimPoint::eval_curve_for(
+            self,
+            other.time(),
+            &other_value,
+            TimeDuration::new(time.as_secs() as i64, time.subsec_nanos() as i32),
+        )[channel_index]
+            .to_num()
+    }
+
+    fn curve(&self) -> PointCurve {
+        self.clone().into()
     }
 }
 

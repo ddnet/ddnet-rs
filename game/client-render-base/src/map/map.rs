@@ -129,7 +129,6 @@ impl RenderMap {
         const CHANNELS: usize,
     >(
         anim: &AnimBase<AnimPoint<T, CHANNELS>>,
-        channels: usize,
         cur_time: &Duration,
         cur_anim_time: &Duration,
         anim_time_offset: &time::Duration,
@@ -144,7 +143,7 @@ impl RenderMap {
         };
         let anim_time = total_time + *anim_time_offset;
 
-        RenderTools::render_eval_anim(&anim.points, anim_time, channels)
+        RenderTools::render_eval_anim(&anim.points, anim_time)
     }
 
     fn render_tile_layer<AN, AS>(
@@ -170,7 +169,7 @@ impl RenderMap {
                     None
                 }
             } {
-                Self::animation_eval(&anim.def, 4, cur_time, cur_anim_time, color_anim_offset)
+                Self::animation_eval(&anim.def, cur_time, cur_anim_time, color_anim_offset)
             } else {
                 nfvec4::new(
                     nffixed::from_num(1),
@@ -673,7 +672,6 @@ impl RenderMap {
             } {
                 RenderMap::animation_eval(
                     &anim.def,
-                    4,
                     cur_time,
                     cur_anim_time,
                     &quad.color_anim_offset,
@@ -700,7 +698,6 @@ impl RenderMap {
             } {
                 let pos_channels = RenderMap::animation_eval(
                     &anim.def,
-                    3,
                     cur_time,
                     cur_anim_time,
                     &quad.pos_anim_offset,
@@ -875,7 +872,6 @@ impl RenderMap {
             } {
                 let pos_channels = RenderMap::animation_eval(
                     &anim.def,
-                    3,
                     cur_time,
                     cur_anim_time,
                     &sound.pos_anim_offset,

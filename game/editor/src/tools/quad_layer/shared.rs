@@ -37,7 +37,6 @@ pub fn get_quad_points_animated(quad: &Quad, map: &EditorMap, time: Duration) ->
         let anim_pos = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
-            3,
         );
         let rot = anim_pos.z / ffixed::from_num(360.0) * ffixed::PI * ffixed::from_num(2.0);
         let center = points[4];
@@ -58,7 +57,6 @@ pub fn get_quad_points_color_animated(quad: &Quad, map: &EditorMap, time: Durati
         let anim_color = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
-            4,
         );
 
         for color in color.iter_mut() {
