@@ -2,11 +2,12 @@ use std::time::Duration;
 
 use egui::{
     epaint::PathStroke, pos2, vec2, Align2, Color32, DragValue, Key, KeyboardShortcut, Modifiers,
-    Pos2, Rect, RichText, Shape, Stroke, UiBuilder, Vec2,
+    Pos2, Rect, RichText, Sense, Shape, Stroke, UiBuilder, Vec2,
 };
 use egui_extras::{Size, StripBuilder};
+use map::map::animations::{AnimBezier, AnimBezierPoint};
 
-use crate::point::{Point, PointGroup};
+use crate::point::{Point, PointCurve, PointGroup};
 
 #[derive(Debug, Clone, Copy)]
 struct GraphProps {
@@ -649,14 +650,17 @@ impl Timeline {
         pos2(time_offset, 0.0)
     }
 
-    fn pos_point(&self, ui: &egui::Ui, point_time: &Duration, y: f32) -> (f32, f32) {
+    fn pos_point_from_rect(&self, point_time: &Duration, rect: Rect, y: f32) -> (f32, f32) {
         let point_center = self.offset_of_point(point_time);
-        let rect = ui.available_rect_before_wrap();
 
         let x_off = rect.min.x + point_center.x;
         let y_off = rect.min.y + point_center.y + y;
 
         (x_off, y_off)
+    }
+
+    fn pos_point(&self, ui: &egui::Ui, point_time: &Duration, y: f32) -> (f32, f32) {
+        self.pos_point_from_rect(point_time, ui.available_rect_before_wrap(), y)
     }
 
     fn draw_point_radius_scale(
@@ -670,7 +674,8 @@ impl Timeline {
         let painter = ui.painter();
 
         let (x_off, y_off) = self.pos_point(ui, point_time, y);
-        painter.circle_filled(pos2(x_off, y_off), self.point_radius * scale_radius, color);
+        let radius = self.point_radius * scale_radius;
+        painter.circle_filled(pos2(x_off, y_off), radius, color);
     }
 
     fn draw_point(&mut self, ui: &egui::Ui, point_time: &Duration, color: Color32, y: f32) {
@@ -716,6 +721,95 @@ impl Timeline {
                 }
             }
         });
+    }
+
+    fn curves(&mut self, ui: &mut egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+        ui.painter().rect_filled(
+            ui.available_rect_before_wrap(),
+            0.0,
+            Color32::from_black_alpha(30),
+        );
+        let rect = ui.available_rect_before_wrap();
+        ui.allocate_new_ui(
+            UiBuilder::new().max_rect(egui::Rect::from_min_size(
+                pos2(rect.min.x + self.point_radius, rect.min.y),
+                vec2(rect.width() - self.point_radius * 2.0, rect.height()),
+            )),
+            |ui| {
+                let rect = ui.available_rect_before_wrap();
+                ui.set_clip_rect(rect);
+                let width = ui.available_width();
+                let zoom_x = size_per_int(self.props.scale.x);
+
+                let time_min = self.props.offset.x / zoom_x;
+                let time_range = time_min..time_min + width / zoom_x;
+
+                for points_group in point_groups.iter_mut() {
+                    for point in points_group
+                        .points
+                        .iter_mut()
+                        .filter(|point| time_range.contains(&point.time().as_secs_f32()))
+                    {
+                        let next_y = rect.height() / 2.0;
+                        let (x, y) = self.pos_point_from_rect(point.time(), rect, next_y);
+
+                        let size = 15.0;
+                        let res = ui.allocate_rect(
+                            Rect::from_center_size(pos2(x, y), vec2(size, size)),
+                            Sense::click() | Sense::hover(),
+                        );
+                        let curve = point.curve();
+                        ui.painter().rect_filled(
+                            res.rect,
+                            2.0,
+                            if res.hovered() {
+                                Color32::GRAY
+                            } else {
+                                Color32::DARK_GRAY
+                            },
+                        );
+                        ui.painter().text(
+                            res.rect.center(),
+                            Align2::CENTER_CENTER,
+                            match curve {
+                                PointCurve::Step => "N",
+                                PointCurve::Linear => "L",
+                                PointCurve::Slow => "S",
+                                PointCurve::Fast => "F",
+                                PointCurve::Smooth => "M",
+                                PointCurve::Bezier(_) => "B",
+                            },
+                            Default::default(),
+                            Color32::WHITE,
+                        );
+
+                        if res.clicked() {
+                            let bezier = AnimBezier {
+                                in_tangent: AnimBezierPoint {
+                                    x: Duration::from_millis(10),
+                                    y: Default::default(),
+                                },
+                                out_tangent: AnimBezierPoint {
+                                    x: Duration::from_millis(10),
+                                    y: Default::default(),
+                                },
+                            };
+                            let curve = match curve {
+                                PointCurve::Step => PointCurve::Linear,
+                                PointCurve::Linear => PointCurve::Slow,
+                                PointCurve::Slow => PointCurve::Fast,
+                                PointCurve::Fast => PointCurve::Smooth,
+                                PointCurve::Smooth => {
+                                    PointCurve::Bezier(vec![bezier; point.channels().len()])
+                                }
+                                PointCurve::Bezier(_) => PointCurve::Step,
+                            };
+                            point.set_curve(curve);
+                        }
+                    }
+                }
+            },
+        );
     }
 
     fn value_graph(&mut self, ui: &mut egui::Ui, point_groups: &mut [PointGroup<'_>]) {
@@ -972,23 +1066,30 @@ impl Timeline {
                     },
                 );
 
-                let rect = ui.available_rect_before_wrap();
                 let height = ui.available_height();
 
-                // timeline graph
                 let top_height = height * 1.0 / 3.0;
-                ui.allocate_new_ui(
-                    UiBuilder::new()
-                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, top_height))),
-                    |ui| {
-                        ui.set_height(ui.available_height());
-                        self.timeline_graph(ui, point_groups);
-                    },
-                );
-
-                // value graph
-                ui.add_space(10.0);
-                self.value_graph(ui, point_groups);
+                let curve_height = 20.0;
+                StripBuilder::new(ui)
+                    .size(Size::exact(top_height))
+                    .size(Size::exact(curve_height))
+                    .size(Size::exact(10.0))
+                    .size(Size::remainder())
+                    .vertical(|mut strip| {
+                        strip.cell(|ui| {
+                            // timeline graph
+                            self.timeline_graph(ui, point_groups);
+                        });
+                        strip.cell(|ui| {
+                            // envelope curve types
+                            self.curves(ui, point_groups);
+                        });
+                        strip.empty();
+                        strip.cell(|ui| {
+                            // value graph
+                            self.value_graph(ui, point_groups);
+                        });
+                    });
             },
         );
     }

@@ -6,8 +6,8 @@ use std::{
 
 use egui::Color32;
 use map::map::animations::{
-    AnimBezier, AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound,
-    TimeDuration,
+    AnimBezier, AnimBeziers, AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos,
+    AnimPointSound, TimeDuration,
 };
 use math::math::vector::{ffixed, nffixed, vec1_base, vec3_base, vec4_base};
 
@@ -70,6 +70,21 @@ impl<T, const CHANNELS: usize> From<AnimPoint<T, CHANNELS>> for PointCurve {
     }
 }
 
+impl<const CHANNELS: usize> From<PointCurve> for AnimPointCurveType<CHANNELS> {
+    fn from(value: PointCurve) -> Self {
+        match value {
+            PointCurve::Step => Self::Step,
+            PointCurve::Linear => Self::Linear,
+            PointCurve::Slow => Self::Slow,
+            PointCurve::Fast => Self::Fast,
+            PointCurve::Smooth => Self::Smooth,
+            PointCurve::Bezier(bezier) => Self::Bezier(AnimBeziers {
+                value: bezier.try_into().unwrap(),
+            }),
+        }
+    }
+}
+
 /// information about points in the graph
 pub trait Point {
     /// time axis value of the point
@@ -83,6 +98,7 @@ pub trait Point {
         -> f32;
 
     fn curve(&self) -> PointCurve;
+    fn set_curve(&mut self, curve: PointCurve);
 }
 
 impl Point for AnimPointPos {
@@ -124,6 +140,10 @@ impl Point for AnimPointPos {
 
     fn curve(&self) -> PointCurve {
         self.clone().into()
+    }
+
+    fn set_curve(&mut self, curve: PointCurve) {
+        self.curve_type = curve.into()
     }
 }
 
@@ -169,6 +189,10 @@ impl Point for AnimPointColor {
     fn curve(&self) -> PointCurve {
         self.clone().into()
     }
+
+    fn set_curve(&mut self, curve: PointCurve) {
+        self.curve_type = curve.into()
+    }
 }
 
 impl Point for AnimPointSound {
@@ -202,6 +226,10 @@ impl Point for AnimPointSound {
 
     fn curve(&self) -> PointCurve {
         self.clone().into()
+    }
+
+    fn set_curve(&mut self, curve: PointCurve) {
+        self.curve_type = curve.into()
     }
 }
 
