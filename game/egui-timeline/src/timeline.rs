@@ -68,7 +68,7 @@ enum PlayDir {
     Forward,
 }
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct TimelineResponse {
     /// the time changed, either because the timeline is currently set to `playing`
     /// or because the user moved the time dragger

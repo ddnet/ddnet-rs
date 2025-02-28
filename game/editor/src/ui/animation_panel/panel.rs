@@ -4,14 +4,28 @@ use client_render_base::map::render_tools::RenderTools;
 use egui::UiBuilder;
 use egui_timeline::point::{Point, PointGroup};
 use map::{
-    map::animations::{AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos},
+    map::animations::{
+        AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound,
+        ColorAnimation, PosAnimation, SoundAnimation,
+    },
     skeleton::animations::AnimBaseSkeleton,
 };
 use serde::de::DeserializeOwned;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
-    map::{EditorAnimationProps, EditorLayer, EditorLayerUnionRef, EditorMapGroupsInterface},
+    actions::{
+        actions::{
+            ActAddColorAnim, ActAddPosAnim, ActAddRemColorAnim, ActAddRemPosAnim,
+            ActAddRemSoundAnim, ActAddSoundAnim, EditorAction, EditorActionGroup,
+        },
+        utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
+    },
+    client::EditorClient,
+    map::{
+        EditorAnimationProps, EditorGroups, EditorLayer, EditorLayerUnionRef,
+        EditorMapGroupsInterface,
+    },
     tools::{
         quad_layer::selection::QuadSelection,
         tool::{ActiveTool, ActiveToolQuads},
@@ -103,8 +117,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             fn add_selector<A: Point + DeserializeOwned + PartialOrd + Clone>(
                 ui: &mut egui::Ui,
                 anims: &[AnimBaseSkeleton<EditorAnimationProps, A>],
+                groups: &EditorGroups,
                 index: &mut Option<usize>,
                 name: &str,
+                client: &EditorClient,
+                add: impl FnOnce(usize) -> EditorAction,
+                del: impl FnOnce(
+                    usize,
+                    &[AnimBaseSkeleton<EditorAnimationProps, A>],
+                    &EditorGroups,
+                ) -> EditorActionGroup,
             ) {
                 ui.label(format!("{}:", name));
                 // selection of animation
@@ -141,17 +163,141 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         *index = Some(0);
                     }
                 }
+
+                // add new anim
+                if ui.button("\u{f0fe}").clicked() {
+                    let index = anims.len();
+
+                    client.execute(
+                        add(index),
+                        Some(&format!("{name}-anim-insert-anim-at-{}", index)),
+                    );
+                }
+
+                // delete currently selected anim
+                if let Some(index) = index
+                    .as_mut()
+                    .and_then(|index| (*index < anims.len()).then_some(index))
+                {
+                    if ui.button("\u{f1f8}").clicked() {
+                        client.execute_group(del(*index, anims, groups));
+                        *index = index.saturating_sub(1);
+                    }
+                }
             }
             egui::Grid::new("anim-active-selectors")
                 .spacing([2.0, 4.0])
                 .num_columns(4)
                 .show(ui, |ui| {
-                    add_selector(ui, &map.animations.color, selected_color_anim, "color");
+                    let client = &pipe.user_data.editor_tab.client;
+                    add_selector(
+                        ui,
+                        &map.animations.color,
+                        &map.groups,
+                        selected_color_anim,
+                        "color",
+                        client,
+                        |index| {
+                            EditorAction::AddColorAnim(ActAddColorAnim {
+                                base: ActAddRemColorAnim {
+                                    anim: ColorAnimation {
+                                        name: Default::default(),
+                                        points: vec![
+                                            AnimPointColor {
+                                                time: Duration::ZERO,
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                            AnimPointColor {
+                                                time: Duration::from_secs(1),
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                        ],
+                                        synchronized: false,
+                                    },
+                                    index,
+                                },
+                            })
+                        },
+                        |index, anims, groups| EditorActionGroup {
+                            actions: rem_color_anim(anims, groups, index),
+                            identifier: Some(format!("color-anim-del-anim-at-{}", index)),
+                        },
+                    );
                     ui.end_row();
-                    add_selector(ui, &map.animations.pos, selected_pos_anim, "pos");
+                    add_selector(
+                        ui,
+                        &map.animations.pos,
+                        &map.groups,
+                        selected_pos_anim,
+                        "pos",
+                        client,
+                        |index| {
+                            EditorAction::AddPosAnim(ActAddPosAnim {
+                                base: ActAddRemPosAnim {
+                                    anim: PosAnimation {
+                                        name: Default::default(),
+                                        points: vec![
+                                            AnimPointPos {
+                                                time: Duration::ZERO,
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                            AnimPointPos {
+                                                time: Duration::from_secs(1),
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                        ],
+                                        synchronized: false,
+                                    },
+                                    index,
+                                },
+                            })
+                        },
+                        |index, anims, groups| EditorActionGroup {
+                            actions: rem_pos_anim(anims, groups, index),
+                            identifier: Some(format!("pos-anim-del-anim-at-{}", index)),
+                        },
+                    );
 
                     ui.end_row();
-                    add_selector(ui, &map.animations.sound, selected_sound_anim, "sound");
+                    add_selector(
+                        ui,
+                        &map.animations.sound,
+                        &map.groups,
+                        selected_sound_anim,
+                        "sound",
+                        client,
+                        |index| {
+                            EditorAction::AddSoundAnim(ActAddSoundAnim {
+                                base: ActAddRemSoundAnim {
+                                    anim: SoundAnimation {
+                                        name: Default::default(),
+                                        points: vec![
+                                            AnimPointSound {
+                                                time: Duration::ZERO,
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                            AnimPointSound {
+                                                time: Duration::from_secs(1),
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                        ],
+                                        synchronized: false,
+                                    },
+                                    index,
+                                },
+                            })
+                        },
+                        |index, anims, groups| EditorActionGroup {
+                            actions: rem_sound_anim(anims, groups, index),
+                            identifier: Some(format!("sound-anim-del-anim-at-{}", index)),
+                        },
+                    );
 
                     ui.end_row();
                 });

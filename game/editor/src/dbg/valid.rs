@@ -23,22 +23,25 @@ use math::math::vector::uffixed;
 use rand::RngCore;
 
 use crate::{
-    actions::actions::{
-        ActAddColorAnim, ActAddGroup, ActAddImage, ActAddImage2dArray, ActAddPhysicsTileLayer,
-        ActAddPosAnim, ActAddQuadLayer, ActAddRemColorAnim, ActAddRemGroup, ActAddRemImage,
-        ActAddRemPhysicsTileLayer, ActAddRemPosAnim, ActAddRemQuadLayer, ActAddRemSoundAnim,
-        ActAddRemSoundLayer, ActAddRemTileLayer, ActAddSoundAnim, ActAddSoundLayer,
-        ActAddTileLayer, ActChangeDesignLayerName, ActChangeGroupAttr, ActChangeGroupName,
-        ActChangePhysicsGroupAttr, ActChangeQuadAttr, ActChangeQuadLayerAttr, ActChangeSoundAttr,
-        ActChangeSoundLayerAttr, ActChangeSwitch, ActChangeTeleporter,
-        ActChangeTileLayerDesignAttr, ActChangeTuneZone, ActLayerChangeImageIndex,
-        ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
-        ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
-        ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands, ActSetMetadata,
-        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
-        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
-        ActTilePhysicsLayerReplaceTiles, EditorAction,
+    actions::{
+        actions::{
+            ActAddColorAnim, ActAddGroup, ActAddImage, ActAddImage2dArray, ActAddPhysicsTileLayer,
+            ActAddPosAnim, ActAddQuadLayer, ActAddRemColorAnim, ActAddRemGroup, ActAddRemImage,
+            ActAddRemPhysicsTileLayer, ActAddRemPosAnim, ActAddRemQuadLayer, ActAddRemSoundAnim,
+            ActAddRemSoundLayer, ActAddRemTileLayer, ActAddSoundAnim, ActAddSoundLayer,
+            ActAddTileLayer, ActChangeDesignLayerName, ActChangeGroupAttr, ActChangeGroupName,
+            ActChangePhysicsGroupAttr, ActChangeQuadAttr, ActChangeQuadLayerAttr,
+            ActChangeSoundAttr, ActChangeSoundLayerAttr, ActChangeSwitch, ActChangeTeleporter,
+            ActChangeTileLayerDesignAttr, ActChangeTuneZone, ActLayerChangeImageIndex,
+            ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
+            ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemGroup, ActRemImage,
+            ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer,
+            ActRemTileLayer, ActSetCommands, ActSetMetadata, ActSoundLayerAddRemSounds,
+            ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
+            ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+            ActTilePhysicsLayerReplaceTiles, EditorAction,
+        },
+        utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
     },
     map::{EditorLayer, EditorMap, EditorPhysicsLayer},
 };
@@ -1851,95 +1854,7 @@ fn rem_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let index = rand::rngs::OsRng.next_u64() as usize % anims.len();
-    let anim: AnimBase<_> = anims[index].clone().into();
-
-    let mut actions = vec![];
-    for (is_background, group_index, layer_index, layer) in map
-        .groups
-        .background
-        .iter()
-        .enumerate()
-        .map(|g| (true, g))
-        .chain(map.groups.foreground.iter().enumerate().map(|g| (false, g)))
-        .flat_map(|(is_background, (g, group))| {
-            group
-                .layers
-                .iter()
-                .enumerate()
-                .filter_map(move |(l, layer)| match layer {
-                    EditorLayer::Abritrary(_) | EditorLayer::Tile(_) => None,
-                    EditorLayer::Sound(_) | EditorLayer::Quad(_) => {
-                        Some((is_background, g, l, layer))
-                    }
-                })
-        })
-    {
-        if let EditorLayer::Quad(layer) = layer {
-            for (quad_index, q) in layer.layer.quads.iter().enumerate() {
-                if q.pos_anim == Some(index) {
-                    actions.push(EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        index: quad_index,
-                        old_attr: *q,
-                        new_attr: Quad {
-                            pos_anim: None,
-                            ..*q
-                        },
-                    })));
-                } else if q.pos_anim.is_some_and(|i| i > index) {
-                    actions.push(EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        index: quad_index,
-                        old_attr: *q,
-                        new_attr: Quad {
-                            pos_anim: Some(q.pos_anim.unwrap() - 1),
-                            ..*q
-                        },
-                    })));
-                }
-            }
-        } else if let EditorLayer::Sound(layer) = layer {
-            for (sound_index, s) in layer.layer.sounds.iter().enumerate() {
-                if s.pos_anim == Some(index) {
-                    actions.push(EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        index: sound_index,
-                        old_attr: *s,
-                        new_attr: Sound {
-                            pos_anim: None,
-                            ..*s
-                        },
-                    }));
-                } else if s.pos_anim.is_some_and(|i| i > index) {
-                    actions.push(EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        index: sound_index,
-                        old_attr: *s,
-                        new_attr: Sound {
-                            pos_anim: Some(s.pos_anim.unwrap() - 1),
-                            ..*s
-                        },
-                    }));
-                }
-            }
-        }
-    }
-
-    [
-        actions,
-        vec![EditorAction::RemPosAnim(ActRemPosAnim {
-            base: ActAddRemPosAnim { index, anim },
-        })],
-    ]
-    .concat()
+    rem_pos_anim(anims, &map.groups, index)
 }
 
 fn add_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
@@ -1961,99 +1876,7 @@ fn rem_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let index = rand::rngs::OsRng.next_u64() as usize % anims.len();
-    let anim: AnimBase<_> = anims[index].clone().into();
-
-    let mut actions = vec![];
-    for (is_background, group_index, layer_index, layer) in map
-        .groups
-        .background
-        .iter()
-        .enumerate()
-        .map(|g| (true, g))
-        .chain(map.groups.foreground.iter().enumerate().map(|g| (false, g)))
-        .flat_map(|(is_background, (g, group))| {
-            group
-                .layers
-                .iter()
-                .enumerate()
-                .filter_map(move |(l, layer)| match layer {
-                    EditorLayer::Abritrary(_) | EditorLayer::Sound(_) => None,
-                    EditorLayer::Tile(_) | EditorLayer::Quad(_) => {
-                        Some((is_background, g, l, layer))
-                    }
-                })
-        })
-    {
-        if let EditorLayer::Quad(layer) = layer {
-            for (quad_index, q) in layer.layer.quads.iter().enumerate() {
-                if q.color_anim == Some(index) {
-                    actions.push(EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        index: quad_index,
-                        old_attr: *q,
-                        new_attr: Quad {
-                            color_anim: None,
-                            ..*q
-                        },
-                    })));
-                } else if q.color_anim.is_some_and(|i| i > index) {
-                    actions.push(EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        index: quad_index,
-                        old_attr: *q,
-                        new_attr: Quad {
-                            color_anim: Some(q.color_anim.unwrap() - 1),
-                            ..*q
-                        },
-                    })));
-                }
-            }
-        } else if let EditorLayer::Tile(layer) = layer {
-            if layer.layer.attr.color_anim == Some(index) {
-                actions.push(EditorAction::ChangeTileLayerDesignAttr(
-                    ActChangeTileLayerDesignAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        old_attr: layer.layer.attr,
-                        new_attr: MapTileLayerAttr {
-                            color_anim: None,
-                            ..layer.layer.attr
-                        },
-                        old_tiles: layer.layer.tiles.clone(),
-                        new_tiles: layer.layer.tiles.clone(),
-                    },
-                ));
-            } else if layer.layer.attr.color_anim.is_some_and(|i| i > index) {
-                actions.push(EditorAction::ChangeTileLayerDesignAttr(
-                    ActChangeTileLayerDesignAttr {
-                        is_background,
-                        group_index,
-                        layer_index,
-                        old_attr: layer.layer.attr,
-                        new_attr: MapTileLayerAttr {
-                            color_anim: Some(layer.layer.attr.color_anim.unwrap() - 1),
-                            ..layer.layer.attr
-                        },
-                        old_tiles: layer.layer.tiles.clone(),
-                        new_tiles: layer.layer.tiles.clone(),
-                    },
-                ));
-            }
-        }
-    }
-
-    [
-        actions,
-        vec![EditorAction::RemColorAnim(ActRemColorAnim {
-            base: ActAddRemColorAnim { index, anim },
-        })],
-    ]
-    .concat()
+    rem_color_anim(anims, &map.groups, index)
 }
 
 fn add_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
@@ -2075,63 +1898,7 @@ fn rem_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let index = rand::rngs::OsRng.next_u64() as usize % anims.len();
-    let anim: AnimBase<_> = anims[index].clone().into();
-
-    let mut actions = vec![];
-    for (is_background, group_index, layer_index, layer) in map
-        .groups
-        .background
-        .iter()
-        .enumerate()
-        .map(|g| (true, g))
-        .chain(map.groups.foreground.iter().enumerate().map(|g| (false, g)))
-        .flat_map(|(is_background, (g, group))| {
-            group
-                .layers
-                .iter()
-                .enumerate()
-                .filter_map(move |(l, layer)| match layer {
-                    EditorLayer::Abritrary(_) | EditorLayer::Tile(_) | EditorLayer::Quad(_) => None,
-                    EditorLayer::Sound(layer) => Some((is_background, g, l, layer)),
-                })
-        })
-    {
-        for (sound_index, s) in layer.layer.sounds.iter().enumerate() {
-            if s.sound_anim == Some(index) {
-                actions.push(EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
-                    is_background,
-                    group_index,
-                    layer_index,
-                    index: sound_index,
-                    old_attr: *s,
-                    new_attr: Sound {
-                        sound_anim: None,
-                        ..*s
-                    },
-                }));
-            } else if s.sound_anim.is_some_and(|i| i > index) {
-                actions.push(EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
-                    is_background,
-                    group_index,
-                    layer_index,
-                    index: sound_index,
-                    old_attr: *s,
-                    new_attr: Sound {
-                        sound_anim: Some(s.sound_anim.unwrap() - 1),
-                        ..*s
-                    },
-                }));
-            }
-        }
-    }
-
-    [
-        actions,
-        vec![EditorAction::RemSoundAnim(ActRemSoundAnim {
-            base: ActAddRemSoundAnim { index, anim },
-        })],
-    ]
-    .concat()
+    rem_sound_anim(anims, &map.groups, index)
 }
 
 fn set_commands_valid(map: &EditorMap) -> Vec<EditorAction> {
