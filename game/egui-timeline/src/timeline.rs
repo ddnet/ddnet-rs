@@ -695,12 +695,19 @@ impl Timeline {
             let zoom_x = size_per_int(self.props.scale.x);
             let time_min = self.props.offset.x / zoom_x;
             let time_range = time_min..time_min + width / zoom_x;
+            let point_radius = self.point_radius;
+            // multiply by two since the graph view also adds point radius as margin for the render area
+            let point_radius_extra = point_radius / zoom_x * 2.0;
             for (g, points_group) in point_groups.iter_mut().enumerate() {
                 for (p, point) in points_group
                     .points
                     .iter_mut()
                     .enumerate()
-                    .filter(|(_, point)| time_range.contains(&point.time().as_secs_f32()))
+                    .filter(|(_, point)| {
+                        time_range.contains(&(point.time().as_secs_f32() - point_radius_extra))
+                            || time_range
+                                .contains(&(point.time().as_secs_f32() + point_radius_extra))
+                    })
                 {
                     self.draw_point(
                         ui,
@@ -716,7 +723,7 @@ impl Timeline {
                         } else {
                             Color32::YELLOW
                         },
-                        x_axis_y_off - 10.0 - g as f32 * (self.point_radius * 2.0 + 5.0),
+                        x_axis_y_off - 10.0 - g as f32 * (point_radius * 2.0 + 5.0),
                     );
                 }
             }
@@ -736,20 +743,23 @@ impl Timeline {
                 vec2(rect.width() - self.point_radius * 2.0, rect.height()),
             )),
             |ui| {
-                let rect = ui.available_rect_before_wrap();
                 ui.set_clip_rect(rect);
+                let rect = ui.available_rect_before_wrap();
                 let width = ui.available_width();
                 let zoom_x = size_per_int(self.props.scale.x);
 
                 let time_min = self.props.offset.x / zoom_x;
                 let time_range = time_min..time_min + width / zoom_x;
 
+                let point_radius = self.point_radius;
+                // multiply by two since the graph view also adds point radius as margin for the render area
+                let point_radius_extra = point_radius / zoom_x * 2.0;
                 for points_group in point_groups.iter_mut() {
-                    for point in points_group
-                        .points
-                        .iter_mut()
-                        .filter(|point| time_range.contains(&point.time().as_secs_f32()))
-                    {
+                    for point in points_group.points.iter_mut().filter(|point| {
+                        time_range.contains(&(point.time().as_secs_f32() - point_radius_extra))
+                            || time_range
+                                .contains(&(point.time().as_secs_f32() + point_radius_extra))
+                    }) {
                         let next_y = rect.height() / 2.0;
                         let (x, y) = self.pos_point_from_rect(point.time(), rect, next_y);
 
@@ -824,7 +834,6 @@ impl Timeline {
                 vec2(rect.width() - self.point_radius * 2.0, rect.height()),
             )),
             |ui| {
-                let rect = ui.available_rect_before_wrap();
                 ui.set_clip_rect(rect);
                 let width = ui.available_width();
 
@@ -841,6 +850,10 @@ impl Timeline {
 
                 let time_min = self.props.offset.x / zoom_x;
                 let time_range = time_min..time_min + width / zoom_x;
+                let point_radius = self.point_radius;
+                // multiply by two since the graph view also adds point radius as margin for the render area
+                let point_radius_extra = point_radius / zoom_x * 2.0;
+
                 for points_group in point_groups.iter_mut() {
                     let points_copy: Vec<_> = points_group
                         .points
@@ -856,13 +869,12 @@ impl Timeline {
                         })
                         .collect();
                     let mut points = Vec::default();
-                    let mut it = points_group
-                        .points
-                        .iter_mut()
-                        .enumerate()
-                        .filter(|(_, point)| time_range.contains(&point.time().as_secs_f32()))
-                        .peekable();
+                    let mut it = points_group.points.iter_mut().enumerate().peekable();
                     while let Some((p, point)) = it.next() {
+                        let is_inside = time_range
+                            .contains(&(point.time().as_secs_f32() - point_radius_extra))
+                            || time_range
+                                .contains(&(point.time().as_secs_f32() + point_radius_extra));
                         let next_point = points_copy.get(p + 1);
                         let point_time = *point.time();
                         let channels: Vec<_> = point
@@ -883,22 +895,24 @@ impl Timeline {
                                 .get(&p)
                                 .is_some_and(|m| m.contains(&index));
                             let y = y_extra - channel_value * zoom_y;
-                            if hovered || selected {
-                                self.draw_point_radius_scale(
-                                    ui,
-                                    &point_time,
-                                    if selected && hovered {
-                                        Color32::LIGHT_RED
-                                    } else if selected {
-                                        Color32::RED
-                                    } else {
-                                        Color32::WHITE
-                                    },
-                                    y,
-                                    1.2,
-                                );
+                            if is_inside {
+                                if hovered || selected {
+                                    self.draw_point_radius_scale(
+                                        ui,
+                                        &point_time,
+                                        if selected && hovered {
+                                            Color32::LIGHT_RED
+                                        } else if selected {
+                                            Color32::RED
+                                        } else {
+                                            Color32::WHITE
+                                        },
+                                        y,
+                                        1.2,
+                                    );
+                                }
+                                self.draw_point(ui, &point_time, color, y);
                             }
-                            self.draw_point(ui, &point_time, color, y);
 
                             if let (Some((next_time, _)), Some((_, next_point))) = (
                                 next_point.and_then(|(next_time, channel_values)| {
@@ -906,22 +920,36 @@ impl Timeline {
                                 }),
                                 it.peek_mut(),
                             ) {
-                                let start_time = point_time.as_nanos();
-                                let end_time = next_time.as_nanos();
-                                let time_diff = end_time.saturating_sub(start_time) / 20;
+                                let line_range = point.time().as_secs_f32() - point_radius_extra
+                                    ..next_time.as_secs_f32() + point_radius_extra;
+                                let is_inside_line = line_range.contains(&time_range.start)
+                                    || line_range.contains(&time_range.end);
+                                let is_inside_next = time_range
+                                    .contains(&(next_time.as_secs_f32() - point_radius_extra))
+                                    || time_range
+                                        .contains(&(next_time.as_secs_f32() + point_radius_extra));
+                                if is_inside_line || is_inside || is_inside_next {
+                                    let start_time = point_time.as_nanos();
+                                    let end_time = next_time.as_nanos();
+                                    let time_diff = end_time.saturating_sub(start_time) / 20;
 
-                                for i in 0..=20 {
-                                    let point_time =
-                                        Duration::from_nanos((start_time + time_diff * i) as u64);
+                                    for i in 0..=20 {
+                                        let point_time = Duration::from_nanos(
+                                            (start_time + time_diff * i) as u64,
+                                        );
 
-                                    let y =
-                                        point.channel_value_at(index, **next_point, &point_time);
-                                    let next_y = y_extra - y * zoom_y;
-                                    let (x, y) = self.pos_point(ui, &point_time, next_y);
+                                        let y = point.channel_value_at(
+                                            index,
+                                            **next_point,
+                                            &point_time,
+                                        );
+                                        let next_y = y_extra - y * zoom_y;
+                                        let (x, y) = self.pos_point(ui, &point_time, next_y);
 
-                                    let (points_color, points) = &mut points[index];
-                                    *points_color = color;
-                                    points.push(Pos2::new(x, y));
+                                        let (points_color, points) = &mut points[index];
+                                        *points_color = color;
+                                        points.push(Pos2::new(x, y));
+                                    }
                                 }
                             }
                         }
@@ -1073,7 +1101,6 @@ impl Timeline {
                 StripBuilder::new(ui)
                     .size(Size::exact(top_height))
                     .size(Size::exact(curve_height))
-                    .size(Size::exact(10.0))
                     .size(Size::remainder())
                     .vertical(|mut strip| {
                         strip.cell(|ui| {
@@ -1084,7 +1111,6 @@ impl Timeline {
                             // envelope curve types
                             self.curves(ui, point_groups);
                         });
-                        strip.empty();
                         strip.cell(|ui| {
                             // value graph
                             self.value_graph(ui, point_groups);
