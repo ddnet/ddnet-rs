@@ -992,11 +992,17 @@ impl Timeline {
                     // show every channel as seperate input box
                     for (name, color, range, channel) in selected_point.channels() {
                         let mut val = channel.value();
-                        ui.label(
-                            RichText::new(name)
-                                .background_color(color)
-                                .color(Color32::WHITE),
-                        );
+
+                        ui.horizontal(|ui| {
+                            let mut rect = ui.available_rect_before_wrap();
+                            rect.set_height(15.0);
+                            rect.set_width(15.0);
+                            ui.painter()
+                                .rect_filled(rect.translate((0.0, 2.5).into()), 3.0, color);
+                            ui.add_space(20.0);
+                            ui.label(RichText::new(name).color(Color32::WHITE));
+                        });
+
                         ui.add(
                             DragValue::new(&mut val)
                                 .update_while_editing(false)
