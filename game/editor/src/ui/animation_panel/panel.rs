@@ -323,6 +323,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         hovered_point: &mut anim.user.hovered_point,
                         selected_point_channels: &mut anim.user.selected_point_channels,
                         hovered_point_channel: &mut anim.user.hovered_point_channels,
+                        selected_point_channel_beziers: &mut anim
+                            .user
+                            .selected_point_channel_beziers,
+                        hovered_point_channel_beziers: &mut anim.user.hovered_point_channel_beziers,
                     });
                 }
             }

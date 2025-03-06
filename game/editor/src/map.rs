@@ -293,6 +293,8 @@ pub struct EditorAnimationProps {
     // value graph
     pub selected_point_channels: HashMap<usize, HashSet<usize>>,
     pub hovered_point_channels: HashMap<usize, HashSet<usize>>,
+    pub selected_point_channel_beziers: HashMap<usize, HashSet<(usize, bool)>>,
+    pub hovered_point_channel_beziers: HashMap<usize, HashSet<(usize, bool)>>,
 }
 
 pub type EditorAnimations = AnimationsSkeleton<EditorAnimationsProps, EditorAnimationProps>;

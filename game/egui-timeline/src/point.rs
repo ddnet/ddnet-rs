@@ -247,4 +247,8 @@ pub struct PointGroup<'a> {
     pub selected_point_channels: &'a mut HashMap<usize, HashSet<usize>>,
     /// value graph - currently hovered points & their channel (e.g. by a pointer)
     pub hovered_point_channel: &'a mut HashMap<usize, HashSet<usize>>,
+    /// value graph - currently selected point's channel's bezier curve point (e.g. by a pointer click)
+    pub selected_point_channel_beziers: &'a mut HashMap<usize, HashSet<(usize, bool)>>,
+    /// value graph - currently hovered point's channel's bezier curve point (e.g. by a pointer)
+    pub hovered_point_channel_beziers: &'a mut HashMap<usize, HashSet<(usize, bool)>>,
 }

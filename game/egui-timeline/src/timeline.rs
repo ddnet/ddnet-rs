@@ -6,6 +6,7 @@ use egui::{
 };
 use egui_extras::{Size, StripBuilder};
 use map::map::animations::{AnimBezier, AnimBezierPoint};
+use math::math::vector::ffixed;
 
 use crate::point::{Point, PointCurve, PointGroup};
 
@@ -32,6 +33,7 @@ enum PointerDownState {
     Time(Pos2),
     TimelinePoint(Pos2),
     ValuePoint(Pos2),
+    ValueBezierPoint(Pos2),
 }
 
 impl PointerDownState {
@@ -50,13 +52,17 @@ impl PointerDownState {
     pub fn is_value_point(&self) -> bool {
         matches!(self, Self::ValuePoint(_))
     }
+    pub fn is_value_bezier_point(&self) -> bool {
+        matches!(self, Self::ValueBezierPoint(_))
+    }
     pub fn as_ref(&self) -> Option<&Pos2> {
         match self {
             PointerDownState::None => None,
             PointerDownState::Graph { pos, .. }
             | PointerDownState::Time(pos)
             | PointerDownState::TimelinePoint(pos)
-            | PointerDownState::ValuePoint(pos) => Some(pos),
+            | PointerDownState::ValuePoint(pos)
+            | PointerDownState::ValueBezierPoint(pos) => Some(pos),
         }
     }
 }
@@ -537,6 +543,8 @@ impl Timeline {
     fn handle_input_value_points(&mut self, ui: &egui::Ui, point_groups: &mut [PointGroup<'_>]) {
         let not_point_pointer_down =
             !self.pointer_down_pos.is_value_point() && !self.pointer_down_pos.is_none();
+        let not_point_bezier_pointer_down =
+            !self.pointer_down_pos.is_value_bezier_point() && !self.pointer_down_pos.is_none();
         let zoom_y = size_per_int(self.props.scale.y);
 
         // check if a point was clicked on, regardless of the pointer state
@@ -546,27 +554,28 @@ impl Timeline {
             let y_extra = inner_rect.height() / 2.0 + self.stroke_size / 2.0;
             let y_off = inner_rect.min.y + y_extra - self.props.offset.y;
             let pointer_in_point_radius =
-                |point: &mut dyn Point| {
-                    let point_center = self.offset_of_point(point.time());
+                |time: &dyn Fn(usize) -> Duration, channels: &mut dyn Iterator<Item = f32>| {
+                    channels.enumerate().find_map(|(index, channel)| {
+                        let point_center = self.offset_of_point(&time(index));
+                        let center = pos2(
+                            inner_rect.min.x + point_center.x,
+                            y_off + point_center.y - channel * zoom_y,
+                        );
 
-                    point.channels().into_iter().enumerate().find_map(
-                        |(index, (_, _, _, channel))| {
-                            let center = pos2(
-                                inner_rect.min.x + point_center.x,
-                                y_off + point_center.y - channel.value() * zoom_y,
-                            );
-
-                            (inner_rect.contains(center)
-                                && (pointer_pos - center).length().abs() < self.point_radius)
-                                .then_some(index)
-                        },
-                    )
+                        (inner_rect.contains(center)
+                            && (pointer_pos - center).length().abs() < self.point_radius)
+                            .then_some(index)
+                    })
                 };
             // check if any point is hovered over
             'outer: for point_group in point_groups.iter_mut() {
                 *point_group.hovered_point_channel = Default::default();
                 for (p, point) in point_group.points.iter_mut().enumerate() {
-                    if let Some(c) = pointer_in_point_radius(*point) {
+                    let time = *point.time();
+                    if let Some(c) = pointer_in_point_radius(
+                        &|_| time,
+                        &mut point.channels().into_iter().map(|(_, _, _, c)| c.value()),
+                    ) {
                         point_group
                             .hovered_point_channel
                             .entry(p)
@@ -576,17 +585,120 @@ impl Timeline {
                     }
                 }
             }
+            // check if any bezier point is hovered over
+            'outer: for point_group in point_groups.iter_mut() {
+                *point_group.hovered_point_channel_beziers = Default::default();
+                let next_points: Vec<_> = point_group
+                    .points
+                    .iter_mut()
+                    .map(|p| {
+                        let time = *p.time();
+                        (
+                            time,
+                            p.channels()
+                                .into_iter()
+                                .map(|(_, _, _, c)| c.value())
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                    .collect();
+                for (p, point) in point_group.points.iter_mut().enumerate() {
+                    if let (PointCurve::Bezier(bezier), Some((next_time, next_channels))) =
+                        (point.curve(), next_points.get(p + 1))
+                    {
+                        let time = *point.time();
+                        if let Some((c, outgoing)) = pointer_in_point_radius(
+                            &|index| (time + bezier[index].out_tangent.x),
+                            &mut point.channels().into_iter().enumerate().map(
+                                |(index, (_, _, _, c))| {
+                                    c.value() + bezier[index].out_tangent.y.to_num::<f32>()
+                                },
+                            ),
+                        )
+                        .map(|i| (i, true))
+                        .or_else(|| {
+                            pointer_in_point_radius(
+                                &|index| next_time.saturating_sub(bezier[index].in_tangent.x),
+                                &mut next_channels.iter().enumerate().map(|(index, &c)| {
+                                    c + bezier[index].in_tangent.y.to_num::<f32>()
+                                }),
+                            )
+                            .map(|i| (i, false))
+                        }) {
+                            point_group
+                                .hovered_point_channel_beziers
+                                .entry(p)
+                                .or_insert_with(Default::default)
+                                .insert((c, outgoing));
+                            break 'outer;
+                        }
+                    }
+                }
+            }
 
             if i.pointer.primary_pressed() || i.pointer.primary_down() {
                 let mut point_hit = None;
+                let mut point_bezier_hit = None;
 
                 if i.pointer.primary_pressed() {
                     'outer: for (g, point_group) in point_groups.iter_mut().enumerate() {
                         for (p, point) in point_group.points.iter_mut().enumerate() {
                             // check if the pointer clicked on this point
-                            if let Some(channel) = pointer_in_point_radius(*point) {
+                            let time = *point.time();
+                            if let Some(channel) = pointer_in_point_radius(
+                                &|_| time,
+                                &mut point.channels().into_iter().map(|(_, _, _, c)| c.value()),
+                            ) {
                                 point_hit = Some((g, p, channel));
                                 break 'outer;
+                            }
+                        }
+                    }
+                    'outer: for (g, point_group) in point_groups.iter_mut().enumerate() {
+                        let next_points: Vec<_> = point_group
+                            .points
+                            .iter_mut()
+                            .map(|p| {
+                                let time = *p.time();
+                                (
+                                    time,
+                                    p.channels()
+                                        .into_iter()
+                                        .map(|(_, _, _, c)| c.value())
+                                        .collect::<Vec<_>>(),
+                                )
+                            })
+                            .collect();
+                        for (p, point) in point_group.points.iter_mut().enumerate() {
+                            if let (PointCurve::Bezier(bezier), Some((next_time, next_channels))) =
+                                (point.curve(), next_points.get(p + 1))
+                            {
+                                // check if the pointer clicked on this point
+                                let time = *point.time();
+                                if let Some((bezier_index, outgoing)) = pointer_in_point_radius(
+                                    &|index| (time + bezier[index].out_tangent.x),
+                                    &mut point.channels().into_iter().enumerate().map(
+                                        |(index, (_, _, _, c))| {
+                                            c.value() + bezier[index].out_tangent.y.to_num::<f32>()
+                                        },
+                                    ),
+                                )
+                                .map(|i| (i, true))
+                                .or_else(|| {
+                                    pointer_in_point_radius(
+                                        &|index| {
+                                            next_time.saturating_sub(bezier[index].in_tangent.x)
+                                        },
+                                        &mut next_channels.iter().enumerate().map(|(index, &c)| {
+                                            c + bezier[index].in_tangent.y.to_num::<f32>()
+                                        }),
+                                    )
+                                    .map(|i| (i, false))
+                                }) {
+                                    point_bezier_hit = Some((g, p, (bezier_index, outgoing)));
+                                    point_hit = None;
+                                    break 'outer;
+                                }
                             }
                         }
                     }
@@ -615,9 +727,59 @@ impl Timeline {
                     }
 
                     self.pointer_down_pos = PointerDownState::ValuePoint(pointer_pos);
+                } else if let PointerDownState::ValueBezierPoint(pointer_down_pos) =
+                    self.pointer_down_pos
+                {
+                    // if pointer is down, then move all active bezier points
+                    let diff = pointer_pos - pointer_down_pos;
+                    for point_group in point_groups.iter_mut() {
+                        for (p, c) in point_group.selected_point_channel_beziers.iter() {
+                            if let Some(point) = point_group.points.get_mut(*p) {
+                                let PointCurve::Bezier(mut beziers) = point.curve() else {
+                                    continue;
+                                };
+                                for (bezier, outgoing) in
+                                    beziers
+                                        .iter_mut()
+                                        .enumerate()
+                                        .filter_map(|(index, bezier)| {
+                                            c.get(&(index, true))
+                                                .map(|(_, b)| *b)
+                                                .or_else(|| c.get(&(index, false)).map(|(_, b)| *b))
+                                                .map(|b| (bezier, b))
+                                        })
+                                {
+                                    let val = if outgoing {
+                                        &mut bezier.out_tangent
+                                    } else {
+                                        &mut bezier.in_tangent
+                                    };
+                                    let mut time_secs = val.x.as_secs_f32();
+                                    let diff_x = if outgoing { diff.x } else { -diff.x };
+                                    time_secs += diff_x / size_per_int(self.props.scale.x);
+                                    time_secs = time_secs.clamp(0.0, f32::MAX);
+                                    let mut val_y = val.y.to_num::<f32>();
+                                    val_y -= diff.y / size_per_int(self.props.scale.y);
+
+                                    val.x = Duration::from_secs_f32(time_secs);
+                                    val.y = ffixed::from_num(val_y);
+                                }
+
+                                point.set_curve(PointCurve::Bezier(beziers));
+                            }
+                        }
+                    }
+
+                    self.pointer_down_pos = PointerDownState::ValueBezierPoint(pointer_pos);
                 } else if let Some((g, p, channel)) = point_hit {
-                    let had_point = point_groups[g].selected_point_channels.contains_key(&p);
-                    if !had_point {
+                    if !not_point_pointer_down
+                        && point_groups[g]
+                            .selected_point_channels
+                            .get(&p)
+                            .is_some_and(|s| s.contains(&channel))
+                    {
+                        self.pointer_down_pos = PointerDownState::ValuePoint(pointer_pos);
+                    } else {
                         if !i.modifiers.shift {
                             // clear all points, if shift is not hold
                             for point_group in point_groups.iter_mut() {
@@ -626,18 +788,43 @@ impl Timeline {
                         }
                         point_groups[g]
                             .selected_point_channels
-                            .insert(p, [channel].into());
+                            .entry(p)
+                            .or_default()
+                            .insert(channel);
                         self.pointer_down_pos = PointerDownState::None;
-                    } else if !not_point_pointer_down {
-                        self.pointer_down_pos = PointerDownState::ValuePoint(pointer_pos);
+                    }
+                } else if let Some((g, p, (bezier_index, outgoing))) = point_bezier_hit {
+                    if !not_point_bezier_pointer_down
+                        && point_groups[g]
+                            .selected_point_channel_beziers
+                            .get(&p)
+                            .is_some_and(|s| s.contains(&(bezier_index, outgoing)))
+                    {
+                        self.pointer_down_pos = PointerDownState::ValueBezierPoint(pointer_pos);
+                    } else {
+                        if !i.modifiers.shift {
+                            // clear all points, if shift is not hold
+                            for point_group in point_groups.iter_mut() {
+                                point_group.selected_point_channel_beziers.clear();
+                            }
+                        }
+                        point_groups[g]
+                            .selected_point_channel_beziers
+                            .entry(p)
+                            .or_default()
+                            .insert((bezier_index, outgoing));
+                        self.pointer_down_pos = PointerDownState::None;
                     }
                 } else if i.pointer.primary_pressed() && inner_rect.contains(pointer_pos) {
                     // reset all selected points (if any)
                     for point_group in point_groups.iter_mut() {
                         point_group.selected_point_channels.clear();
+                        point_group.selected_point_channel_beziers.clear();
                     }
                 }
-            } else if self.pointer_down_pos.is_value_point() {
+            } else if self.pointer_down_pos.is_value_point()
+                || self.pointer_down_pos.is_value_bezier_point()
+            {
                 self.pointer_down_pos = PointerDownState::None;
             }
         });
@@ -796,11 +983,11 @@ impl Timeline {
                         if res.clicked() {
                             let bezier = AnimBezier {
                                 in_tangent: AnimBezierPoint {
-                                    x: Duration::from_millis(10),
+                                    x: Duration::from_millis(500),
                                     y: Default::default(),
                                 },
                                 out_tangent: AnimBezierPoint {
-                                    x: Duration::from_millis(10),
+                                    x: Duration::from_millis(500),
                                     y: Default::default(),
                                 },
                             };
@@ -869,6 +1056,8 @@ impl Timeline {
                         })
                         .collect();
                     let mut points = Vec::default();
+                    let mut bezier_points = Vec::default();
+                    let mut bezier_ends = Vec::default();
                     let mut it = points_group.points.iter_mut().enumerate().peekable();
                     while let Some((p, point)) = it.next() {
                         let is_inside = time_range
@@ -950,6 +1139,57 @@ impl Timeline {
                                         *points_color = color;
                                         points.push(Pos2::new(x, y));
                                     }
+
+                                    // additionally draw bezier if needed
+                                    if let PointCurve::Bezier(bezier) = point.curve() {
+                                        let color = Color32::from_rgb(
+                                            color.r().saturating_add(100),
+                                            color.g().saturating_add(100),
+                                            color.b().saturating_add(100),
+                                        );
+                                        let next_y = y_extra - channel_value * zoom_y;
+                                        let (x, y) = self.pos_point(ui, &point_time, next_y);
+                                        let p1 = Pos2::new(x, y);
+                                        let next_y = y_extra
+                                            - (channel_value
+                                                + bezier[index].out_tangent.y.to_num::<f32>())
+                                                * zoom_y;
+                                        let (x, y) = self.pos_point(
+                                            ui,
+                                            &(point_time + bezier[index].out_tangent.x),
+                                            next_y,
+                                        );
+                                        let p2 = Pos2::new(x, y);
+
+                                        let bezier_hovered = points_group
+                                            .hovered_point_channel_beziers
+                                            .get(&p)
+                                            .is_some_and(|m| m.contains(&(index, true)));
+                                        bezier_points.push((color, vec![p1, p2]));
+                                        bezier_ends.push((color, p2, bezier_hovered));
+
+                                        let channel_value = next_point.channels()[index].3.value();
+                                        let next_y = y_extra - channel_value * zoom_y;
+                                        let (x, y) = self.pos_point(ui, next_time, next_y);
+                                        let p1 = Pos2::new(x, y);
+                                        let next_y = y_extra
+                                            - (channel_value
+                                                + bezier[index].in_tangent.y.to_num::<f32>())
+                                                * zoom_y;
+                                        let (x, y) = self.pos_point(
+                                            ui,
+                                            &(next_time.saturating_sub(bezier[index].in_tangent.x)),
+                                            next_y,
+                                        );
+                                        let p2 = Pos2::new(x, y);
+
+                                        let bezier_hovered = points_group
+                                            .hovered_point_channel_beziers
+                                            .get(&p)
+                                            .is_some_and(|m| m.contains(&(index, false)));
+                                        bezier_points.push((color, vec![p1, p2]));
+                                        bezier_ends.push((color, p2, bezier_hovered));
+                                    }
                                 }
                             }
                         }
@@ -957,6 +1197,28 @@ impl Timeline {
                     let painter = ui.painter();
                     for (color, points) in points {
                         painter.line(points, Stroke::new(2.0, color));
+                    }
+                    for (color, points) in bezier_points {
+                        painter.line(points, Stroke::new(2.0, color));
+                    }
+                    for (color, point, bezier_hovered) in bezier_ends {
+                        let color = if bezier_hovered {
+                            Color32::from_rgb(
+                                color.r().saturating_add(100),
+                                color.g().saturating_add(100),
+                                color.b().saturating_add(100),
+                            )
+                        } else {
+                            color
+                        };
+                        painter.rect_filled(
+                            Rect::from_center_size(
+                                point,
+                                (self.point_radius * 2.0, self.point_radius * 2.0).into(),
+                            ),
+                            2.0,
+                            color,
+                        );
                     }
                 }
             },
