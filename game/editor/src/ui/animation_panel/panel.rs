@@ -17,7 +17,8 @@ use crate::{
     actions::{
         actions::{
             ActAddColorAnim, ActAddPosAnim, ActAddRemColorAnim, ActAddRemPosAnim,
-            ActAddRemSoundAnim, ActAddSoundAnim, EditorAction, EditorActionGroup,
+            ActAddRemSoundAnim, ActAddSoundAnim, ActReplColorAnim, ActReplPosAnim,
+            ActReplSoundAnim, EditorAction, EditorActionGroup,
         },
         utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
     },
@@ -127,6 +128,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     &[AnimBaseSkeleton<EditorAnimationProps, A>],
                     &EditorGroups,
                 ) -> EditorActionGroup,
+                sync: impl FnOnce(usize, &AnimBaseSkeleton<EditorAnimationProps, A>) -> EditorAction,
             ) {
                 ui.label(format!("{}:", name));
                 // selection of animation
@@ -174,14 +176,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     );
                 }
 
-                // delete currently selected anim
                 if let Some(index) = index
                     .as_mut()
                     .and_then(|index| (*index < anims.len()).then_some(index))
                 {
+                    // delete currently selected anim
                     if ui.button("\u{f1f8}").clicked() {
                         client.execute_group(del(*index, anims, groups));
                         *index = index.saturating_sub(1);
+                    }
+
+                    // Whether to sync the current animation to server time
+                    let mut is_sync = anims[*index].def.synchronized;
+                    if ui.checkbox(&mut is_sync, "Synchronize").changed() {
+                        client.execute(sync(
+                            *index, &anims[*index]), None);
                     }
                 }
             }
@@ -224,6 +233,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             actions: rem_color_anim(anims, groups, index),
                             identifier: Some(format!("color-anim-del-anim-at-{}", index)),
                         },
+                        |index, anim| {
+                            let mut anim: ColorAnimation = anim.clone().into();
+                            anim.synchronized = !anim.synchronized;
+                            EditorAction::ReplColorAnim(ActReplColorAnim {
+                                base: ActAddRemColorAnim {
+                                    index,
+                                    anim ,
+                                },
+                            })
+                        },
                     );
                     ui.end_row();
                     add_selector(
@@ -259,6 +278,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         |index, anims, groups| EditorActionGroup {
                             actions: rem_pos_anim(anims, groups, index),
                             identifier: Some(format!("pos-anim-del-anim-at-{}", index)),
+                        },
+                        |index, anim| {
+                            let mut anim: PosAnimation = anim.clone().into();
+                            anim.synchronized = !anim.synchronized;
+                            EditorAction::ReplPosAnim(ActReplPosAnim {
+                                base: ActAddRemPosAnim {
+                                    index,
+                                    anim ,
+                                },
+                            })
                         },
                     );
 
@@ -296,6 +325,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         |index, anims, groups| EditorActionGroup {
                             actions: rem_sound_anim(anims, groups, index),
                             identifier: Some(format!("sound-anim-del-anim-at-{}", index)),
+                        },
+                        |index, anim| {
+                            let mut anim: SoundAnimation = anim.clone().into();
+                            anim.synchronized = !anim.synchronized;
+                            EditorAction::ReplSoundAnim(ActReplSoundAnim {
+                                base: ActAddRemSoundAnim {
+                                    index,
+                                    anim ,
+                                },
+                            })
                         },
                     );
 

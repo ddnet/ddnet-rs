@@ -36,10 +36,10 @@ use crate::{
             ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
             ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemGroup, ActRemImage,
             ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer,
-            ActRemTileLayer, ActSetCommands, ActSetMetadata, ActSoundLayerAddRemSounds,
-            ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
-            ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
-            ActTilePhysicsLayerReplaceTiles, EditorAction,
+            ActRemTileLayer, ActReplColorAnim, ActReplPosAnim, ActReplSoundAnim, ActSetCommands,
+            ActSetMetadata, ActSoundLayerAddRemSounds, ActSoundLayerAddSounds,
+            ActSoundLayerRemSounds, ActTileLayerReplTilesBase, ActTileLayerReplaceTiles,
+            ActTilePhysicsLayerReplTilesBase, ActTilePhysicsLayerReplaceTiles, EditorAction,
         },
         utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
     },
@@ -1848,6 +1848,22 @@ fn add_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
         },
     })]
 }
+fn repl_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
+    if map.animations.pos.is_empty() {
+        return Default::default();
+    }
+    let index = rand::rngs::OsRng.next_u64() as usize % map.animations.pos.len();
+    vec![EditorAction::ReplPosAnim(ActReplPosAnim {
+        base: ActAddRemPosAnim {
+            index,
+            anim: AnimBase {
+                name: "".to_string(),
+                points: Default::default(),
+                synchronized: Default::default(),
+            },
+        },
+    })]
+}
 fn rem_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     let anims = &map.animations.pos;
     if anims.is_empty() {
@@ -1870,6 +1886,22 @@ fn add_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
         },
     })]
 }
+fn repl_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
+    if map.animations.color.is_empty() {
+        return Default::default();
+    }
+    let index = rand::rngs::OsRng.next_u64() as usize % map.animations.color.len();
+    vec![EditorAction::ReplColorAnim(ActReplColorAnim {
+        base: ActAddRemColorAnim {
+            index,
+            anim: AnimBase {
+                name: "".to_string(),
+                points: Default::default(),
+                synchronized: Default::default(),
+            },
+        },
+    })]
+}
 fn rem_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     let anims = &map.animations.color;
     if anims.is_empty() {
@@ -1882,6 +1914,22 @@ fn rem_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
 fn add_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     let index = rand::rngs::OsRng.next_u64() as usize % (map.animations.sound.len() + 1);
     vec![EditorAction::AddSoundAnim(ActAddSoundAnim {
+        base: ActAddRemSoundAnim {
+            index,
+            anim: AnimBase {
+                name: "".to_string(),
+                points: Default::default(),
+                synchronized: Default::default(),
+            },
+        },
+    })]
+}
+fn repl_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
+    if map.animations.sound.is_empty() {
+        return Default::default();
+    }
+    let index = rand::rngs::OsRng.next_u64() as usize % map.animations.sound.len();
+    vec![EditorAction::ReplSoundAnim(ActReplSoundAnim {
         base: ActAddRemSoundAnim {
             index,
             anim: AnimBase {
@@ -1990,13 +2038,16 @@ pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
             36 => change_switch_valid(map),
             37 => change_tune_zone_valid(map),
             38 => add_pos_anim_valid(map),
-            39 => rem_pos_anim_valid(map),
-            40 => add_color_anim_valid(map),
-            41 => rem_color_anim_valid(map),
-            42 => add_sound_anim_valid(map),
-            43 => rem_sound_anim_valid(map),
-            44 => set_commands_valid(map),
-            45 => set_metadata_valid(map),
+            39 => repl_pos_anim_valid(map),
+            40 => rem_pos_anim_valid(map),
+            41 => add_color_anim_valid(map),
+            42 => repl_color_anim_valid(map),
+            43 => rem_color_anim_valid(map),
+            44 => add_sound_anim_valid(map),
+            45 => repl_sound_anim_valid(map),
+            46 => rem_sound_anim_valid(map),
+            47 => set_commands_valid(map),
+            48 => set_metadata_valid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,

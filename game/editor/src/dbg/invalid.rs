@@ -1102,6 +1102,9 @@ fn add_pos_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
         },
     })]
 }
+fn repl_pos_anim_invalid(map: &EditorMap) -> Vec<EditorAction> {
+    add_pos_anim_invalid(map)
+}
 fn rem_pos_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     let index = rand::rngs::OsRng.next_u64() as usize;
     vec![EditorAction::RemPosAnim(ActRemPosAnim {
@@ -1136,6 +1139,9 @@ fn add_color_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
         },
     })]
 }
+fn repl_color_anim_invalid(map: &EditorMap) -> Vec<EditorAction> {
+    add_color_anim_invalid(map)
+}
 fn rem_color_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     let index = rand::rngs::OsRng.next_u64() as usize;
     vec![EditorAction::RemColorAnim(ActRemColorAnim {
@@ -1169,6 +1175,9 @@ fn add_sound_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
             },
         },
     })]
+}
+fn repl_sound_anim_invalid(map: &EditorMap) -> Vec<EditorAction> {
+    add_sound_anim_invalid(map)
 }
 fn rem_sound_anim_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     let index = rand::rngs::OsRng.next_u64() as usize;
@@ -1296,13 +1305,16 @@ pub fn random_invalid_action(map: &EditorMap) -> Vec<EditorAction> {
             36 => change_switch_invalid(map),
             37 => change_tune_zone_invalid(map),
             38 => add_pos_anim_invalid(map),
-            39 => rem_pos_anim_invalid(map),
-            40 => add_color_anim_invalid(map),
-            41 => rem_color_anim_invalid(map),
-            42 => add_sound_anim_invalid(map),
-            43 => rem_sound_anim_invalid(map),
-            44 => set_commands_invalid(map),
-            45 => set_metadata_invalid(map),
+            39 => repl_pos_anim_invalid(map),
+            40 => rem_pos_anim_invalid(map),
+            41 => add_color_anim_invalid(map),
+            42 => repl_color_anim_invalid(map),
+            43 => rem_color_anim_invalid(map),
+            44 => add_sound_anim_invalid(map),
+            45 => repl_sound_anim_invalid(map),
+            46 => rem_sound_anim_invalid(map),
+            47 => set_commands_invalid(map),
+            48 => set_metadata_invalid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,
