@@ -57,7 +57,7 @@ pub enum CurveType {
 }
 
 #[repr(u8)]
-pub enum EEntityTiles {
+pub enum EntityTiles {
     // game layer tiles
     // TODO define which Layer uses which tiles (needed for mapeditor)
     Spawn = 192,
@@ -72,52 +72,51 @@ pub enum EEntityTiles {
     PowerupNinja,
     WeaponLaser,
 }
-/*
-//DDRace - Main Lasers
-ENTITY_LASER_FAST_CCW,
-ENTITY_LASER_NORMAL_CCW,
-ENTITY_LASER_SLOW_CCW,
-ENTITY_LASER_STOP,
-ENTITY_LASER_SLOW_CW,
-ENTITY_LASER_NORMAL_CW,
-ENTITY_LASER_FAST_CW,
-//DDRace - Laser Modifiers
-ENTITY_LASER_SHORT,
-ENTITY_LASER_MEDIUM,
-ENTITY_LASER_LONG,
-ENTITY_LASER_C_SLOW,
-ENTITY_LASER_C_NORMAL,
-ENTITY_LASER_C_FAST,
-ENTITY_LASER_O_SLOW,
-ENTITY_LASER_O_NORMAL,
-ENTITY_LASER_O_FAST,
-//DDRace - Plasma
-ENTITY_PLASMAE = 29,
-ENTITY_PLASMAF,
-ENTITY_PLASMA,
-ENTITY_PLASMAU,
-//DDRace - Shotgun
-ENTITY_CRAZY_SHOTGUN_EX,
-ENTITY_CRAZY_SHOTGUN,
-//DDNet - Removing specific weapon
-ENTITY_ARMOR_SHOTGUN,
-ENTITY_ARMOR_GRENADE,
-ENTITY_ARMOR_NINJA,
-ENTITY_ARMOR_LASER,
-//DDRace - Draggers
-ENTITY_DRAGGER_WEAK = 42,
-ENTITY_DRAGGER_NORMAL,
-ENTITY_DRAGGER_STRONG,
-//Draggers Behind Walls
-ENTITY_DRAGGER_WEAK_NW,
-ENTITY_DRAGGER_NORMAL_NW,
-ENTITY_DRAGGER_STRONG_NW,
-//Doors
-ENTITY_DOOR = 49,
-//End Of Lower Tiles
-NUM_ENTITIES,
-//Start From Top Left
-//Tile Controllers*/
+
+#[repr(u8)]
+pub enum DdraceEntityTiles {
+    //DDRace - Main Lasers
+    LaserFastCcw = EntityTiles::WeaponLaser as u8 + 1,
+    LaserNormalCcw,
+    LaserSlowCcw,
+    LaserStop,
+    LaserSlowCw,
+    LaserNormalCw,
+    LaserFastCw,
+    //DDRace - Laser Modifiers
+    LaserShort,
+    LaserMedium,
+    LaserLong,
+    LaserCSlow,
+    LaserCNormal,
+    LaserCFast,
+    LaserOSlow,
+    LaserONormal,
+    LaserOFast,
+    //DDRace - Plasma
+    PlasmaE = 190 + 30,
+    PlasmaF,
+    Plasma,
+    PlasmaU,
+    //DDRace - Shotgun
+    CrazyShotgunEx,
+    CrazyShotgun,
+    //DDNet - Removing specific weapon
+    ArmorShotgun,
+    ArmorGrenade,
+    ArmorNinja,
+    ArmorLaser,
+    //DDRace - Draggers
+    DraggerWeak = 190 + 43,
+    DraggerNormal,
+    DraggerStrong,
+    //Draggers Behind Walls
+    DraggerWeakNw,
+    DraggerNormalNw,
+    DraggerStrongNw,
+    //Doors
+    Door = 190 + 50,
+}
 
 pub fn read_u32_le(data: &[u8]) -> u32 {
     u32::from_le_bytes([data[0], data[1], data[2], data[3]])
@@ -384,6 +383,21 @@ pub enum DdraceTileNum {
     Credits8 = 159,
     EntitiesOff1 = 190,
     EntitiesOff2,
+}
+
+pub fn tile_can_rotate(index: u8) -> bool {
+    [
+        DdraceTileNum::Stop as u8,
+        DdraceTileNum::StopS as u8,
+        DdraceTileNum::CP as u8,
+        DdraceTileNum::CPF as u8,
+        DdraceTileNum::ThroughDir as u8,
+        DdraceTileNum::EntitiesOff1 as u8,
+        DdraceTileNum::EntitiesOff2 as u8,
+        DdraceEntityTiles::CrazyShotgunEx as u8,
+        DdraceEntityTiles::CrazyShotgun as u8,
+    ]
+    .contains(&index)
 }
 
 pub enum LayerFlag {
