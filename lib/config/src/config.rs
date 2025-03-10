@@ -84,18 +84,26 @@ pub struct ConfigMonitor {
 #[config_default]
 #[derive(Debug, Hiarc, Clone, PartialEq, Serialize, Deserialize, ConfigInterface)]
 pub struct ConfigWindow {
-    /// The physical pixel width of the window.
-    #[default = 800]
-    pub width: u32,
-    /// The physical pixel height of the window.
-    #[default = 600]
-    pub height: u32,
+    /// The logical pixel width of the window.
+    #[default = 800.0]
+    pub window_width: f64,
+    /// The logical pixel height of the window.
+    #[default = 600.0]
+    pub window_height: f64,
     /// Refresh rate in milli hertz.
     #[default = 60000]
     pub refresh_rate_mhz: u32,
     /// Whether the window is in fullscreen.
     #[default = true]
     pub fullscreen: bool,
+    /// The physical pixel width of the window.
+    /// 0 means the highest available.
+    #[default = 0]
+    pub fullscreen_width: u32,
+    /// The physical pixel height of the window.
+    /// 0 means the highest available.
+    #[default = 0]
+    pub fullscreen_height: u32,
     /// Whether the window is decorated.
     #[default = true]
     pub decorated: bool,

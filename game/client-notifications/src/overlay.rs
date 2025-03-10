@@ -78,13 +78,13 @@ impl ClientNotifications {
             &mut UiRenderPipe::new(self.sys.time_get(), &mut &mut self.toasts),
             Default::default(),
         );
-        let window_width = self.canvas_handle.window_width();
-        let window_height = self.canvas_handle.window_height();
-        let window_pixels_per_point = self.canvas_handle.window_pixels_per_point();
+        let canvas_width = self.canvas_handle.canvas_width();
+        let canvas_height = self.canvas_handle.canvas_height();
+        let pixels_per_point = self.canvas_handle.pixels_per_point();
         let (screen_rect, full_output, zoom_level) = self.ui.render(
-            window_width,
-            window_height,
-            window_pixels_per_point,
+            canvas_width,
+            canvas_height,
+            pixels_per_point,
             |ui, _, _| {
                 self.toasts.show(ui.ctx());
             },

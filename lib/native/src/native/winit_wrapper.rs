@@ -17,7 +17,7 @@ use crate::native::app::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH};
 
 use super::{
     app::NativeApp, FromNativeImpl, FromNativeLoadingImpl, NativeCreateOptions, NativeImpl,
-    NativeWindowMonitorDetails, NativeWindowOptions,
+    NativeWindowMonitorDetails, NativeWindowOptions, WindowMode,
 };
 
 #[derive(Debug)]
@@ -182,21 +182,28 @@ impl WinitWindowWrapper {
                     .map(|monitor| (monitor.name.as_str(), monitor.size))
         });
 
-        let video_mode = if let Some(monitor) = &monitor {
-            monitor
-                .video_modes()
-                .find(|video_mode| {
-                    video_mode.refresh_rate_millihertz() == wnd.refresh_rate_milli_hertz
-                        && video_mode.size().width == wnd.width
-                        && video_mode.size().height == wnd.height
+        let video_mode = if let (Some(monitor), WindowMode::Fullscreen { resolution, .. }) =
+            (&monitor, &wnd.mode)
+        {
+            resolution
+                .as_ref()
+                .and_then(|resolution| {
+                    monitor
+                        .video_modes()
+                        .find(|video_mode| {
+                            video_mode.refresh_rate_millihertz() == wnd.refresh_rate_milli_hertz
+                                && video_mode.size().width == resolution.width
+                                && video_mode.size().height == resolution.height
+                        })
+                        .or_else(|| {
+                            // try to find ignoring the refresh rate
+                            monitor.video_modes().find(|video_mode| {
+                                video_mode.size().width == resolution.width
+                                    && video_mode.size().height == resolution.height
+                            })
+                        })
                 })
-                .or_else(|| {
-                    // try to find ignoring the refresh rate
-                    monitor.video_modes().find(|video_mode| {
-                        video_mode.size().width == wnd.width
-                            && video_mode.size().height == wnd.height
-                    })
-                })
+                .or(monitor.video_modes().next())
         } else {
             None
         };
@@ -216,9 +223,9 @@ impl WinitWindowWrapper {
         wnd: &NativeWindowOptions,
         use_non_exclusive_fullscreen: bool,
     ) -> Option<Fullscreen> {
-        if !wnd.fullscreen && wnd.maximized && !wnd.decorated {
+        if wnd.mode.is_windowed() && wnd.maximized && !wnd.decorated {
             Some(winit::window::Fullscreen::Borderless(Some(monitor)))
-        } else if wnd.fullscreen {
+        } else if wnd.mode.is_fullscreen() {
             if let Some(video_mode) = video_mode.or_else(|| {
                 monitor.video_modes().max_by(|v1, v2| {
                     let size1 = v1.size();
@@ -285,12 +292,16 @@ impl NativeImpl for WinitWindowWrapper {
         let fullscreen_mode =
             Self::fullscreen_mode(monitor, video_mode, &wnd, self.use_non_exclusive_fullscreen);
         if fullscreen_mode.is_none() {
-            let _ = self
-                .window
-                .request_inner_size(Size::Physical(winit::dpi::PhysicalSize {
-                    width: wnd.width,
-                    height: wnd.height,
-                }));
+            let _ = self.window.request_inner_size(match &wnd.mode {
+                WindowMode::Fullscreen {
+                    fallback_window: size,
+                    ..
+                }
+                | WindowMode::Windowed(size) => Size::Logical(winit::dpi::LogicalSize {
+                    width: size.width,
+                    height: size.height,
+                }),
+            });
 
             self.window.set_maximized(wnd.maximized);
             self.window.set_decorations(wnd.decorated);
@@ -320,11 +331,28 @@ impl NativeImpl for WinitWindowWrapper {
             })
             .unwrap_or_default();
 
+        let pixels = super::Pixels {
+            width: self.window.inner_size().width.max(MIN_WINDOW_WIDTH),
+            height: self.window.inner_size().height.max(MIN_WINDOW_HEIGHT),
+        };
+        let scale_factor = self.window.scale_factor();
+        let logical_pixels = super::Pixels {
+            width: pixels.width as f64 / scale_factor,
+            height: pixels.height as f64 / scale_factor,
+        };
         NativeWindowOptions {
-            fullscreen: self
+            mode: if self
                 .window
                 .fullscreen()
-                .is_some_and(|f| matches!(f, Fullscreen::Exclusive(_))),
+                .is_some_and(|f| matches!(f, Fullscreen::Exclusive(_)))
+            {
+                WindowMode::Fullscreen {
+                    resolution: Some(pixels),
+                    fallback_window: logical_pixels,
+                }
+            } else {
+                WindowMode::Windowed(logical_pixels)
+            },
             decorated: self.window.is_decorated()
                 && !self
                     .window
@@ -335,8 +363,6 @@ impl NativeImpl for WinitWindowWrapper {
                     .window
                     .fullscreen()
                     .is_some_and(|f| matches!(f, Fullscreen::Borderless(_))),
-            width: self.window.inner_size().width.max(MIN_WINDOW_WIDTH),
-            height: self.window.inner_size().height.max(MIN_WINDOW_HEIGHT),
             refresh_rate_milli_hertz,
             monitor: monitor_name,
         }
@@ -523,10 +549,18 @@ impl WinitWrapper {
                             .with_theme(Some(winit::window::Theme::Dark));
                         if fullscreen_mode.is_none() {
                             window_builder = window_builder
-                                .with_inner_size(Size::Physical(winit::dpi::PhysicalSize {
-                                    width: native_options.window.width,
-                                    height: native_options.window.height,
-                                }))
+                                .with_inner_size(match &native_options.window.mode {
+                                    WindowMode::Fullscreen {
+                                        fallback_window: pixels,
+                                        ..
+                                    }
+                                    | WindowMode::Windowed(pixels) => {
+                                        Size::Logical(winit::dpi::LogicalSize {
+                                            width: pixels.width,
+                                            height: pixels.height,
+                                        })
+                                    }
+                                })
                                 .with_maximized(native_options.window.maximized)
                                 .with_decorations(native_options.window.decorated);
                         }

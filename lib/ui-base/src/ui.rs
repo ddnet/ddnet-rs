@@ -49,9 +49,9 @@ pub struct UiContext {
 
 #[derive(Default, PartialEq)]
 pub struct UiCachedProps {
-    window_width: u32,
-    window_height: u32,
-    window_pixels_per_point: f32,
+    canvas_width: u32,
+    canvas_height: u32,
+    pixels_per_point: f32,
 }
 
 #[derive(Clone)]
@@ -237,9 +237,9 @@ impl UiContainer {
     /// returns the canvas rect, full output and current zoom level
     pub fn render<U>(
         &mut self,
-        window_width: u32,
-        window_height: u32,
-        window_pixels_per_point: f32,
+        canvas_width: u32,
+        canvas_height: u32,
+        pixels_per_point: f32,
         mut render_func: impl FnMut(&mut egui::Ui, &mut UiRenderPipe<U>, &mut UiState),
         pipe: &mut UiRenderPipe<U>,
         mut input: egui::RawInput,
@@ -262,9 +262,9 @@ impl UiContainer {
         } else {
             &self.context.egui_ctx
         };
-        let mut zoom_level = self.zoom_level.get().unwrap_or(window_pixels_per_point);
+        let mut zoom_level = self.zoom_level.get().unwrap_or(pixels_per_point);
 
-        let zoom_diff = zoom_level / window_pixels_per_point;
+        let zoom_diff = zoom_level / pixels_per_point;
 
         // first go through all events
         let mut hint_has_text_input = false;
@@ -312,8 +312,8 @@ impl UiContainer {
                 } else {
                     0.0
                 };
-                zoom_level = (zoom_level + incr_val)
-                    .clamp(window_pixels_per_point - 0.5, window_pixels_per_point + 1.0);
+                zoom_level =
+                    (zoom_level + incr_val).clamp(pixels_per_point - 0.5, pixels_per_point + 1.0);
                 false
             }
             _ => true,
@@ -323,8 +323,8 @@ impl UiContainer {
         let screen_rect = egui::Rect {
             min: egui::Pos2 { x: 0.0, y: 0.0 },
             max: egui::Pos2 {
-                x: window_width as f32 / zoom_level,
-                y: window_height as f32 / zoom_level,
+                x: canvas_width as f32 / zoom_level,
+                y: canvas_height as f32 / zoom_level,
             },
         };
         input.screen_rect = if screen_rect.width() > 0.0 && screen_rect.height() > 0.0 {
@@ -354,7 +354,7 @@ impl UiContainer {
                 focused: Default::default(),
             },
         );
-        if zoom_level == window_pixels_per_point {
+        if zoom_level == pixels_per_point {
             self.zoom_level.set(None);
         } else {
             self.zoom_level.set(Some(zoom_level));
@@ -401,9 +401,9 @@ impl UiContainer {
     /// returns the canvas rect, full output and current zoom level
     pub fn render_cached<U>(
         &mut self,
-        window_width: u32,
-        window_height: u32,
-        window_pixels_per_point: f32,
+        canvas_width: u32,
+        canvas_height: u32,
+        pixels_per_point: f32,
         render_func: impl FnMut(&mut egui::Ui, &mut UiRenderPipe<U>, &mut UiState),
         pipe: &mut UiRenderPipe<U>,
         input: egui::RawInput,
@@ -411,9 +411,9 @@ impl UiContainer {
         force_rerender: bool,
     ) -> (egui::Rect, egui::FullOutput, f32) {
         let new_cached = UiCachedProps {
-            window_width,
-            window_height,
-            window_pixels_per_point,
+            canvas_width,
+            canvas_height,
+            pixels_per_point,
         };
         if self.cached_props != new_cached
             || self.cached_output.is_none()
@@ -424,9 +424,9 @@ impl UiContainer {
             || force_rerender
         {
             let (rect, output, zoom_level) = self.render(
-                window_width,
-                window_height,
-                window_pixels_per_point,
+                canvas_width,
+                canvas_height,
+                pixels_per_point,
                 render_func,
                 pipe,
                 input.clone(),

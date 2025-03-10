@@ -58,17 +58,17 @@ impl NameplateRender {
             return;
         }
 
-        let window_width = self.canvas_handle.window_width();
-        let window_height = self.canvas_handle.window_height();
-        let window_pixels_per_point = self.canvas_handle.window_pixels_per_point();
+        let canvas_width = self.canvas_handle.canvas_width();
+        let canvas_height = self.canvas_handle.canvas_height();
+        let pixels_per_point = self.canvas_handle.pixels_per_point();
 
         let mut user_data = ();
         let mut dummy_pipe = UiRenderPipe::new(*pipe.cur_time, &mut user_data);
 
         let (screen_rect, full_output, zoom_level) = self.ui.render_cached(
-            window_width,
-            window_height,
-            window_pixels_per_point,
+            canvas_width,
+            canvas_height,
+            pixels_per_point,
             |ui, _inner_pipe, _ui_state| {
                 for NameplatePlayer {
                     name,
@@ -80,7 +80,7 @@ impl NameplateRender {
                     let size = ui.ctx().screen_rect().size();
                     let (x0, y0, x1, y1) = pipe.state.get_canvas_mapping();
 
-                    let name_scale = self.canvas_handle.canvas_width() / size.x;
+                    let name_scale = self.canvas_handle.canvas_width() as f32 / size.x;
 
                     let w = x1 - x0;
                     let h = y1 - y0;

@@ -834,10 +834,10 @@ impl RenderMap {
         }
 
         let (x, y, w, h) = State::auto_round_clipping(
-            x0 * self.canvas_handle.window_width() as f32,
-            y0 * self.canvas_handle.window_height() as f32,
-            (x1 - x0) * self.canvas_handle.window_width() as f32,
-            (y1 - y0) * self.canvas_handle.window_height() as f32,
+            x0 * self.canvas_handle.canvas_width() as f32,
+            y0 * self.canvas_handle.canvas_height() as f32,
+            (x1 - x0) * self.canvas_handle.canvas_width() as f32,
+            (y1 - y0) * self.canvas_handle.canvas_height() as f32,
         );
 
         state.clip_clamped(
@@ -845,8 +845,8 @@ impl RenderMap {
             y,
             w,
             h,
-            self.canvas_handle.window_width(),
-            self.canvas_handle.window_height(),
+            self.canvas_handle.canvas_width(),
+            self.canvas_handle.canvas_height(),
         );
 
         true

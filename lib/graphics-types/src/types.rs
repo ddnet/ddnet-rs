@@ -70,11 +70,11 @@ impl VideoMode {
 
 #[derive(Debug, Hiarc, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WindowProps {
-    pub canvas_width: f64,
-    pub canvas_height: f64,
+    pub canvas_width: u32,
+    pub canvas_height: u32,
 
-    pub window_width: u32,
-    pub window_height: u32,
+    pub window_width: f64,
+    pub window_height: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

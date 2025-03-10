@@ -71,10 +71,10 @@ pub static GRAPHICS: std::cell::LazyCell<Graphics> = std::cell::LazyCell::new(||
             uniform_buffers,
         ),
         WindowProps {
-            canvas_width: 800.0,
-            canvas_height: 600.0,
-            window_width: 800,
-            window_height: 600,
+            canvas_width: 800,
+            canvas_height: 600,
+            window_width: 800.0,
+            window_height: 600.0,
         },
     )
 });

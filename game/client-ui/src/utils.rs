@@ -117,8 +117,8 @@ pub fn render_tee_for_ui_with_skin(
                 self.render_rect.max.x,
                 self.render_rect.max.y,
             );
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,
@@ -224,8 +224,8 @@ pub fn render_weapon_for_ui(
                 self.render_rect.max.x,
                 self.render_rect.max.y,
             );
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,
@@ -296,8 +296,8 @@ pub fn render_hook_for_ui(
                 self.render_rect.max.x,
                 self.render_rect.max.y,
             );
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,
@@ -368,8 +368,8 @@ pub fn render_emoticon_for_ui(
                 self.render_rect.max.x,
                 self.render_rect.max.y,
             );
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,
@@ -475,8 +475,8 @@ pub fn render_flag_for_ui(
                 self.render_rect.max.x,
                 self.render_rect.max.y,
             );
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,
@@ -560,8 +560,8 @@ pub fn render_entities_for_ui(
                 tl_y + self.render_rect.height() * size_ratio_y,
             );
 
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,
@@ -636,8 +636,8 @@ pub fn render_texture_for_ui(
                 self.render_rect.max.x,
                 self.render_rect.max.y,
             );
-            let scale_x = self.canvas_handle.window_width() as f32 / self.render_rect.width();
-            let scale_y = self.canvas_handle.window_height() as f32 / self.render_rect.height();
+            let scale_x = self.canvas_handle.canvas_width() as f32 / self.render_rect.width();
+            let scale_y = self.canvas_handle.canvas_height() as f32 / self.render_rect.height();
             if let Some(clip_rect) = &self.clip_rect {
                 state.clip_auto_rounding(
                     clip_rect.min.x * scale_x,

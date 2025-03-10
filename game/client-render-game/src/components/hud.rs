@@ -813,12 +813,12 @@ impl RenderHud {
             .ui
             .zoom_level
             .get()
-            .unwrap_or(self.canvas_handle.window_pixels_per_point());
+            .unwrap_or(self.canvas_handle.pixels_per_point());
         state.map_canvas(
             0.0,
             0.0,
-            self.canvas_handle.window_width() as f32 / ppp,
-            self.canvas_handle.window_height() as f32 / ppp,
+            self.canvas_handle.canvas_width() as f32 / ppp,
+            self.canvas_handle.canvas_height() as f32 / ppp,
         );
 
         match pipe.local_player_render_info {

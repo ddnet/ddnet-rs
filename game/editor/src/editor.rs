@@ -342,8 +342,8 @@ impl Editor {
             latest_canvas_rect: Rect::from_min_size(
                 pos2(0.0, 0.0),
                 vec2(
-                    graphics.canvas_handle.canvas_width(),
-                    graphics.canvas_handle.canvas_height(),
+                    graphics.canvas_handle.canvas_width() as f32,
+                    graphics.canvas_handle.canvas_height() as f32,
                 ),
             ),
             last_time,
@@ -2612,8 +2612,8 @@ impl EditorInterface for Editor {
             Rect::from_min_size(
                 pos2(0.0, 0.0),
                 vec2(
-                    self.canvas_handle.canvas_width(),
-                    self.canvas_handle.canvas_height(),
+                    self.canvas_handle.canvas_width() as f32,
+                    self.canvas_handle.canvas_height() as f32,
                 ),
             )
         });
@@ -2649,8 +2649,8 @@ impl EditorInterface for Editor {
                         Rect::from_min_size(
                             pos2(0.0, 0.0),
                             vec2(
-                                self.canvas_handle.canvas_width(),
-                                self.canvas_handle.canvas_height(),
+                                self.canvas_handle.canvas_width() as f32,
+                                self.canvas_handle.canvas_height() as f32,
                             ),
                         )
                     }),

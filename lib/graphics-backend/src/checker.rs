@@ -236,16 +236,16 @@ impl GraphicsContainersAPI {
                 assert!(
                     cmd.x >= 0
                         && cmd.width > 0
-                        && (cmd.x as u32) < canvas_handle.window_width()
+                        && (cmd.x as u32) < canvas_handle.canvas_width()
                         && (cmd.x as u32).checked_add(cmd.width).unwrap()
-                            <= canvas_handle.window_width()
+                            <= canvas_handle.canvas_width()
                 );
                 assert!(
                     cmd.y >= 0
                         && cmd.height > 0
-                        && (cmd.y as u32) < canvas_handle.window_height()
+                        && (cmd.y as u32) < canvas_handle.canvas_height()
                         && (cmd.y as u32).checked_add(cmd.height).unwrap()
-                            <= canvas_handle.window_height()
+                            <= canvas_handle.canvas_height()
                 );
             }
             CommandsMisc::Multisampling(cmd) => {

@@ -118,7 +118,7 @@ use native::{
     native::{
         app::NativeApp, FromNativeImpl, FromNativeLoadingImpl, KeyCode, Native,
         NativeCreateOptions, NativeDisplayBackend, NativeImpl, NativeWindowMonitorDetails,
-        NativeWindowOptions, PhysicalKey, PhysicalSize, WindowEvent,
+        NativeWindowOptions, PhysicalKey, PhysicalSize, WindowEvent, WindowMode,
     },
 };
 use network::network::types::NetworkInOrderChannel;
@@ -279,6 +279,10 @@ pub fn ddnet_main(
         local_console_builder,
         has_startup_errors,
     };
+    let logical_pixels = native::native::Pixels {
+        width: config_wnd.window_width,
+        height: config_wnd.window_height,
+    };
     Native::run_loop::<ClientNativeImpl, _>(
         client,
         app,
@@ -289,11 +293,21 @@ pub fn ddnet_main(
             dbg_input,
             start_arguments,
             window: native::native::NativeWindowOptions {
-                fullscreen: config_wnd.fullscreen,
+                mode: if config_wnd.fullscreen {
+                    WindowMode::Fullscreen {
+                        resolution: (config_wnd.fullscreen_width != 0
+                            && config_wnd.fullscreen_height != 0)
+                            .then_some(native::native::Pixels {
+                                width: config_wnd.fullscreen_width,
+                                height: config_wnd.fullscreen_height,
+                            }),
+                        fallback_window: logical_pixels,
+                    }
+                } else {
+                    WindowMode::Windowed(logical_pixels)
+                },
                 decorated: config_wnd.decorated,
                 maximized: config_wnd.maximized,
-                width: config_wnd.width,
-                height: config_wnd.height,
                 refresh_rate_milli_hertz: config_wnd.refresh_rate_mhz,
                 monitor: (!config_wnd.monitor.name.is_empty()
                     && config_wnd.monitor.width != 0
@@ -517,12 +531,26 @@ impl ClientNativeImpl {
     fn on_window_change(&mut self, native: &mut dyn NativeImpl) {
         let config_wnd = &self.config.engine.wnd;
 
+        let logical_pixels = native::native::Pixels {
+            width: config_wnd.window_width,
+            height: config_wnd.window_height,
+        };
         if let Err(err) = native.set_window_config(native::native::NativeWindowOptions {
-            fullscreen: config_wnd.fullscreen,
+            mode: if config_wnd.fullscreen {
+                WindowMode::Fullscreen {
+                    resolution: (config_wnd.fullscreen_width != 0
+                        && config_wnd.fullscreen_height != 0)
+                        .then_some(native::native::Pixels {
+                            width: config_wnd.fullscreen_width,
+                            height: config_wnd.fullscreen_height,
+                        }),
+                    fallback_window: logical_pixels,
+                }
+            } else {
+                WindowMode::Windowed(logical_pixels)
+            },
             decorated: config_wnd.decorated,
             maximized: config_wnd.maximized,
-            width: config_wnd.width,
-            height: config_wnd.height,
             refresh_rate_milli_hertz: config_wnd.refresh_rate_mhz,
             monitor: (!config_wnd.monitor.name.is_empty()
                 && config_wnd.monitor.width != 0
@@ -854,7 +882,7 @@ impl ClientNativeImpl {
                 settings: RenderGameSettings::new(
                     &self.config.game.cl.render,
                     &self.config.game.snd.render,
-                    self.graphics.canvas_handle.window_pixels_per_point(),
+                    self.graphics.canvas_handle.pixels_per_point(),
                     1.0,
                     self.config.game.cl.anti_ping,
                     self.config.game.snd.global_volume,
@@ -1387,7 +1415,7 @@ impl ClientNativeImpl {
                 self.ui_manager.ui.zoom_level.set(Some(
                     self.graphics
                         .canvas_handle
-                        .window_pixels_per_point()
+                        .pixels_per_point()
                         .max(self.config.engine.ui.min_pixels_per_point as f32)
                         * self.config.engine.ui.scale as f32,
                 ));
@@ -1875,7 +1903,7 @@ impl ClientNativeImpl {
 
                 if let Some(zoom) = self.ui_manager.ui.zoom_level.get() {
                     self.config.engine.ui.scale = zoom as f64
-                        / (self.graphics.canvas_handle.window_pixels_per_point() as f64)
+                        / (self.graphics.canvas_handle.pixels_per_point() as f64)
                             .max(self.config.engine.ui.min_pixels_per_point);
                 }
             }
@@ -2426,11 +2454,27 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         // read window props
         let wnd = native.window_options();
         let config_wnd = &mut loading.config_engine.wnd;
-        config_wnd.fullscreen = wnd.fullscreen;
+        config_wnd.fullscreen = wnd.mode.is_fullscreen();
         config_wnd.decorated = wnd.decorated;
         config_wnd.maximized = wnd.maximized;
-        config_wnd.width = wnd.width;
-        config_wnd.height = wnd.height;
+        match wnd.mode {
+            WindowMode::Fullscreen {
+                resolution,
+                fallback_window,
+            } => {
+                if let Some(resolution) = resolution {
+                    config_wnd.fullscreen_width = resolution.width;
+                    config_wnd.fullscreen_height = resolution.height;
+                }
+
+                config_wnd.window_width = fallback_window.width;
+                config_wnd.window_height = fallback_window.height;
+            }
+            WindowMode::Windowed(pixels) => {
+                config_wnd.window_width = pixels.width;
+                config_wnd.window_height = pixels.height;
+            }
+        }
         config_wnd.refresh_rate_mhz = wnd.refresh_rate_milli_hertz;
         config_wnd.monitor = wnd
             .monitor
@@ -3377,8 +3421,14 @@ impl FromNativeImpl for ClientNativeImpl {
         // update config variables
         let wnd = &mut self.config.engine.wnd;
         let window = native.borrow_window();
-        wnd.width = new_width;
-        wnd.height = new_height;
+        if wnd.fullscreen {
+            wnd.fullscreen_width = new_width;
+            wnd.fullscreen_height = new_height;
+        } else {
+            let scale_factor = window.scale_factor();
+            wnd.window_width = new_width as f64 / scale_factor;
+            wnd.window_height = new_height as f64 / scale_factor;
+        }
         if let Some(monitor) = window.current_monitor() {
             wnd.refresh_rate_mhz = monitor
                 .refresh_rate_millihertz()
@@ -3388,11 +3438,27 @@ impl FromNativeImpl for ClientNativeImpl {
 
     fn window_options_changed(&mut self, wnd: NativeWindowOptions) {
         let config_wnd = &mut self.config.engine.wnd;
-        config_wnd.fullscreen = wnd.fullscreen;
+        config_wnd.fullscreen = wnd.mode.is_fullscreen();
         config_wnd.decorated = wnd.decorated;
         config_wnd.maximized = wnd.maximized;
-        config_wnd.width = wnd.width;
-        config_wnd.height = wnd.height;
+        match wnd.mode {
+            WindowMode::Fullscreen {
+                resolution,
+                fallback_window,
+            } => {
+                if let Some(resolution) = resolution {
+                    config_wnd.fullscreen_width = resolution.width;
+                    config_wnd.fullscreen_height = resolution.height;
+                }
+
+                config_wnd.window_width = fallback_window.width;
+                config_wnd.window_height = fallback_window.height;
+            }
+            WindowMode::Windowed(pixels) => {
+                config_wnd.window_width = pixels.width;
+                config_wnd.window_height = pixels.height;
+            }
+        }
         config_wnd.refresh_rate_mhz = wnd.refresh_rate_milli_hertz;
         config_wnd.monitor = wnd
             .monitor

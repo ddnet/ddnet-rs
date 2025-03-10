@@ -61,8 +61,8 @@ fn prepare_backend(
         backend_loading,
         tp,
         BackendWindow::Headless {
-            width: config_wnd.width,
-            height: config_wnd.height,
+            width: config_wnd.window_width as u32,
+            height: config_wnd.window_height as u32,
         },
     )
     .unwrap();
@@ -104,8 +104,8 @@ pub fn get_base(
     };
     let mut config_wnd = ConfigWindow::default();
     if let Some(options) = options {
-        config_wnd.width = options.width;
-        config_wnd.height = options.height;
+        config_wnd.window_width = options.width as f64;
+        config_wnd.window_height = options.height as f64;
     }
     let (backend, stream_data) =
         prepare_backend(&io, &tp, &config_gl, &config_wnd, backend_validation);
@@ -124,10 +124,10 @@ pub fn get_base(
             backend.clone(),
             stream_data,
             WindowProps {
-                canvas_width: config_wnd.width as f64,
-                canvas_height: config_wnd.height as f64,
-                window_width: config_wnd.width,
-                window_height: config_wnd.height,
+                canvas_width: config_wnd.window_width as u32,
+                canvas_height: config_wnd.window_height as u32,
+                window_width: config_wnd.window_width,
+                window_height: config_wnd.window_height,
             },
         ),
         backend,

@@ -96,8 +96,8 @@ mod tests {
             backend_loading,
             &tp,
             crate::window::BackendWindow::Headless {
-                width: config_wnd.width,
-                height: config_wnd.height,
+                width: config_wnd.window_width as u32,
+                height: config_wnd.window_height as u32,
             },
         )
         .unwrap();

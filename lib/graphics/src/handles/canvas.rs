@@ -96,12 +96,12 @@ pub mod canvas {
                     let width = offscreen_canvas.width();
                     let height = offscreen_canvas.height();
                     let pixels_per_point = offscreen_canvas.pixels_per_point();
-                    self.canvases.offscreen.window_props.window_width = width;
-                    self.canvases.offscreen.window_props.window_height = height;
-                    self.canvases.offscreen.window_props.canvas_width =
+                    self.canvases.offscreen.window_props.window_width =
                         width as f64 / pixels_per_point;
-                    self.canvases.offscreen.window_props.canvas_height =
+                    self.canvases.offscreen.window_props.window_height =
                         height as f64 / pixels_per_point;
+                    self.canvases.offscreen.window_props.canvas_width = width;
+                    self.canvases.offscreen.window_props.canvas_height = height;
                     CommandSwitchCanvasModeType::Offscreen {
                         id: offscreen_canvas.get_index_unsafe(),
                     }
@@ -117,7 +117,7 @@ pub mod canvas {
                 )));
         }
 
-        /// update the viewport of the window where the origin is top left
+        /// update the viewport of the window's canvas where the origin is top left
         /// the dynamic viewport will affect calls to canvas_width-/height aswell
         /// as window_width-/height
         pub fn update_window_viewport(&mut self, x: i32, y: i32, width: u32, height: u32) {
@@ -139,8 +139,8 @@ pub mod canvas {
             let cur_canvas = &self.get_cur_canvas().window_props;
             if x == 0
                 && y == 0
-                && width == cur_canvas.window_width
-                && height == cur_canvas.window_height
+                && width == cur_canvas.canvas_width
+                && height == cur_canvas.canvas_height
             {
                 self.cur_dynamic_viewport = None;
             }
@@ -149,7 +149,7 @@ pub mod canvas {
         /// reset the viewport to the original window viewport
         pub fn reset_window_viewport(&mut self) {
             let window_props = self.window_props();
-            self.update_window_viewport(0, 0, window_props.window_width, window_props.window_height)
+            self.update_window_viewport(0, 0, window_props.canvas_width, window_props.canvas_height)
         }
 
         fn get_cur_canvas(&self) -> &GraphicsCanvas {
@@ -169,23 +169,23 @@ pub mod canvas {
         /// except you know what you are doing
         pub fn window_canvas_aspect(&self) -> f32 {
             let canvas = self.get_cur_canvas();
-            (canvas.window_props.canvas_width / canvas.window_props.canvas_height) as f32
+            canvas.window_props.canvas_width as f32 / canvas.window_props.canvas_height as f32
         }
 
         /// the width of the window canvas, independent of the current viewport
         /// this function should generally __not__ be used over `canvas_width`,
         /// except you know what you are doing
-        pub fn window_canvas_width(&self) -> f32 {
+        pub fn window_canvas_width(&self) -> u32 {
             let canvas = self.get_cur_canvas();
-            canvas.window_props.canvas_width as f32
+            canvas.window_props.canvas_width
         }
 
         /// the height of the window canvas, independent of the current viewport
         /// this function should generally __not__ be used over `canvas_height`,
         /// except you know what you are doing
-        pub fn window_canvas_height(&self) -> f32 {
+        pub fn window_canvas_height(&self) -> u32 {
             let canvas = self.get_cur_canvas();
-            canvas.window_props.canvas_height as f32
+            canvas.window_props.canvas_height
         }
 
         /// this is the aspect of the canvas you are currently able to draw on
@@ -203,10 +203,10 @@ pub mod canvas {
         /// it respects the current mapped viewport
         /// generally you should use this function of `window_canvas_width` except
         /// you need to know the width of the _real_ canvas
-        pub fn canvas_width(&self) -> f32 {
+        pub fn canvas_width(&self) -> u32 {
             self.cur_dynamic_viewport
                 .as_ref()
-                .map(|vp| vp.width as f32 / self.window_pixels_per_point())
+                .map(|vp| vp.width)
                 .unwrap_or(self.window_canvas_width())
         }
 
@@ -214,34 +214,34 @@ pub mod canvas {
         /// it respects the current mapped viewport
         /// generally you should use this function of `window_canvas_height` except
         /// you need to know the height of the _real_ canvas
-        pub fn canvas_height(&self) -> f32 {
+        pub fn canvas_height(&self) -> u32 {
             self.cur_dynamic_viewport
                 .as_ref()
-                .map(|vp| vp.height as f32 / self.window_pixels_per_point())
+                .map(|vp| vp.height)
                 .unwrap_or(self.window_canvas_height())
         }
 
         /// this function always respects the current viewport
         /// if you want to acess the real width use `window_props`
-        pub fn window_width(&self) -> u32 {
+        pub fn window_width(&self) -> f32 {
             self.cur_dynamic_viewport
                 .as_ref()
-                .map(|vp| vp.width)
+                .map(|vp| vp.width as f32 / self.pixels_per_point())
                 .unwrap_or({
                     let canvas = self.get_cur_canvas();
-                    canvas.window_props.window_width
+                    canvas.window_props.window_width as f32 / self.pixels_per_point()
                 })
         }
 
         /// this function always respects the current viewport
         /// if you want to acess the real height use `window_props`
-        pub fn window_height(&self) -> u32 {
+        pub fn window_height(&self) -> f32 {
             self.cur_dynamic_viewport
                 .as_ref()
-                .map(|vp| vp.height)
+                .map(|vp| vp.height as f32 / self.pixels_per_point())
                 .unwrap_or({
                     let canvas = self.get_cur_canvas();
-                    canvas.window_props.window_height
+                    canvas.window_props.window_height as f32 / self.pixels_per_point()
                 })
         }
 
@@ -250,9 +250,9 @@ pub mod canvas {
             canvas.window_props
         }
 
-        pub fn window_pixels_per_point(&self) -> f32 {
+        pub fn pixels_per_point(&self) -> f32 {
             let canvas = self.get_cur_canvas();
-            canvas.window_props.window_width as f32 / canvas.window_props.canvas_width as f32
+            canvas.window_props.canvas_width as f32 / canvas.window_props.window_width as f32
         }
     }
 

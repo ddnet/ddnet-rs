@@ -61,9 +61,9 @@ impl HudRender {
     }
 
     pub fn render(&mut self, pipe: &mut HudRenderPipe) {
-        let window_width = self.canvas_handle.window_width();
-        let window_height = self.canvas_handle.window_height();
-        let window_pixels_per_point = self.canvas_handle.window_pixels_per_point();
+        let canvas_width = self.canvas_handle.canvas_width();
+        let canvas_height = self.canvas_handle.canvas_height();
+        let pixels_per_point = self.canvas_handle.pixels_per_point();
 
         let mut user_data = UserData {
             race_round_timer_counter: pipe.race_timer_counter,
@@ -78,9 +78,9 @@ impl HudRender {
         };
         let mut dummy_pipe = UiRenderPipe::new(*pipe.cur_time, &mut user_data);
         let (screen_rect, full_output, zoom_level) = self.ui.render_cached(
-            window_width,
-            window_height,
-            window_pixels_per_point,
+            canvas_width,
+            canvas_height,
+            pixels_per_point,
             |ui, inner_pipe, ui_state| self.hud_ui.render(ui, inner_pipe, ui_state),
             &mut dummy_pipe,
             Default::default(),

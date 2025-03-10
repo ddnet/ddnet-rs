@@ -19,10 +19,10 @@ use super::user_data::{EmoteWheelEvent, UserData};
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let rect = ui.ctx().screen_rect();
 
-    let width_scale = rect.width() / pipe.user_data.canvas_handle.canvas_width();
+    let width_scale = rect.width() / pipe.user_data.canvas_handle.canvas_width() as f32;
 
     let radius = |percentage: f32| {
-        (percentage / 100.0 * pipe.user_data.canvas_handle.canvas_height()) * width_scale
+        (percentage / 100.0 * pipe.user_data.canvas_handle.canvas_height() as f32) * width_scale
     };
 
     let color = Color32::from_black_alpha(100);

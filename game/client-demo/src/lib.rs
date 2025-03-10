@@ -578,7 +578,7 @@ impl DemoViewerImpl {
                 RenderGameSettings::new(
                     config_render,
                     config_snd,
-                    data.canvas_handle.window_pixels_per_point(),
+                    data.canvas_handle.pixels_per_point(),
                     viewer.speed.to_num::<f64>(),
                     false,
                     global_sound_volume,
@@ -894,8 +894,8 @@ impl DemoViewerImpl {
             state.map_canvas(
                 0.0,
                 0.0,
-                self.data.canvas_handle.window_width() as f32,
-                self.data.canvas_handle.window_height() as f32,
+                self.data.canvas_handle.canvas_width() as f32,
+                self.data.canvas_handle.canvas_height() as f32,
             );
             state.set_color_mask(ColorMaskMode::WriteColorOnly);
             state.blend(BlendType::None);
