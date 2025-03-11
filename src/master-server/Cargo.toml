@@ -11,24 +11,24 @@ master-server-types = { path = "../../game/master-server-types" }
 
 arrayvec = { version = "=0.5.2", features = ["serde"] }
 base64 = "=0.13.1"
-bytes = "1.9.0"
+bytes = "1.10.1"
 clap = { version = "=2.34.0", default-features = false, features = [
   "suggestions",
   "wrap_help",
 ] }
-env_logger = "0.11.6"
+env_logger = "0.11.7"
 headers = "=0.3.9"
 hex = "0.4.3"
-log = "0.4.22"
+log = "0.4.26"
 rand = "0.8.5"
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = { version = "1.0.134", features = [
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140", features = [
   "float_roundtrip",
   "preserve_order",
   "raw_value",
 ] }
 sha2 = "0.10.8"
-tokio = { version = "1.42.0", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.44.0", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-stream = { version = "0.1.17", features = ["net"] }
 warp = { version = "0.3.7", default-features = false }
 

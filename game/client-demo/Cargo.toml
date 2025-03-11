@@ -29,11 +29,11 @@ client-render-game = { path = "../client-render-game" }
 client-render-base = { path = "../client-render-base" }
 game-config = { path = "../game-config" }
 
-serde = { version = "1.0.217", features = ["derive"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 rayon = "1.10.0"
 egui = { version = "0.30.0", default-features = false, features = ["serde"] }
-log = "0.4.22"
+log = "0.4.26"
 
 [features]
 ffmpeg = ["av-encoder/ffmpeg"]

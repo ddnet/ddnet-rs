@@ -8,5 +8,5 @@ client-extra = { path = "../../game/client-extra" }
 
 image-utils = { path = "../../lib/image-utils" }
 
-clap = { version = "4.5.23", features = ["derive"] }
-tar = "0.4.43"
+clap = { version = "4.5.32", features = ["derive"] }
+tar = "0.4.44"

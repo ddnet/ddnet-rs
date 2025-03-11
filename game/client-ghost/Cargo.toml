@@ -21,4 +21,4 @@ client-render-game = { path = "../client-render-game" }
 game-interface = { path = "../game-interface" }
 rayon = "1.10.0"
 
-log = "0.4.22"
+log = "0.4.26"

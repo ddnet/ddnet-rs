@@ -23,5 +23,5 @@ ui-generic = { path = "../../lib/ui-generic" }
 command-parser = { path = "../../lib/command-parser" }
 
 egui = { version = "0.30.0", default-features = false, features = ["serde"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-log = "0.4.22"
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+log = "0.4.26"

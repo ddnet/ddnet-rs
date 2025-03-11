@@ -8,8 +8,8 @@ math = { path = "../math" }
 pool = { path = "../pool", features = ["enable_hiarc"] }
 hiarc = { path = "../hiarc", features = ["enable_hashlink"] }
 num-traits = "0.2.19"
-bitflags = { version = "2.6.0", features = ["serde"] }
-serde = "1.0.217"
+bitflags = { version = "2.9.0", features = ["serde"] }
+serde = "1.0.219"
 
 [package.metadata.cargo-machete]
 ignored = ["num-traits"]

@@ -25,14 +25,14 @@ game-interface = { path = "../game-interface" }
 
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 
-serde = { version = "1.0.217", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
 rayon = "1.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-bincode = { version = "2.0.0-rc.3", features = ["serde"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-time = { version = "0.3.37", features = ["serde"] }
-fixed = "1.28.0"
-log = "0.4.22"
+bincode = { version = "2.0.1", features = ["serde"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+time = { version = "0.3.39", features = ["serde"] }
+fixed = "1.29.0"
+log = "0.4.26"
 url = { version = "2.5.4", features = ["serde"] }
 futures = "0.3.31"

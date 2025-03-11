@@ -7,6 +7,6 @@ edition = "2021"
 graphics-types = { path = "../graphics-types" }
 pool = { path = "../pool" }
 hiarc = { path = "../hiarc", features = ["derive"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-serde = { version = "1.0.217", features = ["derive"] }
-bincode = { features = ["serde"], version = "2.0.0-rc.3" }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }
+bincode = { features = ["serde"], version = "2.0.1" }

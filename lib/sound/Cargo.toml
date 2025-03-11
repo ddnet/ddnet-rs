@@ -7,7 +7,7 @@ edition = "2021"
 base = { path = "../base" }
 math = { path = "../math" }
 hiarc = { path = "../hiarc", features = ["derive"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-serde = { version = "1.0.217", features = ["derive"] }
-thiserror = "2.0.9"
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }
+thiserror = "2.0.12"
 symphonia = { version = "0.5.4", default-features = false, features = ["ogg", "vorbis"] }

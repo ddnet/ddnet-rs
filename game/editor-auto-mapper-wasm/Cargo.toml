@@ -12,4 +12,4 @@ base-io-traits = { path = "../../lib/base-io-traits" }
 cache = { path = "../../lib/cache" }
 
 wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }

@@ -12,7 +12,7 @@ image-utils = { path = "../../lib/image-utils" }
 game-base = { path = "../../game/game-base" }
 map = { path = "../../game/map" }
 rayon = "1.10.0"
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 oxipng = { version = "9.1", features = ["parallel"], default-features = false }
 ogg-opus = "0.1.2"
 audiopus_sys = { version = "0.2.2", features = ["static"] }
@@ -22,6 +22,6 @@ vorbis_rs = { version = "0.5.5", default-features = false }
 base-fs = { path = "../../lib/base-fs" }
 base-io = { path = "../../lib/base-io" }
 difference = "2.0"
-rustc-hash = "2.1.0"
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.134"
+rustc-hash = "2.1.1"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"

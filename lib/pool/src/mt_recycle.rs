@@ -118,7 +118,7 @@ impl<T: Serialize + Recyclable + Send> Encode for Recycle<T> {
     }
 }
 
-impl<T: Send> Decode for Recycle<T>
+impl<Context, T: Send> Decode<Context> for Recycle<T>
 where
     T: for<'de> Deserialize<'de> + Recyclable,
 {
@@ -131,7 +131,7 @@ where
     }
 }
 
-impl<'de, T: Send> BorrowDecode<'de> for Recycle<T>
+impl<'de, Context, T: Send> BorrowDecode<'de, Context> for Recycle<T>
 where
     T: for<'a> Deserialize<'a> + Recyclable,
 {

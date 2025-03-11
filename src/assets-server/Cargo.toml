@@ -7,12 +7,12 @@ edition = "2021"
 base = { path = "../../lib/base" }
 assets-base = { path = "../../game/assets-base" }
 
-tokio = { version = "1.42.0", features = ["rt-multi-thread", "sync", "fs", "net", "time", "macros"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "net", "time", "macros"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 axum = "0.7.9"
 
 tower-http = { version = "0.6.2", features = ["fs", "trace"] }
 tower-service = { version = "0.3.3" }
-serde_json = "1.0.134"
-clap = { version = "4.5.23", features = ["derive"] }
+serde_json = "1.0.140"
+clap = { version = "4.5.32", features = ["derive"] }
 urlencoding = "2.1.3"

@@ -20,7 +20,7 @@ sound = { path = "../../lib/sound" }
 editor = { path = "../editor", default-features = false }
 
 wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 rayon = "1.10.0"
 egui = { version = "0.30.0", default-features = false, features = ["serde"] }
 libloading = "0.8.6"

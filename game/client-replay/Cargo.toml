@@ -11,5 +11,5 @@ demo = { path = "../demo", features = ["recorder"] }
 game-interface = { path = "../game-interface" }
 
 rayon = "1.10.0"
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 egui = { version = "0.30.0", default-features = false, features = ["serde"] }

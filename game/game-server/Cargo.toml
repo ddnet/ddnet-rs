@@ -40,21 +40,21 @@ ddnet-accounts-shared = { version = "0.2.0" }
 ddnet-account-client-http-fs = { version = "0.3.0" }
 
 rayon = "1.10.0"
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 difference = "2.0"
 rand = { version = "0.8.5", features = ["std_rng"], default-features = false }
 x509-cert = { version = "0.2.5" }
 ed25519-dalek = { version = "2.1.1" }
-bincode = { version = "2.0.0-rc.3", features = ["serde"] }
-serde_json = "1.0.134"
-serde = { version = "1.0.217", features = ["derive"] }
-log = "0.4.22"
+bincode = { version = "2.0.1", features = ["serde"] }
+serde_json = "1.0.140"
+serde = { version = "1.0.219", features = ["derive"] }
+log = "0.4.26"
 thread-priority = "1.2.0"
-chrono = { version = "0.4.39", features = ["serde"] }
-async-trait = "0.1.83"
-rustc-hash = "2.1.0"
+chrono = { version = "0.4.40", features = ["serde"] }
+async-trait = "0.1.87"
+rustc-hash = "2.1.1"
 futures = "0.3.31"
-either = "1.13.0"
+either = "1.15.0"
 
 [features]
 legacy = ["map-convert-lib"]

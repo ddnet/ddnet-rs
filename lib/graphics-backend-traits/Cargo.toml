@@ -8,6 +8,6 @@ pool = { path = "../pool" }
 graphics-types = { path = "../graphics-types" }
 graphics-base-traits = { path = "../graphics-base-traits" }
 hiarc = { path = "../hiarc", features = ["derive"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-thiserror = "2.0.9"
-bitflags = { version = "2.6.0", features = ["serde"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+thiserror = "2.0.12"
+bitflags = { version = "2.9.0", features = ["serde"] }

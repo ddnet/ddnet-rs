@@ -11,18 +11,18 @@ bin-patch = { path = "../../lib/bin-patch" }
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }
 
-serde = { version = "1.0.217", features = ["derive"] }
-bincode = { features = ["serde"], version = "2.0.0-rc.3" }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }
+bincode = { features = ["serde"], version = "2.0.1" }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
 itertools = "0.13.0"
-log = "0.4.22"
+log = "0.4.26"
 
 # feature related
 base-io = { path = "../../lib/base-io", optional = true }
 
-tempfile = { version = "3.14.0", optional = true }
-chrono = { version = "0.4.39", features = ["serde"], optional = true }
+tempfile = { version = "3.18.0", optional = true }
+chrono = { version = "0.4.40", features = ["serde"], optional = true }
 
 [features]
 recorder = ["chrono", "tempfile", "base-io"]

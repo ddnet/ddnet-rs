@@ -12,9 +12,9 @@ ddnet-account-sql = { version = "0.3.0", default-features = false }
 # when updating to the next major version check if
 # https://github.com/launchbadge/sqlx/issues/3387 is fixed
 # and remove the workaround in the code
-sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "chrono"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-async-trait = "0.1.83"
+sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "chrono"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+async-trait = "0.1.87"
 parking_lot = "0.12.3"
 
 
@@ -22,7 +22,7 @@ parking_lot = "0.12.3"
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 
-tokio = { version = "1.42.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 
 [features]
 mysql = ["ddnet-account-sql/mysql", "sql/mysql", "game-database/mysql", "sqlx/mysql"]
