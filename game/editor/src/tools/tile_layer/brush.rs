@@ -177,8 +177,8 @@ impl TileBrush {
             pointer_down_world_pos: None,
             shift_pointer_down_world_pos: None,
 
-            brush_id_counter: ((rand::rngs::OsRng.next_u64() as u128) << 64)
-                + rand::rngs::OsRng.next_u64() as u128,
+            brush_id_counter: ((rand::rng().next_u64() as u128) << 64)
+                + rand::rng().next_u64() as u128,
         }
     }
 

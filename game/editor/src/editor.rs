@@ -29,7 +29,7 @@ use client_render_base::map::{
 };
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
-use egui::{pos2, vec2, FontDefinitions, InputState, Pos2, Rect};
+use egui::{pos2, vec2, FontDefinitions, InputState, OutputCommand, Pos2, Rect};
 use game_config::config::ConfigMap;
 use game_interface::types::game::GameTickType;
 use graphics::{
@@ -2661,11 +2661,14 @@ impl EditorInterface for Editor {
             }
         }
 
-        if !ui_output.copied_text.is_empty() {
-            log::info!(
-                "[Editor] Copied the following text: {}",
-                &ui_output.copied_text
-            );
+        if let Some(text) = ui_output.commands.iter().find_map(|c| {
+            if let OutputCommand::CopyText(t) = c {
+                Some(t)
+            } else {
+                None
+            }
+        }) {
+            log::info!("[Editor] Copied the following text: {}", text);
         }
 
         // handle save tasks

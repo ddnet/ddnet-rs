@@ -1,4 +1,4 @@
-use egui::{Button, Color32, Frame, Layout, Rect, Rounding, Shape};
+use egui::{Button, Color32, CornerRadius, Frame, Layout, Rect, Shape};
 use egui_extras::{Size, StripBuilder};
 
 use ui_base::{
@@ -74,7 +74,7 @@ fn render_nav(
                             bgsub_idx,
                             Shape::rect_filled(
                                 btn_rect,
-                                Rounding::default(),
+                                CornerRadius::default(),
                                 Color32::from_black_alpha(50),
                             ),
                         );
@@ -88,7 +88,7 @@ fn render_nav(
                         ui.painter().rect_filled(
                             Rect::from_center_size(offset, egui::vec2(4.0, btn.rect.height()))
                                 .translate(egui::vec2(-8.0, 0.0)),
-                            Rounding::default(),
+                            CornerRadius::default(),
                             Color32::LIGHT_BLUE,
                         );
                         let mut btn_rect = btn
@@ -109,7 +109,7 @@ fn render_nav(
                         );
                         ui.painter().set(
                             bg_idx,
-                            Shape::rect_filled(btn_rect, Rounding::default(), light_blue),
+                            Shape::rect_filled(btn_rect, CornerRadius::default(), light_blue),
                         );
                     }
                 };
@@ -199,50 +199,48 @@ pub fn render(
                 strip.empty();
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
-                    let res =
-                        Frame::default()
-                            .fill(bg_frame_color())
-                            .rounding(5.0)
-                            .show(ui, |ui| {
-                                add_vertical_margins(ui, |ui| {
-                                    ui.style_mut().wrap_mode = None;
-                                    render_nav(ui, pipe, &cur_sub, &cur_subsub);
-                                });
+                    let res = Frame::default()
+                        .fill(bg_frame_color())
+                        .corner_radius(5.0)
+                        .show(ui, |ui| {
+                            add_vertical_margins(ui, |ui| {
+                                ui.style_mut().wrap_mode = None;
+                                render_nav(ui, pipe, &cur_sub, &cur_subsub);
                             });
+                        });
                     ui_state.add_blur_rect(res.response.rect, 5.0);
                 });
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
-                    let res =
-                        Frame::default()
-                            .fill(bg_frame_color())
-                            .rounding(5.0)
-                            .show(ui, |ui| {
-                                add_margins(ui, |ui| {
-                                    ui.style_mut().wrap_mode = None;
-                                    match cur_sub.as_str() {
-                                        "Language" => {
-                                            super::language::main_frame::render(ui, pipe, ui_state);
-                                        }
-                                        "Player" => {
-                                            super::player::main_frame::render(ui, pipe, ui_state);
-                                        }
-                                        "Graphics" => {
-                                            super::graphics::main_frame::render(ui, pipe);
-                                        }
-                                        "Sound" => {
-                                            super::sound::main_frame::render(ui, pipe);
-                                        }
-                                        "\u{1f50d} Settings" => {
-                                            super::search_settings::main_frame::render(ui, pipe);
-                                        }
-                                        // general is default
-                                        _ => {
-                                            super::general::main_frame::render(ui, pipe, ui_state);
-                                        }
+                    let res = Frame::default()
+                        .fill(bg_frame_color())
+                        .corner_radius(5.0)
+                        .show(ui, |ui| {
+                            add_margins(ui, |ui| {
+                                ui.style_mut().wrap_mode = None;
+                                match cur_sub.as_str() {
+                                    "Language" => {
+                                        super::language::main_frame::render(ui, pipe, ui_state);
                                     }
-                                });
+                                    "Player" => {
+                                        super::player::main_frame::render(ui, pipe, ui_state);
+                                    }
+                                    "Graphics" => {
+                                        super::graphics::main_frame::render(ui, pipe);
+                                    }
+                                    "Sound" => {
+                                        super::sound::main_frame::render(ui, pipe);
+                                    }
+                                    "\u{1f50d} Settings" => {
+                                        super::search_settings::main_frame::render(ui, pipe);
+                                    }
+                                    // general is default
+                                    _ => {
+                                        super::general::main_frame::render(ui, pipe, ui_state);
+                                    }
+                                }
                             });
+                        });
                     ui_state.add_blur_rect(res.response.rect, 5.0);
                 });
                 strip.empty();

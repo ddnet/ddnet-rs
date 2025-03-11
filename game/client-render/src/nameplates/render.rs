@@ -88,7 +88,7 @@ impl NameplateRender {
                     let width_scale = size.x / w;
                     let height_scale = size.y / h;
                     let mut job = LayoutJob {
-                        round_output_size_to_nearest_ui_point: false,
+                        round_output_to_gui: false,
                         ..Default::default()
                     };
                     let font_size = (1.0 * name_scale) * height_scale;

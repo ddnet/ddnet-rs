@@ -1,7 +1,7 @@
 use std::{collections::hash_map::Entry, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Color32, ComboBox, Grid, Label, Layout, Rounding, ScrollArea, Slider};
+use egui::{Color32, ComboBox, CornerRadius, Grid, Label, Layout, ScrollArea, Slider};
 use game_config::config::{ConfigSpatialChat, ConfigSpatialChatPerPlayerOptions};
 use game_interface::types::player_info::PlayerUniqueId;
 use ui_base::types::UiRenderPipe;
@@ -298,19 +298,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     rect.set_height(15.0);
                     let mut ui_rect = rect;
                     ui.painter()
-                        .rect_filled(ui_rect, Rounding::default(), Color32::GREEN);
+                        .rect_filled(ui_rect, CornerRadius::default(), Color32::GREEN);
                     ui_rect.set_width(ui_rect.width() * gate_open_ratio as f32);
                     ui.painter()
-                        .rect_filled(ui_rect, Rounding::default(), Color32::YELLOW);
+                        .rect_filled(ui_rect, CornerRadius::default(), Color32::YELLOW);
                     let mut ui_rect = rect;
                     ui_rect.set_width(ui_rect.width() * gate_close_ratio as f32);
                     ui.painter()
-                        .rect_filled(ui_rect, Rounding::default(), Color32::RED);
+                        .rect_filled(ui_rect, CornerRadius::default(), Color32::RED);
                     let mut ui_rect = rect;
                     ui_rect.set_width(ui_rect.width() * loudest_ratio as f32);
                     ui.painter().rect_filled(
                         ui_rect,
-                        Rounding::default(),
+                        CornerRadius::default(),
                         Color32::from_white_alpha(150),
                     );
                     ui.end_row();

@@ -33,13 +33,14 @@ impl Prepared {
     /// Paint the frame.
     ///
     /// This can be called before or after [`Self::allocate_space`].
-    pub fn paint(self, ui: &Ui, content_rect: Rect) {
-        let paint_rect = content_rect + self.frame.inner_margin;
+    pub fn paint(self, ui: &Ui) -> Rect {
+        let paint_rect = self.content_ui.min_rect();
 
         if ui.is_rect_visible(paint_rect) {
             let shape = self.frame.paint(paint_rect);
             ui.painter().set(self.where_to_put_background, shape);
         }
+        paint_rect
     }
 }
 

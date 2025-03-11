@@ -40,8 +40,8 @@ pub fn render(
     let res = Frame::default()
         .fill(bg_color)
         .shadow(Shadow {
-            blur: 10.0,
-            spread: 5.0,
+            blur: 10,
+            spread: 5,
             color: ui.style().visuals.window_shadow.color,
             ..Default::default()
         })

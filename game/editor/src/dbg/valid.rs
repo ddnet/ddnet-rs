@@ -48,13 +48,13 @@ use crate::{
 
 fn move_group_valid(map: &EditorMap) -> Vec<EditorAction> {
     let mut old_is_background = false;
-    let new_is_background = rand::rngs::OsRng.next_u64() % 2 == 0;
+    let new_is_background = rand::rng().next_u64() % 2 == 0;
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
     } else if !map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         old_is_background = true;
     } else if !map.groups.background.is_empty() && !map.groups.foreground.is_empty() {
-        old_is_background = rand::rngs::OsRng.next_u64() % 2 == 0;
+        old_is_background = rand::rng().next_u64() % 2 == 0;
     }
 
     let old_groups = if old_is_background {
@@ -68,8 +68,8 @@ fn move_group_valid(map: &EditorMap) -> Vec<EditorAction> {
         &map.groups.foreground
     };
 
-    let old_group = rand::rngs::OsRng.next_u64() as usize % old_groups.len();
-    let new_group = rand::rngs::OsRng.next_u64() as usize % (new_groups.len() + 1);
+    let old_group = rand::rng().next_u64() as usize % old_groups.len();
+    let new_group = rand::rng().next_u64() as usize % (new_groups.len() + 1);
     let sub_group = if old_is_background == new_is_background && old_group <= new_group {
         1
     } else {
@@ -93,8 +93,8 @@ fn move_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
         old_is_background = true;
         new_is_background = true;
     } else if !map.groups.background.is_empty() && !map.groups.foreground.is_empty() {
-        old_is_background = rand::rngs::OsRng.next_u64() % 2 == 0;
-        new_is_background = rand::rngs::OsRng.next_u64() % 2 == 0;
+        old_is_background = rand::rng().next_u64() % 2 == 0;
+        new_is_background = rand::rng().next_u64() % 2 == 0;
     }
 
     if map.groups.background.iter().any(|g| !g.layers.is_empty())
@@ -128,17 +128,17 @@ fn move_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
             .enumerate()
             .filter(|(_, g)| !g.layers.is_empty())
             .collect::<Vec<_>>();
-        let group_index = rand::rngs::OsRng.next_u64() as usize % groups.len();
+        let group_index = rand::rng().next_u64() as usize % groups.len();
 
         groups[group_index].0
     };
-    let new_group = rand::rngs::OsRng.next_u64() as usize % new_groups.len();
+    let new_group = rand::rng().next_u64() as usize % new_groups.len();
 
     let old_group_ref = &old_groups[old_group];
     let new_group_ref = &new_groups[new_group];
 
-    let old_layer = rand::rngs::OsRng.next_u64() as usize % old_group_ref.layers.len();
-    let new_layer = rand::rngs::OsRng.next_u64() as usize % (new_group_ref.layers.len() + 1);
+    let old_layer = rand::rng().next_u64() as usize % old_group_ref.layers.len();
+    let new_layer = rand::rng().next_u64() as usize % (new_group_ref.layers.len() + 1);
     let new_layer_sub = if old_is_background == new_is_background
         && old_group == new_group
         && old_layer <= new_layer
@@ -196,7 +196,7 @@ fn add_img_valid(map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::AddImage(ActAddImage {
         base: ActAddRemImage {
             res: MapResourceRef {
-                name: format!("dbg{}", rand::rngs::OsRng.next_u64())
+                name: format!("dbg{}", rand::rng().next_u64())
                     .as_str()
                     .try_into()
                     .unwrap(),
@@ -207,7 +207,7 @@ fn add_img_valid(map: &EditorMap) -> Vec<EditorAction> {
                 hq_meta: None,
             },
             file: VALID_PNG.to_vec(),
-            index: rand::rngs::OsRng.next_u64() as usize % (map.resources.images.len() + 1),
+            index: rand::rng().next_u64() as usize % (map.resources.images.len() + 1),
         },
     })]
 }
@@ -216,7 +216,7 @@ fn add_img_2d_array_valid(map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::AddImage2dArray(ActAddImage2dArray {
         base: ActAddRemImage {
             res: MapResourceRef {
-                name: format!("dbg{}", rand::rngs::OsRng.next_u64())
+                name: format!("dbg{}", rand::rng().next_u64())
                     .as_str()
                     .try_into()
                     .unwrap(),
@@ -227,7 +227,7 @@ fn add_img_2d_array_valid(map: &EditorMap) -> Vec<EditorAction> {
                 hq_meta: None,
             },
             file: VALID_PNG.to_vec(),
-            index: rand::rngs::OsRng.next_u64() as usize % (map.resources.image_arrays.len() + 1),
+            index: rand::rng().next_u64() as usize % (map.resources.image_arrays.len() + 1),
         },
     })]
 }
@@ -237,7 +237,7 @@ fn rem_img_valid(map: &EditorMap) -> Vec<EditorAction> {
     if res.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % res.len();
+    let index = rand::rng().next_u64() as usize % res.len();
     let mut actions = vec![];
 
     for (is_background, group_index, layer_index, layer) in map
@@ -301,7 +301,7 @@ fn rem_img_2d_array_valid(map: &EditorMap) -> Vec<EditorAction> {
     if res.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % res.len();
+    let index = rand::rng().next_u64() as usize % res.len();
     let mut actions = vec![];
 
     for (is_background, group_index, layer_index, layer) in map
@@ -376,7 +376,7 @@ fn layer_change_image_index_valid(map: &EditorMap) -> Vec<EditorAction> {
                     EditorLayer::Tile(layer) => {
                         (!map.resources.image_arrays.is_empty()).then(|| {
                             (true, g, l, layer.layer.attr.image_array, {
-                                let index = rand::rngs::OsRng.next_u64() as usize
+                                let index = rand::rng().next_u64() as usize
                                     % (map.resources.image_arrays.len() + 1);
                                 (index != map.resources.image_arrays.len()).then_some(index)
                             })
@@ -384,8 +384,8 @@ fn layer_change_image_index_valid(map: &EditorMap) -> Vec<EditorAction> {
                     }
                     EditorLayer::Quad(layer) => (!map.resources.images.is_empty()).then(|| {
                         (true, g, l, layer.layer.attr.image, {
-                            let index = rand::rngs::OsRng.next_u64() as usize
-                                % (map.resources.images.len() + 1);
+                            let index =
+                                rand::rng().next_u64() as usize % (map.resources.images.len() + 1);
                             (index != map.resources.images.len()).then_some(index)
                         })
                     }),
@@ -408,7 +408,7 @@ fn layer_change_image_index_valid(map: &EditorMap) -> Vec<EditorAction> {
                             EditorLayer::Tile(layer) => (!map.resources.image_arrays.is_empty())
                                 .then(|| {
                                     (false, g, l, layer.layer.attr.image_array, {
-                                        let index = rand::rngs::OsRng.next_u64() as usize
+                                        let index = rand::rng().next_u64() as usize
                                             % (map.resources.image_arrays.len() + 1);
                                         (index != map.resources.image_arrays.len()).then_some(index)
                                     })
@@ -416,7 +416,7 @@ fn layer_change_image_index_valid(map: &EditorMap) -> Vec<EditorAction> {
                             EditorLayer::Quad(layer) => {
                                 (!map.resources.images.is_empty()).then(|| {
                                     (false, g, l, layer.layer.attr.image, {
-                                        let index = rand::rngs::OsRng.next_u64() as usize
+                                        let index = rand::rng().next_u64() as usize
                                             % (map.resources.images.len() + 1);
                                         (index != map.resources.images.len()).then_some(index)
                                     })
@@ -432,7 +432,7 @@ fn layer_change_image_index_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let (is_background, group_index, layer_index, old_index, new_index) =
-        valid_layers[rand::rngs::OsRng.next_u64() as usize % valid_layers.len()];
+        valid_layers[rand::rng().next_u64() as usize % valid_layers.len()];
     vec![EditorAction::LayerChangeImageIndex(
         ActLayerChangeImageIndex {
             is_background,
@@ -461,8 +461,8 @@ fn layer_change_sound_index_valid(map: &EditorMap) -> Vec<EditorAction> {
                     EditorLayer::Quad(_) => None,
                     EditorLayer::Sound(layer) => (!map.resources.sounds.is_empty()).then(|| {
                         (true, g, l, layer.layer.attr.sound, {
-                            let index = rand::rngs::OsRng.next_u64() as usize
-                                % (map.resources.sounds.len() + 1);
+                            let index =
+                                rand::rng().next_u64() as usize % (map.resources.sounds.len() + 1);
                             (index != map.resources.sounds.len()).then_some(index)
                         })
                     }),
@@ -486,7 +486,7 @@ fn layer_change_sound_index_valid(map: &EditorMap) -> Vec<EditorAction> {
                             EditorLayer::Sound(layer) => {
                                 (!map.resources.sounds.is_empty()).then(|| {
                                     (false, g, l, layer.layer.attr.sound, {
-                                        let index = rand::rngs::OsRng.next_u64() as usize
+                                        let index = rand::rng().next_u64() as usize
                                             % (map.resources.sounds.len() + 1);
                                         (index != map.resources.sounds.len()).then_some(index)
                                     })
@@ -501,7 +501,7 @@ fn layer_change_sound_index_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let (is_background, group_index, layer_index, old_index, new_index) =
-        valid_layers[rand::rngs::OsRng.next_u64() as usize % valid_layers.len()];
+        valid_layers[rand::rng().next_u64() as usize % valid_layers.len()];
     vec![EditorAction::LayerChangeSoundIndex(
         ActLayerChangeSoundIndex {
             is_background,
@@ -556,7 +556,7 @@ pub(crate) fn quad_layer_add_quads_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let (is_background, group_index, layer_index) =
-        valid_layers[rand::rngs::OsRng.next_u64() as usize % valid_layers.len()];
+        valid_layers[rand::rng().next_u64() as usize % valid_layers.len()];
     let EditorLayer::Quad(layer) = &if is_background {
         &map.groups.background
     } else {
@@ -571,25 +571,24 @@ pub(crate) fn quad_layer_add_quads_valid(map: &EditorMap) -> Vec<EditorAction> {
             is_background,
             group_index,
             layer_index,
-            index: rand::rngs::OsRng.next_u64() as usize % (layer.layer.quads.len() + 1),
+            index: rand::rng().next_u64() as usize % (layer.layer.quads.len() + 1),
             quads: {
                 let mut res = vec![];
 
-                for _ in 0..(rand::rngs::OsRng.next_u64() % 100) + 1 {
+                for _ in 0..(rand::rng().next_u64() % 100) + 1 {
                     res.push(Quad {
-                        color_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                        color_anim: if rand::rng().next_u64() % 2 == 0 {
                             None
                         } else {
                             (!map.animations.color.is_empty()).then(|| {
-                                rand::rngs::OsRng.next_u64() as usize % map.animations.color.len()
+                                rand::rng().next_u64() as usize % map.animations.color.len()
                             })
                         },
-                        pos_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                        pos_anim: if rand::rng().next_u64() % 2 == 0 {
                             None
                         } else {
-                            (!map.animations.pos.is_empty()).then(|| {
-                                rand::rngs::OsRng.next_u64() as usize % map.animations.pos.len()
-                            })
+                            (!map.animations.pos.is_empty())
+                                .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
                         },
                         ..Default::default()
                     })
@@ -644,7 +643,7 @@ pub(crate) fn sound_layer_add_sounds_valid(map: &EditorMap) -> Vec<EditorAction>
         return Default::default();
     }
     let (is_background, group_index, layer_index) =
-        valid_layers[rand::rngs::OsRng.next_u64() as usize % valid_layers.len()];
+        valid_layers[rand::rng().next_u64() as usize % valid_layers.len()];
     let EditorLayer::Sound(layer) = &if is_background {
         &map.groups.background
     } else {
@@ -659,30 +658,29 @@ pub(crate) fn sound_layer_add_sounds_valid(map: &EditorMap) -> Vec<EditorAction>
             is_background,
             group_index,
             layer_index,
-            index: rand::rngs::OsRng.next_u64() as usize % (layer.layer.sounds.len() + 1),
+            index: rand::rng().next_u64() as usize % (layer.layer.sounds.len() + 1),
             sounds: {
                 let mut res = vec![];
 
-                for _ in 0..(rand::rngs::OsRng.next_u64() % 100) + 1 {
+                for _ in 0..(rand::rng().next_u64() % 100) + 1 {
                     res.push(Sound {
                         pos: Default::default(),
                         looped: Default::default(),
                         panning: Default::default(),
                         time_delay: Default::default(),
                         falloff: Default::default(),
-                        pos_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                        pos_anim: if rand::rng().next_u64() % 2 == 0 {
                             None
                         } else {
-                            (!map.animations.pos.is_empty()).then(|| {
-                                rand::rngs::OsRng.next_u64() as usize % map.animations.pos.len()
-                            })
+                            (!map.animations.pos.is_empty())
+                                .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
                         },
                         pos_anim_offset: Default::default(),
-                        sound_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                        sound_anim: if rand::rng().next_u64() % 2 == 0 {
                             None
                         } else {
                             (!map.animations.sound.is_empty()).then(|| {
-                                rand::rngs::OsRng.next_u64() as usize % map.animations.sound.len()
+                                rand::rng().next_u64() as usize % map.animations.sound.len()
                             })
                         },
                         sound_anim_offset: Default::default(),
@@ -745,7 +743,7 @@ fn quad_layer_rem_quads_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let (is_background, group_index, layer_index) =
-        valid_layers[rand::rngs::OsRng.next_u64() as usize % valid_layers.len()];
+        valid_layers[rand::rng().next_u64() as usize % valid_layers.len()];
     let EditorLayer::Quad(layer) = &if is_background {
         &map.groups.background
     } else {
@@ -755,9 +753,9 @@ fn quad_layer_rem_quads_valid(map: &EditorMap) -> Vec<EditorAction> {
     else {
         panic!("not a quad layer, check above calculation.")
     };
-    let index = rand::rngs::OsRng.next_u64() as usize % layer.layer.quads.len();
+    let index = rand::rng().next_u64() as usize % layer.layer.quads.len();
     let quads = &layer.layer.quads[index..];
-    let len = (rand::rngs::OsRng.next_u64() as usize % quads.len()) + 1;
+    let len = (rand::rng().next_u64() as usize % quads.len()) + 1;
     let quads = &quads[0..len];
     vec![EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads {
         base: ActQuadLayerAddRemQuads {
@@ -817,7 +815,7 @@ fn sound_layer_rem_sounds_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
     let (is_background, group_index, layer_index) =
-        valid_layers[rand::rngs::OsRng.next_u64() as usize % valid_layers.len()];
+        valid_layers[rand::rng().next_u64() as usize % valid_layers.len()];
     let EditorLayer::Sound(layer) = &if is_background {
         &map.groups.background
     } else {
@@ -827,9 +825,9 @@ fn sound_layer_rem_sounds_valid(map: &EditorMap) -> Vec<EditorAction> {
     else {
         panic!("not a sound layer, check above calculation.")
     };
-    let index = rand::rngs::OsRng.next_u64() as usize % layer.layer.sounds.len();
+    let index = rand::rng().next_u64() as usize % layer.layer.sounds.len();
     let sounds = &layer.layer.sounds[index..];
-    let len = (rand::rngs::OsRng.next_u64() as usize % sounds.len()) + 1;
+    let len = (rand::rng().next_u64() as usize % sounds.len()) + 1;
     let sounds = &sounds[0..len];
     vec![EditorAction::SoundLayerRemSounds(ActSoundLayerRemSounds {
         base: ActSoundLayerAddRemSounds {
@@ -858,9 +856,9 @@ pub(crate) fn add_tile_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
             } else {
                 &map.groups.foreground
             }[act.old_group];
-            let index = rand::rngs::OsRng.next_u64() as usize % (group.layers.len() + 1);
-            let w = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) + 1;
-            let h = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) + 1;
+            let index = rand::rng().next_u64() as usize % (group.layers.len() + 1);
+            let w = (rand::rng().next_u64() % u8::MAX as u64) + 1;
+            let h = (rand::rng().next_u64() % u8::MAX as u64) + 1;
             EditorAction::AddTileLayer(ActAddTileLayer {
                 base: ActAddRemTileLayer {
                     is_background: act.old_is_background,
@@ -872,20 +870,19 @@ pub(crate) fn add_tile_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                             height: (h as u16).try_into().unwrap(),
                             color: Default::default(),
                             high_detail: Default::default(),
-                            color_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                            color_anim: if rand::rng().next_u64() % 2 == 0 {
                                 None
                             } else {
                                 (!map.animations.color.is_empty()).then(|| {
-                                    rand::rngs::OsRng.next_u64() as usize
-                                        % map.animations.color.len()
+                                    rand::rng().next_u64() as usize % map.animations.color.len()
                                 })
                             },
                             color_anim_offset: Default::default(),
-                            image_array: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                            image_array: if rand::rng().next_u64() % 2 == 0 {
                                 None
                             } else {
                                 (!map.resources.image_arrays.is_empty()).then(|| {
-                                    rand::rngs::OsRng.next_u64() as usize
+                                    rand::rng().next_u64() as usize
                                         % map.resources.image_arrays.len()
                                 })
                             },
@@ -916,7 +913,7 @@ pub(crate) fn add_quad_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
             } else {
                 &map.groups.foreground
             }[act.old_group];
-            let index = rand::rngs::OsRng.next_u64() as usize % (group.layers.len() + 1);
+            let index = rand::rng().next_u64() as usize % (group.layers.len() + 1);
             EditorAction::AddQuadLayer(ActAddQuadLayer {
                 base: ActAddRemQuadLayer {
                     is_background: act.old_is_background,
@@ -924,12 +921,11 @@ pub(crate) fn add_quad_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                     index,
                     layer: MapLayerQuad {
                         attr: MapLayerQuadsAttrs {
-                            image: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                            image: if rand::rng().next_u64() % 2 == 0 {
                                 None
                             } else {
                                 (!map.resources.images.is_empty()).then(|| {
-                                    rand::rngs::OsRng.next_u64() as usize
-                                        % map.resources.images.len()
+                                    rand::rng().next_u64() as usize % map.resources.images.len()
                                 })
                             },
                             high_detail: Default::default(),
@@ -960,7 +956,7 @@ pub fn add_sound_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
             } else {
                 &map.groups.foreground
             }[act.old_group];
-            let index = rand::rngs::OsRng.next_u64() as usize % (group.layers.len() + 1);
+            let index = rand::rng().next_u64() as usize % (group.layers.len() + 1);
             EditorAction::AddSoundLayer(ActAddSoundLayer {
                 base: ActAddRemSoundLayer {
                     is_background: act.old_is_background,
@@ -968,12 +964,11 @@ pub fn add_sound_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                     index,
                     layer: MapLayerSound {
                         attr: MapLayerSoundAttrs {
-                            sound: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                            sound: if rand::rng().next_u64() % 2 == 0 {
                                 None
                             } else {
                                 (!map.resources.sounds.is_empty()).then(|| {
-                                    rand::rngs::OsRng.next_u64() as usize
-                                        % map.resources.sounds.len()
+                                    rand::rng().next_u64() as usize % map.resources.sounds.len()
                                 })
                             },
                             high_detail: Default::default(),
@@ -1059,12 +1054,12 @@ fn add_physics_tile_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
     if valid_indices.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % valid_indices.len();
+    let index = rand::rng().next_u64() as usize % valid_indices.len();
     let insert_layer = valid_indices[index].0;
     let len = map.groups.physics.attr.width.get() as usize
         * map.groups.physics.attr.height.get() as usize;
 
-    let index = rand::rngs::OsRng.next_u64() as usize % (map.groups.physics.layers.len() + 1);
+    let index = rand::rng().next_u64() as usize % (map.groups.physics.layers.len() + 1);
     vec![EditorAction::AddPhysicsTileLayer(ActAddPhysicsTileLayer {
         base: ActAddRemPhysicsTileLayer {
             index,
@@ -1111,7 +1106,7 @@ fn rem_physics_tile_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
     if valid_layers.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % valid_layers.len();
+    let index = rand::rng().next_u64() as usize % valid_layers.len();
     let layer = valid_layers[index].1;
     let index = valid_layers[index].0;
     vec![EditorAction::RemPhysicsTileLayer(ActRemPhysicsTileLayer {
@@ -1165,7 +1160,7 @@ fn tile_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> {
         return Default::default();
     }
 
-    let index = rand::rngs::OsRng.next_u64() as usize % valid_layers.len();
+    let index = rand::rng().next_u64() as usize % valid_layers.len();
     let (is_background, group_index, layer_index, layer) = valid_layers[index];
 
     let old_tiles = layer.layer.tiles.clone();
@@ -1173,10 +1168,9 @@ fn tile_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> {
         .iter()
         .copied()
         .map(|mut t| {
-            t.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
-            t.flags = TileFlags::from_bits_truncate(
-                (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
-            );
+            t.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
+            t.flags =
+                TileFlags::from_bits_truncate((rand::rng().next_u64() % u8::MAX as u64) as u8);
             t
         })
         .collect();
@@ -1199,7 +1193,7 @@ fn tile_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let index = rand::rngs::OsRng.next_u64() as usize % map.groups.physics.layers.len();
+    let index = rand::rng().next_u64() as usize % map.groups.physics.layers.len();
     let layer = &map.groups.physics.layers[index];
 
     let (old_tiles, new_tiles) = match layer {
@@ -1215,9 +1209,9 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
                     .clone()
                     .into_iter()
                     .map(|mut t| {
-                        t.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t.flags = TileFlags::from_bits_truncate(
-                            (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
+                            (rand::rng().next_u64() % u8::MAX as u64) as u8,
                         );
                         t
                     })
@@ -1233,9 +1227,9 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
                     .clone()
                     .into_iter()
                     .map(|mut t| {
-                        t.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t.flags = TileFlags::from_bits_truncate(
-                            (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
+                            (rand::rng().next_u64() % u8::MAX as u64) as u8,
                         );
                         t
                     })
@@ -1252,11 +1246,11 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
                     .clone()
                     .into_iter()
                     .map(|mut t| {
-                        t.base.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.base.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t.base.flags = TileFlags::from_bits_truncate(
-                            (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
+                            (rand::rng().next_u64() % u8::MAX as u64) as u8,
                         );
-                        t.number = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.number = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t
                     })
                     .collect(),
@@ -1271,13 +1265,13 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
                     .clone()
                     .into_iter()
                     .map(|mut t| {
-                        t.base.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.base.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t.base.flags = TileFlags::from_bits_truncate(
-                            (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
+                            (rand::rng().next_u64() % u8::MAX as u64) as u8,
                         );
-                        t.angle = (rand::rngs::OsRng.next_u64() % u16::MAX as u64) as i16;
-                        t.force = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
-                        t.max_speed = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.angle = (rand::rng().next_u64() % u16::MAX as u64) as i16;
+                        t.force = (rand::rng().next_u64() % u8::MAX as u64) as u8;
+                        t.max_speed = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t
                     })
                     .collect(),
@@ -1293,12 +1287,12 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
                     .clone()
                     .into_iter()
                     .map(|mut t| {
-                        t.base.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.base.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t.base.flags = TileFlags::from_bits_truncate(
-                            (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
+                            (rand::rng().next_u64() % u8::MAX as u64) as u8,
                         );
-                        t.delay = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
-                        t.number = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.delay = (rand::rng().next_u64() % u8::MAX as u64) as u8;
+                        t.number = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t
                     })
                     .collect(),
@@ -1314,11 +1308,11 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
                     .clone()
                     .into_iter()
                     .map(|mut t| {
-                        t.base.index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.base.index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t.base.flags = TileFlags::from_bits_truncate(
-                            (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8,
+                            (rand::rng().next_u64() % u8::MAX as u64) as u8,
                         );
-                        t.number = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+                        t.number = (rand::rng().next_u64() % u8::MAX as u64) as u8;
                         t
                     })
                     .collect(),
@@ -1342,7 +1336,7 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
 }
 
 fn add_group_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let is_background = (rand::rngs::OsRng.next_u64() % 2) == 0;
+    let is_background = (rand::rng().next_u64() % 2) == 0;
 
     let groups = if is_background {
         &map.groups.background
@@ -1350,7 +1344,7 @@ fn add_group_valid(map: &EditorMap) -> Vec<EditorAction> {
         &map.groups.foreground
     };
 
-    let index = rand::rngs::OsRng.next_u64() as usize % (groups.len() + 1);
+    let index = rand::rng().next_u64() as usize % (groups.len() + 1);
 
     vec![EditorAction::AddGroup(ActAddGroup {
         base: ActAddRemGroup {
@@ -1370,7 +1364,7 @@ fn add_group_valid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn rem_group_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let mut is_background = (rand::rngs::OsRng.next_u64() % 2) == 0;
+    let mut is_background = (rand::rng().next_u64() % 2) == 0;
 
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
@@ -1386,7 +1380,7 @@ fn rem_group_valid(map: &EditorMap) -> Vec<EditorAction> {
         &map.groups.foreground
     };
 
-    let index = rand::rngs::OsRng.next_u64() as usize % groups.len();
+    let index = rand::rng().next_u64() as usize % groups.len();
 
     vec![EditorAction::RemGroup(ActRemGroup {
         base: ActAddRemGroup {
@@ -1398,7 +1392,7 @@ fn rem_group_valid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn change_group_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let mut is_background = (rand::rngs::OsRng.next_u64() % 2) == 0;
+    let mut is_background = (rand::rng().next_u64() % 2) == 0;
 
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
@@ -1414,7 +1408,7 @@ fn change_group_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
         &map.groups.foreground
     };
 
-    let index = rand::rngs::OsRng.next_u64() as usize % groups.len();
+    let index = rand::rng().next_u64() as usize % groups.len();
     let group = &groups[index];
 
     vec![EditorAction::ChangeGroupAttr(ActChangeGroupAttr {
@@ -1429,7 +1423,7 @@ fn change_group_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
     })]
 }
 fn change_group_name_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let mut is_background = (rand::rngs::OsRng.next_u64() % 2) == 0;
+    let mut is_background = (rand::rng().next_u64() % 2) == 0;
 
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
@@ -1445,20 +1439,20 @@ fn change_group_name_valid(map: &EditorMap) -> Vec<EditorAction> {
         &map.groups.foreground
     };
 
-    let index = rand::rngs::OsRng.next_u64() as usize % groups.len();
+    let index = rand::rng().next_u64() as usize % groups.len();
     let group = &groups[index];
 
     vec![EditorAction::ChangeGroupName(ActChangeGroupName {
         is_background,
         group_index: index,
         old_name: group.name.clone(),
-        new_name: format!("{}", rand::rngs::OsRng.next_u64()),
+        new_name: format!("{}", rand::rng().next_u64()),
     })]
 }
 
 fn change_physics_group_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let w = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) + 1;
-    let h = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) + 1;
+    let w = (rand::rng().next_u64() % u8::MAX as u64) + 1;
+    let h = (rand::rng().next_u64() % u8::MAX as u64) + 1;
     let len = w as usize * h as usize;
     let (old_layer_tiles, new_layer_tiles) = map
         .groups
@@ -1530,8 +1524,8 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
             match layer {
                 EditorLayer::Abritrary(_) => None,
                 EditorLayer::Tile(layer) => {
-                    let w = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) + 1;
-                    let h = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) + 1;
+                    let w = (rand::rng().next_u64() % u8::MAX as u64) + 1;
+                    let h = (rand::rng().next_u64() % u8::MAX as u64) + 1;
                     let len = w as usize * h as usize;
                     Some(EditorAction::ChangeTileLayerDesignAttr(
                         ActChangeTileLayerDesignAttr {
@@ -1544,20 +1538,19 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                                 height: (h as u16).try_into().unwrap(),
                                 color: Default::default(),
                                 high_detail: Default::default(),
-                                color_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                                color_anim: if rand::rng().next_u64() % 2 == 0 {
                                     None
                                 } else {
                                     (!map.animations.color.is_empty()).then(|| {
-                                        rand::rngs::OsRng.next_u64() as usize
-                                            % map.animations.color.len()
+                                        rand::rng().next_u64() as usize % map.animations.color.len()
                                     })
                                 },
                                 color_anim_offset: Default::default(),
-                                image_array: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                                image_array: if rand::rng().next_u64() % 2 == 0 {
                                     None
                                 } else {
                                     (!map.resources.image_arrays.is_empty()).then(|| {
-                                        rand::rngs::OsRng.next_u64() as usize
+                                        rand::rng().next_u64() as usize
                                             % map.resources.image_arrays.len()
                                     })
                                 },
@@ -1574,12 +1567,11 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                         layer_index: act.old_layer,
                         old_attr: layer.layer.attr,
                         new_attr: MapLayerQuadsAttrs {
-                            image: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                            image: if rand::rng().next_u64() % 2 == 0 {
                                 None
                             } else {
                                 (!map.resources.images.is_empty()).then(|| {
-                                    rand::rngs::OsRng.next_u64() as usize
-                                        % map.resources.images.len()
+                                    rand::rng().next_u64() as usize % map.resources.images.len()
                                 })
                             },
                             high_detail: Default::default(),
@@ -1593,12 +1585,11 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                         layer_index: act.old_layer,
                         old_attr: layer.layer.attr,
                         new_attr: MapLayerSoundAttrs {
-                            sound: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+                            sound: if rand::rng().next_u64() % 2 == 0 {
                                 None
                             } else {
                                 (!map.resources.sounds.is_empty()).then(|| {
-                                    rand::rngs::OsRng.next_u64() as usize
-                                        % map.resources.sounds.len()
+                                    rand::rng().next_u64() as usize % map.resources.sounds.len()
                                 })
                             },
                             high_detail: Default::default(),
@@ -1632,7 +1623,7 @@ fn change_design_layer_name_valid(map: &EditorMap) -> Vec<EditorAction> {
                 group_index: act.old_group,
                 layer_index: act.old_layer,
                 old_name: layer.name().to_string(),
-                new_name: format!("{}", rand::rngs::OsRng.next_u64()),
+                new_name: format!("{}", rand::rng().next_u64()),
             })
         })
         .into_iter()
@@ -1665,10 +1656,10 @@ pub(crate) fn change_quad_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
     if valid_layers.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % valid_layers.len();
+    let index = rand::rng().next_u64() as usize % valid_layers.len();
     let (is_background, group_index, layer_index, layer) = valid_layers[index];
 
-    let index = rand::rngs::OsRng.next_u64() as usize % layer.layer.quads.len();
+    let index = rand::rng().next_u64() as usize % layer.layer.quads.len();
     let quad = layer.layer.quads[index];
 
     vec![EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
@@ -1681,18 +1672,18 @@ pub(crate) fn change_quad_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
             points: Default::default(),
             colors: Default::default(),
             tex_coords: Default::default(),
-            pos_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+            pos_anim: if rand::rng().next_u64() % 2 == 0 {
                 None
             } else {
                 (!map.animations.pos.is_empty())
-                    .then(|| rand::rngs::OsRng.next_u64() as usize % map.animations.pos.len())
+                    .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
             },
             pos_anim_offset: Default::default(),
-            color_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+            color_anim: if rand::rng().next_u64() % 2 == 0 {
                 None
             } else {
                 (!map.animations.color.is_empty())
-                    .then(|| rand::rngs::OsRng.next_u64() as usize % map.animations.color.len())
+                    .then(|| rand::rng().next_u64() as usize % map.animations.color.len())
             },
             color_anim_offset: Default::default(),
         },
@@ -1722,10 +1713,10 @@ pub(crate) fn change_sound_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
     if valid_layers.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % valid_layers.len();
+    let index = rand::rng().next_u64() as usize % valid_layers.len();
     let (is_background, group_index, layer_index, layer) = valid_layers[index];
 
-    let index = rand::rngs::OsRng.next_u64() as usize % layer.layer.sounds.len();
+    let index = rand::rng().next_u64() as usize % layer.layer.sounds.len();
     let sound = layer.layer.sounds[index];
 
     vec![EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
@@ -1740,18 +1731,18 @@ pub(crate) fn change_sound_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
             panning: Default::default(),
             time_delay: Default::default(),
             falloff: Default::default(),
-            pos_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+            pos_anim: if rand::rng().next_u64() % 2 == 0 {
                 None
             } else {
                 (!map.animations.pos.is_empty())
-                    .then(|| rand::rngs::OsRng.next_u64() as usize % map.animations.pos.len())
+                    .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
             },
             pos_anim_offset: Default::default(),
-            sound_anim: if rand::rngs::OsRng.next_u64() % 2 == 0 {
+            sound_anim: if rand::rng().next_u64() % 2 == 0 {
                 None
             } else {
                 (!map.animations.sound.is_empty())
-                    .then(|| rand::rngs::OsRng.next_u64() as usize % map.animations.sound.len())
+                    .then(|| rand::rng().next_u64() as usize % map.animations.sound.len())
             },
             sound_anim_offset: Default::default(),
             shape: SoundShape::Circle {
@@ -1771,7 +1762,7 @@ fn change_teleport_valid(map: &EditorMap) -> Vec<EditorAction> {
     }) else {
         return Default::default();
     };
-    let index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+    let index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
     vec![EditorAction::ChangeTeleporter(ActChangeTeleporter {
         index,
         old_name: layer
@@ -1793,7 +1784,7 @@ fn change_switch_valid(map: &EditorMap) -> Vec<EditorAction> {
     }) else {
         return Default::default();
     };
-    let index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+    let index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
     vec![EditorAction::ChangeSwitch(ActChangeSwitch {
         index,
         old_name: layer
@@ -1815,7 +1806,7 @@ fn change_tune_zone_valid(map: &EditorMap) -> Vec<EditorAction> {
     }) else {
         return Default::default();
     };
-    let index = (rand::rngs::OsRng.next_u64() % u8::MAX as u64) as u8;
+    let index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
     vec![EditorAction::ChangeTuneZone(ActChangeTuneZone {
         index,
         old_name: layer
@@ -1836,7 +1827,7 @@ fn change_tune_zone_valid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn add_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let index = rand::rngs::OsRng.next_u64() as usize % (map.animations.pos.len() + 1);
+    let index = rand::rng().next_u64() as usize % (map.animations.pos.len() + 1);
     vec![EditorAction::AddPosAnim(ActAddPosAnim {
         base: ActAddRemPosAnim {
             index,
@@ -1852,7 +1843,7 @@ fn repl_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     if map.animations.pos.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % map.animations.pos.len();
+    let index = rand::rng().next_u64() as usize % map.animations.pos.len();
     vec![EditorAction::ReplPosAnim(ActReplPosAnim {
         base: ActAddRemPosAnim {
             index,
@@ -1869,12 +1860,12 @@ fn rem_pos_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     if anims.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % anims.len();
+    let index = rand::rng().next_u64() as usize % anims.len();
     rem_pos_anim(anims, &map.groups, index)
 }
 
 fn add_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let index = rand::rngs::OsRng.next_u64() as usize % (map.animations.color.len() + 1);
+    let index = rand::rng().next_u64() as usize % (map.animations.color.len() + 1);
     vec![EditorAction::AddColorAnim(ActAddColorAnim {
         base: ActAddRemColorAnim {
             index,
@@ -1890,7 +1881,7 @@ fn repl_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     if map.animations.color.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % map.animations.color.len();
+    let index = rand::rng().next_u64() as usize % map.animations.color.len();
     vec![EditorAction::ReplColorAnim(ActReplColorAnim {
         base: ActAddRemColorAnim {
             index,
@@ -1907,12 +1898,12 @@ fn rem_color_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     if anims.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % anims.len();
+    let index = rand::rng().next_u64() as usize % anims.len();
     rem_color_anim(anims, &map.groups, index)
 }
 
 fn add_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let index = rand::rngs::OsRng.next_u64() as usize % (map.animations.sound.len() + 1);
+    let index = rand::rng().next_u64() as usize % (map.animations.sound.len() + 1);
     vec![EditorAction::AddSoundAnim(ActAddSoundAnim {
         base: ActAddRemSoundAnim {
             index,
@@ -1928,7 +1919,7 @@ fn repl_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     if map.animations.sound.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % map.animations.sound.len();
+    let index = rand::rng().next_u64() as usize % map.animations.sound.len();
     vec![EditorAction::ReplSoundAnim(ActReplSoundAnim {
         base: ActAddRemSoundAnim {
             index,
@@ -1945,7 +1936,7 @@ fn rem_sound_anim_valid(map: &EditorMap) -> Vec<EditorAction> {
     if anims.is_empty() {
         return Default::default();
     }
-    let index = rand::rngs::OsRng.next_u64() as usize % anims.len();
+    let index = rand::rng().next_u64() as usize % anims.len();
     rem_sound_anim(anims, &map.groups, index)
 }
 
@@ -1955,10 +1946,10 @@ fn set_commands_valid(map: &EditorMap) -> Vec<EditorAction> {
         new_commands: {
             let mut cmds: LinkedHashMap<_, _> = Default::default();
 
-            for _ in 0..rand::rngs::OsRng.next_u64() % 20 {
+            for _ in 0..rand::rng().next_u64() % 20 {
                 cmds.insert(
-                    format!("{}", rand::rngs::OsRng.next_u64()),
-                    format!("{}", rand::rngs::OsRng.next_u64()),
+                    format!("{}", rand::rng().next_u64()),
+                    format!("{}", rand::rng().next_u64()),
                 );
             }
 
@@ -1974,8 +1965,8 @@ fn set_metadata_valid(map: &EditorMap) -> Vec<EditorAction> {
             authors: {
                 let mut s: Vec<_> = Default::default();
 
-                for _ in 0..rand::rngs::OsRng.next_u64() % 5 {
-                    s.push(format!("{}", rand::rngs::OsRng.next_u64()));
+                for _ in 0..rand::rng().next_u64() % 5 {
+                    s.push(format!("{}", rand::rng().next_u64()));
                 }
 
                 s
@@ -1983,15 +1974,15 @@ fn set_metadata_valid(map: &EditorMap) -> Vec<EditorAction> {
             licenses: {
                 let mut s: Vec<_> = Default::default();
 
-                for _ in 0..rand::rngs::OsRng.next_u64() % 5 {
-                    s.push(format!("{}", rand::rngs::OsRng.next_u64()));
+                for _ in 0..rand::rng().next_u64() % 5 {
+                    s.push(format!("{}", rand::rng().next_u64()));
                 }
 
                 s
             },
-            version: format!("{}", rand::rngs::OsRng.next_u64()),
-            credits: format!("{}", rand::rngs::OsRng.next_u64()),
-            memo: format!("{}", rand::rngs::OsRng.next_u64()),
+            version: format!("{}", rand::rng().next_u64()),
+            credits: format!("{}", rand::rng().next_u64()),
+            memo: format!("{}", rand::rng().next_u64()),
         },
     })]
 }
@@ -2000,7 +1991,7 @@ pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
     // must match the last value in the `match` + 1
     const TOTAL_ACTIONS: u64 = 46;
     loop {
-        match match rand::rngs::OsRng.next_u64() % TOTAL_ACTIONS {
+        match match rand::rng().next_u64() % TOTAL_ACTIONS {
             0 => move_group_valid(map),
             1 => move_layer_valid(map),
             2 => add_img_valid(map),

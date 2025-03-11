@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use config::types::ConfRgb;
-use egui::{Color32, ComboBox, DragValue, Layout, Rounding, TextEdit, Window};
+use egui::{Color32, ComboBox, CornerRadius, DragValue, Layout, TextEdit, Window};
 use egui_extras::{Size, StripBuilder};
 use game_config::config::ConfigDummyScreenAnchor;
 use game_interface::types::render::character::PlayerIngameMode;
@@ -20,7 +20,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
 
     ui.painter().rect_filled(
         frame_rect,
-        Rounding::default(),
+        CornerRadius::default(),
         Color32::from_black_alpha(75),
     );
     ui_state.add_blur_rect(frame_rect, 0.0);

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use client_containers::container::ContainerKey;
 use egui::{
-    pos2, vec2, Align2, Color32, FontId, Frame, Grid, Rect, RichText, Rounding, Shadow, Stroke,
+    pos2, vec2, Align2, Color32, CornerRadius, FontId, Frame, Grid, Rect, RichText, Shadow, Stroke,
     UiBuilder,
 };
 use game_interface::{types::render::character::TeeEye, votes::Voted};
@@ -43,11 +43,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             .stroke(Stroke::NONE)
             .shadow(Shadow {
                 color: style.visuals.window_shadow.color,
-                spread: style.spacing.item_spacing.y / 2.0,
-                blur: 5.0,
+                spread: (style.spacing.item_spacing.y / 2.0) as u8,
+                blur: 5,
                 ..Default::default()
             })
-            .rounding(5.0)
+            .corner_radius(5.0)
             .inner_margin(get_margin(ui))
             .show(ui, |ui| {
                 ui.set_min_width(vote_rect.width());
@@ -94,7 +94,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     );
                     ui.painter().rect_filled(
                         rect,
-                        Rounding::same(5.0),
+                        CornerRadius::same(5),
                         Color32::from_black_alpha(50),
                     );
 
@@ -107,9 +107,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         let rect = Rect::from_center_size(at, vec2(no_size, VOTE_BAR_HEIGHT));
                         ui.painter().rect_filled(
                             rect,
-                            Rounding {
-                                ne: 5.0,
-                                se: 5.0,
+                            CornerRadius {
+                                ne: 5,
+                                se: 5,
                                 ..Default::default()
                             },
                             Color32::RED,
@@ -133,9 +133,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         let rect = Rect::from_center_size(at, vec2(yes_size, VOTE_BAR_HEIGHT));
                         ui.painter().rect_filled(
                             rect,
-                            Rounding {
-                                nw: 5.0,
-                                sw: 5.0,
+                            CornerRadius {
+                                nw: 5,
+                                sw: 5,
                                 ..Default::default()
                             },
                             Color32::GREEN,
@@ -258,8 +258,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                         center,
                                         egui::vec2(width * scale, height * scale),
                                     ),
-                                    0.0,
+                                    0,
                                     Stroke::new(2.0, Color32::GRAY),
+                                    egui::StrokeKind::Inside,
                                 );
 
                                 ui.add_space(8.0);
@@ -338,8 +339,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                             rect.set_height(miniscreen_height);
                             rect = rect.expand2(egui::vec2(0.0, -10.0));
 
-                            ui.painter()
-                                .rect_stroke(rect, 0.0, Stroke::new(2.0, Color32::GRAY));
+                            ui.painter().rect_stroke(
+                                rect,
+                                0.0,
+                                Stroke::new(2.0, Color32::GRAY),
+                                egui::StrokeKind::Inside,
+                            );
 
                             ui.add_space(miniscreen_height);
                             ui.style_mut().spacing.item_spacing.y = spacing_y;

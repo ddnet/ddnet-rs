@@ -28,6 +28,6 @@ map = { path = "../map" }
 
 num-traits = "0.2.19"
 rayon = "1.10.0"
-egui = { version = "0.30.0", default-features = false, features = ["serde"] }
+egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 url = { version = "2.5.4", features = ["serde"] }

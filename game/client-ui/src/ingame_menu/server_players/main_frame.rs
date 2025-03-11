@@ -18,7 +18,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
         .collect();
     let res = Frame::default()
         .fill(bg_frame_color())
-        .rounding(5.0)
+        .corner_radius(5.0)
         .inner_margin(get_margin(ui))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());

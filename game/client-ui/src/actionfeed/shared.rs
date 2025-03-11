@@ -9,8 +9,8 @@ pub fn entry_frame(ui: &mut egui::Ui, f: impl FnOnce(&mut egui::Ui)) {
         .stroke(Stroke::NONE)
         .shadow(Shadow {
             color: style.visuals.window_shadow.color,
-            spread: style.spacing.item_spacing.y / 2.0,
-            blur: 5.0,
+            spread: (style.spacing.item_spacing.y / 2.0) as u8,
+            blur: 5,
             ..Default::default()
         })
         .show(ui, f);

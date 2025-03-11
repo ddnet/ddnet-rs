@@ -429,7 +429,7 @@ impl AutoMapperInterface for TileLayerAutoMapperEditorRule {
                                 || (!must_spawn && new_tile.index != 0))
                         {
                             let mut r = rand::rngs::StdRng::seed_from_u64(seed);
-                            let rand_val: u32 = rand::Rng::gen_range(&mut r, 1..=u32::MAX);
+                            let rand_val: u32 = rand::Rng::random_range(&mut r, 1..=u32::MAX);
                             if run_tile.randomness.is_none()
                                 || run_tile.randomness.is_some_and(|val| rand_val <= val.get())
                             {

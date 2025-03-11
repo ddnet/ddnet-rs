@@ -447,7 +447,12 @@ fn pixel_test_strokes(ui: &mut Ui) {
                 Pos2::new(cursor_pixel.x, cursor_pixel.y),
                 Vec2::splat(size as f32),
             );
-            painter.rect_stroke(rect_points / pixels_per_point, 0.0, stroke);
+            painter.rect_stroke(
+                rect_points / pixels_per_point,
+                0.0,
+                stroke,
+                egui::StrokeKind::Inside,
+            );
             cursor_pixel.x += (1 + size) as f32 + thickness_pixels * 2.0;
         }
     }
@@ -681,7 +686,7 @@ impl UiPageInterface<Config> for ColorTest {
         _pipe: &mut ui_base::types::UiRenderPipe<Config>,
         _ui_state: &mut ui_base::types::UiState,
     ) {
-        Frame::none().fill(Color32::BLACK).show(ui, |ui| {
+        Frame::NONE.fill(Color32::BLACK).show(ui, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
                 self.ui(ui);
             });

@@ -42,7 +42,7 @@ ddnet-account-client-http-fs = { version = "0.3.0" }
 rayon = "1.10.0"
 anyhow = { version = "1.0.97", features = ["backtrace"] }
 difference = "2.0"
-rand = { version = "0.8.5", features = ["std_rng"], default-features = false }
+rand = { version = "0.9.0", features = ["thread_rng"], default-features = false }
 x509-cert = { version = "0.2.5" }
 ed25519-dalek = { version = "2.1.1" }
 bincode = { version = "2.0.1", features = ["serde"] }

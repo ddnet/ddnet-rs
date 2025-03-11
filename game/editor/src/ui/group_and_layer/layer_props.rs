@@ -612,7 +612,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             let mut seed = layer
                                 .user
                                 .auto_mapper_seed
-                                .unwrap_or_else(|| rand::rngs::OsRng.next_u64());
+                                .unwrap_or_else(|| rand::rng().next_u64());
                             ui.add(DragValue::new(&mut seed));
                             layer.user.auto_mapper_seed = Some(seed);
                             ui.end_row();

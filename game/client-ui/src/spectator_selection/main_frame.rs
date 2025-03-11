@@ -23,7 +23,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     let res = Window::new("")
         .resizable(false)
         .title_bar(false)
-        .frame(Frame::default().fill(bg_frame_color()).rounding(5.0))
+        .frame(Frame::default().fill(bg_frame_color()).corner_radius(5.0))
         .anchor(Align2::CENTER_CENTER, Vec2::new(0.0, 0.0))
         .fixed_size(vec2(300.0, 400.0))
         .show(ui.ctx(), |ui| {

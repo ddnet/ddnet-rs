@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 
-use egui::{Color32, FontDefinitions, Pos2, Rect, Rounding};
+use egui::{Color32, CornerRadius, FontDefinitions, Pos2, Rect};
 use serde::{Deserialize, Serialize};
 
 use crate::custom_callback::CustomCallbackTrait;
@@ -22,12 +22,12 @@ impl<'a, U: 'a> UiRenderPipe<'a, U> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlurRect {
     pub rect: Rect,
-    pub rounding: Rounding,
+    pub rounding: CornerRadius,
     pub color: Color32,
 }
 
 impl BlurRect {
-    pub fn new(rect: Rect, rounding: impl Into<Rounding>) -> Self {
+    pub fn new(rect: Rect, rounding: impl Into<CornerRadius>) -> Self {
         Self {
             rect,
             rounding: rounding.into(),
@@ -102,7 +102,7 @@ impl UiState {
         });
     }
 
-    pub fn add_blur_rect(&mut self, rect: Rect, rounding: impl Into<Rounding>) {
+    pub fn add_blur_rect(&mut self, rect: Rect, rounding: impl Into<CornerRadius>) {
         self.blur_shapes
             .push(BlurShape::Rect(BlurRect::new(rect, rounding)));
     }

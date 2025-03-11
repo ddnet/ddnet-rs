@@ -33,7 +33,7 @@ pub fn render(
                     } else {
                         bg_frame_color()
                     })
-                    .rounding(5.0)
+                    .corner_radius(5.0)
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
                             let visual_rect = ui.available_rect_before_wrap();

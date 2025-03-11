@@ -160,10 +160,10 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
                                         Color32::from_rgba_unmultiplied(140, 140, 140, 15),
                                         Color32::from_rgb(180, 180, 255),
                                         Color32::from_rgb(255, 255, 255),
-                                        Margin::symmetric(5.0, 5.0),
+                                        Margin::symmetric(5, 5),
                                         Shadow {
-                                            blur: 10.0,
-                                            spread: 1.0,
+                                            blur: 10,
+                                            spread: 1,
                                             color: shadow_color,
                                             ..Default::default()
                                         },
@@ -177,7 +177,7 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
                                         } else {
                                             Color32::DARK_GRAY
                                         },
-                                        Margin::symmetric(5.0, 5.0),
+                                        Margin::symmetric(5, 5),
                                         Shadow::NONE,
                                     )
                                 };
@@ -207,7 +207,7 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
                             }
                             let label = Frame::default()
                                 .fill(bg_color_text)
-                                .rounding(5.0)
+                                .corner_radius(5.0)
                                 .inner_margin(margin)
                                 .shadow(shadow)
                                 .show(ui, |ui| {
@@ -294,8 +294,8 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                 },
             ),
             |ui| {
-                Frame::none()
-                    .rounding(5.0)
+                Frame::NONE
+                    .corner_radius(5.0)
                     .fill(bg_frame_color())
                     .show(ui, |ui| {
                         add_margins(ui, |ui| {

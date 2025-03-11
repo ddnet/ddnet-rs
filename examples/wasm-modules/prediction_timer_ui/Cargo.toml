@@ -23,9 +23,9 @@ game-interface = { path = "../../../game/game-interface" }
 prediction-timer = { path = "../../../game/prediction-timer" }
 
 bincode = { version = "2.0.1", features = ["serde"] }
-egui = { version = "0.30.0", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.30.0" }
-egui_plot = { version = "0.30.0" }
+egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui_extras = { version = "0.31.1" }
+egui_plot = { version = "0.31.0" }
 
 [lib]
 crate-type = ["cdylib"]

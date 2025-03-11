@@ -33,7 +33,7 @@ impl Rcon {
             .unwrap_or_default();
 
         let mut rcon_secret: [u8; 32] = Default::default();
-        rand::rngs::OsRng.fill(&mut rcon_secret);
+        rand::rng().fill(&mut rcon_secret);
         Rcon { auths, rcon_secret }
     }
 

@@ -156,7 +156,7 @@ pub fn render(
                                 ui.style_mut().wrap_mode = None;
                                 let res = Frame::default()
                                     .fill(bg_frame_color())
-                                    .rounding(5.0)
+                                    .corner_radius(5.0)
                                     .show(ui, |ui| {
                                         add_margins(ui, |ui| {
                                             render_profile(ui, pipe, ui_state, is_ingame_ui);

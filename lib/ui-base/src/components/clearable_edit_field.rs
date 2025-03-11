@@ -1,4 +1,4 @@
-use egui::{vec2, Button, FontId, Layout, Margin, Response, Rounding, Stroke, TextEdit};
+use egui::{vec2, Button, CornerRadius, FontId, Layout, Margin, Response, Stroke, TextEdit};
 use egui_extras::{Size, StripBuilder};
 
 pub fn clearable_edit_field(
@@ -9,7 +9,7 @@ pub fn clearable_edit_field(
 ) -> Option<Response> {
     let address = text;
     let style = ui.style_mut();
-    let rounding = &style.visuals.widgets.inactive.rounding;
+    let rounding = &style.visuals.widgets.inactive.corner_radius;
     let rounding = rounding.ne.max(rounding.nw);
     style.spacing.item_spacing = vec2(0.0, 0.0);
     let mut res = None;
@@ -34,31 +34,32 @@ pub fn clearable_edit_field(
                                 let style = ui.style_mut();
                                 style.visuals.selection.stroke = Stroke::NONE;
                                 let widgets = &mut style.visuals.widgets;
-                                widgets.inactive.rounding = Rounding {
+                                widgets.inactive.corner_radius = CornerRadius {
                                     nw: rounding,
                                     sw: rounding,
                                     ..Default::default()
                                 };
                                 widgets.inactive.expansion = 0.0;
                                 widgets.inactive.bg_stroke = Stroke::NONE;
-                                widgets.active.rounding = widgets.inactive.rounding;
+                                widgets.active.corner_radius = widgets.inactive.corner_radius;
                                 widgets.active.expansion = widgets.inactive.expansion;
                                 widgets.active.bg_stroke = widgets.inactive.bg_stroke;
-                                widgets.hovered.rounding = widgets.inactive.rounding;
+                                widgets.hovered.corner_radius = widgets.inactive.corner_radius;
                                 widgets.hovered.expansion = widgets.inactive.expansion;
                                 widgets.hovered.bg_stroke = widgets.inactive.bg_stroke;
-                                widgets.noninteractive.rounding = widgets.inactive.rounding;
+                                widgets.noninteractive.corner_radius =
+                                    widgets.inactive.corner_radius;
                                 widgets.noninteractive.expansion = widgets.inactive.expansion;
                                 widgets.noninteractive.bg_stroke = widgets.inactive.bg_stroke;
-                                widgets.open.rounding = widgets.inactive.rounding;
+                                widgets.open.corner_radius = widgets.inactive.corner_radius;
                                 widgets.open.expansion = widgets.inactive.expansion;
                                 widgets.open.bg_stroke = widgets.inactive.bg_stroke;
                                 ui.add(
                                     TextEdit::singleline(address)
                                         .margin(Margin {
-                                            left: 3.0,
-                                            right: 3.0,
-                                            top: 3.0,
+                                            left: 3,
+                                            right: 3,
+                                            top: 3,
                                             ..Margin::ZERO
                                         })
                                         .font(FontId::proportional(10.0))
@@ -73,18 +74,18 @@ pub fn clearable_edit_field(
                     ui.style_mut().wrap_mode = None;
                     let style = ui.style_mut();
                     let widgets = &mut style.visuals.widgets;
-                    widgets.inactive.rounding = Rounding {
+                    widgets.inactive.corner_radius = CornerRadius {
                         ne: rounding,
                         se: rounding,
                         ..Default::default()
                     };
-                    widgets.active.rounding = widgets.inactive.rounding;
+                    widgets.active.corner_radius = widgets.inactive.corner_radius;
                     widgets.active.expansion = widgets.inactive.expansion;
-                    widgets.hovered.rounding = widgets.inactive.rounding;
+                    widgets.hovered.corner_radius = widgets.inactive.corner_radius;
                     widgets.hovered.expansion = widgets.inactive.expansion;
-                    widgets.noninteractive.rounding = widgets.inactive.rounding;
+                    widgets.noninteractive.corner_radius = widgets.inactive.corner_radius;
                     widgets.noninteractive.expansion = widgets.inactive.expansion;
-                    widgets.open.rounding = widgets.inactive.rounding;
+                    widgets.open.corner_radius = widgets.inactive.corner_radius;
                     widgets.noninteractive.expansion = widgets.inactive.expansion;
                     if ui
                         .add(Button::new("\u{f00d}").stroke(Stroke::NONE))

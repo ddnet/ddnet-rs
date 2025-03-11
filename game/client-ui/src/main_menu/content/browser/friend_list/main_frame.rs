@@ -12,7 +12,7 @@ use crate::main_menu::user_data::UserData;
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let res = Frame::default()
         .fill(bg_frame_color())
-        .rounding(5.0)
+        .corner_radius(5.0)
         .show(ui, |ui| {
             let item_spacing = ui.style().spacing.item_spacing.x;
             StripBuilder::new(ui)

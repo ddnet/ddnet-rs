@@ -107,6 +107,7 @@ fn render_tile_picker(
                             ),
                             0.0,
                             Stroke::new(STROKE_SIZE, Color32::RED),
+                            egui::StrokeKind::Inside,
                         );
                     }
 
@@ -294,6 +295,7 @@ fn render_grid(
                             ),
                             0.0,
                             Stroke::new(stroke_width, color),
+                            egui::StrokeKind::Inside,
                         );
                     }
 
@@ -324,7 +326,7 @@ fn render_op_list(
     Frame::default()
         .fill(Color32::from_black_alpha(50))
         .inner_margin(5.0)
-        .rounding(5.0)
+        .corner_radius(5.0)
         .show(ui, |ui| {
             ui.label("Negate the check");
             ui.checkbox(negate, "");
@@ -359,6 +361,7 @@ fn render_op_list(
                     Rect::from_min_size(pos_min, egui::vec2(ROW_HEIGHT, ROW_HEIGHT)),
                     0.0,
                     Stroke::new(2.0, Color32::RED),
+                    egui::StrokeKind::Inside,
                 );
             }
         });
@@ -468,7 +471,7 @@ pub fn render(pipe: &mut UiRenderPipe<UserData>, ui: &mut egui::Ui, ui_state: &m
                     .map(|path| path.to_path_buf())
                 {
                     match mode {
-                        DialogMode::SelectFile => {
+                        DialogMode::PickFile => {
                             match auto_mapper.file_dialog_ty {
                                 FileDialogTy::LoadResource => {
                                     // add rule to loading tasks

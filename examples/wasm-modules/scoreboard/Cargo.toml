@@ -23,8 +23,8 @@ client-containers = { path = "../../../game/client-containers" }
 vanilla = { path = "../../../game/vanilla" }
 game-interface = { path = "../../../game/game-interface" }
 bincode = { version = "2.0.1", features = ["serde"] }
-egui = { version = "0.30.0", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.30.0" }
+egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui_extras = { version = "0.31.1" }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 
 [lib]

@@ -47,7 +47,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     Frame::default()
                                         .fill(Color32::from_black_alpha(150))
                                         .inner_margin(10.0)
-                                        .rounding(5.0)
+                                        .corner_radius(5.0)
                                         .show(ui, |ui| {
                                             ui.label(author);
                                             ui.colored_label(Color32::WHITE, msg);

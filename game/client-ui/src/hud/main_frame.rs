@@ -2,7 +2,7 @@ use std::{borrow::Borrow, time::Duration};
 
 use base::duration_ext::DurationToRaceStr;
 use egui::{
-    Align2, Color32, FontId, Frame, Layout, Margin, Rect, RichText, Rounding, UiBuilder, Vec2,
+    Align2, Color32, CornerRadius, FontId, Frame, Layout, Margin, Rect, RichText, UiBuilder, Vec2,
     Window,
 };
 
@@ -99,28 +99,28 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     let color_a =
         |color: Color32, a: u8| Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), a);
 
-    const ROUNDING: f32 = 5.0;
-    const MARGIN: f32 = 2.5;
+    const ROUNDING: u8 = 5;
+    const MARGIN: i8 = 3;
     let (max_height, rounding) = if is_game_over.is_some() {
-        (40.0, Rounding::same(ROUNDING))
+        (40.0, CornerRadius::same(ROUNDING))
     } else {
         match pipe.user_data.game {
             Some(GameRenderInfo::Match {
                 standings: MatchStandings::Solo { .. },
                 ..
-            }) => (60.0, Rounding::same(0.0)),
+            }) => (60.0, CornerRadius::same(0)),
             Some(GameRenderInfo::Match {
                 standings: MatchStandings::Sided { .. },
                 ..
             }) => (
                 40.0,
-                Rounding {
+                CornerRadius {
                     ne: ROUNDING,
                     nw: ROUNDING,
                     ..Default::default()
                 },
             ),
-            Some(GameRenderInfo::Race { .. }) | None => (25.0, Rounding::same(ROUNDING)),
+            Some(GameRenderInfo::Race { .. }) | None => (25.0, CornerRadius::same(ROUNDING)),
         }
     };
 
@@ -145,13 +145,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                        flag: Option<FlagType>,
                                        left: bool| {
                     let rounding = if left {
-                        Rounding {
+                        CornerRadius {
                             sw: ROUNDING,
                             nw: ROUNDING,
                             ..Default::default()
                         }
                     } else {
-                        Rounding {
+                        CornerRadius {
                             ne: ROUNDING,
                             se: ROUNDING,
                             ..Default::default()
@@ -164,7 +164,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     ui.style_mut().spacing.item_spacing.y = 0.0;
                     ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
                         Frame::default()
-                            .rounding(rounding)
+                            .corner_radius(rounding)
                             .fill(color_a(Color32::BLACK, 50))
                             .inner_margin(Margin::same(MARGIN))
                             .show(ui, |ui| {
@@ -299,9 +299,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                     UiBuilder::default().max_rect(
                                         rect.translate(egui::vec2(
                                             0.0,
-                                            rect.height() + 2.0 * MARGIN,
+                                            rect.height() + 2.0 * MARGIN as f32,
                                         ))
-                                        .expand(MARGIN),
+                                        .expand(MARGIN as f32),
                                     ),
                                     |ui| {
                                         StripBuilder::new(ui)
@@ -311,9 +311,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                             .horizontal(|mut strip| {
                                                 strip.cell(|ui| {
                                                     ui.style_mut().wrap_mode = None;
-                                                    Frame::none()
+                                                    Frame::NONE
                                                         .fill(color_a(Color32::RED, 150))
-                                                        .rounding(Rounding {
+                                                        .corner_radius(CornerRadius {
                                                             sw: ROUNDING,
                                                             ..Default::default()
                                                         })
@@ -326,9 +326,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                                 });
                                                 strip.cell(|ui| {
                                                     ui.style_mut().wrap_mode = None;
-                                                    Frame::none()
+                                                    Frame::NONE
                                                         .fill(color_a(Color32::BLUE, 150))
-                                                        .rounding(Rounding {
+                                                        .corner_radius(CornerRadius {
                                                             se: ROUNDING,
                                                             ..Default::default()
                                                         })
@@ -385,7 +385,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     let res = Window::new("")
         .resizable(false)
         .title_bar(false)
-        .frame(Frame::none())
+        .frame(Frame::NONE)
         .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 5.0))
         .max_height(max_height)
         .show(ui.ctx(), |ui| {
@@ -400,17 +400,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         let rendered = render_side(pipe, ui, ui_state, Side::Left);
 
                         let mut frame = Frame::default()
-                            .rounding(rounding)
+                            .corner_radius(rounding)
                             .inner_margin(Margin::same(MARGIN))
                             .fill(color_a(Color32::BLACK, 50))
                             .begin_better(ui);
 
                         if rendered {
-                            frame.frame.rounding.nw = 0.0;
-                            frame.frame.rounding.sw = 0.0;
+                            frame.frame.corner_radius.nw = 0;
+                            frame.frame.corner_radius.sw = 0;
                         }
 
-                        let rect = if let Some(is_game_over) = is_game_over {
+                        if let Some(is_game_over) = is_game_over {
                             match is_game_over {
                                 MatchRoundGameOverWinner::Characters(chars) => {
                                     ui.horizontal(|ui| {
@@ -476,9 +476,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                                 );
                                             }
                                         }
-                                    })
-                                    .response
-                                    .rect
+                                    });
                                 }
                                 MatchRoundGameOverWinner::Side(side) => {
                                     ui.label(
@@ -490,38 +488,31 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                             }
                                         ))
                                         .color(Color32::WHITE),
-                                    )
-                                    .rect
+                                    );
                                 }
                                 MatchRoundGameOverWinner::SideNamed(name) => {
                                     ui.label(
                                         RichText::new(format!("{} wins!", name.as_str()))
                                             .color(Color32::WHITE),
-                                    )
-                                    .rect
+                                    );
                                 }
                             }
                         } else {
-                            frame
-                                .content_ui
-                                .label(
-                                    RichText::new(time_str)
-                                        .font(FontId::proportional(20.0))
-                                        .color(time_str_color),
-                                )
-                                .rect
+                            frame.content_ui.label(
+                                RichText::new(time_str)
+                                    .font(FontId::proportional(20.0))
+                                    .color(time_str_color),
+                            );
                         };
 
                         frame.allocate_space(ui);
                         let rendered = render_side(pipe, ui, ui_state, Side::Right);
 
                         if rendered {
-                            frame.frame.rounding.ne = 0.0;
-                            frame.frame.rounding.se = 0.0;
+                            frame.frame.corner_radius.ne = 0;
+                            frame.frame.corner_radius.se = 0;
                         }
-                        frame.paint(ui, rect);
-
-                        rect
+                        frame.paint(ui)
                     },
                 )
                 .inner;
