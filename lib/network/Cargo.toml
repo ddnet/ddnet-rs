@@ -7,7 +7,7 @@ edition = "2021"
 base = { path = "../base" }
 pool = { path = "../pool" }
 
-quinn = { git = "https://github.com/Jupeyy/quinn", rev = "1d71f49f0efbbdd9b0e84ada8d23daf556125a48", default-features = false, features = ["runtime-tokio", "rustls", "ring"] }
+quinn = { git = "https://github.com/Jupeyy/quinn", rev = "b5faeaf10c188b47c70a09168ff7bfd3aaad2843", default-features = false, features = ["runtime-tokio", "rustls", "ring"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 rcgen = { version = "0.13.2" }
 x509-cert = { version = "0.2.5" }

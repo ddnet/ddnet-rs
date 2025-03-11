@@ -735,7 +735,7 @@ dependencies = [
  "bytes",
  "form_urlencoded",
  "futures-util",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.6.0",
@@ -767,7 +767,7 @@ checksum = "df1362f362fd16024ae199c1970ce98f9661bf5ef94b9808fee734bc3698b733"
 dependencies = [
  "bytes",
  "futures-util",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body 1.0.1",
  "http-body-util",
  "mime",
@@ -851,7 +851,7 @@ dependencies = [
  "base-io",
  "base-io-traits",
  "bytes",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body-util",
  "log",
  "reqwest",
@@ -4450,8 +4450,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a49c392881ce6d5c3b8cb70f98717b7c07aabbdff06687b9030dbfbe2725f8"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi 0.13.3+wasi-0.2.2",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
@@ -4670,7 +4672,7 @@ dependencies = [
  "fnv",
  "futures-core",
  "futures-sink",
- "http 1.2.0",
+ "http 1.3.0",
  "indexmap 2.8.0",
  "slab",
  "tokio",
@@ -4904,9 +4906,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f16ca2af56261c99fba8bac40a10251ce8188205a4c448fbb745a2e4daa76fea"
+checksum = "0a761d192fbf18bdef69f5ceedd0d1333afcbda0ee23840373b8317570d23c65"
 dependencies = [
  "bytes",
  "fnv",
@@ -4943,18 +4945,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1efedce1fb8e6913f23e0c92de8e62cd5b772a67e7b3946df930a62566c93184"
 dependencies = [
  "bytes",
- "http 1.2.0",
+ "http 1.3.0",
 ]
 
 [[package]]
 name = "http-body-util"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793429d76616a256bcb62c2a2ec2bed781c8307e797e2598c50010f2bee2544f"
+checksum = "b021d93e26becf5dc7e1b75b1bed1fd93124b374ceb73f43d4d4eafec896a64a"
 dependencies = [
  "bytes",
- "futures-util",
- "http 1.2.0",
+ "futures-core",
+ "http 1.3.0",
  "http-body 1.0.1",
  "pin-project-lite",
 ]
@@ -5048,7 +5050,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "h2 0.4.8",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body 1.0.1",
  "httparse",
  "httpdate",
@@ -5066,7 +5068,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d191583f3da1305256f22463b9bb0471acad48a4e534a5218b9963e9c1f59b2"
 dependencies = [
  "futures-util",
- "http 1.2.0",
+ "http 1.3.0",
  "hyper 1.6.0",
  "hyper-util",
  "rustls",
@@ -5102,7 +5104,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body 1.0.1",
  "hyper 1.6.0",
  "pin-project-lite",
@@ -5723,9 +5725,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.170"
+version = "0.2.171"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "875b3680cb2f8f71bdcf9a30f38d48282f5d3c95cbf9b3fa57269bb5d5c06828"
+checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
 
 [[package]]
 name = "libdeflate-sys"
@@ -7758,7 +7760,7 @@ dependencies = [
  "bytes",
  "pin-project-lite",
  "quinn-proto 0.11.9",
- "quinn-udp 0.5.10",
+ "quinn-udp 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 2.1.1",
  "rustls",
  "socket2",
@@ -7770,18 +7772,20 @@ dependencies = [
 [[package]]
 name = "quinn"
 version = "0.11.7"
-source = "git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48#1d71f49f0efbbdd9b0e84ada8d23daf556125a48"
+source = "git+https://github.com/Jupeyy/quinn?rev=b5faeaf10c188b47c70a09168ff7bfd3aaad2843#b5faeaf10c188b47c70a09168ff7bfd3aaad2843"
 dependencies = [
  "bytes",
+ "cfg_aliases",
  "pin-project-lite",
  "quinn-proto 0.11.10",
- "quinn-udp 0.5.9",
+ "quinn-udp 0.5.10 (git+https://github.com/Jupeyy/quinn?rev=b5faeaf10c188b47c70a09168ff7bfd3aaad2843)",
  "rustc-hash 2.1.1",
  "rustls",
  "socket2",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
+ "web-time",
 ]
 
 [[package]]
@@ -7807,11 +7811,11 @@ dependencies = [
 [[package]]
 name = "quinn-proto"
 version = "0.11.10"
-source = "git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48#1d71f49f0efbbdd9b0e84ada8d23daf556125a48"
+source = "git+https://github.com/Jupeyy/quinn?rev=b5faeaf10c188b47c70a09168ff7bfd3aaad2843#b5faeaf10c188b47c70a09168ff7bfd3aaad2843"
 dependencies = [
  "bytes",
- "getrandom 0.2.15",
- "rand 0.8.5",
+ "getrandom 0.3.1",
+ "rand 0.9.0",
  "ring",
  "rustc-hash 2.1.1",
  "rustls",
@@ -7825,8 +7829,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-udp"
-version = "0.5.9"
-source = "git+https://github.com/Jupeyy/quinn?rev=1d71f49f0efbbdd9b0e84ada8d23daf556125a48#1d71f49f0efbbdd9b0e84ada8d23daf556125a48"
+version = "0.5.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e46f3055866785f6b92bc6164b76be02ca8f2eb4b002c0354b28cf4c119e5944"
 dependencies = [
  "cfg_aliases",
  "libc",
@@ -7839,8 +7844,7 @@ dependencies = [
 [[package]]
 name = "quinn-udp"
 version = "0.5.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e46f3055866785f6b92bc6164b76be02ca8f2eb4b002c0354b28cf4c119e5944"
+source = "git+https://github.com/Jupeyy/quinn?rev=b5faeaf10c188b47c70a09168ff7bfd3aaad2843#b5faeaf10c188b47c70a09168ff7bfd3aaad2843"
 dependencies = [
  "cfg_aliases",
  "libc",
@@ -8180,7 +8184,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2 0.4.8",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.6.0",
@@ -10076,7 +10080,7 @@ dependencies = [
  "bitflags 2.9.0",
  "bytes",
  "futures-util",
- "http 1.2.0",
+ "http 1.3.0",
  "http-body 1.0.1",
  "http-body-util",
  "http-range-header",
@@ -10344,7 +10348,7 @@ checksum = "4793cb5e56680ecbb1d843515b23b6de9a75eb04b66643e256a396d43be33c13"
 dependencies = [
  "bytes",
  "data-encoding",
- "http 1.2.0",
+ "http 1.3.0",
  "httparse",
  "log",
  "rand 0.9.0",
