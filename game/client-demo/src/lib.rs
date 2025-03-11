@@ -665,28 +665,34 @@ impl DemoViewerImpl {
         global_sound_volume: f64,
     ) -> anyhow::Result<()> {
         let do_encoding = self.data.av_encoder.is_some();
-        let (cur_time, last_time) =
-            if let Some(DemoEncoder { enc, settings, .. }) = &self.data.av_encoder {
-                // skip this frame
-                if enc.overloaded() {
-                    return Ok(());
-                }
-                let cur_time = self.last_time.unwrap_or_default()
-                    + Duration::from_nanos(
-                        (Duration::from_secs(1).as_nanos() / settings.encoder_settings.fps as u128)
-                            as u64,
-                    );
-                (
-                    cur_time,
-                    self.last_time.replace(cur_time).unwrap_or_default(),
-                )
-            } else {
-                let cur_time = self.time.time_get();
-                (
-                    cur_time,
-                    self.last_time.replace(cur_time).unwrap_or(cur_time),
-                )
-            };
+        let (cur_time, last_time) = if let Some(DemoEncoder {
+            enc,
+            settings,
+            offscreen_canvas,
+            ..
+        }) = &self.data.av_encoder
+        {
+            // skip this frame
+            if enc.overloaded() {
+                offscreen_canvas.skip_fetching_once();
+                return Ok(());
+            }
+            let cur_time = self.last_time.unwrap_or_default()
+                + Duration::from_nanos(
+                    (Duration::from_secs(1).as_nanos() / settings.encoder_settings.fps as u128)
+                        as u64,
+                );
+            (
+                cur_time,
+                self.last_time.replace(cur_time).unwrap_or_default(),
+            )
+        } else {
+            let cur_time = self.time.time_get();
+            (
+                cur_time,
+                self.last_time.replace(cur_time).unwrap_or(cur_time),
+            )
+        };
         Self::render_game(
             &mut self.inner,
             &mut self.data,

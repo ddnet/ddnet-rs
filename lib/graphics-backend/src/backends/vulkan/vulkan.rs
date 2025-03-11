@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ffi::CStr,
     num::NonZeroUsize,
     os::raw::c_void,
@@ -15,6 +15,7 @@ use crossbeam::channel::{bounded, unbounded, Receiver};
 use graphics_backend_traits::{
     frame_fetcher_plugin::{
         BackendFrameFetcher, BackendPresentedImageDataRgba, FetchCanvasError, FetchCanvasIndex,
+        OffscreenCanvasId,
     },
     plugin::{BackendCustomPipeline, BackendRenderExecuteInterface},
     traits::{DriverBackendInterface, GraphicsBackendMtInterface},
@@ -28,13 +29,14 @@ use graphics_types::{
     commands::{
         AllCommands, CommandClear, CommandCreateBufferObject, CommandDeleteBufferObject,
         CommandIndicesForQuadsRequiredNotify, CommandMultiSampling, CommandOffscreenCanvasCreate,
-        CommandOffscreenCanvasDestroy, CommandRecreateBufferObject, CommandRender,
-        CommandRenderQuadContainer, CommandRenderQuadContainerAsSpriteMultiple,
-        CommandSwitchCanvasMode, CommandSwitchCanvasModeType, CommandTextureCreate,
-        CommandTextureDestroy, CommandTextureUpdate, CommandUpdateBufferObject,
-        CommandUpdateViewport, CommandVsync, CommandsMisc, CommandsRender, CommandsRenderMod,
-        CommandsRenderQuadContainer, CommandsRenderStream, GlVertexTex3DStream, RenderSpriteInfo,
-        StreamDataMax, GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        CommandOffscreenCanvasDestroy, CommandOffscreenCanvasSkipFetchingOnce,
+        CommandRecreateBufferObject, CommandRender, CommandRenderQuadContainer,
+        CommandRenderQuadContainerAsSpriteMultiple, CommandSwitchCanvasMode,
+        CommandSwitchCanvasModeType, CommandTextureCreate, CommandTextureDestroy,
+        CommandTextureUpdate, CommandUpdateBufferObject, CommandUpdateViewport, CommandVsync,
+        CommandsMisc, CommandsRender, CommandsRenderMod, CommandsRenderQuadContainer,
+        CommandsRenderStream, GlVertexTex3DStream, RenderSpriteInfo, StreamDataMax,
+        GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
         GRAPHICS_UNIFORM_INSTANCE_COUNT,
     },
     gpu::Gpus,
@@ -562,6 +564,9 @@ pub struct VulkanBackend {
     #[hiarc_skip_unsafe]
     frame_fetchers: FxLinkedHashMap<String, Arc<dyn BackendFrameFetcher>>,
     frame_data_pool: MtPool<Vec<u8>>,
+    /// Offscreen canvases that asked to be skiped this frame,
+    /// e.g. because they couldn't render.
+    offscreen_canvases_frame_fetching_skips: HashSet<OffscreenCanvasId>,
 
     render_threads: Vec<Arc<RenderThread>>,
     pub(crate) render: RenderSetup,
@@ -684,6 +689,9 @@ impl VulkanBackend {
             CommandsMisc::DeleteBufferObject(cmd) => self.cmd_delete_buffer_object(&cmd),
             CommandsMisc::OffscreenCanvasCreate(cmd) => self.cmd_create_offscreen_canvas(&cmd),
             CommandsMisc::OffscreenCanvasDestroy(cmd) => self.cmd_destroy_offscreen_canvas(&cmd),
+            CommandsMisc::OffscreenCanvasSkipFetchingOnce(cmd) => {
+                self.cmd_skip_fetching_offscreen_canvas(&cmd)
+            }
             CommandsMisc::IndicesForQuadsRequiredNotify(cmd) => {
                 self.cmd_indices_required_num_notify(&cmd)
             }
@@ -1579,6 +1587,15 @@ impl VulkanBackend {
             for i in keys.iter() {
                 // get current frame and fill the frame fetcher with it
                 let fetch_index = self.frame_fetchers.get(i).unwrap().current_fetch_index();
+                // ignore offscreen canvases that requested to skip this frame
+                if let FetchCanvasIndex::Offscreen(index) = fetch_index {
+                    if self
+                        .offscreen_canvases_frame_fetching_skips
+                        .contains(&index)
+                    {
+                        continue;
+                    }
+                }
                 let img_data = self.get_presented_image_data_impl(fetch_index);
                 if let Ok(img_data) = img_data {
                     let frame_fetcher = self.frame_fetchers.get(i).unwrap();
@@ -1586,6 +1603,7 @@ impl VulkanBackend {
                 }
             }
         }
+        self.offscreen_canvases_frame_fetching_skips.clear();
 
         let queue_present_res = unsafe {
             let queue = &self.props.queue.queues.lock();
@@ -2600,6 +2618,18 @@ impl VulkanBackend {
         Ok(())
     }
 
+    fn cmd_skip_fetching_offscreen_canvas(
+        &mut self,
+        cmd: &CommandOffscreenCanvasSkipFetchingOnce,
+    ) -> anyhow::Result<()> {
+        let offscreen_index = cmd.offscreen_index;
+
+        self.offscreen_canvases_frame_fetching_skips
+            .insert(offscreen_index);
+
+        Ok(())
+    }
+
     fn cmd_indices_required_num_notify(
         &mut self,
         cmd: &CommandIndicesForQuadsRequiredNotify,
@@ -3062,6 +3092,7 @@ impl VulkanBackend {
             last_presented_swap_chain_image_index: u32::MAX,
             frame_fetchers: Default::default(),
             frame_data_pool: MtPool::with_capacity(0),
+            offscreen_canvases_frame_fetching_skips: Default::default(),
 
             frame: Frame::new(),
 

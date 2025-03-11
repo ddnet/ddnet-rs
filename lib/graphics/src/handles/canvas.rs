@@ -2,8 +2,8 @@ pub mod canvas {
     use graphics_types::{
         commands::{
             AllCommands, CommandOffscreenCanvasCreate, CommandOffscreenCanvasDestroy,
-            CommandSwitchCanvasMode, CommandSwitchCanvasModeType, CommandUpdateViewport,
-            CommandsMisc,
+            CommandOffscreenCanvasSkipFetchingOnce, CommandSwitchCanvasMode,
+            CommandSwitchCanvasModeType, CommandUpdateViewport, CommandsMisc,
         },
         types::WindowProps,
     };
@@ -304,6 +304,18 @@ pub mod canvas {
                 height,
                 pixels_per_point,
             }
+        }
+
+        /// Skip fetching until the next swap of the graphics
+        /// chain was called -> disabling it for this frame.
+        pub fn skip_fetching_once(&self) {
+            let cmd = CommandOffscreenCanvasSkipFetchingOnce {
+                offscreen_index: self.get_index_unsafe(),
+            };
+
+            self.backend_handle.add_cmd(AllCommands::Misc(
+                CommandsMisc::OffscreenCanvasSkipFetchingOnce(cmd),
+            ));
         }
 
         pub fn width(&self) -> u32 {

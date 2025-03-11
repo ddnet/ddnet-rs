@@ -217,6 +217,15 @@ impl GraphicsContainersAPI {
                 );
                 self.offscreen_canvases.remove(&real_index);
             }
+            CommandsMisc::OffscreenCanvasSkipFetchingOnce(cmd) => {
+                assert!(cmd.offscreen_index < u64::MAX as u128, "invalid index");
+                let real_index = cmd.offscreen_index + self.id_offset;
+                cmd.offscreen_index = real_index;
+                assert!(
+                    self.offscreen_canvases.contains(&real_index),
+                    "offscreen canvas does not exists, this is not allowed"
+                );
+            }
             CommandsMisc::IndicesForQuadsRequiredNotify(cmd) => {
                 assert!(cmd.quad_count_required <= (u32::MAX / 6) as u64);
                 self.index_buffer_quad_count =

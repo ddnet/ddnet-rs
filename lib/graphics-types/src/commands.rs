@@ -286,6 +286,12 @@ pub struct CommandOffscreenCanvasDestroy {
     pub offscreen_index: u128,
 }
 
+#[derive(Debug, Hiarc, Serialize, Deserialize)]
+pub struct CommandOffscreenCanvasSkipFetchingOnce {
+    // offscreen identifier
+    pub offscreen_index: u128,
+}
+
 pub struct CommandShutdown {}
 
 pub struct CommandPostShutdown {}
@@ -341,6 +347,7 @@ pub enum CommandsMisc {
     // offscreen canvases
     OffscreenCanvasCreate(CommandOffscreenCanvasCreate),
     OffscreenCanvasDestroy(CommandOffscreenCanvasDestroy),
+    OffscreenCanvasSkipFetchingOnce(CommandOffscreenCanvasSkipFetchingOnce),
 
     IndicesForQuadsRequiredNotify(CommandIndicesForQuadsRequiredNotify), // create indices that are required
 
