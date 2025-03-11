@@ -63,7 +63,7 @@ pub mod state {
     use pool::mt_datatypes::{PoolCow as MtPoolCow, PoolFxLinkedHashMap as MtPoolFxLinkedHashMap};
     use pool::pool::Pool;
 
-    use game_base::mapdef_06::EEntityTiles;
+    use game_base::mapdef_06::EntityTiles;
     use game_interface::interface::{
         GameStateCreate, GameStateCreateOptions, GameStateInterface, GameStateServerOptions,
         GameStateStaticInfo, MAX_MAP_NAME_LEN, MAX_PHYSICS_GAME_TYPE_NAME_LEN,
@@ -489,11 +489,11 @@ pub mod state {
                 let x = index % w as usize;
                 let y = index / w as usize;
                 let pos = vec2::new(x as f32 * 32.0 + 16.0, y as f32 * 32.0 + 16.0);
-                if tile.index == EEntityTiles::Spawn as u8 {
+                if tile.index == EntityTiles::Spawn as u8 {
                     spawns.push(pos);
-                } else if tile.index == EEntityTiles::SpawnRed as u8 {
+                } else if tile.index == EntityTiles::SpawnRed as u8 {
                     spawns_red.push(pos);
-                } else if tile.index == EEntityTiles::SpawnBlue as u8 {
+                } else if tile.index == EntityTiles::SpawnBlue as u8 {
                     spawns_blue.push(pos);
                 }
             });

@@ -47,6 +47,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         editor_tab.map.user.ui_values.server_settings_open =
                                             !editor_tab.map.user.ui_values.server_settings_open;
                                     }
+                                    if ui
+                                        .add(Button::new("Parallax zoom").selected(
+                                            editor_tab.map.groups.user.parallax_aware_zoom,
+                                        ))
+                                        .clicked()
+                                    {
+                                        editor_tab.map.groups.user.parallax_aware_zoom =
+                                            !editor_tab.map.groups.user.parallax_aware_zoom;
+                                    }
                                 });
                             });
                             strip.cell(|ui| {
@@ -127,6 +136,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                     0.0,
                                                     100.0,
                                                     100.0,
+                                                    false,
                                                 );
                                                 layout.append(
                                                     " mouse (",

@@ -49,9 +49,10 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands, ActSetMetadata,
-        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
-        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActReplColorAnim, ActReplPosAnim,
+        ActReplSoundAnim, ActSetCommands, ActSetMetadata, ActSoundLayerAddRemSounds,
+        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
+        ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     map::{
@@ -510,6 +511,16 @@ fn merge_actions_group(
             EditorAction::AddPosAnim(act1),
             Some(EditorAction::AddPosAnim(act2)),
         )),
+        (EditorAction::ReplPosAnim(act1), EditorAction::ReplPosAnim(act2)) => {
+            if act1.base.index == act2.base.index {
+                Ok((EditorAction::ReplPosAnim(act2), None))
+            } else {
+                Ok((
+                    EditorAction::ReplPosAnim(act1),
+                    Some(EditorAction::ReplPosAnim(act2)),
+                ))
+            }
+        }
         (EditorAction::RemPosAnim(act1), EditorAction::RemPosAnim(act2)) => Ok((
             EditorAction::RemPosAnim(act1),
             Some(EditorAction::RemPosAnim(act2)),
@@ -518,6 +529,16 @@ fn merge_actions_group(
             EditorAction::AddColorAnim(act1),
             Some(EditorAction::AddColorAnim(act2)),
         )),
+        (EditorAction::ReplColorAnim(act1), EditorAction::ReplColorAnim(act2)) => {
+            if act1.base.index == act2.base.index {
+                Ok((EditorAction::ReplColorAnim(act2), None))
+            } else {
+                Ok((
+                    EditorAction::ReplColorAnim(act1),
+                    Some(EditorAction::ReplColorAnim(act2)),
+                ))
+            }
+        }
         (EditorAction::RemColorAnim(act1), EditorAction::RemColorAnim(act2)) => Ok((
             EditorAction::RemColorAnim(act1),
             Some(EditorAction::RemColorAnim(act2)),
@@ -526,6 +547,16 @@ fn merge_actions_group(
             EditorAction::AddSoundAnim(act1),
             Some(EditorAction::AddSoundAnim(act2)),
         )),
+        (EditorAction::ReplSoundAnim(act1), EditorAction::ReplSoundAnim(act2)) => {
+            if act1.base.index == act2.base.index {
+                Ok((EditorAction::ReplSoundAnim(act2), None))
+            } else {
+                Ok((
+                    EditorAction::ReplSoundAnim(act1),
+                    Some(EditorAction::ReplSoundAnim(act2)),
+                ))
+            }
+        }
         (EditorAction::RemSoundAnim(act1), EditorAction::RemSoundAnim(act2)) => Ok((
             EditorAction::RemSoundAnim(act1),
             Some(EditorAction::RemSoundAnim(act2)),
@@ -2767,6 +2798,14 @@ pub fn do_action(
                 },
             );
         }
+        EditorAction::ReplPosAnim(act) => {
+            anyhow::ensure!(
+                act.base.index < map.animations.pos.len(),
+                "pos anim index {} is out of bounds",
+                act.base.index
+            );
+            map.animations.pos[act.base.index].def = act.base.anim.clone();
+        }
         EditorAction::RemPosAnim(act) => {
             anyhow::ensure!(
                 act.base.index < map.animations.pos.len(),
@@ -2823,6 +2862,14 @@ pub fn do_action(
                 },
             );
         }
+        EditorAction::ReplColorAnim(act) => {
+            anyhow::ensure!(
+                act.base.index < map.animations.color.len(),
+                "color anim index {} is out of bounds",
+                act.base.index
+            );
+            map.animations.color[act.base.index].def = act.base.anim.clone();
+        }
         EditorAction::RemColorAnim(act) => {
             anyhow::ensure!(
                 act.base.index < map.animations.color.len(),
@@ -2874,6 +2921,14 @@ pub fn do_action(
                     user: EditorAnimationProps::default(),
                 },
             );
+        }
+        EditorAction::ReplSoundAnim(act) => {
+            anyhow::ensure!(
+                act.base.index < map.animations.sound.len(),
+                "sound anim index {} is out of bounds",
+                act.base.index
+            );
+            map.animations.sound[act.base.index].def = act.base.anim.clone();
         }
         EditorAction::RemSoundAnim(act) => {
             anyhow::ensure!(
@@ -3493,6 +3548,17 @@ pub fn undo_action(
             map,
             false,
         ),
+        EditorAction::ReplPosAnim(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::ReplPosAnim(ActReplPosAnim { base: act.base }),
+            map,
+            false,
+        ),
         EditorAction::RemPosAnim(act) => do_action(
             tp,
             sound_mt,
@@ -3515,6 +3581,17 @@ pub fn undo_action(
             map,
             false,
         ),
+        EditorAction::ReplColorAnim(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::ReplColorAnim(ActReplColorAnim { base: act.base }),
+            map,
+            false,
+        ),
         EditorAction::RemColorAnim(act) => do_action(
             tp,
             sound_mt,
@@ -3534,6 +3611,17 @@ pub fn undo_action(
             backend_handle,
             texture_handle,
             EditorAction::RemSoundAnim(ActRemSoundAnim { base: act.base }),
+            map,
+            false,
+        ),
+        EditorAction::ReplSoundAnim(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::ReplSoundAnim(ActReplSoundAnim { base: act.base }),
             map,
             false,
         ),

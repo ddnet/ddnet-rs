@@ -90,12 +90,15 @@ pub enum EditorAction {
     ChangeTeleporter(ActChangeTeleporter),
     ChangeSwitch(ActChangeSwitch),
     ChangeTuneZone(ActChangeTuneZone),
-    // add/rem animations
+    // add/rem or replace animations
     AddPosAnim(ActAddPosAnim),
+    ReplPosAnim(ActReplPosAnim),
     RemPosAnim(ActRemPosAnim),
     AddColorAnim(ActAddColorAnim),
+    ReplColorAnim(ActReplColorAnim),
     RemColorAnim(ActRemColorAnim),
     AddSoundAnim(ActAddSoundAnim),
+    ReplSoundAnim(ActReplSoundAnim),
     RemSoundAnim(ActRemSoundAnim),
     // server settings
     SetCommands(ActSetCommands),
@@ -1652,6 +1655,28 @@ impl EditorActionInterface for ActAddPosAnim {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActReplPosAnim {
+    pub base: ActAddRemPosAnim,
+}
+
+impl EditorActionInterface for ActReplPosAnim {
+    fn undo_info(&self) -> String {
+        if !self.base.anim.name.is_empty() {
+            format!(
+                "Replace pos animation \"{}\" @{}",
+                self.base.anim.name, self.base.index
+            )
+        } else {
+            format!("Replace pos animation @{}", self.base.index)
+        }
+    }
+
+    fn redo_info(&self) -> String {
+        self.undo_info()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActRemPosAnim {
     pub base: ActAddRemPosAnim,
 }
@@ -1716,6 +1741,28 @@ impl EditorActionInterface for ActAddColorAnim {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActReplColorAnim {
+    pub base: ActAddRemColorAnim,
+}
+
+impl EditorActionInterface for ActReplColorAnim {
+    fn undo_info(&self) -> String {
+        if !self.base.anim.name.is_empty() {
+            format!(
+                "Replace color animation \"{}\" @{}",
+                self.base.anim.name, self.base.index
+            )
+        } else {
+            format!("Replace color animation @{}", self.base.index)
+        }
+    }
+
+    fn redo_info(&self) -> String {
+        self.undo_info()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActRemColorAnim {
     pub base: ActAddRemColorAnim,
 }
@@ -1776,6 +1823,28 @@ impl EditorActionInterface for ActAddSoundAnim {
         } else {
             format!("Add sound animation @{}", self.base.index)
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActReplSoundAnim {
+    pub base: ActAddRemSoundAnim,
+}
+
+impl EditorActionInterface for ActReplSoundAnim {
+    fn undo_info(&self) -> String {
+        if !self.base.anim.name.is_empty() {
+            format!(
+                "Replace sound animation \"{}\" @{}",
+                self.base.anim.name, self.base.index
+            )
+        } else {
+            format!("Replace sound animation @{}", self.base.index)
+        }
+    }
+
+    fn redo_info(&self) -> String {
+        self.undo_info()
     }
 }
 

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use game_base::mapdef_06::tile_can_rotate;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -69,18 +70,23 @@ pub fn mirror_tiles_y(
             MapTileLayerPhysicsTiles::Arbitrary(_) => panic!("not implemented"),
             MapTileLayerPhysicsTiles::Game(tiles) | MapTileLayerPhysicsTiles::Front(tiles) => {
                 mirror_y_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tele(tiles) => {
                 mirror_y_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Speedup(tiles) => {
                 mirror_y_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Switch(tiles) => {
                 mirror_y_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tune(tiles) => {
                 mirror_y_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
         },
     }
@@ -121,18 +127,23 @@ pub fn mirror_tiles_x(
             MapTileLayerPhysicsTiles::Arbitrary(_) => panic!("not implemented"),
             MapTileLayerPhysicsTiles::Game(tiles) | MapTileLayerPhysicsTiles::Front(tiles) => {
                 mirror_x_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tele(tiles) => {
                 mirror_x_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Speedup(tiles) => {
                 mirror_x_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Switch(tiles) => {
                 mirror_x_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tune(tiles) => {
                 mirror_x_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
         },
     }
@@ -187,18 +198,23 @@ pub fn rotate_tiles_plus_90(
             MapTileLayerPhysicsTiles::Arbitrary(_) => panic!("not implemented"),
             MapTileLayerPhysicsTiles::Game(tiles) | MapTileLayerPhysicsTiles::Front(tiles) => {
                 rotate_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tele(tiles) => {
                 rotate_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Speedup(tiles) => {
                 rotate_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Switch(tiles) => {
                 rotate_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tune(tiles) => {
                 rotate_tiles(tp, brush.w.get() as usize, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
         },
     }
@@ -250,18 +266,23 @@ pub fn rotate_tile_flags_plus_90(
             MapTileLayerPhysicsTiles::Arbitrary(_) => panic!("not implemented"),
             MapTileLayerPhysicsTiles::Game(tiles) | MapTileLayerPhysicsTiles::Front(tiles) => {
                 rotate_tiles(tp, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tele(tiles) => {
                 rotate_tiles(tp, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Speedup(tiles) => {
                 rotate_tiles(tp, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Switch(tiles) => {
                 rotate_tiles(tp, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
             MapTileLayerPhysicsTiles::Tune(tiles) => {
                 rotate_tiles(tp, tiles);
+                ensure_tile_flags_valid(tp, tiles);
             }
         },
     }
@@ -326,7 +347,7 @@ pub fn mirror_layer_tiles_y(
         } => match layer {
             EditorPhysicsLayer::Arbitrary(_) => panic!("not implemented"),
             EditorPhysicsLayer::Game(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -335,13 +356,14 @@ pub fn mirror_layer_tiles_y(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Front(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -350,13 +372,14 @@ pub fn mirror_layer_tiles_y(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Tele(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -365,13 +388,14 @@ pub fn mirror_layer_tiles_y(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Speedup(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -380,13 +404,14 @@ pub fn mirror_layer_tiles_y(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Switch(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -395,13 +420,14 @@ pub fn mirror_layer_tiles_y(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Tune(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -410,6 +436,7 @@ pub fn mirror_layer_tiles_y(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(new_tiles)),
@@ -476,7 +503,7 @@ pub fn mirror_layer_tiles_x(
         } => match layer {
             EditorPhysicsLayer::Arbitrary(_) => panic!("not implemented"),
             EditorPhysicsLayer::Game(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -485,13 +512,14 @@ pub fn mirror_layer_tiles_x(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Front(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -500,13 +528,14 @@ pub fn mirror_layer_tiles_x(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Tele(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -515,13 +544,14 @@ pub fn mirror_layer_tiles_x(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Speedup(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -530,13 +560,14 @@ pub fn mirror_layer_tiles_x(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Switch(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -545,13 +576,14 @@ pub fn mirror_layer_tiles_x(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Tune(layer) => {
-                let (old_tiles, new_tiles) = get_mirror_tiles(
+                let (old_tiles, mut new_tiles) = get_mirror_tiles(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -560,6 +592,7 @@ pub fn mirror_layer_tiles_x(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(new_tiles)),
@@ -628,7 +661,7 @@ pub fn rotate_layer_tiles_plus_90(
         } => match layer {
             EditorPhysicsLayer::Arbitrary(_) => panic!("not implemented"),
             EditorPhysicsLayer::Game(layer) => {
-                let (old_tiles, new_tiles) = rotate_tiles_flags(
+                let (old_tiles, mut new_tiles) = rotate_tiles_flags(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -637,13 +670,14 @@ pub fn rotate_layer_tiles_plus_90(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Front(layer) => {
-                let (old_tiles, new_tiles) = rotate_tiles_flags(
+                let (old_tiles, mut new_tiles) = rotate_tiles_flags(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -652,13 +686,14 @@ pub fn rotate_layer_tiles_plus_90(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Tele(layer) => {
-                let (old_tiles, new_tiles) = rotate_tiles_flags(
+                let (old_tiles, mut new_tiles) = rotate_tiles_flags(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -667,13 +702,14 @@ pub fn rotate_layer_tiles_plus_90(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Speedup(layer) => {
-                let (old_tiles, new_tiles) = rotate_tiles_flags(
+                let (old_tiles, mut new_tiles) = rotate_tiles_flags(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -682,13 +718,14 @@ pub fn rotate_layer_tiles_plus_90(
                     group_attr.width.get() as usize,
                     &layer.layer.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Switch(layer) => {
-                let (old_tiles, new_tiles) = rotate_tiles_flags(
+                let (old_tiles, mut new_tiles) = rotate_tiles_flags(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -697,13 +734,14 @@ pub fn rotate_layer_tiles_plus_90(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(new_tiles)),
                 )
             }
             EditorPhysicsLayer::Tune(layer) => {
-                let (old_tiles, new_tiles) = rotate_tiles_flags(
+                let (old_tiles, mut new_tiles) = rotate_tiles_flags(
                     tp,
                     range.x as usize,
                     range.y as usize,
@@ -712,6 +750,7 @@ pub fn rotate_layer_tiles_plus_90(
                     group_attr.width.get() as usize,
                     &layer.layer.base.tiles,
                 );
+                ensure_tile_flags_valid(tp, &mut new_tiles);
                 (
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(old_tiles)),
                     MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(new_tiles)),
@@ -807,4 +846,26 @@ fn generate_client_action(
             }
         }
     }
+}
+
+fn ensure_tile_flags_valid<T: Copy + Clone + Send + Sync + AsMut<TileBase>>(
+    tp: &Arc<rayon::ThreadPool>,
+    tiles: &mut [T],
+) {
+    tp.install(|| {
+        tiles.par_iter_mut().for_each(|tile| {
+            let tile = tile.as_mut();
+            if !tile_can_rotate(tile.index) {
+                if tile.flags.contains(TileFlags::ROTATE) {
+                    tile.flags ^= TileFlags::ROTATE;
+                }
+                if tile.flags.contains(TileFlags::XFLIP) {
+                    tile.flags ^= TileFlags::XFLIP;
+                }
+                if tile.flags.contains(TileFlags::YFLIP) {
+                    tile.flags ^= TileFlags::YFLIP;
+                }
+            }
+        });
+    });
 }

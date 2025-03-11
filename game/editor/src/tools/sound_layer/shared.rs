@@ -28,7 +28,6 @@ pub fn get_sound_point_animated(snd: &Sound, map: &EditorMap, time: Duration) ->
         let anim_pos = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
-            3,
         );
 
         point += fvec2::new(ffixed::from_num(anim_pos.x), ffixed::from_num(anim_pos.y));
@@ -71,6 +70,7 @@ pub fn render_sound_points(
             offset.y.to_num::<f32>(),
             parallax.x.to_num::<f32>(),
             parallax.y.to_num::<f32>(),
+            map.groups.user.parallax_aware_zoom,
         );
         for sound in &layer.layer.sounds {
             let point = get_sound_point_animated(sound, map, map.user.time);
@@ -83,6 +83,7 @@ pub fn render_sound_points(
                 map.groups.user.pos.y,
                 Some(&group.attr),
                 map.groups.user.zoom,
+                map.groups.user.parallax_aware_zoom,
             );
             stream_handle.render_quads(
                 hi_closure!([point: fvec2, x: f32, y: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {

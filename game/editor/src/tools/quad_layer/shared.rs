@@ -37,7 +37,6 @@ pub fn get_quad_points_animated(quad: &Quad, map: &EditorMap, time: Duration) ->
         let anim_pos = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
-            3,
         );
         let rot = anim_pos.z / ffixed::from_num(360.0) * ffixed::PI * ffixed::from_num(2.0);
         let center = points[4];
@@ -58,7 +57,6 @@ pub fn get_quad_points_color_animated(quad: &Quad, map: &EditorMap, time: Durati
         let anim_color = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
-            4,
         );
 
         for color in color.iter_mut() {
@@ -107,6 +105,7 @@ pub fn render_quad_points(
             offset.y.to_num::<f32>(),
             parallax.x.to_num::<f32>(),
             parallax.y.to_num::<f32>(),
+            map.groups.user.parallax_aware_zoom,
         );
         for quad in &layer.layer.quads {
             let points = get_quad_points_animated(quad, map, map.user.time);
@@ -119,6 +118,7 @@ pub fn render_quad_points(
                 map.groups.user.pos.y,
                 Some(&group.attr),
                 map.groups.user.zoom,
+                map.groups.user.parallax_aware_zoom,
             );
             stream_handle.render_quads(
                 hi_closure!([points: [fvec2; 5], x: f32, y: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {

@@ -9,7 +9,8 @@ use crate::{
         ActSoundLayerAddSounds, EditorAction,
     },
     explain::{
-        TEXT_ADD_QUAD, TEXT_ADD_SOUND, TEXT_QUAD_SELECTION, TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR,
+        TEXT_ADD_QUAD, TEXT_ADD_SOUND, TEXT_QUAD_BRUSH, TEXT_QUAD_SELECTION, TEXT_SOUND_BRUSH,
+        TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR, TEXT_TILE_SELECT,
     },
     map::{EditorLayer, EditorLayerUnionRef, EditorMapInterface},
     tools::tool::{ActiveTool, ActiveToolQuads, ActiveToolSounds, ActiveToolTiles},
@@ -23,7 +24,8 @@ use super::tile_mirror::{
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let style = ui.style();
-    let height = style.spacing.interact_size.y + style.spacing.item_spacing.y;
+    // 4.0 is some margin for strokes
+    let height = style.spacing.interact_size.y + style.spacing.item_spacing.y + 4.0;
     let res = egui::TopBottomPanel::top("top_toolbar")
         .resizable(false)
         .default_height(height)
@@ -57,7 +59,18 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             if matches!(tool, ActiveToolTiles::Selection) {
                                 btn = btn.selected(true);
                             }
-                            if ui.add(btn).clicked() {
+                            if ui
+                                .add(btn)
+                                .on_hover_ui(|ui| {
+                                    let mut cache = egui_commonmark::CommonMarkCache::default();
+                                    egui_commonmark::CommonMarkViewer::new().show(
+                                        ui,
+                                        &mut cache,
+                                        TEXT_TILE_SELECT,
+                                    );
+                                })
+                                .clicked()
+                            {
                                 *tool = ActiveToolTiles::Selection;
                             }
                         }
@@ -67,11 +80,22 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             if matches!(tool, ActiveToolQuads::Brush) {
                                 btn = btn.selected(true);
                             }
-                            if ui.add(btn).clicked() {
+                            if ui
+                                .add(btn)
+                                .on_hover_ui(|ui| {
+                                    let mut cache = egui_commonmark::CommonMarkCache::default();
+                                    egui_commonmark::CommonMarkViewer::new().show(
+                                        ui,
+                                        &mut cache,
+                                        TEXT_QUAD_BRUSH,
+                                    );
+                                })
+                                .clicked()
+                            {
                                 *tool = ActiveToolQuads::Brush;
                             }
                             // select
-                            let mut btn = Button::new("\u{f45c}");
+                            let mut btn = Button::new("\u{f247}");
                             if matches!(tool, ActiveToolQuads::Selection) {
                                 btn = btn.selected(true);
                             }
@@ -96,7 +120,18 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             if matches!(tool, ActiveToolSounds::Brush) {
                                 btn = btn.selected(true);
                             }
-                            if ui.add(btn).clicked() {
+                            if ui
+                                .add(btn)
+                                .on_hover_ui(|ui| {
+                                    let mut cache = egui_commonmark::CommonMarkCache::default();
+                                    egui_commonmark::CommonMarkViewer::new().show(
+                                        ui,
+                                        &mut cache,
+                                        TEXT_SOUND_BRUSH,
+                                    );
+                                })
+                                .clicked()
+                            {
                                 *tool = ActiveToolSounds::Brush;
                             }
                         }

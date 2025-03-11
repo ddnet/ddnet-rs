@@ -16,6 +16,7 @@ pub fn ui_pos_to_world_pos(
     offset_y: f32,
     parallax_x: f32,
     parallax_y: f32,
+    parallax_aware_zoom: bool,
 ) -> vec2 {
     let points = RenderTools::canvas_points_of_group_attr(
         CanvasType::Handle(canvas_handle),
@@ -26,6 +27,7 @@ pub fn ui_pos_to_world_pos(
         offset_x,
         offset_y,
         zoom,
+        parallax_aware_zoom,
     );
 
     let x = inp.x;

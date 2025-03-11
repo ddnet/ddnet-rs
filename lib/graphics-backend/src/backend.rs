@@ -15,17 +15,13 @@ use graphics_backend_traits::{
 };
 use graphics_base_traits::traits::{GraphicsStreamVertices, GraphicsStreamedData};
 use hiarc::Hiarc;
+use native::native::NativeImpl;
 use pool::{mixed_pool::PoolSyncPoint, mt_datatypes::PoolVec};
 
 use crate::{
     backend_thread::{BackendThread, BackendThreadInitData},
     backends::vulkan::vulkan::{VulkanBackendLoadedIo, VulkanBackendLoadingIo},
     window::{BackendDisplayRequirements, BackendRawDisplayHandle, BackendWindow},
-};
-
-use native::native::{
-    app::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH},
-    NativeImpl, PhysicalSize,
 };
 
 use base::benchmark::Benchmark;
@@ -170,11 +166,11 @@ impl GraphicsBackendBase {
         let scale_factor = window.scale_factor();
 
         // get window & canvas properties
-        let (window_width, window_height) = (size.width, size.height);
+        let (canvas_width, canvas_height) = (size.width, size.height);
 
-        let (canvas_width, canvas_height) = (
-            window_width as f64 / scale_factor,
-            window_height as f64 / scale_factor,
+        let (window_width, window_height) = (
+            canvas_width as f64 / scale_factor,
+            canvas_height as f64 / scale_factor,
         );
 
         let backend_mt = backend_loading.backend.init(
@@ -267,8 +263,7 @@ impl GraphicsBackendBase {
         new_width: u32,
         new_height: u32,
     ) -> WindowProps {
-        // TODO make sure backend is idle
-
+        self.wait_idle().unwrap();
         let cmd_viewport = CommandsMisc::UpdateViewport(CommandUpdateViewport {
             x: 0,
             y: 0,
@@ -280,25 +275,15 @@ impl GraphicsBackendBase {
         buffer.add_cmd(AllCommands::Misc(cmd_viewport));
         self.run_cmds_impl(buffer, stream_data).unwrap(); // TODO: unwrap here?
 
-        let inner_size = window_handling.borrow_window().inner_size().clamp(
-            PhysicalSize {
-                width: MIN_WINDOW_WIDTH,
-                height: MIN_WINDOW_HEIGHT,
-            },
-            PhysicalSize {
-                width: u32::MAX,
-                height: u32::MAX,
-            },
-        );
         let scale_factor = window_handling
             .borrow_window()
             .scale_factor()
             .clamp(0.0001, f64::MAX);
 
-        self.window_props.window_width = new_width;
-        self.window_props.window_height = new_height;
-        self.window_props.canvas_width = inner_size.width as f64 / scale_factor;
-        self.window_props.canvas_height = inner_size.height as f64 / scale_factor;
+        self.window_props.window_width = new_width as f64 / scale_factor;
+        self.window_props.window_height = new_height as f64 / scale_factor;
+        self.window_props.canvas_width = new_width;
+        self.window_props.canvas_height = new_height;
 
         self.window_props
     }

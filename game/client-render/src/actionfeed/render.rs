@@ -71,9 +71,9 @@ impl ActionfeedRender {
             self.msgs.truncate(20);
         }
 
-        let window_width = self.canvas_handle.window_width();
-        let window_height = self.canvas_handle.window_height();
-        let window_pixels_per_point = self.canvas_handle.window_pixels_per_point();
+        let canvas_width = self.canvas_handle.canvas_width();
+        let canvas_height = self.canvas_handle.canvas_height();
+        let pixels_per_point = self.canvas_handle.pixels_per_point();
 
         let force_rerender = self.msgs.was_accessed_mut();
 
@@ -91,9 +91,9 @@ impl ActionfeedRender {
         };
         let mut inner_pipe = UiRenderPipe::new(*pipe.cur_time, &mut user_data);
         let (screen_rect, full_output, zoom_level) = self.ui.render_cached(
-            window_width,
-            window_height,
-            window_pixels_per_point,
+            canvas_width,
+            canvas_height,
+            pixels_per_point,
             |ui, inner_pipe, ui_state| self.feed_ui.render(ui, inner_pipe, ui_state),
             &mut inner_pipe,
             Default::default(),

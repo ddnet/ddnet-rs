@@ -17,7 +17,8 @@ use crate::{
 
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     let style = ui.style();
-    let height = style.spacing.interact_size.y + style.spacing.item_spacing.y;
+    // 4.0 is some margin for strokes
+    let height = style.spacing.interact_size.y + style.spacing.item_spacing.y + 4.0;
     egui::TopBottomPanel::top("top_menu")
         .resizable(false)
         .default_height(height)

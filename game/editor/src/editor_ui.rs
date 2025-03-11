@@ -87,6 +87,7 @@ impl EditorUiRender {
     }
 
     pub fn render(&mut self, pipe: EditorUiRenderPipe) -> egui::PlatformOutput {
+        self.ui.load_monospace_fonts();
         let mut needs_pointer = false;
         generic_ui_renderer::render(
             &self.backend_handle,

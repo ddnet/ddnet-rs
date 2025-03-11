@@ -145,7 +145,6 @@ impl MapSoundProcess {
                 } {
                     let pos_channels = RenderMap::animation_eval(
                         &anim.def,
-                        3,
                         cur_time,
                         cur_anim_time,
                         &sound.pos_anim_offset,
@@ -164,7 +163,6 @@ impl MapSoundProcess {
                 } {
                     let sound_volume = RenderMap::animation_eval(
                         &anim.def,
-                        1,
                         cur_time,
                         cur_anim_time,
                         &sound.sound_anim_offset,

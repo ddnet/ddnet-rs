@@ -25,14 +25,14 @@ fn render_impl<U>(
     inp: egui::RawInput,
     as_stencil: bool,
 ) -> (egui::Rect, egui::FullOutput, f32) {
-    let window_width = canvas_handle.window_width();
-    let window_height = canvas_handle.window_height();
-    let window_pixels_per_point = canvas_handle.window_pixels_per_point();
+    let canvas_width = canvas_handle.canvas_width();
+    let canvas_height = canvas_handle.canvas_height();
+    let pixels_per_point = canvas_handle.pixels_per_point();
 
     ui.render(
-        window_width,
-        window_height,
-        window_pixels_per_point,
+        canvas_width,
+        canvas_height,
+        pixels_per_point,
         |ui, inner_pipe, ui_state| {
             ui_render(ui, inner_pipe, ui_state);
         },

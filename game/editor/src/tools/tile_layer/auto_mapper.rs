@@ -224,12 +224,14 @@ impl<T: AutoMapperInterface> EditorAutoMapperInterface for T {
 
                 width = NonZeroU16MinusOne::new(
                     (sub_w.get() as u32 + expand_size.get() as u32 * 2)
-                        .clamp(1, attr.width.get() as u32) as u16,
+                        .clamp(1, attr.width.get().saturating_sub(sub_x) as u32)
+                        as u16,
                 )
                 .unwrap();
                 height = NonZeroU16MinusOne::new(
                     (sub_h.get() as u32 + expand_size.get() as u32 * 2)
-                        .clamp(1, attr.height.get() as u32) as u16,
+                        .clamp(1, attr.height.get().saturating_sub(sub_y) as u32)
+                        as u16,
                 )
                 .unwrap();
 

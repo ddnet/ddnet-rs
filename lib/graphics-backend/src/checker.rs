@@ -217,6 +217,15 @@ impl GraphicsContainersAPI {
                 );
                 self.offscreen_canvases.remove(&real_index);
             }
+            CommandsMisc::OffscreenCanvasSkipFetchingOnce(cmd) => {
+                assert!(cmd.offscreen_index < u64::MAX as u128, "invalid index");
+                let real_index = cmd.offscreen_index + self.id_offset;
+                cmd.offscreen_index = real_index;
+                assert!(
+                    self.offscreen_canvases.contains(&real_index),
+                    "offscreen canvas does not exists, this is not allowed"
+                );
+            }
             CommandsMisc::IndicesForQuadsRequiredNotify(cmd) => {
                 assert!(cmd.quad_count_required <= (u32::MAX / 6) as u64);
                 self.index_buffer_quad_count =
@@ -236,16 +245,16 @@ impl GraphicsContainersAPI {
                 assert!(
                     cmd.x >= 0
                         && cmd.width > 0
-                        && (cmd.x as u32) < canvas_handle.window_width()
+                        && (cmd.x as u32) < canvas_handle.canvas_width()
                         && (cmd.x as u32).checked_add(cmd.width).unwrap()
-                            <= canvas_handle.window_width()
+                            <= canvas_handle.canvas_width()
                 );
                 assert!(
                     cmd.y >= 0
                         && cmd.height > 0
-                        && (cmd.y as u32) < canvas_handle.window_height()
+                        && (cmd.y as u32) < canvas_handle.canvas_height()
                         && (cmd.y as u32).checked_add(cmd.height).unwrap()
-                            <= canvas_handle.window_height()
+                            <= canvas_handle.canvas_height()
                 );
             }
             CommandsMisc::Multisampling(cmd) => {

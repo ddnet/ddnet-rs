@@ -578,6 +578,7 @@ impl RenderGame {
             pos: Default::default(),
             zoom: 1.0,
             forced_aspect_ratio: render_info.settings.ingame_aspect,
+            parallax_aware_zoom: true,
         };
 
         let camera_player_id = player_info.and_then(|(player_id, p)| match &p.cam_mode {
@@ -2688,8 +2689,8 @@ impl RenderGameInterface for RenderGame {
                 helper.push((
                     0,
                     0,
-                    window_props.window_width,
-                    window_props.window_height,
+                    window_props.canvas_width,
+                    window_props.canvas_height,
                     (player_id, render_for_player_game),
                 ));
                 has_observed_players
@@ -2698,8 +2699,8 @@ impl RenderGameInterface for RenderGame {
                     |(index, (player_id, render_for_player_game))| {
                         let (x, y, w, h) = Self::player_render_area(
                             index,
-                            window_props.window_width,
-                            window_props.window_height,
+                            window_props.canvas_width,
+                            window_props.canvas_height,
                             players_per_row,
                             player_count,
                         );

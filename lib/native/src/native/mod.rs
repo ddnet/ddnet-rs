@@ -60,6 +60,7 @@ pub trait NativeImpl {
 
 pub trait FromNativeImpl: InputEventHandler {
     fn run(&mut self, native: &mut dyn NativeImpl);
+    /// New width and height in pixels!
     fn resized(&mut self, native: &mut dyn NativeImpl, new_width: u32, new_height: u32);
     /// The window options changed, usually the implementor does not need to do anything.
     /// But if it wants to serialize the current options it can do so.
@@ -88,14 +89,41 @@ pub struct NativeWindowMonitorDetails {
 }
 
 #[derive(Debug)]
+pub struct Pixels<T> {
+    pub width: T,
+    pub height: T,
+}
+
+pub type PhysicalPixels = Pixels<u32>;
+pub type LogicalPixels = Pixels<f64>;
+
+#[derive(Debug)]
+pub enum WindowMode {
+    Fullscreen {
+        resolution: Option<PhysicalPixels>,
+        /// If creating a fullscreen window fails, falls back to this
+        /// windowed size instead.
+        fallback_window: LogicalPixels,
+    },
+    Windowed(LogicalPixels),
+}
+
+impl WindowMode {
+    pub fn is_fullscreen(&self) -> bool {
+        matches!(self, Self::Fullscreen { .. })
+    }
+    pub fn is_windowed(&self) -> bool {
+        matches!(self, Self::Windowed(_))
+    }
+}
+
+#[derive(Debug)]
 pub struct NativeWindowOptions {
-    pub fullscreen: bool,
+    pub mode: WindowMode,
     /// if fullscreen is `false` & maximized is `true` & decorated is `false`
     /// => borderless fullscreen
     pub decorated: bool,
     pub maximized: bool,
-    pub width: u32,
-    pub height: u32,
     pub refresh_rate_milli_hertz: u32,
     pub monitor: Option<NativeWindowMonitorDetails>,
 }

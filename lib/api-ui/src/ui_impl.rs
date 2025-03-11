@@ -50,9 +50,9 @@ fn ui_run_impl(
 
     let (screen_rect, full_output, zoom_level) = API_UI.with(|g| {
         g.borrow_mut().render(
-            GRAPHICS.with(|g| g.canvas_handle.window_width()),
-            GRAPHICS.with(|g| g.canvas_handle.window_height()),
-            GRAPHICS.with(|g| g.canvas_handle.window_pixels_per_point()),
+            GRAPHICS.with(|g| g.canvas_handle.canvas_width()),
+            GRAPHICS.with(|g| g.canvas_handle.canvas_height()),
+            GRAPHICS.with(|g| g.canvas_handle.pixels_per_point()),
             |ui, pipe, ui_state| {
                 API_UI_USER.with(|g| g.borrow_mut().render(ui, pipe, ui_state));
             },

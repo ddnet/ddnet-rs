@@ -130,6 +130,7 @@ impl SoundBrush {
             offset.y,
             parallax.x,
             parallax.y,
+            map.groups.user.parallax_aware_zoom,
         );
 
         // if pointer was already down
@@ -173,6 +174,8 @@ impl SoundBrush {
                     w: x1 - x0,
                     h: y1 - y0,
                 });
+            } else {
+                self.brush = None;
             }
 
             if !latest_pointer.primary_down() {
@@ -196,6 +199,7 @@ impl SoundBrush {
                         offset.y,
                         parallax.x,
                         parallax.y,
+                        map.groups.user.parallax_aware_zoom,
                     );
 
                     let radius = SOUND_POINT_RADIUS;
@@ -239,6 +243,7 @@ impl SoundBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 self.pointer_down_state = SoundPointerDownState::Selection(pos);
             }
@@ -313,6 +318,7 @@ impl SoundBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
 
                 let mut sounds = brush.sounds.clone();
@@ -380,6 +386,7 @@ impl SoundBrush {
                     offset.y,
                     parallax.x,
                     parallax.y,
+                    map.groups.user.parallax_aware_zoom,
                 );
                 let pos = egui::pos2(pos.x, pos.y);
 
@@ -430,6 +437,7 @@ impl SoundBrush {
             offset.y,
             parallax.x,
             parallax.y,
+            map.groups.user.parallax_aware_zoom,
         );
         let pos = pos_on_map;
         let pos = egui::pos2(pos.x, pos.y);
@@ -454,6 +462,7 @@ impl SoundBrush {
                 0.0,
                 100.0,
                 100.0,
+                true,
             );
             (map.groups.user.pos - pos_on_map, None)
         };
@@ -464,6 +473,7 @@ impl SoundBrush {
             center.y,
             group_attr.as_ref(),
             map.groups.user.zoom,
+            map.groups.user.parallax_aware_zoom,
         );
         RenderMap::render_sounds(
             stream_handle,

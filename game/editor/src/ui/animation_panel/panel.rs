@@ -4,14 +4,29 @@ use client_render_base::map::render_tools::RenderTools;
 use egui::UiBuilder;
 use egui_timeline::point::{Point, PointGroup};
 use map::{
-    map::animations::{AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos},
+    map::animations::{
+        AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound,
+        ColorAnimation, PosAnimation, SoundAnimation,
+    },
     skeleton::animations::AnimBaseSkeleton,
 };
 use serde::de::DeserializeOwned;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
-    map::{EditorAnimationProps, EditorLayer, EditorLayerUnionRef, EditorMapGroupsInterface},
+    actions::{
+        actions::{
+            ActAddColorAnim, ActAddPosAnim, ActAddRemColorAnim, ActAddRemPosAnim,
+            ActAddRemSoundAnim, ActAddSoundAnim, ActReplColorAnim, ActReplPosAnim,
+            ActReplSoundAnim, EditorAction, EditorActionGroup,
+        },
+        utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
+    },
+    client::EditorClient,
+    map::{
+        EditorAnimationProps, EditorGroups, EditorLayer, EditorLayerUnionRef,
+        EditorMapGroupsInterface,
+    },
     tools::{
         quad_layer::selection::QuadSelection,
         tool::{ActiveTool, ActiveToolQuads},
@@ -103,8 +118,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             fn add_selector<A: Point + DeserializeOwned + PartialOrd + Clone>(
                 ui: &mut egui::Ui,
                 anims: &[AnimBaseSkeleton<EditorAnimationProps, A>],
+                groups: &EditorGroups,
                 index: &mut Option<usize>,
                 name: &str,
+                client: &EditorClient,
+                add: impl FnOnce(usize) -> EditorAction,
+                del: impl FnOnce(
+                    usize,
+                    &[AnimBaseSkeleton<EditorAnimationProps, A>],
+                    &EditorGroups,
+                ) -> EditorActionGroup,
+                sync: impl FnOnce(usize, &AnimBaseSkeleton<EditorAnimationProps, A>) -> EditorAction,
             ) {
                 ui.label(format!("{}:", name));
                 // selection of animation
@@ -141,17 +165,178 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         *index = Some(0);
                     }
                 }
+
+                // add new anim
+                if ui.button("\u{f0fe}").clicked() {
+                    let index = anims.len();
+
+                    client.execute(
+                        add(index),
+                        Some(&format!("{name}-anim-insert-anim-at-{}", index)),
+                    );
+                }
+
+                if let Some(index) = index
+                    .as_mut()
+                    .and_then(|index| (*index < anims.len()).then_some(index))
+                {
+                    // delete currently selected anim
+                    if ui.button("\u{f1f8}").clicked() {
+                        client.execute_group(del(*index, anims, groups));
+                        *index = index.saturating_sub(1);
+                    }
+
+                    // Whether to sync the current animation to server time
+                    let mut is_sync = anims[*index].def.synchronized;
+                    if ui.checkbox(&mut is_sync, "Synchronize").changed() {
+                        client.execute(sync(
+                            *index, &anims[*index]), None);
+                    }
+                }
             }
             egui::Grid::new("anim-active-selectors")
                 .spacing([2.0, 4.0])
                 .num_columns(4)
                 .show(ui, |ui| {
-                    add_selector(ui, &map.animations.color, selected_color_anim, "color");
+                    let client = &pipe.user_data.editor_tab.client;
+                    add_selector(
+                        ui,
+                        &map.animations.color,
+                        &map.groups,
+                        selected_color_anim,
+                        "color",
+                        client,
+                        |index| {
+                            EditorAction::AddColorAnim(ActAddColorAnim {
+                                base: ActAddRemColorAnim {
+                                    anim: ColorAnimation {
+                                        name: Default::default(),
+                                        points: vec![
+                                            AnimPointColor {
+                                                time: Duration::ZERO,
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                            AnimPointColor {
+                                                time: Duration::from_secs(1),
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                        ],
+                                        synchronized: false,
+                                    },
+                                    index,
+                                },
+                            })
+                        },
+                        |index, anims, groups| EditorActionGroup {
+                            actions: rem_color_anim(anims, groups, index),
+                            identifier: Some(format!("color-anim-del-anim-at-{}", index)),
+                        },
+                        |index, anim| {
+                            let mut anim: ColorAnimation = anim.clone().into();
+                            anim.synchronized = !anim.synchronized;
+                            EditorAction::ReplColorAnim(ActReplColorAnim {
+                                base: ActAddRemColorAnim {
+                                    index,
+                                    anim ,
+                                },
+                            })
+                        },
+                    );
                     ui.end_row();
-                    add_selector(ui, &map.animations.pos, selected_pos_anim, "pos");
+                    add_selector(
+                        ui,
+                        &map.animations.pos,
+                        &map.groups,
+                        selected_pos_anim,
+                        "pos",
+                        client,
+                        |index| {
+                            EditorAction::AddPosAnim(ActAddPosAnim {
+                                base: ActAddRemPosAnim {
+                                    anim: PosAnimation {
+                                        name: Default::default(),
+                                        points: vec![
+                                            AnimPointPos {
+                                                time: Duration::ZERO,
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                            AnimPointPos {
+                                                time: Duration::from_secs(1),
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                        ],
+                                        synchronized: false,
+                                    },
+                                    index,
+                                },
+                            })
+                        },
+                        |index, anims, groups| EditorActionGroup {
+                            actions: rem_pos_anim(anims, groups, index),
+                            identifier: Some(format!("pos-anim-del-anim-at-{}", index)),
+                        },
+                        |index, anim| {
+                            let mut anim: PosAnimation = anim.clone().into();
+                            anim.synchronized = !anim.synchronized;
+                            EditorAction::ReplPosAnim(ActReplPosAnim {
+                                base: ActAddRemPosAnim {
+                                    index,
+                                    anim ,
+                                },
+                            })
+                        },
+                    );
 
                     ui.end_row();
-                    add_selector(ui, &map.animations.sound, selected_sound_anim, "sound");
+                    add_selector(
+                        ui,
+                        &map.animations.sound,
+                        &map.groups,
+                        selected_sound_anim,
+                        "sound",
+                        client,
+                        |index| {
+                            EditorAction::AddSoundAnim(ActAddSoundAnim {
+                                base: ActAddRemSoundAnim {
+                                    anim: SoundAnimation {
+                                        name: Default::default(),
+                                        points: vec![
+                                            AnimPointSound {
+                                                time: Duration::ZERO,
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                            AnimPointSound {
+                                                time: Duration::from_secs(1),
+                                                curve_type: AnimPointCurveType::Linear,
+                                                value: Default::default(),
+                                            },
+                                        ],
+                                        synchronized: false,
+                                    },
+                                    index,
+                                },
+                            })
+                        },
+                        |index, anims, groups| EditorActionGroup {
+                            actions: rem_sound_anim(anims, groups, index),
+                            identifier: Some(format!("sound-anim-del-anim-at-{}", index)),
+                        },
+                        |index, anim| {
+                            let mut anim: SoundAnimation = anim.clone().into();
+                            anim.synchronized = !anim.synchronized;
+                            EditorAction::ReplSoundAnim(ActReplSoundAnim {
+                                base: ActAddRemSoundAnim {
+                                    index,
+                                    anim ,
+                                },
+                            })
+                        },
+                    );
 
                     ui.end_row();
                 });
@@ -177,6 +362,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         hovered_point: &mut anim.user.hovered_point,
                         selected_point_channels: &mut anim.user.selected_point_channels,
                         hovered_point_channel: &mut anim.user.hovered_point_channels,
+                        selected_point_channel_beziers: &mut anim
+                            .user
+                            .selected_point_channel_beziers,
+                        hovered_point_channel_beziers: &mut anim.user.hovered_point_channel_beziers,
                     });
                 }
             }
@@ -252,7 +441,6 @@ fn handle_anim_time_change(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let anim_pos = RenderTools::render_eval_anim(
                     anim.def.points.as_slice(),
                     time::Duration::try_from(map.user.ui_values.timeline.time()).unwrap(),
-                    3,
                 );
                 *anim_point_pos = AnimPointPos {
                     time: Duration::ZERO,
@@ -265,7 +453,6 @@ fn handle_anim_time_change(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let anim_color = RenderTools::render_eval_anim(
                     anim.def.points.as_slice(),
                     time::Duration::try_from(map.user.ui_values.timeline.time()).unwrap(),
-                    4,
                 );
                 *anim_point_color = AnimPointColor {
                     time: Duration::ZERO,

@@ -23,7 +23,7 @@ impl EditorUi {
     pub fn set_style(ui: &mut egui::Ui) {
         let mut style = default_style();
         let clr = style.visuals.window_fill.to_srgba_unmultiplied();
-        style.visuals.window_fill = Color32::from_rgba_unmultiplied(clr[0], clr[1], clr[2], 180);
+        style.visuals.window_fill = Color32::from_rgba_unmultiplied(clr[0], clr[1], clr[2], 225);
         let clr = style.visuals.panel_fill.to_srgba_unmultiplied();
         style.visuals.panel_fill = Color32::from_rgba_unmultiplied(clr[0], clr[1], clr[2], 225);
         style.interaction.show_tooltips_only_when_still = false;

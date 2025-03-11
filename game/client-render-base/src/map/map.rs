@@ -129,7 +129,6 @@ impl RenderMap {
         const CHANNELS: usize,
     >(
         anim: &AnimBase<AnimPoint<T, CHANNELS>>,
-        channels: usize,
         cur_time: &Duration,
         cur_anim_time: &Duration,
         anim_time_offset: &time::Duration,
@@ -144,7 +143,7 @@ impl RenderMap {
         };
         let anim_time = total_time + *anim_time_offset;
 
-        RenderTools::render_eval_anim(&anim.points, anim_time, channels)
+        RenderTools::render_eval_anim(&anim.points, anim_time)
     }
 
     fn render_tile_layer<AN, AS>(
@@ -170,7 +169,7 @@ impl RenderMap {
                     None
                 }
             } {
-                Self::animation_eval(&anim.def, 4, cur_time, cur_anim_time, color_anim_offset)
+                Self::animation_eval(&anim.def, cur_time, cur_anim_time, color_anim_offset)
             } else {
                 nfvec4::new(
                     nffixed::from_num(1),
@@ -673,7 +672,6 @@ impl RenderMap {
             } {
                 RenderMap::animation_eval(
                     &anim.def,
-                    4,
                     cur_time,
                     cur_anim_time,
                     &quad.color_anim_offset,
@@ -700,7 +698,6 @@ impl RenderMap {
             } {
                 let pos_channels = RenderMap::animation_eval(
                     &anim.def,
-                    3,
                     cur_time,
                     cur_anim_time,
                     &quad.pos_anim_offset,
@@ -809,21 +806,20 @@ impl RenderMap {
         state: &mut State,
         center: &vec2,
         zoom: f32,
+        parallax_aware_zoom: bool,
         forced_aspect_ratio: Option<f32>,
         clipping: &MapGroupAttrClipping,
     ) -> bool {
-        RenderTools::map_canvas_of_group(
+        let points = RenderTools::canvas_points_of_group(
             forced_aspect_ratio
                 .map(|aspect_ratio| CanvasType::Custom { aspect_ratio })
                 .unwrap_or(CanvasType::Handle(&self.canvas_handle)),
-            state,
             center.x,
             center.y,
             None,
             zoom,
+            parallax_aware_zoom,
         );
-        let (canvas_x0, canvas_y0, canvas_x1, canvas_y1) = state.get_canvas_mapping();
-        let points: [f32; 4] = [canvas_x0, canvas_y0, canvas_x1, canvas_y1];
 
         let x0 = (clipping.pos.x.to_num::<f32>() - points[0]) / (points[2] - points[0]);
         let y0 = (clipping.pos.y.to_num::<f32>() - points[1]) / (points[3] - points[1]);
@@ -838,10 +834,10 @@ impl RenderMap {
         }
 
         let (x, y, w, h) = State::auto_round_clipping(
-            x0 * self.canvas_handle.window_width() as f32,
-            y0 * self.canvas_handle.window_height() as f32,
-            (x1 - x0) * self.canvas_handle.window_width() as f32,
-            (y1 - y0) * self.canvas_handle.window_height() as f32,
+            x0 * self.canvas_handle.canvas_width() as f32,
+            y0 * self.canvas_handle.canvas_height() as f32,
+            (x1 - x0) * self.canvas_handle.canvas_width() as f32,
+            (y1 - y0) * self.canvas_handle.canvas_height() as f32,
         );
 
         state.clip_clamped(
@@ -849,8 +845,8 @@ impl RenderMap {
             y,
             w,
             h,
-            self.canvas_handle.window_width(),
-            self.canvas_handle.window_height(),
+            self.canvas_handle.canvas_width(),
+            self.canvas_handle.canvas_height(),
         );
 
         true
@@ -876,7 +872,6 @@ impl RenderMap {
             } {
                 let pos_channels = RenderMap::animation_eval(
                     &anim.def,
-                    3,
                     cur_time,
                     cur_anim_time,
                     &sound.pos_anim_offset,
@@ -971,6 +966,7 @@ impl RenderMap {
                 &mut state,
                 center,
                 camera.zoom,
+                camera.parallax_aware_zoom,
                 camera.forced_aspect_ratio,
                 clipping,
             ) {
@@ -988,6 +984,7 @@ impl RenderMap {
             center.y,
             Some(group_attr),
             camera.zoom,
+            camera.parallax_aware_zoom,
         );
 
         match layer {
@@ -1112,6 +1109,7 @@ impl RenderMap {
             camera.pos.y,
             None,
             camera.zoom,
+            camera.parallax_aware_zoom,
         );
 
         let is_main_physics_layer = matches!(layer, MapLayerPhysicsSkeleton::Game(_));

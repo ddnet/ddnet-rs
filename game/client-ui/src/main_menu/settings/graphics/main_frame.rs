@@ -240,7 +240,19 @@ fn render_monitors(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                 ui.label(format!(
                     "Monitor: {} - {}",
                     monitors.name,
-                    fmt_res(wnd.width, wnd.height, wnd.refresh_rate_mhz)
+                    if wnd.fullscreen {
+                        fmt_res(
+                            wnd.fullscreen_width,
+                            wnd.fullscreen_height,
+                            wnd.refresh_rate_mhz,
+                        )
+                    } else {
+                        fmt_res(
+                            wnd.window_width as u32,
+                            wnd.window_height as u32,
+                            wnd.refresh_rate_mhz,
+                        )
+                    }
                 ));
                 ui.style_mut().spacing.scroll.floating = false;
                 ScrollArea::vertical().show(ui, |ui| {
@@ -259,8 +271,8 @@ fn render_monitors(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                     mode.refresh_rate_mhz,
                                 ))
                                 .selected(
-                                    wnd.width == mode.width
-                                        && wnd.height == mode.height
+                                    wnd.fullscreen_width == mode.width
+                                        && wnd.fullscreen_height == mode.height
                                         && wnd.refresh_rate_mhz == mode.refresh_rate_mhz,
                                 ),
                             )
@@ -270,8 +282,13 @@ fn render_monitors(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                             let mut ingame_aspect_info: bool = config.storage(INFO_NAME);
                             let wnd = &mut config.engine.wnd;
                             if ingame_aspect_info || !wnd.fullscreen {
-                                wnd.width = mode.width;
-                                wnd.height = mode.height;
+                                if wnd.fullscreen {
+                                    wnd.fullscreen_width = mode.width;
+                                    wnd.fullscreen_height = mode.height;
+                                } else {
+                                    wnd.window_width = mode.width as f64;
+                                    wnd.window_height = mode.height as f64;
+                                }
                                 wnd.refresh_rate_mhz = mode.refresh_rate_mhz;
                             } else {
                                 config
