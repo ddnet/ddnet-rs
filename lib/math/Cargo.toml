@@ -5,9 +5,9 @@ edition = "2021"
 
 [dependencies]
 hiarc = { path = "../hiarc", features = ["derive", "enable_fixed"] }
-serde = { version = "1.0.217", features = ["derive"] }
-rand = { version = "0.8.5", default-features = false }
-rand_xoshiro = "0.6.0"
+serde = { version = "1.0.219", features = ["derive"] }
+rand = { version = "0.9.0", default-features = false }
+rand_xoshiro = "0.7.0"
 num-traits = { version = "0.2.19", features = ["libm"] }
 palette = "0.7.6"
-fixed = { version = "1.28.0", features = ["serde", "serde-str"] }
+fixed = { version = "1.29.0", features = ["serde", "serde-str"] }

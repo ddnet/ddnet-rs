@@ -121,9 +121,9 @@ pub fn render(
                 strip.empty();
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
-                    let res = egui::Frame::none()
+                    let res = egui::Frame::NONE
                         .fill(bg_frame_color())
-                        .rounding(5.0)
+                        .corner_radius(5.0)
                         .show(ui, |ui| {
                             ui.set_width(ui.available_width());
                             ui.set_height(ui.available_height());
@@ -202,9 +202,9 @@ pub fn render(
                 });
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
-                    let res = egui::Frame::none()
+                    let res = egui::Frame::NONE
                         .fill(bg_frame_color())
-                        .rounding(5.0)
+                        .corner_radius(5.0)
                         .show(ui, |ui| {
                             ui.set_width(ui.available_width());
                             ui.set_height(ui.available_height());

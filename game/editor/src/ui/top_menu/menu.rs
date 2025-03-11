@@ -236,12 +236,12 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             | EditorMenuDialogMode::Save { .. } = menu_dialog_mode
                             {
                                 match mode {
-                                    DialogMode::SelectFile => {
+                                    DialogMode::PickFile => {
                                         pipe.user_data
                                             .ui_events
                                             .push(EditorUiEvent::OpenFile { name: selected });
                                     }
-                                    DialogMode::SelectDirectory | DialogMode::SelectMultiple => {
+                                    DialogMode::PickDirectory | DialogMode::PickMultiple => {
                                         todo!()
                                     }
                                     DialogMode::SaveFile => {

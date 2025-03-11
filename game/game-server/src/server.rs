@@ -2907,9 +2907,9 @@ impl Server {
                 .rt
                 .spawn(async move {
                     let mut secret: [u8; 32] = Default::default();
-                    rand::rngs::OsRng.fill_bytes(&mut secret);
+                    rand::rng().fill_bytes(&mut secret);
                     let mut challenge_secret: [u8; 32] = Default::default();
-                    rand::rngs::OsRng.fill_bytes(&mut challenge_secret);
+                    rand::rng().fill_bytes(&mut challenge_secret);
                     let register = |register_info: String,
                                     http: Arc<dyn HttpClientInterface>,
                                     ipv4: bool,

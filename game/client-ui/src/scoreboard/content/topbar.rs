@@ -1,4 +1,4 @@
-use egui::{epaint::RectShape, Color32, Layout, RichText, Rounding};
+use egui::{epaint::RectShape, Color32, CornerRadius, Layout, RichText};
 
 use ui_base::utils::add_horizontal_margins;
 
@@ -17,7 +17,7 @@ pub enum TopBarTypes {
 pub fn render(
     ui: &mut egui::Ui,
     ty: TopBarTypes,
-    rounding: Rounding,
+    rounding: CornerRadius,
     label: &str,
     label_opposite: &str,
 ) {

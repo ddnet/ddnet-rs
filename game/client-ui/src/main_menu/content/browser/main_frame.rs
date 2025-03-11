@@ -34,7 +34,7 @@ pub fn render(
 
                 let rect = Frame::default()
                     .fill(bg_frame_color())
-                    .rounding(5.0)
+                    .corner_radius(5.0)
                     .show(ui, |ui| {
                         let filter_height = 30.0;
                         let bottom_bar_height = 30.0;

@@ -163,7 +163,7 @@ impl Rng {
     }
 
     pub fn random_int_in(&mut self, range: RangeInclusive<u64>) -> u64 {
-        rand::Rng::gen_range(&mut self.rng, range)
+        rand::Rng::random_range(&mut self.rng, range)
     }
 
     pub fn random_int(&mut self) -> u64 {
@@ -171,7 +171,7 @@ impl Rng {
     }
 
     pub fn random_float_in(&mut self, range: RangeInclusive<f32>) -> f32 {
-        rand::Rng::gen_range(&mut self.rng, range)
+        rand::Rng::random_range(&mut self.rng, range)
     }
 
     /// random float in `[0..1]`

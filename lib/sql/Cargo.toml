@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 game-database = { path = "../game-database", default-features = false }
 
-anyhow = { version = "1.0.95", features = ["backtrace"] }
-sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "chrono"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "chrono"] }
 ddnet-account-sql = { version = "0.3.0", default-features = false }
 
 [features]

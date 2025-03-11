@@ -21,7 +21,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                 ui.style_mut().wrap_mode = None;
                 let res = Frame::default()
                     .fill(bg_frame_color())
-                    .rounding(5.0)
+                    .corner_radius(5.0)
                     .show(ui, |ui| {
                         add_margins(ui, |ui| {
                             ui.style_mut().wrap_mode = None;

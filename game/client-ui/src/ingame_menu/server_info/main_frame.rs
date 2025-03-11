@@ -10,7 +10,7 @@ use crate::ingame_menu::user_data::UserData;
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let res = Frame::default()
         .fill(bg_frame_color())
-        .rounding(5.0)
+        .corner_radius(5.0)
         .inner_margin(get_margin(ui))
         .show(ui, |ui| {
             let game_info = pipe.user_data.game_server_info.game_info();

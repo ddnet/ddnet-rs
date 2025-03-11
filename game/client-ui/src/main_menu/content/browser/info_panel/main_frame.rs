@@ -19,7 +19,7 @@ pub fn render(
 ) {
     let res = Frame::default()
         .fill(bg_frame_color())
-        .rounding(5.0)
+        .corner_radius(5.0)
         .show(ui, |ui| {
             let item_spacing = ui.style().spacing.item_spacing.x;
             StripBuilder::new(ui)

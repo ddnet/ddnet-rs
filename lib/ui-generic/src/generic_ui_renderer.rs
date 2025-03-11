@@ -63,6 +63,7 @@ pub fn render_blur_if_needed(
                                 blur_rect.rounding,
                                 blur_rect.color,
                                 Stroke::NONE,
+                                egui::StrokeKind::Inside,
                             );
                         }
                         BlurShape::Circle(blur_circle) => {

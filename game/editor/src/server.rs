@@ -702,7 +702,7 @@ impl EditorServer {
                                 );
                             };
                             let gen_actions = |map: &mut _| {
-                                let invalid_action = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                                let invalid_action = rand::rng().next_u64() % u8::MAX as u64;
                                 let is_invalid = invalid_action
                                     < props.invalid_action_probability as u64
                                     || props.invalid_action_probability == u8::MAX;
@@ -733,11 +733,11 @@ impl EditorServer {
                                 actions
                             };
 
-                            let undo_redo = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                            let undo_redo = rand::rng().next_u64() % u8::MAX as u64;
                             if undo_redo < props.undo_redo_probability as u64
                                 || props.undo_redo_probability == u8::MAX
                             {
-                                let is_undo = (rand::rngs::OsRng.next_u64() % 2) == 0;
+                                let is_undo = (rand::rng().next_u64() % 2) == 0;
                                 self.handle_client_ev(
                                     id,
                                     EditorEventClientToServer::Command(if is_undo {
@@ -757,13 +757,13 @@ impl EditorServer {
                                     should_save,
                                 );
                             } else {
-                                let shuffle_action = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                                let shuffle_action = rand::rng().next_u64() % u8::MAX as u64;
                                 if shuffle_action < props.action_shuffle_probability as u64
                                     || props.action_shuffle_probability == u8::MAX
                                 {
                                     let mut actions: Vec<_> =
                                         (0..props.num_actions).map(|_| gen_actions(map)).collect();
-                                    actions.shuffle(&mut rand::rngs::OsRng);
+                                    actions.shuffle(&mut rand::rng());
 
                                     for actions in actions {
                                         run_actions(map, actions);
@@ -778,7 +778,7 @@ impl EditorServer {
                                 }
                             }
 
-                            let full_map_validation = rand::rngs::OsRng.next_u64() % u8::MAX as u64;
+                            let full_map_validation = rand::rng().next_u64() % u8::MAX as u64;
                             if full_map_validation < props.full_map_validation_probability as u64
                                 || props.full_map_validation_probability == u8::MAX
                             {

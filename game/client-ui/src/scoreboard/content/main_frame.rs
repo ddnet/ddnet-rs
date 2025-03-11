@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 
 use base::{duration_ext::DurationToRaceStr, linked_hash_map_view::FxLinkedHashMap};
-use egui::{epaint::RectShape, Rect, Rounding, Shape};
+use egui::{epaint::RectShape, CornerRadius, Rect, Shape};
 use egui_extras::{Size, StripBuilder};
 
 use game_interface::types::{
@@ -28,7 +28,7 @@ fn render_scoreboard_frame<'a>(
     ui_state: &mut UiState,
     full_ui_rect: Rect,
     topbar_type: TopBarTypes,
-    rounding: Rounding,
+    rounding: CornerRadius,
     character_infos: &FxLinkedHashMap<CharacterId, CharacterInfo>,
     players: &mut Peekable<impl Iterator<Item = RenderPlayer<'a>>>,
     player_count: usize,
@@ -136,8 +136,8 @@ pub fn render_players(
                     strip.cell(|ui| {
                         ui.style_mut().wrap_mode = None;
                         res = ui.available_width();
-                        let rounding = Rounding {
-                            nw: 5.0,
+                        let rounding = CornerRadius {
+                            nw: 5,
                             ..Default::default()
                         };
                         let player_count: usize =
@@ -184,8 +184,8 @@ pub fn render_players(
                     });
                     strip.cell(|ui| {
                         ui.style_mut().wrap_mode = None;
-                        let rounding = Rounding {
-                            ne: 5.0,
+                        let rounding = CornerRadius {
+                            ne: 5,
                             ..Default::default()
                         };
                         let player_count: usize =
@@ -252,20 +252,20 @@ pub fn render_players(
                 for i in 0..split_count {
                     let rounding = if i == 0 {
                         if split_count == 1 {
-                            Rounding {
-                                nw: 5.0,
-                                ne: 5.0,
+                            CornerRadius {
+                                nw: 5,
+                                ne: 5,
                                 ..Default::default()
                             }
                         } else {
-                            Rounding {
-                                nw: 5.0,
+                            CornerRadius {
+                                nw: 5,
                                 ..Default::default()
                             }
                         }
                     } else {
-                        Rounding {
-                            ne: 5.0,
+                        CornerRadius {
+                            ne: 5,
                             ..Default::default()
                         }
                     };
@@ -362,7 +362,7 @@ pub fn render_spectators(
         return;
     }
 
-    let rounding = Rounding {
+    let rounding = CornerRadius {
         ..Default::default()
     };
 

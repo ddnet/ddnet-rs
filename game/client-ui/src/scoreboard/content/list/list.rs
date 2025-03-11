@@ -269,7 +269,7 @@ pub fn render<'a>(
                                         frame_rect.shape_id,
                                         Shape::rect_filled(
                                             Rect::from_min_max(rect_min.min, rect_max.max),
-                                            egui::Rounding::default(),
+                                            egui::CornerRadius::default(),
                                             Color32::from_rgba_unmultiplied(
                                                 stage.color.r(),
                                                 stage.color.g(),

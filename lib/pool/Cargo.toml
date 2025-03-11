@@ -8,10 +8,10 @@ edition = "2021"
 [dependencies]
 hiarc = { path = "../hiarc", features = ["enable_parking_lot", "derive"], optional = true }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-bincode = { version = "2.0.0-rc.3", features = ["serde"] }
-serde = { version = "1.0.217", features = ["derive", "rc"] }
+bincode = { version = "2.0.1", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive", "rc"] }
 parking_lot = "0.12.3"
-rustc-hash = "2.1.0"
+rustc-hash = "2.1.1"
 
 [features]
 enable_hiarc = ["hiarc"]

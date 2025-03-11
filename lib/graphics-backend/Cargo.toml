@@ -29,26 +29,26 @@ graphics-backend-traits = { path = "../graphics-backend-traits" }
 pool = { path = "../pool" }
 math = { path = "../math" }
 
-libc = "0.2.169"
+libc = "0.2.170"
 ash-window = "0.13.0"
-naga = { version = "23.1.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
-naga_oil = "0.16.0"
+naga = { version = "24.0.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
+naga_oil = "0.17.0"
 raw-window-handle = "0.6.2"
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 rayon = "1.10.0"
 ash = "0.38.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-thiserror = "2.0.9"
+thiserror = "2.0.12"
 atomic_enum = "0.3.0"
 parking_lot = "0.12.3"
-serde_json = "1.0.134"
-serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.140"
+serde = { version = "1.0.219", features = ["derive"] }
 arc-swap = "1.7.1"
 thread-priority = "1.2.0"
-bincode = { features = ["serde"], version = "2.0.0-rc.3" }
-log = "0.4.22"
-either = "1.13.0"
+bincode = { features = ["serde"], version = "2.0.1" }
+log = "0.4.26"
+either = "1.15.0"
 replace_with = "0.1.7"
 crossbeam = "0.8.4"
 

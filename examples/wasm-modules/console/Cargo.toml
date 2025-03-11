@@ -17,9 +17,9 @@ client-ui = { path = "../../../game/client-ui" }
 client-render-base = { path = "../../../game/client-render-base" }
 client-types = { path = "../../../game/client-types" }
 client-containers = { path = "../../../game/client-containers" }
-bincode = { version = "2.0.0-rc.3", features = ["serde"] }
-egui = { version = "0.30.0", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.30.0" }
+bincode = { version = "2.0.1", features = ["serde"] }
+egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui_extras = { version = "0.31.1" }
 
 [lib]
 crate-type = ["cdylib"]

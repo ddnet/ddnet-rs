@@ -47,10 +47,10 @@ pub fn render(
                                             Color32::from_rgba_unmultiplied(140, 140, 140, 15),
                                             Color32::from_rgb(180, 180, 255),
                                             Color32::from_rgb(255, 255, 255),
-                                            Margin::symmetric(5.0, 5.0),
+                                            Margin::symmetric(5, 5),
                                             Shadow {
-                                                blur: 10.0,
-                                                spread: 1.0,
+                                                blur: 10,
+                                                spread: 1,
                                                 color: shadow_color,
                                                 ..Default::default()
                                             },
@@ -64,7 +64,7 @@ pub fn render(
                                             } else {
                                                 Color32::DARK_GRAY
                                             },
-                                            Margin::symmetric(5.0, 5.0),
+                                            Margin::symmetric(5, 5),
                                             Shadow::NONE,
                                         )
                                     };
@@ -109,7 +109,7 @@ pub fn render(
                                 }
                                 let label = Frame::default()
                                     .fill(bg_color_text)
-                                    .rounding(5.0)
+                                    .corner_radius(5.0)
                                     .inner_margin(margin)
                                     .shadow(shadow)
                                     .show(ui, |ui| {

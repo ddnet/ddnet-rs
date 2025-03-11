@@ -1,7 +1,7 @@
 use config::config::ConfigPath;
 use egui::{
-    scroll_area::ScrollBarVisibility, vec2, Color32, FontId, Frame, Layout, Rect, RichText,
-    Rounding, ScrollArea, Shape, Style, UiBuilder,
+    scroll_area::ScrollBarVisibility, vec2, Color32, CornerRadius, FontId, Frame, Layout, Rect,
+    RichText, ScrollArea, Shape, Style, UiBuilder,
 };
 use egui_extras::{Size, StripBuilder};
 use game_interface::types::{character_info::NetworkSkinInfo, render::character::TeeEye};
@@ -110,9 +110,9 @@ pub fn render(
         .cloned()
         .unwrap_or_else(|| fallback_query.to_string());
     fn btn_style(style: &mut Style, size: f32) {
-        style.visuals.widgets.inactive.rounding = Rounding::same(size / 2.0);
-        style.visuals.widgets.hovered.rounding = Rounding::same(size / 2.0);
-        style.visuals.widgets.active.rounding = Rounding::same(size / 2.0);
+        style.visuals.widgets.inactive.corner_radius = CornerRadius::same((size / 2.0) as u8);
+        style.visuals.widgets.hovered.corner_radius = CornerRadius::same((size / 2.0) as u8);
+        style.visuals.widgets.active.corner_radius = CornerRadius::same((size / 2.0) as u8);
     }
     fn round_btn(
         ui: &mut egui::Ui,
@@ -141,7 +141,7 @@ pub fn render(
                         .scale_from_center2(vec2(5.0 / size, 0.5));
                     ui.painter().add(Shape::rect_filled(
                         highlight_rect,
-                        Rounding::same(4.0),
+                        CornerRadius::same(4),
                         Color32::LIGHT_BLUE,
                     ));
                 }

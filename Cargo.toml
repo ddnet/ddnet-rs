@@ -179,33 +179,33 @@ editor-wasm = { path = "game/editor-wasm", default-features = false }
 game-state-wasm = { path = "game/game-state-wasm" }
 editor = { path = "game/editor", default-features = false }
 
-egui-winit = { version = "0.30.0", default-features = false, features = ["x11", "arboard", "links"] }
-tokio = { version = "1.42.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+egui-winit = { version = "0.31.1", default-features = false, features = ["x11", "arboard", "links"] }
+tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 num = "0.4.3"
 arrayvec = "0.7.6"
-egui = { version = "0.30.0", default-features = false, features = ["serde"] }
+egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 rayon = "1.10.0"
-bincode = { version = "2.0.0-rc.3", features = ["serde"] }
-bytes = "1.9.0"
-egui_extras = { version = "0.30.0" }
-emath = "0.30.0"
-fixed = "1.28.0"
-serde = "1.0.217"
+bincode = { version = "2.0.1", features = ["serde"] }
+bytes = "1.10.1"
+egui_extras = { version = "0.31.1" }
+emath = "0.31.1"
+fixed = "1.29.0"
+serde = "1.0.219"
 serde-value = "0.7.0"
-serde_json = "1.0.134"
+serde_json = "1.0.140"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 parking_lot = "0.12.3"
 thread-priority = "1.2.0"
 hiarc = { path = "lib/hiarc", features = ["derive"] }
 trybuild = "1.0"
-env_logger = "0.11.6"
-rand = { version = "0.8.5", features = ["std_rng"], default-features = false }
+env_logger = "0.11.7"
+rand = { version = "0.9.0", features = ["std_rng"], default-features = false }
 url = "2.5.4"
-log = "0.4.22"
+log = "0.4.26"
 x509-cert = { version = "0.2.5" }
 crossbeam = "0.8.4"
-chrono = { version = "0.4.39", features = ["serde"] }
+chrono = { version = "0.4.40", features = ["serde"] }
 
 alloc-track = { version = "0.3.1", optional = true }
 stats_alloc = { version = "0.1.10", optional = true }
@@ -216,7 +216,7 @@ stats_alloc = { version = "0.1.10", optional = true }
 ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branch = "pr_mingw_workaround" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.14.1"
+android_logger = "0.15.0"
 ndk = { version = "0.9.0", default-features = false }
 
 [dev-dependencies]

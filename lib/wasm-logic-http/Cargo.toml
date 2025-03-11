@@ -11,5 +11,5 @@ wasm-runtime-types = { path = "../wasm-runtime-types" }
 
 wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
 url = { version = "2.5.4", features = ["serde"] }
-bytes = { version = "1.9.0", features = ["serde"] }
+bytes = { version = "1.10.1", features = ["serde"] }
 sendable = "0.6.1"

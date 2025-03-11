@@ -321,22 +321,22 @@ impl TeeEditor {
     fn central_panel_frame() -> egui::containers::Frame {
         egui::containers::Frame {
             inner_margin: egui::Margin {
-                left: 0.,
-                right: 0.,
-                top: 0.,
-                bottom: 0.,
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
             },
             outer_margin: egui::Margin {
-                left: 0.,
-                right: 0.,
-                top: 0.,
-                bottom: 0.,
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
             },
-            rounding: egui::Rounding {
-                nw: 0.0,
-                ne: 0.0,
-                sw: 0.0,
-                se: 0.0,
+            corner_radius: egui::CornerRadius {
+                nw: 0,
+                ne: 0,
+                sw: 0,
+                se: 0,
             },
             shadow: egui::epaint::Shadow::NONE,
             fill: egui::Color32::TRANSPARENT,
@@ -823,7 +823,13 @@ impl TeeEditor {
 
         ui.painter().set(
             where_to_put_background,
-            egui::epaint::RectShape::new(rect, style.rounding, fill, stroke),
+            egui::epaint::RectShape::new(
+                rect,
+                style.corner_radius,
+                fill,
+                stroke,
+                egui::StrokeKind::Inside,
+            ),
         );
 
         egui::InnerResponse::new(ret, response)

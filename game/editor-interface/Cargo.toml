@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 map = { path = "../map" }
 
-serde = { version = "1.0.217", features = ["derive"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }

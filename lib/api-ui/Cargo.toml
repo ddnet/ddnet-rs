@@ -8,5 +8,5 @@ api = { path = "../../lib/api" }
 ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
 graphics-types = { path = "../../lib/graphics-types" }
-once_cell = "1.20.2"
-egui = { version = "0.30.0", default-features = false, features = ["serde"] }
+once_cell = "1.21.0"
+egui = { version = "0.31.1", default-features = false, features = ["serde"] }

@@ -7,4 +7,4 @@ edition = "2021"
 base = { path = "../../lib/base" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
 
-serde = { version = "1.0.217", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }

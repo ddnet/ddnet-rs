@@ -20,18 +20,18 @@ game-config = { path = "../game-config" }
 rayon = "1.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-flate2 = "1.0.35"
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+flate2 = "1.1.0"
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-serde = { version = "1.0.217", features = ["derive"] }
-indexmap = "2.7.0"
-time = { version = "0.3.37", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive"] }
+indexmap = "2.8.0"
+time = { version = "0.3.39", features = ["serde"] }
 serde_with = "3.12.0"
-thiserror = "2.0.9"
-itertools = "0.13.0"
+thiserror = "2.0.12"
+itertools = "0.14.0"
 
 [package.metadata.cargo-machete]
 ignored = ["num-traits"]
 
 [dev-dependencies]
-rustc-hash = "2.1.0"
+rustc-hash = "2.1.1"

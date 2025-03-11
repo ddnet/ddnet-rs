@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }
 
 [dev-dependencies]
 bidiff = "1.0.0"

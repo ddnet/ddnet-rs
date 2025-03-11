@@ -65,7 +65,7 @@ pub fn render<F, R, U>(
         let mode = file_dialog.mode();
         if let Some(selected) = file_dialog.update(ui.ctx()).picked() {
             match mode {
-                DialogMode::SelectFile => {
+                DialogMode::PickFile => {
                     let selected = selected.to_path_buf();
                     let fs = io.fs.clone();
                     panel_data.loading_tasks.insert(
@@ -74,10 +74,10 @@ pub fn render<F, R, U>(
                             .spawn(async move { read_file_editor(&fs, selected.as_ref()).await }),
                     );
                 }
-                DialogMode::SelectDirectory | DialogMode::SaveFile => {
+                DialogMode::PickDirectory | DialogMode::SaveFile => {
                     panic!("")
                 }
-                DialogMode::SelectMultiple => {
+                DialogMode::PickMultiple => {
                     panic!("multi select currently isn't implemented.")
                 }
             }

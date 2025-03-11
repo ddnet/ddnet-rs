@@ -12,11 +12,11 @@ pub fn entry_frame(ui: &mut egui::Ui, stroke: Stroke, f: impl FnOnce(&mut egui::
     egui::Frame::default()
         .fill(color_frame)
         .stroke(stroke)
-        .rounding(5.0)
+        .corner_radius(5.0)
         .shadow(Shadow {
             color: style.visuals.window_shadow.color,
-            spread: style.spacing.item_spacing.y / 2.0,
-            blur: 5.0,
+            spread: (style.spacing.item_spacing.y / 2.0) as u8,
+            blur: 5,
             ..Default::default()
         })
         .show(ui, f);

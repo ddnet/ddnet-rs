@@ -12,5 +12,5 @@ game-interface = { path = "../game-interface" }
 
 command-parser = { path = "../../lib/command-parser" }
 
-serde = { version = "1.0.217", features = ["derive"] }
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }
+anyhow = { version = "1.0.97", features = ["backtrace"] }

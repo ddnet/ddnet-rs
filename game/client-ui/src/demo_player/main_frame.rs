@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use base::duration_ext::DurationToRaceStr;
 use egui::{
-    Align2, Button, Color32, FontId, Frame, Grid, Layout, Rect, Rounding, Shadow, Stroke,
+    Align2, Button, Color32, CornerRadius, FontId, Frame, Grid, Layout, Rect, Shadow, Stroke,
     TopBottomPanel, Vec2, Window,
 };
 
@@ -20,7 +20,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     let res = TopBottomPanel::bottom("demo-main")
         .exact_height(40.0)
         .frame(
-            Frame::none()
+            Frame::NONE
                 .shadow(Shadow::NONE)
                 .stroke(Stroke::NONE)
                 .fill(Color32::from_black_alpha(80)),
@@ -91,8 +91,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
 
                 ui.painter().rect_stroke(
                     rect,
-                    Rounding::default(),
+                    CornerRadius::default(),
                     Stroke::new(1.0, Color32::from_white_alpha(100)),
+                    egui::StrokeKind::Inside,
                 );
 
                 let time_str = time.to_race_string();
@@ -119,7 +120,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             }
 
             ui.painter()
-                .rect_filled(rect, Rounding::default(), Color32::from_white_alpha(50));
+                .rect_filled(rect, CornerRadius::default(), Color32::from_white_alpha(50));
             let len_rect = rect;
             rect.set_width(
                 rect.width()
@@ -129,7 +130,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             );
             ui.painter().rect_filled(
                 rect,
-                Rounding::default(),
+                CornerRadius::default(),
                 Color32::from_rgba_unmultiplied(150, 0, 0, 150),
             );
             let state = &mut *pipe.user_data.state;
@@ -147,7 +148,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     );
                     ui.painter().rect_filled(
                         rect,
-                        Rounding::default(),
+                        CornerRadius::default(),
                         Color32::from_rgba_unmultiplied(0, 0, 150, 255),
                     );
                 }
@@ -171,7 +172,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                 );
                 ui.painter().rect_filled(
                     rect,
-                    Rounding::default(),
+                    CornerRadius::default(),
                     Color32::from_rgba_unmultiplied(0, 0, 150, 150),
                 );
             }
