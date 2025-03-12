@@ -65,7 +65,8 @@ pub enum RenderLayerType {
 
 pub enum ForcedTexture<'a> {
     TileLayer(&'a TextureContainer2dArray),
-    TileLayerTileNum(&'a TextureContainer2dArray),
+    TileLayerTileIndex(&'a TextureContainer2dArray),
+    TileLayerTileFlag(&'a TextureContainer2dArray),
     QuadLayer(&'a TextureContainer),
 }
 
@@ -993,7 +994,8 @@ impl RenderMap {
                 let layer = &layer.layer;
                 let texture = if let Some(
                     ForcedTexture::TileLayer(forced_texture)
-                    | ForcedTexture::TileLayerTileNum(forced_texture),
+                    | ForcedTexture::TileLayerTileIndex(forced_texture)
+                    | ForcedTexture::TileLayerTileFlag(forced_texture),
                 ) = forced_texture
                 {
                     Some(forced_texture)
@@ -1016,8 +1018,10 @@ impl RenderMap {
                 state.blend(BlendType::Alpha);
 
                 let buffer_object =
-                    if matches!(forced_texture, Some(ForcedTexture::TileLayerTileNum(_))) {
-                        &visual.tile_num_buffer_object
+                    if matches!(forced_texture, Some(ForcedTexture::TileLayerTileIndex(_))) {
+                        &visual.tile_index_buffer_object
+                    } else if matches!(forced_texture, Some(ForcedTexture::TileLayerTileFlag(_))) {
+                        &visual.tile_flag_buffer_object
                     } else {
                         &visual.base.buffer_object
                     };
@@ -1153,7 +1157,8 @@ impl RenderMap {
             &state,
             if let Some(
                 ForcedTexture::TileLayer(forced_texture)
-                | ForcedTexture::TileLayerTileNum(forced_texture),
+                | ForcedTexture::TileLayerTileIndex(forced_texture)
+                | ForcedTexture::TileLayerTileFlag(forced_texture),
             ) = forced_texture
             {
                 Some(forced_texture)
@@ -1164,8 +1169,10 @@ impl RenderMap {
             cur_time,
             cur_anim_time,
             &layer.user().borrow().base.base.base,
-            if matches!(forced_texture, Some(ForcedTexture::TileLayerTileNum(_))) {
-                &layer.user().borrow().base.tile_num_buffer_object
+            if matches!(forced_texture, Some(ForcedTexture::TileLayerTileIndex(_))) {
+                &layer.user().borrow().base.tile_index_buffer_object
+            } else if matches!(forced_texture, Some(ForcedTexture::TileLayerTileFlag(_))) {
+                &layer.user().borrow().base.tile_flag_buffer_object
             } else {
                 &layer.user().borrow().base.base.buffer_object
             },

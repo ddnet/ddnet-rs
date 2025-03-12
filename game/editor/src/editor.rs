@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
+    rc::Rc,
     sync::Arc,
     time::Duration,
 };
@@ -15,10 +16,7 @@ use base::{
 };
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemInterface;
-use client_containers::{
-    container::ContainerKey,
-    entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
-};
+use client_containers::entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH};
 use client_notifications::overlay::ClientNotifications;
 use client_render_base::map::{
     map::{ForcedTexture, RenderMap},
@@ -111,6 +109,7 @@ use crate::{
     physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
     tab::EditorTab,
+    tile_overlays::TileLayerOverlaysDdnet,
     tools::{
         auto_saver::AutoSaver,
         quad_layer::{brush::QuadBrush, selection::QuadSelection},
@@ -216,6 +215,7 @@ pub struct Editor {
     entities_container: EntitiesContainer,
     fake_texture_array: TextureContainer2dArray,
     fake_texture: TextureContainer,
+    tile_textures: Rc<TileLayerOverlaysDdnet>,
 
     // misc
     io: Io,
@@ -364,6 +364,7 @@ impl Editor {
             entities_container,
             fake_texture_array,
             fake_texture,
+            tile_textures: TileLayerOverlaysDdnet::new(io, tp, graphics).unwrap(),
 
             io: io.clone(),
             thread_pool: tp.clone(),
@@ -1725,7 +1726,8 @@ impl Editor {
         animations: &AnimationsSkeleton<AS, A>,
         group: &EditorGroup,
         layer: &EditorLayer,
-        as_tile_numbers: Option<&TextureContainer2dArray>,
+        as_tile_index: Option<&TextureContainer2dArray>,
+        as_tile_flag: Option<&TextureContainer2dArray>,
         layer_rect: &mut Vec<LayerRect>,
     ) {
         let time = if map.user.ui_values.animations_panel_open {
@@ -1750,8 +1752,10 @@ impl Editor {
             match layer {
                 MapLayerSkeleton::Abritrary(_) | MapLayerSkeleton::Sound(_) => None,
                 MapLayerSkeleton::Tile(layer) => {
-                    if let Some(numbers) = as_tile_numbers {
-                        Some(ForcedTexture::TileLayerTileNum(numbers))
+                    if let Some(tex) = as_tile_index {
+                        Some(ForcedTexture::TileLayerTileIndex(tex))
+                    } else if let Some(tex) = as_tile_flag {
+                        Some(ForcedTexture::TileLayerTileFlag(tex))
                     } else if let Some(EditorTileLayerPropsSelection {
                         image_2d_array_selection_open:
                             Some(ResourceSelection {
@@ -1846,7 +1850,8 @@ impl Editor {
         map_render: &RenderMap,
         map: &EditorMap,
         groups: &[EditorGroup],
-        tile_numbers_texture: TextureContainer2dArray,
+        tile_index_texture: TextureContainer2dArray,
+        tile_flag_texture: TextureContainer2dArray,
         group_clips: &mut Vec<MapGroupAttr>,
         layer_rect: &mut Vec<LayerRect>,
     ) {
@@ -1861,6 +1866,7 @@ impl Editor {
                             group,
                             layer,
                             None,
+                            None,
                             layer_rect,
                         );
                     } else {
@@ -1870,6 +1876,7 @@ impl Editor {
                             &map.animations,
                             group,
                             layer,
+                            None,
                             None,
                             layer_rect,
                         );
@@ -1881,7 +1888,18 @@ impl Editor {
                             &map.animations,
                             group,
                             layer,
-                            Some(&tile_numbers_texture),
+                            Some(&tile_index_texture),
+                            None,
+                            layer_rect,
+                        );
+                        self.render_design_layer(
+                            map_render,
+                            map,
+                            &map.animations,
+                            group,
+                            layer,
+                            None,
+                            Some(&tile_flag_texture),
                             layer_rect,
                         );
                     }
@@ -1929,7 +1947,8 @@ impl Editor {
         map_render: &RenderMap,
         map: &EditorMap,
         layer: &EditorPhysicsLayer,
-        as_tile_numbers: Option<&TextureContainer2dArray>,
+        as_tile_index: Option<&TextureContainer2dArray>,
+        as_tile_flag: Option<&TextureContainer2dArray>,
     ) {
         let time = if map.user.ui_values.animations_panel_open {
             map.user.ui_values.timeline.time()
@@ -1956,7 +1975,9 @@ impl Editor {
                 &map.game_time_info().intra_tick_time,
             ),
             100,
-            as_tile_numbers.map(ForcedTexture::TileLayerTileNum),
+            as_tile_index
+                .map(ForcedTexture::TileLayerTileIndex)
+                .or(as_tile_flag.map(ForcedTexture::TileLayerTileFlag)),
         );
     }
 
@@ -1965,7 +1986,8 @@ impl Editor {
         map_render: &RenderMap,
         map: &EditorMap,
         group: &EditorGroupPhysics,
-        tile_numbers_texture: TextureContainer2dArray,
+        tile_index_texture: TextureContainer2dArray,
+        tile_flag_texture: TextureContainer2dArray,
         layer_rect: &mut Vec<LayerRect>,
     ) {
         if group.editor_attr().hidden {
@@ -1976,7 +1998,7 @@ impl Editor {
             .iter()
             .filter(|&layer| !layer.user().attr.hidden)
         {
-            Self::render_physics_layer(entities_container, map_render, map, layer, None);
+            Self::render_physics_layer(entities_container, map_render, map, layer, None, None);
 
             if layer.editor_attr().active && map.user.options.show_tile_numbers {
                 Self::render_physics_layer(
@@ -1984,7 +2006,16 @@ impl Editor {
                     map_render,
                     map,
                     layer,
-                    Some(&tile_numbers_texture),
+                    Some(&tile_index_texture),
+                    None,
+                );
+                Self::render_physics_layer(
+                    entities_container,
+                    map_render,
+                    map,
+                    layer,
+                    None,
+                    Some(&tile_flag_texture),
                 );
             }
 
@@ -2327,11 +2358,8 @@ impl Editor {
         }
         let active_tab = self.tabs.get(&self.active_tab);
         if let Some(tab) = active_tab {
-            let tile_numbers_texture = self
-                .entities_container
-                .get_or_default::<ContainerKey>(&"default".try_into().unwrap())
-                .text_overlay_bottom
-                .clone();
+            let tile_index_texture = self.tile_textures.index.clone();
+            let tile_flag_texture = self.tile_textures.flag.clone();
             // we use sound
             tab.map.user.sound_scene.stay_active();
             let mut group_clips: Vec<MapGroupAttr> = Default::default();
@@ -2341,7 +2369,8 @@ impl Editor {
                 &tab.map_render,
                 &tab.map,
                 &tab.map.groups.background,
-                tile_numbers_texture.clone(),
+                tile_index_texture.clone(),
+                tile_flag_texture.clone(),
                 &mut group_clips,
                 &mut layer_rects,
             );
@@ -2351,7 +2380,8 @@ impl Editor {
                 &tab.map_render,
                 &tab.map,
                 &tab.map.groups.physics,
-                tile_numbers_texture.clone(),
+                tile_index_texture.clone(),
+                tile_flag_texture.clone(),
                 &mut layer_rects,
             );
             // fg
@@ -2359,7 +2389,8 @@ impl Editor {
                 &tab.map_render,
                 &tab.map,
                 &tab.map.groups.foreground,
-                tile_numbers_texture,
+                tile_index_texture,
+                tile_flag_texture,
                 &mut group_clips,
                 &mut layer_rects,
             );
