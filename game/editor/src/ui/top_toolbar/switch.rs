@@ -131,6 +131,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     EditorPhysicsLayerNumberExtra {
                                         name: z.clone(),
                                         extra: Default::default(),
+                                        enter_extra: Default::default(),
+                                        leave_extra: Default::default(),
                                     },
                                 )
                             }));
@@ -142,6 +144,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             .update_while_editing(false)
                             .prefix("Delay: "),
                     );
+
+                    *pipe.user_data.pointer_is_used |=
+                        layer.user.context_menu_open || layer.user.context_menu_extra_open;
 
                     map.groups.physics.user.active_switch = active_switch;
                     if prev_switch != map.groups.physics.user.active_switch {

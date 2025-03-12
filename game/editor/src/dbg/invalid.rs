@@ -4,6 +4,7 @@ use base::hash::generate_hash_for;
 use hashlink::LinkedHashMap;
 use map::map::{
     animations::{AnimBase, AnimPoint, AnimPointCurveType},
+    command_value::CommandValue,
     groups::{
         layers::{
             design::{
@@ -37,8 +38,8 @@ use crate::{
         ActLayerChangeSoundIndex, ActMoveGroup, ActMoveLayer, ActQuadLayerAddQuads,
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer,
-        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands, ActSetMetadata,
-        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
+        ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActSetCommands, ActSetConfigVariables,
+        ActSetMetadata, ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
         ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
@@ -1051,15 +1052,36 @@ fn change_switch_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     })]
 }
 fn change_tune_zone_invalid(_map: &EditorMap) -> Vec<EditorAction> {
-    let index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
+    let index = (rand::rng().next_u64() % (u8::MAX - 1) as u64) as u8 + 1;
+    let len = (rand::rng().next_u64() % u8::MAX as u64) as usize;
+    let mut new_tunes = Vec::with_capacity(len);
+    new_tunes.resize_with(len, || {
+        (
+            "".to_string(),
+            CommandValue {
+                value: "".into(),
+                comment: None,
+            },
+        )
+    });
     vec![EditorAction::ChangeTuneZone(ActChangeTuneZone {
         index,
         old_name: Default::default(),
         new_name: "created".into(),
         old_tunes: Default::default(),
-        new_tunes: vec![Default::default(); (rand::rng().next_u64() % u8::MAX as u64) as usize]
-            .into_iter()
-            .collect(),
+        new_tunes: new_tunes.into_iter().collect(),
+        old_enter_msg: None,
+        new_enter_msg: Some(if rand::rng().next_u64() % 2 == 0 {
+            "".into()
+        } else {
+            "test".into()
+        }),
+        old_leave_msg: None,
+        new_leave_msg: Some(if rand::rng().next_u64() % 2 == 0 {
+            "".into()
+        } else {
+            "test".into()
+        }),
     })]
 }
 
@@ -1178,12 +1200,33 @@ fn set_commands_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::SetCommands(ActSetCommands {
         old_commands: Default::default(),
         new_commands: {
+            let mut cmds: Vec<_> = Default::default();
+
+            for _ in 0..rand::rng().next_u64() % 20 {
+                cmds.push(CommandValue {
+                    value: format!("{}", rand::rng().next_u64()),
+                    comment: None,
+                });
+            }
+
+            cmds
+        },
+    })]
+}
+
+fn set_config_variables_invalid(_map: &EditorMap) -> Vec<EditorAction> {
+    vec![EditorAction::SetConfigVariables(ActSetConfigVariables {
+        old_config_variables: Default::default(),
+        new_config_variables: {
             let mut cmds: LinkedHashMap<_, _> = Default::default();
 
             for _ in 0..rand::rng().next_u64() % 20 {
                 cmds.insert(
                     format!("{}", rand::rng().next_u64()),
-                    format!("{}", rand::rng().next_u64()),
+                    CommandValue {
+                        value: format!("{}", rand::rng().next_u64()),
+                        comment: None,
+                    },
                 );
             }
 
@@ -1295,7 +1338,8 @@ pub fn random_invalid_action(map: &EditorMap) -> Vec<EditorAction> {
             45 => repl_sound_anim_invalid(map),
             46 => rem_sound_anim_invalid(map),
             47 => set_commands_invalid(map),
-            48 => set_metadata_invalid(map),
+            48 => set_config_variables_invalid(map),
+            49 => set_metadata_invalid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,

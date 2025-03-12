@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
-use egui::{Button, Layout, ScrollArea, UiBuilder};
+use egui::{text::LayoutJob, Button, Color32, FontId, Layout, ScrollArea, TextFormat, UiBuilder};
+use map::map::command_value::CommandValue;
 use ui_base::{
     components::clearable_edit_field::clearable_edit_field,
     types::{UiRenderPipe, UiState},
@@ -14,7 +13,7 @@ use crate::{
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let tab = &mut pipe.user_data.editor_tab;
     let map = &mut tab.map;
-    if !map.user.ui_values.server_settings_open {
+    if !map.user.ui_values.server_commands_open {
         return;
     }
 
@@ -36,15 +35,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             None,
                         );
 
-                        if let Some((cmd, args)) = ui
-                            .button("\u{f0fe}")
-                            .clicked()
-                            .then_some(map.config.user.cmd_string.split_once(" "))
-                            .flatten()
-                        {
+                        if let Some((value, comment)) = ui.button("\u{f0fe}").clicked().then_some(
+                            map.config
+                                .user
+                                .cmd_string
+                                .split_once('#')
+                                .map(|(s1, s2)| {
+                                    (s1.trim().to_string(), Some(s2.trim().to_string()))
+                                })
+                                .unwrap_or_else(|| {
+                                    (map.config.user.cmd_string.trim().to_string(), None)
+                                }),
+                        ) {
                             let old_commands = map.config.def.commands.clone();
                             let mut new_commands = map.config.def.commands.clone();
-                            new_commands.insert(cmd.to_string(), args.to_string());
+                            new_commands.push(CommandValue { value, comment });
                             tab.client.execute(
                                 EditorAction::SetCommands(ActSetCommands {
                                     old_commands,
@@ -58,15 +63,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     });
                     ScrollArea::vertical().show(ui, |ui| {
                         ui.vertical(|ui| {
-                            let cmds: BTreeMap<_, _> =
-                                map.config.def.commands.clone().into_iter().collect();
-                            for (index, (cmd_name, args)) in cmds.iter().enumerate() {
+                            for (index, cmd) in map.config.def.commands.iter().enumerate() {
                                 ui.with_layout(Layout::right_to_left(egui::Align::Min), |ui| {
                                     // trash can icon
                                     if ui.button("\u{f1f8}").clicked() {
                                         let old_commands = map.config.def.commands.clone();
                                         let mut new_commands = map.config.def.commands.clone();
-                                        new_commands.remove(cmd_name);
+                                        new_commands.remove(index);
                                         tab.client.execute(
                                             EditorAction::SetCommands(ActSetCommands {
                                                 old_commands,
@@ -80,14 +83,25 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         Layout::left_to_right(egui::Align::Min)
                                             .with_main_justify(true),
                                         |ui| {
+                                            let mut job = LayoutJob::simple_singleline(
+                                                cmd.value.clone(),
+                                                FontId::default(),
+                                                Color32::WHITE,
+                                            );
+                                            if let Some(comment) = &cmd.comment {
+                                                job.append(
+                                                    &format!(" # {}", comment),
+                                                    0.0,
+                                                    TextFormat {
+                                                        color: Color32::GRAY,
+                                                        ..Default::default()
+                                                    },
+                                                );
+                                            }
                                             if ui
-                                                .add(
-                                                    Button::new(format!("{} {}", cmd_name, args))
-                                                        .selected(
-                                                            Some(index)
-                                                                == map.config.user.selected_cmd,
-                                                        ),
-                                                )
+                                                .add(Button::new(job).selected(
+                                                    Some(index) == map.config.user.selected_cmd,
+                                                ))
                                                 .clicked()
                                             {
                                                 map.config.user.selected_cmd = Some(index);

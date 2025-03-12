@@ -127,11 +127,16 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     EditorPhysicsLayerNumberExtra {
                                         name: z.clone(),
                                         extra: Default::default(),
+                                        enter_extra: Default::default(),
+                                        leave_extra: Default::default(),
                                     },
                                 )
                             }));
                     }
                     layer.user.context_menu_open = context_menu_open;
+
+                    *pipe.user_data.pointer_is_used |=
+                        layer.user.context_menu_open || layer.user.context_menu_extra_open;
 
                     map.groups.physics.user.active_tele = active_tele;
                     if prev_tele != map.groups.physics.user.active_tele {

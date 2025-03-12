@@ -4,6 +4,7 @@ use hashlink::LinkedHashMap;
 use map::{
     map::{
         animations::{ColorAnimation, PosAnimation, SoundAnimation},
+        command_value::CommandValue,
         groups::{
             layers::{
                 design::{
@@ -102,6 +103,7 @@ pub enum EditorAction {
     RemSoundAnim(ActRemSoundAnim),
     // server settings
     SetCommands(ActSetCommands),
+    SetConfigVariables(ActSetConfigVariables),
     SetMetadata(ActSetMetadata),
 }
 
@@ -1599,8 +1601,12 @@ pub struct ActChangeTuneZone {
     pub index: u8,
     pub old_name: String,
     pub new_name: String,
-    pub old_tunes: FxLinkedHashMap<String, String>,
-    pub new_tunes: FxLinkedHashMap<String, String>,
+    pub old_tunes: FxLinkedHashMap<String, CommandValue>,
+    pub new_tunes: FxLinkedHashMap<String, CommandValue>,
+    pub old_enter_msg: Option<String>,
+    pub new_enter_msg: Option<String>,
+    pub old_leave_msg: Option<String>,
+    pub new_leave_msg: Option<String>,
 }
 
 impl EditorActionInterface for ActChangeTuneZone {
@@ -1879,8 +1885,8 @@ impl EditorActionInterface for ActRemSoundAnim {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActSetCommands {
-    pub old_commands: LinkedHashMap<String, String>,
-    pub new_commands: LinkedHashMap<String, String>,
+    pub old_commands: Vec<CommandValue>,
+    pub new_commands: Vec<CommandValue>,
 }
 
 impl EditorActionInterface for ActSetCommands {
@@ -1897,6 +1903,30 @@ impl EditorActionInterface for ActSetCommands {
             "Replace {} commands with {} commands",
             self.old_commands.len(),
             self.new_commands.len()
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActSetConfigVariables {
+    pub old_config_variables: LinkedHashMap<String, CommandValue>,
+    pub new_config_variables: LinkedHashMap<String, CommandValue>,
+}
+
+impl EditorActionInterface for ActSetConfigVariables {
+    fn undo_info(&self) -> String {
+        format!(
+            "Replace (back) {} config variables with {} config variables",
+            self.new_config_variables.len(),
+            self.old_config_variables.len()
+        )
+    }
+
+    fn redo_info(&self) -> String {
+        format!(
+            "Replace {} config variables with {} config variables",
+            self.old_config_variables.len(),
+            self.new_config_variables.len()
         )
     }
 }

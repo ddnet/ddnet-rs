@@ -1,4 +1,5 @@
 pub mod animations;
+pub mod command_value;
 pub mod config;
 pub mod groups;
 pub mod metadata;

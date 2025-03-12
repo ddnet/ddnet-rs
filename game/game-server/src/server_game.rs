@@ -152,7 +152,7 @@ impl ServerMap {
             Err(map_res_err) => {
                 let map_path = format!("legacy/maps/{}.map", map_name.as_str());
                 let fs = io.fs.clone();
-                let cache = Arc::new(Cache::<2024115>::new("legacy-to-new-map-server", io));
+                let cache = Arc::new(Cache::<20250312>::new("legacy-to-new-map-server", io));
 
                 let map_name = map_name.to_string();
                 let tp = runtime_thread_pool.clone();

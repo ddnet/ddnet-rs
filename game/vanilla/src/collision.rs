@@ -219,14 +219,15 @@ pub mod collision {
                                 if let Err(err) = zone.try_set_from_str(
                                     tune.clone(),
                                     None,
-                                    Some(val.clone()),
+                                    Some(val.value.clone()),
                                     None,
                                     Default::default(),
                                 ) {
                                     log::info!(
                                         "failed to apply tune: {err} \
-                                            for {tune} - val {val} \
-                                            with index {zone_index}"
+                                            for {tune} - val {} \
+                                            with index {zone_index}",
+                                        val.value
                                     );
                                 }
                             }

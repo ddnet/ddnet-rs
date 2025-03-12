@@ -1,5 +1,8 @@
-use egui::{Color32, DragValue, Layout, ScrollArea, TextEdit};
+use egui::{
+    text::LayoutJob, Color32, DragValue, FontId, Frame, Layout, ScrollArea, TextEdit, TextFormat,
+};
 use game_base::mapdef_06::DdraceTileNum;
+use map::map::command_value::CommandValue;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use ui_base::types::{UiRenderPipe, UiState};
 
@@ -60,8 +63,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     ui.painter().rect_filled(rect, 5.0, bg_color);
                     ui.add_space(5.0);
                     let prev_tune = map.groups.physics.user.active_tune_zone;
+                    let cur_tune = &mut map.groups.physics.user.active_tune_zone;
                     let response = ui.add(
-                        DragValue::new(&mut map.groups.physics.user.active_tune_zone)
+                        DragValue::new(cur_tune)
+                            .range(1..=u8::MAX)
                             .update_while_editing(false)
                             .prefix("Tune zone: "),
                     );
@@ -106,11 +111,18 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         .or_insert_with(Default::default);
 
                                     if tune.name != tune_name {
-                                        let (old_name, old_zones) = layer
+                                        let (old_name, old_zones, enter_msg, leave_msg) = layer
                                             .layer
                                             .tune_zones
                                             .get(&i)
-                                            .map(|zone| (zone.name.clone(), zone.tunes.clone()))
+                                            .map(|zone| {
+                                                (
+                                                    zone.name.clone(),
+                                                    zone.tunes.clone(),
+                                                    zone.enter_msg.clone(),
+                                                    zone.leave_msg.clone(),
+                                                )
+                                            })
                                             .unwrap_or_default();
                                         pipe.user_data.editor_tab.client.execute(
                                             EditorAction::ChangeTuneZone(ActChangeTuneZone {
@@ -119,6 +131,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 new_name: tune_name.clone(),
                                                 old_tunes: old_zones,
                                                 new_tunes: tune.extra.clone(),
+                                                new_enter_msg: enter_msg,
+                                                old_enter_msg: tune.enter_extra.clone(),
+                                                new_leave_msg: leave_msg,
+                                                old_leave_msg: tune.leave_extra.clone(),
                                             }),
                                             Some(&format!(
                                                 "tune_zone_change_zones-{}",
@@ -130,28 +146,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 }
                             });
                     });
-                    if context_menu_open && !layer.user.context_menu_open {
-                        layer.user.number_extra.clear();
-                        layer
-                            .user
-                            .number_extra
-                            .extend(layer.layer.tune_zones.iter().map(|(i, z)| {
-                                (
-                                    *i,
-                                    EditorPhysicsLayerNumberExtra {
-                                        name: z.name.clone(),
-                                        extra: z.tunes.clone(),
-                                    },
-                                )
-                            }));
-                    }
-                    layer.user.context_menu_open = context_menu_open;
 
                     let tune = layer
                         .user
                         .number_extra
                         .entry(active_tune)
                         .or_insert_with(Default::default);
+
+                    let mut context_menu_extra_open = false;
+
                     ui.menu_button(
                         format!(
                             "Tunes of {}",
@@ -162,29 +165,66 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             },
                         ),
                         |ui| {
+                            context_menu_extra_open = true;
+
+                            ui.label("Enter message:");
+                            let mut enter_msg = tune.enter_extra.clone().unwrap_or_default();
+                            ui.text_edit_singleline(&mut enter_msg);
+                            tune.enter_extra = (!enter_msg.is_empty()).then_some(enter_msg);
+                            ui.label("Leave message:");
+                            let mut leave_msg = tune.leave_extra.clone().unwrap_or_default();
+                            ui.text_edit_singleline(&mut leave_msg);
+                            tune.leave_extra = (!leave_msg.is_empty()).then_some(leave_msg);
+
+                            ui.separator();
+
                             let tunes_clone = tune.extra.clone();
-                            for (cmd_name, val) in tunes_clone.iter() {
-                                ui.horizontal(|ui| {
-                                    ui.label(format!("Command: {} {}", cmd_name, val));
-                                    if ui.button("\u{f1f8}").clicked() {
-                                        let old_tunes = tune.extra.clone();
-                                        tune.extra.remove(cmd_name);
-                                        pipe.user_data.editor_tab.client.execute(
-                                            EditorAction::ChangeTuneZone(ActChangeTuneZone {
-                                                index: active_tune,
-                                                old_name: tune.name.clone(),
-                                                new_name: tune.name.clone(),
-                                                old_tunes,
-                                                new_tunes: tune.extra.clone(),
-                                            }),
-                                            Some(&format!(
-                                                "tune_zone_change_zones-{}",
-                                                active_tune
-                                            )),
-                                        );
-                                    }
-                                });
+                            if !tunes_clone.is_empty() {
+                                ui.label("Commands:");
                             }
+                            ui.vertical(|ui| {
+                                for (cmd_name, val) in tunes_clone.iter() {
+                                    ui.horizontal(|ui| {
+                                        let mut job = LayoutJob::simple_singleline(
+                                            format!("{} {}", cmd_name, val.value),
+                                            FontId::default(),
+                                            Color32::WHITE,
+                                        );
+                                        if let Some(comment) = &val.comment {
+                                            job.append(
+                                                &format!(" # {}", comment),
+                                                0.0,
+                                                TextFormat {
+                                                    color: Color32::GRAY,
+                                                    ..Default::default()
+                                                },
+                                            );
+                                        }
+                                        ui.label(job);
+                                        if ui.button("\u{f1f8}").clicked() {
+                                            let old_tunes = tune.extra.clone();
+                                            tune.extra.remove(cmd_name);
+                                            pipe.user_data.editor_tab.client.execute(
+                                                EditorAction::ChangeTuneZone(ActChangeTuneZone {
+                                                    index: active_tune,
+                                                    old_name: tune.name.clone(),
+                                                    new_name: tune.name.clone(),
+                                                    old_tunes,
+                                                    new_tunes: tune.extra.clone(),
+                                                    new_enter_msg: tune.enter_extra.clone(),
+                                                    old_enter_msg: tune.enter_extra.clone(),
+                                                    new_leave_msg: tune.leave_extra.clone(),
+                                                    old_leave_msg: tune.leave_extra.clone(),
+                                                }),
+                                                Some(&format!(
+                                                    "tune_zone_change_zones-{}",
+                                                    active_tune
+                                                )),
+                                            );
+                                        }
+                                    });
+                                }
+                            });
                             let val = &mut layer.user.number_extra_text;
                             ui.add_space(10.0);
                             ui.separator();
@@ -193,14 +233,34 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 ui.label("Tune command:");
                                 ui.text_edit_singleline(val);
                                 if ui.button("\u{f0fe}").clicked() && !val.is_empty() {
-                                    if let Some((name, val)) = val.split_once(" ") {
-                                        tune.extra.insert(name.to_string(), val.to_string());
+                                    let (val, comment) = val
+                                        .trim()
+                                        .split_once('#')
+                                        .map(|(s1, s2)| {
+                                            (s1.trim().to_string(), Some(s2.trim().to_string()))
+                                        })
+                                        .unwrap_or_else(|| (val.trim().to_string(), None));
+                                    if let Some((name, val)) = val.split_once(' ') {
+                                        tune.extra.insert(
+                                            name.to_string(),
+                                            CommandValue {
+                                                value: val.to_string(),
+                                                comment,
+                                            },
+                                        );
 
-                                        let (old_name, old_zones) = layer
+                                        let (old_name, old_zones, enter_msg, leave_msg) = layer
                                             .layer
                                             .tune_zones
                                             .get(&active_tune)
-                                            .map(|zone| (zone.name.clone(), zone.tunes.clone()))
+                                            .map(|zone| {
+                                                (
+                                                    zone.name.clone(),
+                                                    zone.tunes.clone(),
+                                                    zone.enter_msg.clone(),
+                                                    zone.leave_msg.clone(),
+                                                )
+                                            })
                                             .unwrap_or_default();
                                         pipe.user_data.editor_tab.client.execute(
                                             EditorAction::ChangeTuneZone(ActChangeTuneZone {
@@ -209,6 +269,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 new_name: tune.name.clone(),
                                                 old_tunes: old_zones,
                                                 new_tunes: tune.extra.clone(),
+                                                new_enter_msg: enter_msg,
+                                                old_enter_msg: tune.enter_extra.clone(),
+                                                new_leave_msg: leave_msg,
+                                                old_leave_msg: tune.leave_extra.clone(),
                                             }),
                                             Some(&format!(
                                                 "tune_zone_change_zones-{}",
@@ -220,6 +284,97 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             });
                         },
                     );
+
+                    let mut pointer_used = false;
+                    ui.menu_button("Tunes overview", |ui| {
+                        pointer_used = true;
+                        ui.label("Tunes of all zones");
+
+                        ui.style_mut().spacing.item_spacing.y = 20.0;
+                        ScrollArea::vertical().show(ui, |ui| {
+                            for (tune_index, tune_zone) in layer.layer.tune_zones.iter() {
+                                Frame::new()
+                                    .fill(Color32::from_black_alpha(50))
+                                    .corner_radius(5)
+                                    .inner_margin(5)
+                                    .show(ui, |ui| {
+                                        ui.style_mut().spacing.item_spacing.y = 4.0;
+                                        ui.label(format!(
+                                            "Tune zone {}",
+                                            if tune_zone.name.is_empty() {
+                                                tune_index.to_string()
+                                            } else {
+                                                tune_zone.name.clone()
+                                            },
+                                        ));
+                                        ui.separator();
+
+                                        if let Some(msg) = &tune_zone.enter_msg {
+                                            ui.label("Enter message:");
+                                            ui.label(msg);
+                                            ui.separator();
+                                        }
+                                        if let Some(msg) = &tune_zone.leave_msg {
+                                            ui.label("Leave message:");
+                                            ui.label(msg);
+                                            ui.separator();
+                                        }
+
+                                        if !tune_zone.tunes.is_empty() {
+                                            ui.label("Commands:");
+                                        }
+                                        ui.vertical(|ui| {
+                                            for (cmd_name, val) in tune_zone.tunes.iter() {
+                                                ui.horizontal(|ui| {
+                                                    let mut job = LayoutJob::simple_singleline(
+                                                        format!("{} {}", cmd_name, val.value),
+                                                        FontId::default(),
+                                                        Color32::WHITE,
+                                                    );
+                                                    if let Some(comment) = &val.comment {
+                                                        job.append(
+                                                            &format!(" # {}", comment),
+                                                            0.0,
+                                                            TextFormat {
+                                                                color: Color32::GRAY,
+                                                                ..Default::default()
+                                                            },
+                                                        );
+                                                    }
+                                                    ui.label(job);
+                                                });
+                                            }
+                                        });
+                                    });
+                            }
+                        });
+                    });
+
+                    if (context_menu_open && !layer.user.context_menu_open)
+                        || (context_menu_extra_open && !layer.user.context_menu_extra_open)
+                    {
+                        layer.user.number_extra.clear();
+                        layer
+                            .user
+                            .number_extra
+                            .extend(layer.layer.tune_zones.iter().map(|(i, z)| {
+                                (
+                                    *i,
+                                    EditorPhysicsLayerNumberExtra {
+                                        name: z.name.clone(),
+                                        extra: z.tunes.clone(),
+                                        enter_extra: z.enter_msg.clone(),
+                                        leave_extra: z.leave_msg.clone(),
+                                    },
+                                )
+                            }));
+                    }
+                    layer.user.context_menu_open = context_menu_open;
+                    layer.user.context_menu_extra_open = context_menu_extra_open;
+
+                    *pipe.user_data.pointer_is_used |= layer.user.context_menu_open
+                        || layer.user.context_menu_extra_open
+                        || pointer_used;
 
                     map.groups.physics.user.active_tune_zone = active_tune;
                     if prev_tune != map.groups.physics.user.active_tune_zone {
