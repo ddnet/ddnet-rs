@@ -134,7 +134,11 @@ pub mod match_state {
                             let same_clan = it.all(|char| {
                                 Some(char.player_info.player_info.clan.as_str()) == first
                             });
-                            if let Some(clan) = same_clan.then_some(first).flatten() {
+                            if let Some(clan) = same_clan
+                                .then_some(first)
+                                .flatten()
+                                .and_then(|clan| (!clan.is_empty()).then_some(clan))
+                            {
                                 MatchRoundGameOverWinner::SideNamed({
                                     let mut name = pools.network_string_team_pool.new();
 

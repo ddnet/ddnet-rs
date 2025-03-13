@@ -35,6 +35,7 @@ pub type KeyTarget<F> = FxLinkedHashMap<BindKey, BindTarget<F>>;
 pub struct BindsProcessResult<F> {
     pub click_actions: PoolFxLinkedHashSet<F>,
     pub press_actions: PoolFxLinkedHashSet<F>,
+    pub unpress_actions: PoolFxLinkedHashSet<F>,
     pub cur_actions: PoolFxLinkedHashSet<F>,
 }
 
@@ -46,6 +47,7 @@ pub struct Binds<T> {
     /// actions caused by a press + release of a key
     click_actions: PoolFxLinkedHashSet<T>,
     press_actions: PoolFxLinkedHashSet<T>,
+    unpress_actions: PoolFxLinkedHashSet<T>,
     helper_process_pool: Pool<FxLinkedHashSet<T>>,
 }
 
@@ -57,6 +59,7 @@ impl<T> Default for Binds<T> {
             cur_keys_pressed_is_order: Default::default(),
             click_actions: helper_process_pool.new(),
             press_actions: helper_process_pool.new(),
+            unpress_actions: helper_process_pool.new(),
             helper_process_pool,
         }
     }
@@ -86,6 +89,10 @@ impl<T: Debug + Clone + Hash + PartialEq + Eq> Binds<T> {
         // create diff between both
         cur_actions.difference(&new_actions).for_each(|action| {
             self.click_actions.insert(action.clone());
+        });
+        // and same for unpress actions
+        cur_actions.difference(&new_actions).for_each(|action| {
+            self.unpress_actions.insert(action.clone());
         });
     }
 
@@ -149,6 +156,11 @@ impl<T: Debug + Clone + Hash + PartialEq + Eq> Binds<T> {
             },
             press_actions: if consume_events {
                 std::mem::replace(&mut self.press_actions, self.helper_process_pool.new())
+            } else {
+                self.helper_process_pool.new()
+            },
+            unpress_actions: if consume_events {
+                std::mem::replace(&mut self.unpress_actions, self.helper_process_pool.new())
             } else {
                 self.helper_process_pool.new()
             },

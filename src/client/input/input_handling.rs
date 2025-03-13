@@ -215,9 +215,13 @@ impl InputHandling {
         #[derive(Debug, Default)]
         struct CharacterActions {
             dir: i32,
+            dir_change: bool,
             jump: bool,
+            jump_change: bool,
             fire: bool,
+            fire_change: bool,
             hook: bool,
+            hook_change: bool,
             next_weapon: Option<WeaponType>,
             weapon_diff: i64,
         }
@@ -329,19 +333,31 @@ impl InputHandling {
             }
         }
         for actions in actions.press_actions.iter() {
-            for action in actions {
-                let mut handle_action = |action: &BindActionsLocalPlayer| match action {
-                    BindActionsLocalPlayer::Character(BindActionsCharacter::Weapon(weapon)) => {
+            fn char_action(action: &BindActionsCharacter, character: &mut CharacterActions) {
+                match action {
+                    BindActionsCharacter::MoveLeft => character.dir_change = true,
+                    BindActionsCharacter::MoveRight => character.dir_change = true,
+                    BindActionsCharacter::Jump => character.jump_change = true,
+                    BindActionsCharacter::Fire => character.fire_change = true,
+                    BindActionsCharacter::Hook => character.hook_change = true,
+                    BindActionsCharacter::Weapon(weapon) => {
                         character.next_weapon = Some(*weapon);
                     }
-                    BindActionsLocalPlayer::Character(BindActionsCharacter::NextWeapon) => {
+                    BindActionsCharacter::NextWeapon => {
                         character.weapon_diff += 1;
                     }
-                    BindActionsLocalPlayer::Character(BindActionsCharacter::PrevWeapon) => {
+                    BindActionsCharacter::PrevWeapon => {
                         character.weapon_diff -= 1;
                     }
-                    BindActionsLocalPlayer::Dummy(BindActionsCharacter::Weapon(weapon)) => {
-                        dummy.next_weapon = Some(*weapon);
+                }
+            }
+            for action in actions {
+                let mut handle_action = |action: &BindActionsLocalPlayer| match action {
+                    BindActionsLocalPlayer::Character(action) => {
+                        char_action(action, &mut character);
+                    }
+                    BindActionsLocalPlayer::Dummy(action) => {
+                        char_action(action, &mut dummy);
                     }
                     BindActionsLocalPlayer::ToggleDummyCopyMoves => {
                         dummy_control.dummy_copy_moves = !dummy_control.dummy_copy_moves;
@@ -388,6 +404,43 @@ impl InputHandling {
                         ) {
                             log::debug!("{err}");
                         }
+                    }
+                }
+            }
+        }
+        for actions in actions.unpress_actions.iter() {
+            fn char_action(action: &BindActionsCharacter, character: &mut CharacterActions) {
+                match action {
+                    BindActionsCharacter::MoveLeft => character.dir_change = true,
+                    BindActionsCharacter::MoveRight => character.dir_change = true,
+                    BindActionsCharacter::Jump => character.jump_change = true,
+                    BindActionsCharacter::Fire => character.fire_change = true,
+                    BindActionsCharacter::Hook => character.hook_change = true,
+                    BindActionsCharacter::Weapon(_)
+                    | BindActionsCharacter::NextWeapon
+                    | BindActionsCharacter::PrevWeapon => {
+                        // ignore
+                    }
+                }
+            }
+            for action in actions {
+                let mut handle_action = |action: &BindActionsLocalPlayer| match action {
+                    BindActionsLocalPlayer::Character(action) => {
+                        char_action(action, &mut character);
+                    }
+                    BindActionsLocalPlayer::Dummy(action) => {
+                        char_action(action, &mut dummy);
+                    }
+                    _ => {
+                        // ignore rest
+                    }
+                };
+                match action {
+                    BindAction::LocalPlayer(action) => {
+                        handle_action(action);
+                    }
+                    BindAction::Command(_) | BindAction::TriggerCommand(_) => {
+                        // ignore
                     }
                 }
             }
@@ -455,20 +508,27 @@ impl InputHandling {
             if character.weapon_diff != 0 {
                 input.consumable.weapon_diff.add(character.weapon_diff)
             }
-            if !*input.state.jump && character.jump {
+            if !*input.state.jump && character.jump && character.jump_change {
                 input.consumable.jump.add(1)
             }
-            if !*input.state.fire && character.fire {
+            if !*input.state.fire && character.fire && character.fire_change {
                 input.consumable.fire.add(1, *input.cursor);
             }
-            if !*input.state.hook && character.hook {
+            if !*input.state.hook && character.hook && character.hook_change {
                 input.consumable.hook.add(1, *input.cursor);
             }
-
-            input.state.jump.set(character.jump);
-            input.state.fire.set(character.fire);
-            input.state.hook.set(character.hook);
-            input.state.dir.set(character.dir.clamp(-1, 1));
+            if character.jump_change {
+                input.state.jump.set(character.jump);
+            }
+            if character.fire_change {
+                input.state.fire.set(character.fire);
+            }
+            if character.hook_change {
+                input.state.hook.set(character.hook);
+            }
+            if character.dir_change {
+                input.state.dir.set(character.dir.clamp(-1, 1));
+            }
             input.consumable.set_weapon_req(character.next_weapon);
         }
         set(input, character);

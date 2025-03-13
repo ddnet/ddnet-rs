@@ -2371,10 +2371,10 @@ impl RenderGame {
                     );
                     let (off_x, off_y) = match anchor {
                         ObservedDummyAnchor::TopLeft => (px, py),
-                        ObservedDummyAnchor::TopRight => (w as i32 - (pw as i32 - px), py),
-                        ObservedDummyAnchor::BottomLeft => (px, h as i32 - (ph as i32 - py)),
+                        ObservedDummyAnchor::TopRight => (w as i32 - (pw as i32 + px), py),
+                        ObservedDummyAnchor::BottomLeft => (px, h as i32 - (ph as i32 + py)),
                         ObservedDummyAnchor::BottomRight => {
-                            (w as i32 - (pw as i32 - px), h as i32 - (ph as i32 - py))
+                            (w as i32 - (pw as i32 + px), h as i32 - (ph as i32 + py))
                         }
                     };
                     self.canvas_handle
