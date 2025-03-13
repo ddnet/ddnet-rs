@@ -413,7 +413,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         if let Some(is_game_over) = is_game_over {
                             match is_game_over {
                                 MatchRoundGameOverWinner::Characters(chars) => {
-                                    ui.horizontal(|ui| {
+                                    frame.content_ui.horizontal(|ui| {
                                         ui.style_mut().spacing.item_spacing.x = 0.0;
                                         let rect = ui.available_rect_before_wrap();
                                         for (index, char) in chars.iter().enumerate() {
@@ -479,7 +479,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                     });
                                 }
                                 MatchRoundGameOverWinner::Side(side) => {
-                                    ui.label(
+                                    frame.content_ui.label(
                                         RichText::new(format!(
                                             "{} wins!",
                                             match side {
@@ -491,7 +491,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                     );
                                 }
                                 MatchRoundGameOverWinner::SideNamed(name) => {
-                                    ui.label(
+                                    frame.content_ui.label(
                                         RichText::new(format!("{} wins!", name.as_str()))
                                             .color(Color32::WHITE),
                                     );
