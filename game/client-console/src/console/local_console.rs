@@ -246,11 +246,12 @@ impl LocalConsoleBuilder {
             }],
             allows_partial_cmds: false,
         }));
+        let console_events_reset = console_events.clone();
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "reset".into(),
             usage: "reset <var>".into(),
             description: "Reset the value of a config variable to its default.".into(),
-            cmd: Rc::new(|config_engine, config_game, _, path| {
+            cmd: Rc::new(move |config_engine, config_game, _, path| {
                 let path = syn_vec_to_config_val(path).unwrap_or_default();
                 if path.is_empty() {
                     return Err(anyhow::anyhow!("You cannot reset the whole config at once"));
@@ -269,6 +270,10 @@ impl LocalConsoleBuilder {
                     None,
                     ConfigFromStrOperation::Reset,
                 );
+                if res_engine.is_ok() || res_game.is_ok() {
+                    console_events_reset
+                        .push(LocalConsoleEvent::ConfigVariable { name: path.clone() });
+                }
                 match (res_engine, res_game) {
                     (Ok(val), _) => Ok(format!("Reset value for {path} to: {val}")),
                     (_, Ok(val)) => Ok(format!("Reset value for {path} to: {val}")),
