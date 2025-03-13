@@ -50,9 +50,9 @@ use crate::{
         ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemColorAnim, ActRemGroup, ActRemImage,
         ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemPosAnim, ActRemQuadLayer, ActRemSound,
         ActRemSoundAnim, ActRemSoundLayer, ActRemTileLayer, ActReplColorAnim, ActReplPosAnim,
-        ActReplSoundAnim, ActSetCommands, ActSetMetadata, ActSoundLayerAddRemSounds,
-        ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
-        ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+        ActReplSoundAnim, ActSetCommands, ActSetConfigVariables, ActSetMetadata,
+        ActSoundLayerAddRemSounds, ActSoundLayerAddSounds, ActSoundLayerRemSounds,
+        ActTileLayerReplTilesBase, ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     map::{
@@ -564,6 +564,10 @@ fn merge_actions_group(
         (EditorAction::SetCommands(mut act1), EditorAction::SetCommands(act2)) => {
             act1.new_commands = act2.new_commands;
             Ok((EditorAction::SetCommands(act1), None))
+        }
+        (EditorAction::SetConfigVariables(mut act1), EditorAction::SetConfigVariables(act2)) => {
+            act1.new_config_variables = act2.new_config_variables;
+            Ok((EditorAction::SetConfigVariables(act1), None))
         }
         (EditorAction::SetMetadata(mut act1), EditorAction::SetMetadata(act2)) => {
             act1.new_meta = act2.new_meta;
@@ -1686,7 +1690,10 @@ pub fn do_action(
                                 selected: Default::default(),
                                 number_extra: Default::default(),
                                 number_extra_text: Default::default(),
+                                enter_extra_text: Default::default(),
+                                leave_extra_text: Default::default(),
                                 context_menu_open: false,
+                                context_menu_extra_open: false,
                                 switch_delay: Default::default(),
                                 speedup_force: Default::default(),
                                 speedup_angle: Default::default(),
@@ -1703,7 +1710,10 @@ pub fn do_action(
                                 selected: Default::default(),
                                 number_extra: Default::default(),
                                 number_extra_text: Default::default(),
+                                enter_extra_text: Default::default(),
+                                leave_extra_text: Default::default(),
                                 context_menu_open: false,
+                                context_menu_extra_open: false,
                                 switch_delay: Default::default(),
                                 speedup_force: Default::default(),
                                 speedup_angle: Default::default(),
@@ -1720,7 +1730,10 @@ pub fn do_action(
                                 selected: Default::default(),
                                 number_extra: Default::default(),
                                 number_extra_text: Default::default(),
+                                enter_extra_text: Default::default(),
+                                leave_extra_text: Default::default(),
                                 context_menu_open: false,
+                                context_menu_extra_open: false,
                                 switch_delay: Default::default(),
                                 speedup_force: Default::default(),
                                 speedup_angle: Default::default(),
@@ -1737,7 +1750,10 @@ pub fn do_action(
                                 selected: Default::default(),
                                 number_extra: Default::default(),
                                 number_extra_text: Default::default(),
+                                enter_extra_text: Default::default(),
+                                leave_extra_text: Default::default(),
                                 context_menu_open: false,
+                                context_menu_extra_open: false,
                                 switch_delay: Default::default(),
                                 speedup_force: Default::default(),
                                 speedup_angle: Default::default(),
@@ -1754,7 +1770,10 @@ pub fn do_action(
                                 selected: Default::default(),
                                 number_extra: Default::default(),
                                 number_extra_text: Default::default(),
+                                enter_extra_text: Default::default(),
+                                leave_extra_text: Default::default(),
                                 context_menu_open: false,
+                                context_menu_extra_open: false,
                                 switch_delay: Default::default(),
                                 speedup_force: Default::default(),
                                 speedup_angle: Default::default(),
@@ -1771,7 +1790,10 @@ pub fn do_action(
                                 selected: Default::default(),
                                 number_extra: Default::default(),
                                 number_extra_text: Default::default(),
+                                enter_extra_text: Default::default(),
+                                leave_extra_text: Default::default(),
                                 context_menu_open: false,
+                                context_menu_extra_open: false,
                                 switch_delay: Default::default(),
                                 speedup_force: Default::default(),
                                 speedup_angle: Default::default(),
@@ -2744,6 +2766,8 @@ pub fn do_action(
                     if fix_action {
                         act.old_name = a.get().name.clone();
                         act.old_tunes = a.get().tunes.clone();
+                        act.old_enter_msg = a.get().enter_msg.clone();
+                        act.old_leave_msg = a.get().leave_msg.clone();
                     }
                     anyhow::ensure!(
                         a.get().name == act.old_name,
@@ -2753,17 +2777,33 @@ pub fn do_action(
                         a.get().tunes == act.old_tunes,
                         "tunes in the action did not match the tunes in the map."
                     );
-                    if act.new_tunes.is_empty() && act.new_name.is_empty() {
+                    anyhow::ensure!(
+                        a.get().enter_msg == act.old_enter_msg,
+                        "enter msg in the action did not match the enter msg in the map."
+                    );
+                    anyhow::ensure!(
+                        a.get().leave_msg == act.old_leave_msg,
+                        "leave msg in the action did not match the leave msg in the map."
+                    );
+                    if act.new_tunes.is_empty()
+                        && act.new_name.is_empty()
+                        && act.new_enter_msg.is_none()
+                        && act.new_leave_msg.is_none()
+                    {
                         a.remove();
                     } else {
                         a.get_mut().name = act.new_name.clone();
                         a.get_mut().tunes = act.new_tunes.clone();
+                        a.get_mut().enter_msg = act.new_enter_msg.clone();
+                        a.get_mut().leave_msg = act.new_leave_msg.clone();
                     }
                 }
                 Entry::Vacant(a) => {
                     if fix_action {
                         act.old_name = String::new();
                         act.old_tunes = Default::default();
+                        act.old_enter_msg = Default::default();
+                        act.old_leave_msg = Default::default();
                     }
                     anyhow::ensure!(
                         act.old_name.is_empty(),
@@ -2774,12 +2814,25 @@ pub fn do_action(
                         "tunes were not empty, even tho the map did not have these tunes before."
                     );
                     anyhow::ensure!(
-                        !act.new_name.is_empty() || !act.new_tunes.is_empty(),
-                        "name and tunes were empty."
+                        act.old_enter_msg.is_none(),
+                        "enter msg was not empty, even tho the map did not a enter msg before."
+                    );
+                    anyhow::ensure!(
+                        act.old_leave_msg.is_none(),
+                        "leave msg was not empty, even tho the map did not a leave msg before."
+                    );
+                    anyhow::ensure!(
+                        !act.new_name.is_empty()
+                            || !act.new_tunes.is_empty()
+                            || act.new_enter_msg.as_ref().is_some_and(|m| !m.is_empty())
+                            || act.new_leave_msg.as_ref().is_some_and(|m| !m.is_empty()),
+                        "name, tunes, enter msg & leave msg were empty."
                     );
                     a.insert(MapLayerTilePhysicsTuneZone {
                         name: act.new_name.clone(),
                         tunes: act.new_tunes.clone(),
+                        enter_msg: act.new_enter_msg.clone(),
+                        leave_msg: act.new_leave_msg.clone(),
                     });
                 }
             }
@@ -2970,13 +3023,30 @@ pub fn do_action(
             if fix_action {
                 act.old_commands = map.config.def.commands.clone();
             }
-            let old_cmds: BTreeMap<_, _> = act.old_commands.clone().into_iter().collect();
-            let cur_cmds: BTreeMap<_, _> = map.config.def.commands.clone().into_iter().collect();
             anyhow::ensure!(
-                old_cmds == cur_cmds,
+                act.old_commands == map.config.def.commands,
                 "commands in action did not match the ones in map."
             );
             map.config.def.commands = act.new_commands.clone();
+        }
+        EditorAction::SetConfigVariables(act) => {
+            if fix_action {
+                act.old_config_variables = map.config.def.config_variables.clone();
+            }
+            let old_config_variables: BTreeMap<_, _> =
+                act.old_config_variables.clone().into_iter().collect();
+            let cur_config_variables: BTreeMap<_, _> = map
+                .config
+                .def
+                .config_variables
+                .clone()
+                .into_iter()
+                .collect();
+            anyhow::ensure!(
+                old_config_variables == cur_config_variables,
+                "config variables in action did not match the ones in map."
+            );
+            map.config.def.config_variables = act.new_config_variables.clone();
         }
         EditorAction::SetMetadata(act) => {
             if fix_action {
@@ -3533,6 +3603,10 @@ pub fn undo_action(
                 old_name: act.new_name,
                 new_tunes: act.old_tunes,
                 old_tunes: act.new_tunes,
+                old_enter_msg: act.new_enter_msg,
+                new_enter_msg: act.old_enter_msg,
+                old_leave_msg: act.new_leave_msg,
+                new_leave_msg: act.old_leave_msg,
             }),
             map,
             false,
@@ -3646,6 +3720,20 @@ pub fn undo_action(
             EditorAction::SetCommands(ActSetCommands {
                 old_commands: act.new_commands,
                 new_commands: act.old_commands,
+            }),
+            map,
+            false,
+        ),
+        EditorAction::SetConfigVariables(act) => do_action(
+            tp,
+            sound_mt,
+            graphics_mt,
+            buffer_object_handle,
+            backend_handle,
+            texture_handle,
+            EditorAction::SetConfigVariables(ActSetConfigVariables {
+                old_config_variables: act.new_config_variables,
+                new_config_variables: act.old_config_variables,
             }),
             map,
             false,

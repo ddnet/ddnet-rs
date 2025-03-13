@@ -10,6 +10,7 @@ pub mod left_panel;
 pub mod main_frame;
 pub mod mapper_cursors;
 pub mod page;
+pub mod server_config_variables;
 pub mod server_settings;
 pub mod tool_overlays;
 pub mod top_menu;

@@ -17,6 +17,7 @@ pub mod notifications;
 pub mod physics_layers;
 pub mod server;
 pub mod tab;
+pub mod tile_overlays;
 pub mod tools;
 pub mod ui;
 pub mod utils;

@@ -1963,7 +1963,7 @@ impl TileBrush {
                 .user
                 .options
                 .show_tile_numbers
-                .then_some(self.tile_picker.render.tile_num_buffer_object.as_ref())
+                .then_some(self.tile_picker.render.tile_index_buffer_object.as_ref())
                 .flatten()
             {
                 self.tile_picker.map_render.render_tile_layer(

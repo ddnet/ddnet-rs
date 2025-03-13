@@ -2,6 +2,7 @@ use base::hash::generate_hash_for;
 use hashlink::LinkedHashMap;
 use map::map::{
     animations::AnimBase,
+    command_value::CommandValue,
     groups::{
         layers::{
             design::{
@@ -37,9 +38,10 @@ use crate::{
             ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, ActRemGroup, ActRemImage,
             ActRemImage2dArray, ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer,
             ActRemTileLayer, ActReplColorAnim, ActReplPosAnim, ActReplSoundAnim, ActSetCommands,
-            ActSetMetadata, ActSoundLayerAddRemSounds, ActSoundLayerAddSounds,
-            ActSoundLayerRemSounds, ActTileLayerReplTilesBase, ActTileLayerReplaceTiles,
-            ActTilePhysicsLayerReplTilesBase, ActTilePhysicsLayerReplaceTiles, EditorAction,
+            ActSetConfigVariables, ActSetMetadata, ActSoundLayerAddRemSounds,
+            ActSoundLayerAddSounds, ActSoundLayerRemSounds, ActTileLayerReplTilesBase,
+            ActTileLayerReplaceTiles, ActTilePhysicsLayerReplTilesBase,
+            ActTilePhysicsLayerReplaceTiles, EditorAction,
         },
         utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
     },
@@ -1806,7 +1808,7 @@ fn change_tune_zone_valid(map: &EditorMap) -> Vec<EditorAction> {
     }) else {
         return Default::default();
     };
-    let index = (rand::rng().next_u64() % u8::MAX as u64) as u8;
+    let index = (rand::rng().next_u64() % (u8::MAX - 1) as u64) as u8 + 1;
     vec![EditorAction::ChangeTuneZone(ActChangeTuneZone {
         index,
         old_name: layer
@@ -1823,6 +1825,20 @@ fn change_tune_zone_valid(map: &EditorMap) -> Vec<EditorAction> {
             .map(|t| t.tunes.clone())
             .unwrap_or_default(),
         new_tunes: Default::default(),
+        old_enter_msg: layer
+            .layer
+            .tune_zones
+            .get(&index)
+            .map(|t| t.enter_msg.clone())
+            .unwrap_or_default(),
+        new_enter_msg: Some("created".into()),
+        old_leave_msg: layer
+            .layer
+            .tune_zones
+            .get(&index)
+            .map(|t| t.leave_msg.clone())
+            .unwrap_or_default(),
+        new_leave_msg: Some("created".into()),
     })]
 }
 
@@ -1944,12 +1960,33 @@ fn set_commands_valid(map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::SetCommands(ActSetCommands {
         old_commands: map.config.def.commands.clone(),
         new_commands: {
+            let mut cmds: Vec<_> = Default::default();
+
+            for _ in 0..rand::rng().next_u64() % 20 {
+                cmds.push(CommandValue {
+                    value: format!("{}", rand::rng().next_u64()),
+                    comment: None,
+                });
+            }
+
+            cmds
+        },
+    })]
+}
+
+fn set_config_variables_valid(map: &EditorMap) -> Vec<EditorAction> {
+    vec![EditorAction::SetConfigVariables(ActSetConfigVariables {
+        old_config_variables: map.config.def.config_variables.clone(),
+        new_config_variables: {
             let mut cmds: LinkedHashMap<_, _> = Default::default();
 
             for _ in 0..rand::rng().next_u64() % 20 {
                 cmds.insert(
                     format!("{}", rand::rng().next_u64()),
-                    format!("{}", rand::rng().next_u64()),
+                    CommandValue {
+                        value: format!("{}", rand::rng().next_u64()),
+                        comment: None,
+                    },
                 );
             }
 
@@ -2038,7 +2075,8 @@ pub fn random_valid_action(map: &EditorMap) -> Vec<EditorAction> {
             45 => repl_sound_anim_valid(map),
             46 => rem_sound_anim_valid(map),
             47 => set_commands_valid(map),
-            48 => set_metadata_valid(map),
+            48 => set_config_variables_valid(map),
+            49 => set_metadata_valid(map),
             _ => panic!("unsupported action count"),
         } {
             act if !act.is_empty() => return act,

@@ -56,6 +56,7 @@ pub mod state {
     use game_interface::types::weapons::WeaponType;
     use game_interface::vote_commands::{VoteCommand, VoteCommandResult};
     use hiarc::hi_closure;
+    use map::map::config::ConfigVariables;
     use map::map::Map;
     use math::math::lerp;
     use math::math::vector::{ubvec4, vec2};
@@ -304,6 +305,35 @@ pub mod state {
             (res, res_cmds)
         }
 
+        fn handle_map_config_variables(
+            config: &mut ConfigVanilla,
+            config_variables: ConfigVariables,
+        ) {
+            for (cmd, val) in config_variables {
+                if cmd == "vanilla.game_type" {
+                    if let Err(err) = config.try_set_from_str(
+                        cmd.clone(),
+                        None,
+                        Some(val.value.clone()),
+                        None,
+                        config::traits::ConfigFromStrOperation::Set,
+                    ) {
+                        log::warn!(
+                            "Failed to set config variable {cmd} to {}: {err}",
+                            val.value
+                        );
+                    }
+                } else {
+                    log::warn!(
+                        "UNSUPPORTED: config variable {} {} \
+                        is not supported by this game mod and ignored",
+                        cmd,
+                        val.value
+                    );
+                }
+            }
+        }
+
         fn new_impl(
             map: Vec<u8>,
             map_name: NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
@@ -472,14 +502,45 @@ pub mod state {
                 }
             });
 
-            let physics_group = Map::read_physics_group(&map)?;
+            let (physics_group, map_config) = Map::read_physics_group_and_config(&map)?;
 
             let w = physics_group.attr.width.get() as u32;
             let h = physics_group.attr.height.get() as u32;
 
             let tiles = physics_group.get_game_layer_tiles();
 
-            let collision = Collision::new(&physics_group, true)?;
+            let mut collision = Collision::new(&physics_group, true)?;
+
+            // Always handle config variables before commands.
+            Self::handle_map_config_variables(&mut config, map_config.config_variables);
+            for cmd in map_config.commands {
+                if let Some((cmd, val)) =
+                    cmd.value
+                        .split_once(char::is_whitespace)
+                        .and_then(|(s1, s2)| {
+                            (s1.trim() == "tune")
+                                .then(|| s2.split_once(char::is_whitespace))
+                                .flatten()
+                        })
+                {
+                    if let Err(err) = collision.tune_zones[0].try_set_from_str(
+                        cmd.to_string(),
+                        None,
+                        Some(val.to_string()),
+                        None,
+                        config::traits::ConfigFromStrOperation::Set,
+                    ) {
+                        log::warn!("Failed to apply global tune: {err}");
+                    }
+                } else {
+                    log::warn!(
+                        "UNSUPPORTED: command {} \
+                        is not supported by this game mod and ignored",
+                        cmd.value
+                    );
+                }
+            }
+
             let game_objects = GameObjectDefinitions::new(tiles, w, h);
 
             let mut spawns: Vec<vec2> = Default::default();

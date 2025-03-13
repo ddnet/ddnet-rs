@@ -330,6 +330,12 @@ impl MapGroups {
         anyhow::Ok((physics_group, bytes_read))
     }
 
+    /// Skip the design groups and returns the amount of bytes skipped
+    pub fn skip_design_group(file: &[u8]) -> anyhow::Result<usize> {
+        let (design_group_size, bytes_read) = crate::utils::compressed_size(file)?;
+        anyhow::Ok(design_group_size as usize + bytes_read)
+    }
+
     /// Write a map file to a writer
     pub fn write<W: std::io::Write>(
         &self,

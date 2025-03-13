@@ -39,13 +39,35 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                             !editor_tab.map.user.ui_values.animations_panel_open;
                                     }
                                     if ui
-                                        .add(Button::new("Server settings").selected(
-                                            editor_tab.map.user.ui_values.server_settings_open,
+                                        .add(Button::new("Server commands").selected(
+                                            editor_tab.map.user.ui_values.server_commands_open,
                                         ))
                                         .clicked()
                                     {
-                                        editor_tab.map.user.ui_values.server_settings_open =
-                                            !editor_tab.map.user.ui_values.server_settings_open;
+                                        editor_tab.map.user.ui_values.server_commands_open =
+                                            !editor_tab.map.user.ui_values.server_commands_open;
+                                    }
+                                    if ui
+                                        .add(
+                                            Button::new("Server config variables").selected(
+                                                editor_tab
+                                                    .map
+                                                    .user
+                                                    .ui_values
+                                                    .server_config_variables_open,
+                                            ),
+                                        )
+                                        .clicked()
+                                    {
+                                        editor_tab
+                                            .map
+                                            .user
+                                            .ui_values
+                                            .server_config_variables_open = !editor_tab
+                                            .map
+                                            .user
+                                            .ui_values
+                                            .server_config_variables_open;
                                     }
                                     if ui
                                         .add(Button::new("Parallax zoom").selected(

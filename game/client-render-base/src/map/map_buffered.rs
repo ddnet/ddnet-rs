@@ -167,8 +167,9 @@ pub struct TileLayerBufferedVisuals {
 #[derive(Debug, Hiarc, Clone)]
 pub struct TileLayerVisuals {
     pub base: TileLayerBufferedVisuals,
-    /// Exclusivly for editor rn to show the tile numbers
-    pub tile_num_buffer_object: Option<BufferObject>,
+    /// Exclusivly for editor rn to show the tile numbers & flags
+    pub tile_index_buffer_object: Option<BufferObject>,
+    pub tile_flag_buffer_object: Option<BufferObject>,
 }
 
 #[derive(Debug, Hiarc, Clone)]
@@ -344,6 +345,11 @@ impl MapRenderLayer {
     }
 }
 
+fn flag_to_bits(mut flags: TileFlags) -> u8 {
+    flags.remove(TileFlags::OPAQUE);
+    TileFlags::from_bits_truncate(flags.bits()).bits()
+}
+
 #[derive(Default)]
 pub struct ClientMapBufferedRenderProcess {
     pub background_render_layers: Vec<MapRenderLayer>,
@@ -382,14 +388,16 @@ pub struct MapBufferTileLayer {
     base: MapBufferTileLayerBase,
     render_info: MapRenderInfo,
     /// For editor
-    tile_num: Option<MapBufferTileLayerBase>,
+    tile_index: Option<MapBufferTileLayerBase>,
+    tile_flag: Option<MapBufferTileLayerBase>,
 }
 
 #[derive(Debug, Default)]
 pub struct MapBufferPhysicsTileLayer {
     base: MapBufferTileLayerBase,
     /// For editor
-    tile_num: Option<MapBufferTileLayerBase>,
+    tile_index: Option<MapBufferTileLayerBase>,
+    tile_flag: Option<MapBufferTileLayerBase>,
     render_info: MapPhysicsRenderInfo,
     overlays: Vec<(MapRenderTextOverlayType, MapBufferTileLayerBase)>,
 }
@@ -757,13 +765,20 @@ impl ClientMapBuffered {
                     quad_count_for_indices,
                     visuals,
                 },
-            tile_num,
+            tile_index,
+            tile_flag,
             ..
         } = upload_data;
-        if let Some(tile_num_mem) = &tile_num {
-            backend_handle.indices_for_quads_required_notify(tile_num_mem.quad_count_for_indices);
+        if let Some(mem) = &tile_index {
+            backend_handle.indices_for_quads_required_notify(mem.quad_count_for_indices);
         }
-        let tile_num_buffer_object = tile_num
+        if let Some(mem) = &tile_flag {
+            backend_handle.indices_for_quads_required_notify(mem.quad_count_for_indices);
+        }
+        let tile_index_buffer_object = tile_index
+            .and_then(|base| base.mem)
+            .map(|mem| buffer_object_handle.create_buffer_object(mem));
+        let tile_flag_buffer_object = tile_flag
             .and_then(|base| base.mem)
             .map(|mem| buffer_object_handle.create_buffer_object(mem));
         if mem.as_ref().is_some_and(|mem| !mem.as_slice().is_empty()) {
@@ -775,7 +790,8 @@ impl ClientMapBuffered {
                     base: visuals,
                     buffer_object: Some(buffer_object_handle.create_buffer_object(mem.unwrap())),
                 },
-                tile_num_buffer_object,
+                tile_index_buffer_object,
+                tile_flag_buffer_object,
             }
         } else {
             TileLayerVisuals {
@@ -783,7 +799,8 @@ impl ClientMapBuffered {
                     base: visuals,
                     buffer_object: None,
                 },
-                tile_num_buffer_object,
+                tile_index_buffer_object,
+                tile_flag_buffer_object,
             }
         }
     }
@@ -824,7 +841,8 @@ impl ClientMapBuffered {
     ) -> PhysicsTileLayerVisuals {
         let MapBufferPhysicsTileLayer {
             base,
-            tile_num,
+            tile_index,
+            tile_flag,
             render_info,
             overlays,
         } = upload_data;
@@ -833,7 +851,8 @@ impl ClientMapBuffered {
             backend_handle,
             MapBufferTileLayer {
                 base,
-                tile_num,
+                tile_index,
+                tile_flag,
                 render_info: MapRenderInfo {
                     group_index: 0,
                     layer_index: render_info.layer_index,
@@ -852,7 +871,8 @@ impl ClientMapBuffered {
                         group_index: 0,
                         layer_index: render_info.layer_index,
                     },
-                    tile_num: None,
+                    tile_index: None,
+                    tile_flag: None,
                 },
             );
             overlay_buffer_objects.push(PhysicsTileLayerOverlayVisuals {
@@ -1304,7 +1324,7 @@ impl ClientMapBuffered {
         group_index: usize,
         layer_index: usize,
         ignore_tile_index_and_is_textured_check: bool,
-        create_tile_num: bool,
+        create_tile_index_flag: bool,
     ) -> MapBufferTileLayer {
         let mut res = MapBufferTileLayer {
             render_info: MapRenderInfo {
@@ -1325,10 +1345,13 @@ impl ClientMapBuffered {
         ) {
             res.base = data;
 
-            if create_tile_num {
-                let mut tiles_it = tiles.iter().map(|tile| (tile.index, tile.flags, -1));
+            if create_tile_index_flag {
+                // index
+                let mut tiles_it = tiles
+                    .iter()
+                    .map(|tile| (tile.index, TileFlags::empty(), -1));
 
-                let tile_num = Self::upload_tile_layer_buffer(
+                let tile_index = Self::upload_tile_layer_buffer(
                     (width, height, true, &mut tiles_it),
                     false,
                     false,
@@ -1336,7 +1359,22 @@ impl ClientMapBuffered {
                     graphics_mt,
                 );
 
-                res.tile_num = tile_num;
+                res.tile_index = tile_index;
+
+                // flag
+                let mut tiles_it = tiles
+                    .iter()
+                    .map(|tile| (flag_to_bits(tile.flags), TileFlags::empty(), -1));
+
+                let tile_flag = Self::upload_tile_layer_buffer(
+                    (width, height, true, &mut tiles_it),
+                    false,
+                    false,
+                    ignore_tile_index_and_is_textured_check,
+                    graphics_mt,
+                );
+
+                res.tile_flag = tile_flag;
             }
         }
         res
@@ -1349,7 +1387,7 @@ impl ClientMapBuffered {
         tiles: MapTileLayerPhysicsTilesRef,
         layer_index: usize,
         ignore_tile_index_check: bool,
-        create_tile_num: bool,
+        create_tile_index_flag: bool,
     ) -> MapBufferPhysicsTileLayer {
         let mut res = MapBufferPhysicsTileLayer::default();
 
@@ -1382,142 +1420,176 @@ impl ClientMapBuffered {
             text_overlay_count = 2;
         }
 
-        for cur_text_overlay in 0..text_overlay_count + 1 + if create_tile_num { 1 } else { 0 } {
+        for cur_text_overlay in
+            0..text_overlay_count + 1 + if create_tile_index_flag { 2 } else { 0 }
+        {
             let mut is_game_layer = false;
             let mut is_speedup_layer = false;
             let mut text_overlay_type: Option<MapRenderTextOverlayType> = None;
-            let is_tile_num_layer = create_tile_num && cur_text_overlay == text_overlay_count + 1;
+            let is_tile_index_layer =
+                create_tile_index_flag && cur_text_overlay == text_overlay_count + 1;
+            let is_tile_flag_layer =
+                create_tile_index_flag && cur_text_overlay == text_overlay_count + 2;
 
-            let mut tiles: Box<dyn Iterator<Item = (u8, TileFlags, i16)>> = match tiles {
-                MapTileLayerPhysicsTilesRef::Arbitrary(_) => Box::new([].into_iter()),
-                MapTileLayerPhysicsTilesRef::Game(tiles) => {
-                    if is_tile_num_layer {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.index, Default::default(), -1)),
-                        )
-                    } else {
-                        is_game_layer = true;
-                        Box::new(tiles.iter().map(|tile| (tile.index, tile.flags, -1)))
-                    }
-                }
-                MapTileLayerPhysicsTilesRef::Front(tiles) => {
-                    if is_tile_num_layer {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.index, Default::default(), -1)),
-                        )
-                    } else {
-                        Box::new(tiles.iter().map(|tile| (tile.index, tile.flags, -1)))
-                    }
-                }
-                MapTileLayerPhysicsTilesRef::Tele(tiles) => {
-                    if is_tile_num_layer {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.base.index, Default::default(), -1)),
-                        )
-                    } else {
-                        if cur_text_overlay == 1 {
-                            text_overlay_type = Some(MapRenderTextOverlayType::Center);
+            let mut tiles: Box<dyn Iterator<Item = (u8, TileFlags, i16)>> =
+                match tiles {
+                    MapTileLayerPhysicsTilesRef::Arbitrary(_) => Box::new([].into_iter()),
+                    MapTileLayerPhysicsTilesRef::Game(tiles) => {
+                        if is_tile_index_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (flag_to_bits(tile.flags), Default::default(), -1)),
+                            )
+                        } else {
+                            is_game_layer = true;
+                            Box::new(tiles.iter().map(|tile| (tile.index, tile.flags, -1)))
                         }
-                        Box::new(tiles.iter().map(|tile| {
-                            let mut index = tile.base.index;
-                            let flags = TileFlags::empty();
+                    }
+                    MapTileLayerPhysicsTilesRef::Front(tiles) => {
+                        if is_tile_index_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (flag_to_bits(tile.flags), Default::default(), -1)),
+                            )
+                        } else {
+                            Box::new(tiles.iter().map(|tile| (tile.index, tile.flags, -1)))
+                        }
+                    }
+                    MapTileLayerPhysicsTilesRef::Tele(tiles) => {
+                        if is_tile_index_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.base.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(tiles.iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
+                        } else {
                             if cur_text_overlay == 1 {
-                                if index != DdraceTileNum::TeleCheckIn as u8
-                                    && index != DdraceTileNum::TeleCheckInEvil as u8
-                                {
-                                    index = tile.number;
-                                } else {
-                                    index = 0;
+                                text_overlay_type = Some(MapRenderTextOverlayType::Center);
+                            }
+                            Box::new(tiles.iter().map(|tile| {
+                                let mut index = tile.base.index;
+                                let flags = TileFlags::empty();
+                                if cur_text_overlay == 1 {
+                                    if index != DdraceTileNum::TeleCheckIn as u8
+                                        && index != DdraceTileNum::TeleCheckInEvil as u8
+                                    {
+                                        index = tile.number;
+                                    } else {
+                                        index = 0;
+                                    }
                                 }
-                            }
 
-                            (index, flags, -1)
-                        }))
-                    }
-                }
-                MapTileLayerPhysicsTilesRef::Speedup(tiles) => {
-                    if is_tile_num_layer {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.base.index, Default::default(), -1)),
-                        )
-                    } else {
-                        if cur_text_overlay == 0 {
-                            is_speedup_layer = true;
-                        } else if cur_text_overlay == 1 {
-                            text_overlay_type = Some(MapRenderTextOverlayType::Bottom);
-                        } else if cur_text_overlay == 2 {
-                            text_overlay_type = Some(MapRenderTextOverlayType::Top);
+                                (index, flags, -1)
+                            }))
                         }
-                        Box::new(tiles.iter().map(|tile| {
-                            let mut index = tile.base.index;
-                            let flags = TileFlags::empty();
-                            let angle_rotate = tile.angle;
-                            if tile.force == 0 {
-                                index = 0;
-                            } else if cur_text_overlay == 1 {
-                                index = tile.force;
-                            } else if cur_text_overlay == 2 {
-                                index = tile.max_speed;
-                            }
-                            (index, flags, angle_rotate)
-                        }))
                     }
-                }
-                MapTileLayerPhysicsTilesRef::Switch(tiles) => {
-                    if is_tile_num_layer {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.base.index, Default::default(), -1)),
-                        )
-                    } else {
-                        if cur_text_overlay == 1 {
-                            text_overlay_type = Some(MapRenderTextOverlayType::Bottom);
-                        } else if cur_text_overlay == 2 {
-                            text_overlay_type = Some(MapRenderTextOverlayType::Top);
-                        }
-                        Box::new(tiles.iter().map(|tile| {
-                            let mut flags = TileFlags::empty();
-                            let mut index = tile.base.index;
+                    MapTileLayerPhysicsTilesRef::Speedup(tiles) => {
+                        if is_tile_index_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.base.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(tiles.iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
+                        } else {
                             if cur_text_overlay == 0 {
-                                flags = tile.base.flags;
-                                if index == TILE_SWITCHTIMEDOPEN {
-                                    index = 8;
-                                }
+                                is_speedup_layer = true;
                             } else if cur_text_overlay == 1 {
-                                index = tile.number;
+                                text_overlay_type = Some(MapRenderTextOverlayType::Bottom);
                             } else if cur_text_overlay == 2 {
-                                index = tile.delay;
+                                text_overlay_type = Some(MapRenderTextOverlayType::Top);
                             }
+                            Box::new(tiles.iter().map(|tile| {
+                                let mut index = tile.base.index;
+                                let flags = TileFlags::empty();
+                                let angle_rotate = tile.angle;
+                                if tile.force == 0 {
+                                    index = 0;
+                                } else if cur_text_overlay == 1 {
+                                    index = tile.force;
+                                } else if cur_text_overlay == 2 {
+                                    index = tile.max_speed;
+                                }
+                                (index, flags, angle_rotate)
+                            }))
+                        }
+                    }
+                    MapTileLayerPhysicsTilesRef::Switch(tiles) => {
+                        if is_tile_index_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.base.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(tiles.iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
+                        } else {
+                            if cur_text_overlay == 1 {
+                                text_overlay_type = Some(MapRenderTextOverlayType::Bottom);
+                            } else if cur_text_overlay == 2 {
+                                text_overlay_type = Some(MapRenderTextOverlayType::Top);
+                            }
+                            Box::new(tiles.iter().map(|tile| {
+                                let mut flags = TileFlags::empty();
+                                let mut index = tile.base.index;
+                                if cur_text_overlay == 0 {
+                                    flags = tile.base.flags;
+                                    if index == TILE_SWITCHTIMEDOPEN {
+                                        index = 8;
+                                    }
+                                } else if cur_text_overlay == 1 {
+                                    index = tile.number;
+                                } else if cur_text_overlay == 2 {
+                                    index = tile.delay;
+                                }
 
-                            (index, flags, -1)
-                        }))
+                                (index, flags, -1)
+                            }))
+                        }
                     }
-                }
-                MapTileLayerPhysicsTilesRef::Tune(tiles) => {
-                    if is_tile_num_layer {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.base.index, Default::default(), -1)),
-                        )
-                    } else {
-                        Box::new(
-                            tiles
-                                .iter()
-                                .map(|tile| (tile.base.index, tile.base.flags, -1)),
-                        )
+                    MapTileLayerPhysicsTilesRef::Tune(tiles) => {
+                        if is_tile_index_layer {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.base.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(tiles.iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
+                        } else {
+                            Box::new(
+                                tiles
+                                    .iter()
+                                    .map(|tile| (tile.base.index, tile.base.flags, -1)),
+                            )
+                        }
                     }
-                }
-            };
+                };
 
             if let Some(data) = Self::upload_tile_layer_buffer(
                 (width, height, true, &mut tiles),
@@ -1535,16 +1607,21 @@ impl ClientMapBuffered {
                         },
                         render_info: MapPhysicsRenderInfo { layer_index },
                         overlays: Vec::new(),
-                        tile_num: None,
+                        tile_index: None,
+                        tile_flag: None,
                     };
-                } else if !create_tile_num || cur_text_overlay < text_overlay_count + 1 {
+                } else if !create_tile_index_flag || cur_text_overlay < text_overlay_count + 1 {
                     res.base.quad_count_for_indices = res
                         .base
                         .quad_count_for_indices
                         .max(data.quad_count_for_indices);
                     res.overlays.push((text_overlay_type.unwrap(), data));
+                } else if is_tile_index_layer {
+                    res.tile_index = Some(data);
+                } else if is_tile_flag_layer {
+                    res.tile_flag = Some(data);
                 } else {
-                    res.tile_num = Some(data);
+                    panic!("unexpected overlay");
                 }
             }
         }
@@ -2011,20 +2088,29 @@ impl ClientMapBuffered {
             text_overlay_count = 2;
         }
 
-        let create_tile_num = true;
+        let create_tile_index_flag = true;
 
-        for cur_text_overlay in 0..text_overlay_count + 1 + if create_tile_num { 1 } else { 0 } {
+        for cur_text_overlay in
+            0..text_overlay_count + 1 + if create_tile_index_flag { 2 } else { 0 }
+        {
             let is_speedup_layer =
                 cur_text_overlay == 0 && matches!(layer, MapLayerPhysicsSkeleton::Speedup(_));
-            let is_tile_num_layer = create_tile_num && cur_text_overlay == text_overlay_count + 1;
+            let is_tile_index_layer =
+                create_tile_index_flag && cur_text_overlay == text_overlay_count + 1;
+            let is_tile_flag_layer =
+                create_tile_index_flag && cur_text_overlay == text_overlay_count + 2;
             let mut buffer_object = if cur_text_overlay == 0 {
                 &layer.user_mut().borrow_mut().base.base.buffer_object
-            } else if !create_tile_num || cur_text_overlay < text_overlay_count + 1 {
+            } else if !create_tile_index_flag || cur_text_overlay < text_overlay_count + 1 {
                 &layer.user_mut().borrow_mut().overlays[cur_text_overlay - 1]
                     .visuals
                     .buffer_object
+            } else if is_tile_index_layer {
+                &layer.user_mut().borrow_mut().base.tile_index_buffer_object
+            } else if is_tile_flag_layer {
+                &layer.user_mut().borrow_mut().base.tile_flag_buffer_object
             } else {
-                &layer.user_mut().borrow_mut().base.tile_num_buffer_object
+                panic!("unexpected overlay")
             }
             .clone();
             Self::update_tile_layer(
@@ -2039,11 +2125,17 @@ impl ClientMapBuffered {
                 |skip| match &layer {
                     MapLayerPhysicsSkeleton::Arbitrary(_) => Box::new([].into_iter()),
                     MapLayerPhysicsSkeleton::Game(layer) => {
-                        if is_tile_num_layer {
+                        if is_tile_index_layer {
                             Box::new(
                                 layer.layer.tiles[skip..]
                                     .iter()
                                     .map(|tile| (tile.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(
+                                layer.layer.tiles[skip..]
+                                    .iter()
+                                    .map(|tile| (flag_to_bits(tile.flags), Default::default(), -1)),
                             )
                         } else {
                             Box::new(
@@ -2054,11 +2146,17 @@ impl ClientMapBuffered {
                         }
                     }
                     MapLayerPhysicsSkeleton::Front(layer) => {
-                        if is_tile_num_layer {
+                        if is_tile_index_layer {
                             Box::new(
                                 layer.layer.tiles[skip..]
                                     .iter()
                                     .map(|tile| (tile.index, Default::default(), -1)),
+                            )
+                        } else if is_tile_flag_layer {
+                            Box::new(
+                                layer.layer.tiles[skip..]
+                                    .iter()
+                                    .map(|tile| (flag_to_bits(tile.flags), Default::default(), -1)),
                             )
                         } else {
                             Box::new(
@@ -2069,12 +2167,16 @@ impl ClientMapBuffered {
                         }
                     }
                     MapLayerPhysicsSkeleton::Tele(layer) => {
-                        if is_tile_num_layer {
+                        if is_tile_index_layer {
                             Box::new(
                                 layer.layer.base.tiles[skip..]
                                     .iter()
                                     .map(|tile| (tile.base.index, Default::default(), -1)),
                             )
+                        } else if is_tile_flag_layer {
+                            Box::new(layer.layer.base.tiles[skip..].iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
                         } else {
                             Box::new(layer.layer.base.tiles[skip..].iter().map(|tile| {
                                 let mut index = tile.base.index;
@@ -2094,12 +2196,16 @@ impl ClientMapBuffered {
                         }
                     }
                     MapLayerPhysicsSkeleton::Speedup(layer) => {
-                        if is_tile_num_layer {
+                        if is_tile_index_layer {
                             Box::new(
                                 layer.layer.tiles[skip..]
                                     .iter()
                                     .map(|tile| (tile.base.index, Default::default(), -1)),
                             )
+                        } else if is_tile_flag_layer {
+                            Box::new(layer.layer.tiles[skip..].iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
                         } else {
                             Box::new(layer.layer.tiles[skip..].iter().map(|tile| {
                                 let mut index = tile.base.index;
@@ -2117,12 +2223,16 @@ impl ClientMapBuffered {
                         }
                     }
                     MapLayerPhysicsSkeleton::Switch(layer) => {
-                        if is_tile_num_layer {
+                        if is_tile_index_layer {
                             Box::new(
                                 layer.layer.base.tiles[skip..]
                                     .iter()
                                     .map(|tile| (tile.base.index, Default::default(), -1)),
                             )
+                        } else if is_tile_flag_layer {
+                            Box::new(layer.layer.base.tiles[skip..].iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
                         } else {
                             Box::new(layer.layer.base.tiles[skip..].iter().map(|tile| {
                                 let mut flags = TileFlags::empty();
@@ -2143,12 +2253,16 @@ impl ClientMapBuffered {
                         }
                     }
                     MapLayerPhysicsSkeleton::Tune(layer) => {
-                        if is_tile_num_layer {
+                        if is_tile_index_layer {
                             Box::new(
                                 layer.layer.base.tiles[skip..]
                                     .iter()
                                     .map(|tile| (tile.base.index, Default::default(), -1)),
                             )
+                        } else if is_tile_flag_layer {
+                            Box::new(layer.layer.base.tiles[skip..].iter().map(|tile| {
+                                (flag_to_bits(tile.base.flags), Default::default(), -1)
+                            }))
                         } else {
                             Box::new(
                                 layer.layer.base.tiles[skip..]
@@ -2163,12 +2277,16 @@ impl ClientMapBuffered {
             );
             *if cur_text_overlay == 0 {
                 &mut layer.user_mut().borrow_mut().base.base.buffer_object
-            } else if !create_tile_num || cur_text_overlay < text_overlay_count + 1 {
+            } else if !create_tile_index_flag || cur_text_overlay < text_overlay_count + 1 {
                 &mut layer.user_mut().borrow_mut().overlays[cur_text_overlay - 1]
                     .visuals
                     .buffer_object
+            } else if is_tile_index_layer {
+                &mut layer.user_mut().borrow_mut().base.tile_index_buffer_object
+            } else if is_tile_flag_layer {
+                &mut layer.user_mut().borrow_mut().base.tile_flag_buffer_object
             } else {
-                &mut layer.user_mut().borrow_mut().base.tile_num_buffer_object
+                panic!("unexpected overlayer");
             } = buffer_object;
         }
     }
@@ -2207,25 +2325,37 @@ impl ClientMapBuffered {
             true, // always true bcs `ignore_tile_index_and_is_textured_check`
         );
 
-        Self::update_tile_layer(
-            tp,
-            &mut layer.user.borrow_mut().tile_num_buffer_object,
-            layer_width,
-            layer_height,
-            x,
-            y,
-            width,
-            height,
-            |skip| {
-                Box::new(
-                    layer.layer.tiles[skip..]
-                        .iter()
-                        .map(|tile| (tile.index, Default::default(), -1)),
-                )
-            },
-            false,
-            true, // always true bcs `ignore_tile_index_and_is_textured_check`
-        );
+        for i in 0..2 {
+            Self::update_tile_layer(
+                tp,
+                if i == 0 {
+                    &mut layer.user.borrow_mut().tile_index_buffer_object
+                } else {
+                    &mut layer.user.borrow_mut().tile_flag_buffer_object
+                },
+                layer_width,
+                layer_height,
+                x,
+                y,
+                width,
+                height,
+                |skip| {
+                    Box::new(layer.layer.tiles[skip..].iter().map(|tile| {
+                        (
+                            if i == 0 {
+                                tile.index
+                            } else {
+                                flag_to_bits(tile.flags)
+                            },
+                            Default::default(),
+                            -1,
+                        )
+                    }))
+                },
+                false,
+                true, // always true bcs `ignore_tile_index_and_is_textured_check`
+            );
+        }
     }
 
     pub fn update_design_quad_layer<Q>(

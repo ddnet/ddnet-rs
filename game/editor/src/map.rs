@@ -20,12 +20,15 @@ use game_interface::types::game::GameTickType;
 use graphics::handles::texture::texture::{TextureContainer, TextureContainer2dArray};
 use hiarc::Hiarc;
 use map::{
-    map::groups::{
-        layers::{
-            design::{MapLayerQuadsAttrs, MapLayerSoundAttrs},
-            tiles::MapTileLayerAttr,
+    map::{
+        command_value::CommandValue,
+        groups::{
+            layers::{
+                design::{MapLayerQuadsAttrs, MapLayerSoundAttrs},
+                tiles::MapTileLayerAttr,
+            },
+            MapGroupAttr, MapGroupPhysicsAttr,
         },
-        MapGroupAttr, MapGroupPhysicsAttr,
     },
     skeleton::{
         animations::{
@@ -171,7 +174,9 @@ impl BorrowMut<SoundLayerSounds> for EditorSoundLayerProps {
 #[derive(Debug, Default, Clone)]
 pub struct EditorPhysicsLayerNumberExtra {
     pub name: String,
-    pub extra: FxLinkedHashMap<String, String>,
+    pub extra: FxLinkedHashMap<String, CommandValue>,
+    pub enter_extra: Option<String>,
+    pub leave_extra: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +189,8 @@ pub struct EditorPhysicsLayerProps {
     /// e.g. tele, switch & tune zone layer
     pub number_extra: FxLinkedHashMap<u8, EditorPhysicsLayerNumberExtra>,
     pub number_extra_text: String,
+    pub enter_extra_text: String,
+    pub leave_extra_text: String,
 
     pub switch_delay: u8,
 
@@ -192,6 +199,7 @@ pub struct EditorPhysicsLayerProps {
     pub speedup_max_speed: u8,
 
     pub context_menu_open: bool,
+    pub context_menu_extra_open: bool,
 }
 
 impl Borrow<PhysicsTileLayerVisuals> for EditorPhysicsLayerProps {
@@ -531,6 +539,9 @@ pub trait EditorMapGroupsInterface {
 pub struct EditorMapConfig {
     pub cmd_string: String,
     pub selected_cmd: Option<usize>,
+
+    pub conf_var_string: String,
+    pub selected_conf_var: Option<usize>,
 }
 pub type EditorConfig = ConfigSkeleton<EditorMapConfig>;
 pub type EditorMetadata = MetadataSkeleton<()>;
@@ -570,7 +581,8 @@ pub struct EditorChatState {
 pub struct EditorMapPropsUiValues {
     pub group_panel_active_tab: EditorGroupPanelTab,
     pub animations_panel_open: bool,
-    pub server_settings_open: bool,
+    pub server_commands_open: bool,
+    pub server_config_variables_open: bool,
     pub chat_panel_open: Option<EditorChatState>,
     pub timeline: Timeline,
 }
@@ -580,7 +592,8 @@ impl Default for EditorMapPropsUiValues {
         Self {
             group_panel_active_tab: EditorGroupPanelTab::GroupsAndLayers,
             animations_panel_open: false,
-            server_settings_open: false,
+            server_commands_open: false,
+            server_config_variables_open: false,
             chat_panel_open: None,
             timeline: Timeline::new(),
         }

@@ -2,6 +2,8 @@ use base::linked_hash_map_view::FxLinkedHashMap;
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
 
+use crate::map::command_value::CommandValue;
+
 use super::tiles::{
     MapTileLayerPhysicsTilesRef, SpeedupTile, SwitchTile, TeleTile, Tile, TuneTile,
 };
@@ -30,7 +32,12 @@ pub struct MapLayerTilePhysicsSwitch {
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapLayerTilePhysicsTuneZone {
     pub name: String,
-    pub tunes: FxLinkedHashMap<String, String>,
+    pub tunes: FxLinkedHashMap<String, CommandValue>,
+
+    /// Message a server/client _can_ display, if the tee enters this tune zone.
+    pub enter_msg: Option<String>,
+    /// Message a server/client _can_ display, if the tee leaves this tune zone.
+    pub leave_msg: Option<String>,
 }
 
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]

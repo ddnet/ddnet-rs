@@ -36,6 +36,7 @@ use map::{
             AnimBezier, AnimBezierPoint, AnimBeziers, AnimPointColor, AnimPointCurveType,
             AnimPointPos, AnimPointSound, Animations, ColorAnimation, PosAnimation, SoundAnimation,
         },
+        command_value::CommandValue,
         config::Config,
         groups::{
             layers::{
@@ -1426,6 +1427,7 @@ impl CDatafileWrapper {
                 sounds: Default::default(),
             },
             config: Config {
+                config_variables: Default::default(),
                 commands: Default::default(),
             },
             meta: Metadata {
@@ -1797,71 +1799,108 @@ impl CDatafileWrapper {
                         {
                             let (_, cmd) = setting
                                 .trim()
-                                .split_once(' ')
+                                .split_once(char::is_whitespace)
                                 .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
                                 .unwrap_or_else(|| (setting.clone(), "".to_string()));
 
+                            let (cmd, tune_comment) = cmd
+                                .trim()
+                                .split_once('#')
+                                .map(|(s1, s2)| (s1.to_string(), Some(s2.trim().to_string())))
+                                .unwrap_or_else(|| (cmd.trim().to_string(), None));
+
                             let (index, cmd) = cmd
                                 .trim()
-                                .split_once(' ')
-                                .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                                .unwrap_or_else(|| (cmd.clone(), "".to_string()));
+                                .split_once(char::is_whitespace)
+                                .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
+                                .unwrap_or_else(|| (cmd.trim().to_string(), "".to_string()));
 
                             if let Ok(index) = index.trim().parse::<u8>() {
                                 let tune_zone = tune_zones.entry(index).or_insert_with(|| {
                                     MapLayerTilePhysicsTuneZone {
                                         name: "".into(),
                                         tunes: Default::default(),
+                                        enter_msg: Default::default(),
+                                        leave_msg: Default::default(),
                                     }
                                 });
                                 let (tune_param, tune_val) = cmd
                                     .trim()
-                                    .split_once(' ')
+                                    .split_once(char::is_whitespace)
                                     .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
                                     .unwrap_or_else(|| (cmd.clone(), "".to_string()));
-                                tune_zone.tunes.insert(tune_param, tune_val);
+                                tune_zone.tunes.insert(
+                                    tune_param,
+                                    CommandValue {
+                                        value: tune_val,
+                                        comment: tune_comment,
+                                    },
+                                );
                             }
 
                             None
-                        } else if setting_trimmed.starts_with("tune")
+                        } else if (setting_trimmed.starts_with("tune_zone_enter")
                             && setting_trimmed
                                 .chars()
-                                .nth("tune".chars().count())
-                                .is_some_and(|c| c.is_whitespace())
+                                .nth("tune_zone_enter".chars().count())
+                                .is_some_and(|c| c.is_whitespace()))
+                            || (setting_trimmed.starts_with("tune_zone_leave")
+                                && setting_trimmed
+                                    .chars()
+                                    .nth("tune_zone_leave".chars().count())
+                                    .is_some_and(|c| c.is_whitespace()))
                         {
+                            let is_enter = setting_trimmed.starts_with("tune_zone_enter");
                             let (_, cmd) = setting
                                 .trim()
-                                .split_once(' ')
-                                .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                                .unwrap_or_else(|| (setting.clone(), "".to_string()));
+                                .split_once(char::is_whitespace)
+                                .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
+                                .unwrap_or_else(|| (setting.trim().to_string(), "".to_string()));
 
-                            let tune_zone = tune_zones.entry(0).or_insert_with(|| {
-                                MapLayerTilePhysicsTuneZone {
-                                    name: "".into(),
-                                    tunes: Default::default(),
-                                }
-                            });
-                            let (tune_param, tune_val) = cmd
+                            let (index, msg) = cmd
                                 .trim()
-                                .split_once(' ')
-                                .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                                .unwrap_or_else(|| (cmd.clone(), "".to_string()));
-                            tune_zone.tunes.insert(tune_param, tune_val);
+                                .split_once(char::is_whitespace)
+                                .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
+                                .unwrap_or_else(|| (cmd.trim().to_string(), "".to_string()));
+
+                            if let Ok(index) = index.trim().parse::<u8>() {
+                                let tune_zone = tune_zones.entry(index).or_insert_with(|| {
+                                    MapLayerTilePhysicsTuneZone {
+                                        name: "".into(),
+                                        tunes: Default::default(),
+                                        enter_msg: Default::default(),
+                                        leave_msg: Default::default(),
+                                    }
+                                });
+                                let msg = (!msg.is_empty()).then_some(msg);
+                                if is_enter {
+                                    tune_zone.enter_msg = msg;
+                                } else {
+                                    tune_zone.leave_msg = msg;
+                                }
+                            }
 
                             None
                         } else if !setting.is_empty() {
-                            Some(
-                                setting
-                                    .trim()
-                                    .split_once(' ')
-                                    .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                                    .unwrap_or_else(|| (setting.clone(), "".to_string())),
-                            )
+                            let (setting, comment) = setting
+                                .trim()
+                                .split_once('#')
+                                .map(|(s1, s2)| {
+                                    (s1.trim().to_string(), Some(s2.trim().to_string()))
+                                })
+                                .unwrap_or_else(|| (setting.trim().to_string(), None));
+
+                            Some(CommandValue {
+                                value: setting,
+                                comment,
+                            })
                         } else {
                             None
                         }
                     })
                     .collect(),
+                // TODO: for ddrace decide which commands are actually config variables.
+                config_variables: Default::default(),
             }
         }
 
@@ -3174,17 +3213,34 @@ impl CDatafileWrapper {
                         for (index, args) in &layer.tune_zones {
                             for (tune_name, tune_val) in &args.tunes {
                                 let mut setting: [u8; 256] = vec![0; 256].try_into().unwrap();
-                                let cmd = if *index == 0 {
-                                    format!("tune \"{}\" \"{}\"", tune_name, tune_val)
-                                } else {
-                                    format!("tune_zone {index} \"{}\" \"{}\"", tune_name, tune_val)
-                                };
+                                let cmd = format!(
+                                    "tune_zone {index} {} {}{}",
+                                    tune_name,
+                                    tune_val.value,
+                                    if let Some(comment) = &tune_val.comment {
+                                        format!(" # {}", comment)
+                                    } else {
+                                        String::default()
+                                    }
+                                );
                                 let src = cmd.as_bytes();
                                 setting[0..src.len().min(256)]
                                     .copy_from_slice(&src[0..src.len().min(256)]);
                                 *setting.last_mut().unwrap() = 0;
                                 global_map_settings.push(setting);
                             }
+                            let mut msg = |postfix: &str, msg: &Option<String>| {
+                                let Some(msg) = msg else { return };
+                                let mut setting: [u8; 256] = vec![0; 256].try_into().unwrap();
+                                let cmd = format!("tune_zone_{postfix} {index} {}", msg);
+                                let src = cmd.as_bytes();
+                                setting[0..src.len().min(256)]
+                                    .copy_from_slice(&src[0..src.len().min(256)]);
+                                *setting.last_mut().unwrap() = 0;
+                                global_map_settings.push(setting);
+                            };
+                            msg("enter", &args.enter_msg);
+                            msg("leave", &args.leave_msg);
                         }
                     }
                 }
@@ -3301,7 +3357,7 @@ impl CDatafileWrapper {
             let mut info_data: Vec<u8> = Vec::new();
             let info_settings = CMapItemInfoSettings {
                 info: CMapItemInfo {
-                    version: 0,
+                    version: 1,
                     author: {
                         let mut author: [u8; 32] = Default::default();
                         let src = map.meta.authors.first().cloned().unwrap_or_default();
@@ -3379,13 +3435,39 @@ impl CDatafileWrapper {
                     },
                 },
                 settings: {
-                    for (cmd, args) in &map.config.commands {
+                    for cmd in &map.config.commands {
                         let mut setting: [u8; 256] = vec![0; 256].try_into().unwrap();
-                        let cmd = format!("{cmd} {args}");
+                        let cmd = format!(
+                            "{}{}",
+                            cmd.value,
+                            if let Some(comment) = &cmd.comment {
+                                format!(" # {}", comment)
+                            } else {
+                                String::default()
+                            }
+                        );
                         let src = cmd.as_bytes();
                         setting[0..src.len().min(256)].copy_from_slice(&src[0..src.len().min(256)]);
                         *setting.last_mut().unwrap() = 0;
                         global_map_settings.push(setting);
+                    }
+                    for (var_name, value) in &map.config.config_variables {
+                        let mut conf_var: [u8; 256] = vec![0; 256].try_into().unwrap();
+                        let cmd = format!(
+                            "{} {}{}",
+                            var_name,
+                            value.value,
+                            if let Some(comment) = &value.comment {
+                                format!(" # {}", comment)
+                            } else {
+                                String::default()
+                            }
+                        );
+                        let src = cmd.as_bytes();
+                        conf_var[0..src.len().min(256)]
+                            .copy_from_slice(&src[0..src.len().min(256)]);
+                        *conf_var.last_mut().unwrap() = 0;
+                        global_map_settings.push(conf_var);
                     }
                     let data_offset = data_compressed_data.len() as i32;
                     let uncompressed_data = global_map_settings

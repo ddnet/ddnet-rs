@@ -2,7 +2,7 @@
 #![deny(clippy::all)]
 
 use std::{
-    num::{NonZeroI64, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize},
+    num::{NonZeroI64, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize},
     rc::Rc,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize},
@@ -105,6 +105,10 @@ unsafe impl HiarcTrait for AtomicU64 {
 }
 
 unsafe impl HiarcTrait for AtomicUsize {
+    const HI_VAL: u64 = 0;
+}
+
+unsafe impl HiarcTrait for NonZeroU8 {
     const HI_VAL: u64 = 0;
 }
 

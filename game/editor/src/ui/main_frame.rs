@@ -41,6 +41,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         super::bottom_panel::panel::render(ui, &mut pipe, ui_state);
         super::animation_panel::panel::render(ui, &mut pipe, ui_state);
         super::server_settings::panel::render(ui, &mut pipe, ui_state);
+        super::server_config_variables::panel::render(ui, &mut pipe, ui_state);
         super::group_and_layer::group_props::render(ui, &mut pipe, ui_state);
         super::group_and_layer::layer_props::render(ui, &mut pipe, ui_state);
         super::group_and_layer::quad_props::render(ui, &mut pipe, ui_state);
