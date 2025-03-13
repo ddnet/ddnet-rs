@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use super::command_value::CommandValue;
 
+pub type ConfigVariables = LinkedHashMap<String, CommandValue>;
+pub type ConfigCommands = Vec<CommandValue>;
+
 /// The map config is a collection of configurable things,
 /// that _can_ be interpreted by the game.
 ///
@@ -20,10 +23,10 @@ use super::command_value::CommandValue;
 pub struct Config {
     /// Config variables that can be interpreted by server's or theoretically even client's
     /// physics mod, e.g. `sv_team_size 2`.
-    pub config_variables: LinkedHashMap<String, CommandValue>,
+    pub config_variables: ConfigVariables,
     /// Commands that can be interpreted by server's or theoretically even client's
     /// game mod, e.g. global tunes or `echo hello`.
     ///
     /// Commands are just a list of raw command strings.
-    pub commands: Vec<CommandValue>,
+    pub commands: ConfigCommands,
 }

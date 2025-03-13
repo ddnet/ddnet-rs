@@ -53,7 +53,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         (map.config.user.conf_var_string.trim().to_string(), None)
                                     });
                                 cmd.trim()
-                                    .split_once(' ')
+                                    .split_once(char::is_whitespace)
                                     .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
                                     .zip(Some(comment))
                             })

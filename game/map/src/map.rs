@@ -241,6 +241,12 @@ impl Map {
         Ok((animations, read_bytes_res))
     }
 
+    /// Skip the map animations. Returns the number of bytes read.
+    pub fn skip_animations(file: &[u8]) -> anyhow::Result<usize> {
+        let (size, bytes_read) = super::utils::compressed_size(file)?;
+        Ok(size as usize + bytes_read)
+    }
+
     /// Read the map config. Returns the number of bytes read.
     pub fn read_config(file: &[u8]) -> anyhow::Result<(Config, usize)> {
         let (config_file, read_bytes_res) = Self::decompress_resources(file)?;
@@ -294,8 +300,10 @@ impl Map {
         })
     }
 
-    /// Read only the physics group (skips all other stuff)
-    pub fn read_physics_group(file: &[u8]) -> anyhow::Result<MapGroupPhysics> {
+    /// Read only the physics group and the config (skips all other stuff).
+    ///
+    /// This is usually nice to use on the server.
+    pub fn read_physics_group_and_config(file: &[u8]) -> anyhow::Result<(MapGroupPhysics, Config)> {
         let header_len = Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>();
         anyhow::ensure!(
             file.len() >= header_len && Self::validate_twmap_header(file),
@@ -314,10 +322,18 @@ impl Map {
         // size of resources + the size information itself
         let (resource_size, read_size) = compressed_size(file)?;
 
-        let (groups, _) =
-            MapGroups::read_physics_group(&file[resource_size as usize + read_size..])?;
+        let file = &file[resource_size as usize + read_size..];
+        let (groups, bytes_read) = MapGroups::read_physics_group(file)?;
 
-        Ok(groups)
+        let file = &file[bytes_read..];
+        let bytes_read = MapGroups::skip_design_group(file)?;
+
+        let file = &file[bytes_read..];
+        let read_bytes_animations = Self::skip_animations(file)?;
+        let file = &file[read_bytes_animations..];
+        let (config, _) = Self::read_config(file)?;
+
+        Ok((groups, config))
     }
 
     /// Read a map file, whos resources were already loaded (the file header was read/checked too).

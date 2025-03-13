@@ -240,7 +240,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                             (s1.trim().to_string(), Some(s2.trim().to_string()))
                                         })
                                         .unwrap_or_else(|| (val.trim().to_string(), None));
-                                    if let Some((name, val)) = val.split_once(' ') {
+                                    if let Some((name, val)) = val.split_once(char::is_whitespace) {
                                         tune.extra.insert(
                                             name.to_string(),
                                             CommandValue {

@@ -1799,7 +1799,7 @@ impl CDatafileWrapper {
                         {
                             let (_, cmd) = setting
                                 .trim()
-                                .split_once(' ')
+                                .split_once(char::is_whitespace)
                                 .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
                                 .unwrap_or_else(|| (setting.clone(), "".to_string()));
 
@@ -1811,7 +1811,7 @@ impl CDatafileWrapper {
 
                             let (index, cmd) = cmd
                                 .trim()
-                                .split_once(' ')
+                                .split_once(char::is_whitespace)
                                 .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
                                 .unwrap_or_else(|| (cmd.trim().to_string(), "".to_string()));
 
@@ -1826,7 +1826,7 @@ impl CDatafileWrapper {
                                 });
                                 let (tune_param, tune_val) = cmd
                                     .trim()
-                                    .split_once(' ')
+                                    .split_once(char::is_whitespace)
                                     .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
                                     .unwrap_or_else(|| (cmd.clone(), "".to_string()));
                                 tune_zone.tunes.insert(
@@ -1853,13 +1853,13 @@ impl CDatafileWrapper {
                             let is_enter = setting_trimmed.starts_with("tune_zone_enter");
                             let (_, cmd) = setting
                                 .trim()
-                                .split_once(' ')
+                                .split_once(char::is_whitespace)
                                 .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
                                 .unwrap_or_else(|| (setting.trim().to_string(), "".to_string()));
 
                             let (index, msg) = cmd
                                 .trim()
-                                .split_once(' ')
+                                .split_once(char::is_whitespace)
                                 .map(|(s1, s2)| (s1.trim().to_string(), s2.trim().to_string()))
                                 .unwrap_or_else(|| (cmd.trim().to_string(), "".to_string()));
 
