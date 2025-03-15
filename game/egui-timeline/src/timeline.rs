@@ -415,7 +415,7 @@ impl Timeline {
             ],
             closed: true,
             fill: Color32::RED,
-            stroke: PathStroke::new(5.0, Color32::TRANSPARENT),
+            stroke: PathStroke::NONE,
         }));
     }
 
