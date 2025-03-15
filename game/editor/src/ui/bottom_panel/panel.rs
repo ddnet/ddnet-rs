@@ -4,6 +4,7 @@ use math::math::vector::vec2;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
+    explain::SERVER_COMMANDS_CONFIG_VAR,
     ui::user_data::{EditorUiEvent, UserDataWithTab},
     utils::ui_pos_to_world_pos,
 };
@@ -42,6 +43,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         .add(Button::new("Server commands").selected(
                                             editor_tab.map.user.ui_values.server_commands_open,
                                         ))
+                                        .on_hover_ui(|ui| {
+                                            let mut cache =
+                                                egui_commonmark::CommonMarkCache::default();
+                                            egui_commonmark::CommonMarkViewer::new().show(
+                                                ui,
+                                                &mut cache,
+                                                SERVER_COMMANDS_CONFIG_VAR,
+                                            );
+                                        })
                                         .clicked()
                                     {
                                         editor_tab.map.user.ui_values.server_commands_open =
@@ -57,6 +67,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                     .server_config_variables_open,
                                             ),
                                         )
+                                        .on_hover_ui(|ui| {
+                                            let mut cache =
+                                                egui_commonmark::CommonMarkCache::default();
+                                            egui_commonmark::CommonMarkViewer::new().show(
+                                                ui,
+                                                &mut cache,
+                                                SERVER_COMMANDS_CONFIG_VAR,
+                                            );
+                                        })
                                         .clicked()
                                     {
                                         editor_tab
