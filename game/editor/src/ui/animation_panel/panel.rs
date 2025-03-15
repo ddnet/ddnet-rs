@@ -60,15 +60,22 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     layer: EditorLayer::Quad(layer),
                     ..
                 }),
-                ActiveTool::Quads(ActiveToolQuads::Selection),
-                QuadSelection {
-                    range: Some(range), ..
-                },
+                ActiveTool::Quads(ActiveToolQuads::Selection | ActiveToolQuads::Brush),
+                Some(range),
                 None,
             ) = (
                 &active_layer,
                 &tools.active_tool,
-                &mut tools.quads.selection,
+                if matches!(
+                    tools.active_tool,
+                    ActiveTool::Quads(ActiveToolQuads::Selection)
+                ) {
+                    &mut tools.quads.selection.range
+                } else if matches!(tools.active_tool, ActiveTool::Quads(ActiveToolQuads::Brush)) {
+                    &mut tools.quads.brush.last_selection
+                } else {
+                    &mut None
+                },
                 map.user.options.no_animations_with_properties.then_some(()),
             ) {
                 let range = range.indices_checked(layer);
