@@ -62,7 +62,7 @@ pub struct SoundBrush {
 
     /// this is the last sound selected (clicked on the corner selectors), this can be used
     /// for the animation to know the current sound
-    pub last_selection: Option<SoundSelection>,
+    pub last_popup: Option<SoundSelection>,
     pub last_active: Option<SoundSelection>,
 
     pub pointer_down_state: SoundPointerDownState,
@@ -80,7 +80,7 @@ impl SoundBrush {
     pub fn new() -> Self {
         Self {
             brush: Default::default(),
-            last_selection: None,
+            last_popup: None,
             last_active: None,
             pointer_down_state: SoundPointerDownState::None,
 
@@ -211,7 +211,7 @@ impl SoundBrush {
                         *if latest_pointer.primary_pressed() {
                             &mut self.last_active
                         } else {
-                            &mut self.last_selection
+                            &mut self.last_popup
                         } = Some(SoundSelection {
                             is_background,
                             group: group_index,

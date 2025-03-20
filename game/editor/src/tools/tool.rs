@@ -131,7 +131,7 @@ impl ToolQuadLayer {
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         canvas_handle: &GraphicsCanvasHandle,
-        map: &EditorMap,
+        map: &mut EditorMap,
         fake_texture: &TextureContainer,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
@@ -158,6 +158,7 @@ impl ToolQuadLayer {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                client,
             ),
         }
     }
@@ -274,4 +275,10 @@ pub struct Tools {
     pub quads: ToolQuadLayer,
     pub sounds: ToolSoundLayer,
     pub active_tool: ActiveTool,
+}
+
+impl Tools {
+    pub fn set_tool(&mut self, tool: ActiveTool) {
+        self.active_tool = tool;
+    }
 }

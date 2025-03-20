@@ -1,11 +1,12 @@
-use std::time::Duration;
+use std::{fmt::Debug, ops::IndexMut, time::Duration};
 
 use client_render_base::map::render_tools::RenderTools;
 use egui::UiBuilder;
 use egui_timeline::point::{Point, PointGroup};
+use fixed::traits::{FromFixed, ToFixed};
 use map::{
     map::animations::{
-        AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound,
+        AnimBase, AnimPoint, AnimPointColor, AnimPointCurveType, AnimPointPos, AnimPointSound,
         ColorAnimation, PosAnimation, SoundAnimation,
     },
     skeleton::animations::AnimBaseSkeleton,
@@ -24,19 +25,20 @@ use crate::{
     },
     client::EditorClient,
     map::{
-        EditorAnimationProps, EditorGroups, EditorLayer, EditorLayerUnionRef,
-        EditorMapGroupsInterface,
+        EditorActiveAnimationProps, EditorAnimationProps, EditorGroups, EditorLayer,
+        EditorLayerUnionRef, EditorMapGroupsInterface,
     },
-    tools::{
-        quad_layer::selection::QuadSelection,
-        tool::{ActiveTool, ActiveToolQuads},
-    },
+    tools::tool::{ActiveTool, ActiveToolQuads},
     ui::user_data::UserDataWithTab,
 };
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let map = &mut pipe.user_data.editor_tab.map;
     if !map.user.ui_values.animations_panel_open {
+        // make sure to clear unused anims
+        map.animations.user.active_anims = Default::default();
+        map.animations.user.active_anim_points = Default::default();
+
         return;
     }
 
@@ -53,6 +55,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         // they basically automatically select their active animations
         let mut selected_color_anim_selection;
         let mut selected_pos_anim_selection;
+        let mut quad_sel_dummy = None;
         //let mut selected_sound_anim_selection;
         let (selected_color_anim, selected_pos_anim, selected_sound_anim) = {
             let (can_change_pos_anim, can_change_color_anim) = if let (
@@ -74,7 +77,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 } else if matches!(tools.active_tool, ActiveTool::Quads(ActiveToolQuads::Brush)) {
                     &mut tools.quads.brush.last_selection
                 } else {
-                    &mut None
+                    &mut quad_sel_dummy
                 },
                 map.user.options.no_animations_with_properties.then_some(()),
             ) {
@@ -122,7 +125,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         };
 
         Some(panel.show_inside(ui, |ui| {
-            fn add_selector<A: Point + DeserializeOwned + PartialOrd + Clone>(
+            fn add_selector<A: Point + DeserializeOwned + PartialOrd + Clone, S>(
                 ui: &mut egui::Ui,
                 anims: &[AnimBaseSkeleton<EditorAnimationProps, A>],
                 groups: &EditorGroups,
@@ -135,12 +138,18 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     &[AnimBaseSkeleton<EditorAnimationProps, A>],
                     &EditorGroups,
                 ) -> EditorActionGroup,
-                sync: impl FnOnce(usize, &AnimBaseSkeleton<EditorAnimationProps, A>) -> EditorAction,
-            ) {
+                sync: S,
+                active_anim: &mut Option<(usize, AnimBase<A>, EditorActiveAnimationProps)>,
+                active_anim_point: &mut Option<A>,
+            ) where
+                S: FnOnce(usize, &AnimBaseSkeleton<EditorAnimationProps, A>) -> EditorAction,
+            {
                 ui.label(format!("{}:", name));
                 // selection of animation
                 if ui.button("\u{f060}").clicked() {
                     *index = index.map(|i| i.checked_sub(1)).flatten();
+                    *active_anim = None;
+                    *active_anim_point = None;
                 }
 
                 fn combobox_name(ty: &str, index: usize, name: &str) -> String {
@@ -171,6 +180,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     if index.is_none() && !anims.is_empty() {
                         *index = Some(0);
                     }
+                    *active_anim = None;
+                    *active_anim_point = None;
                 }
 
                 // add new anim
@@ -191,13 +202,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     if ui.button("\u{f1f8}").clicked() {
                         client.execute_group(del(*index, anims, groups));
                         *index = index.saturating_sub(1);
+
+                        *active_anim = None;
+                        *active_anim_point = None;
                     }
 
                     // Whether to sync the current animation to server time
                     let mut is_sync = anims[*index].def.synchronized;
                     if ui.checkbox(&mut is_sync, "Synchronize").changed() {
-                        client.execute(sync(
-                            *index, &anims[*index]), None);
+                        client.execute(sync(*index, &anims[*index]), None);
                     }
                 }
             }
@@ -244,12 +257,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             let mut anim: ColorAnimation = anim.clone().into();
                             anim.synchronized = !anim.synchronized;
                             EditorAction::ReplColorAnim(ActReplColorAnim {
-                                base: ActAddRemColorAnim {
-                                    index,
-                                    anim ,
-                                },
+                                base: ActAddRemColorAnim { index, anim },
                             })
                         },
+                        &mut map.animations.user.active_anims.color,
+                        &mut map.animations.user.active_anim_points.color,
                     );
                     ui.end_row();
                     add_selector(
@@ -290,12 +302,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             let mut anim: PosAnimation = anim.clone().into();
                             anim.synchronized = !anim.synchronized;
                             EditorAction::ReplPosAnim(ActReplPosAnim {
-                                base: ActAddRemPosAnim {
-                                    index,
-                                    anim ,
-                                },
+                                base: ActAddRemPosAnim { index, anim },
                             })
                         },
+                        &mut map.animations.user.active_anims.pos,
+                        &mut map.animations.user.active_anim_points.pos,
                     );
 
                     ui.end_row();
@@ -337,61 +348,124 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             let mut anim: SoundAnimation = anim.clone().into();
                             anim.synchronized = !anim.synchronized;
                             EditorAction::ReplSoundAnim(ActReplSoundAnim {
-                                base: ActAddRemSoundAnim {
-                                    index,
-                                    anim ,
-                                },
+                                base: ActAddRemSoundAnim { index, anim },
                             })
                         },
+                        &mut map.animations.user.active_anims.sound,
+                        &mut map.animations.user.active_anim_points.sound,
                     );
 
                     ui.end_row();
                 });
 
+            // init animations if not done yet
+            fn try_init_group<'a, F, T, const CHANNELS: usize>(
+                anims: &'a [AnimBaseSkeleton<EditorAnimationProps, AnimPoint<T, CHANNELS>>],
+                anim: &'a mut Option<(
+                    usize,
+                    AnimBase<AnimPoint<T, CHANNELS>>,
+                    EditorActiveAnimationProps,
+                )>,
+                anim_point: &'a mut Option<AnimPoint<T, CHANNELS>>,
+                index: Option<usize>,
+                time: &Duration,
+            ) where
+                AnimBase<AnimPoint<T, CHANNELS>>:
+                    From<AnimBaseSkeleton<EditorAnimationProps, AnimPoint<T, CHANNELS>>>,
+                AnimPoint<T, CHANNELS>: Point + DeserializeOwned + PartialOrd + Clone,
+                F: Copy + FromFixed + ToFixed,
+                T: Debug + Copy + Default + IndexMut<usize, Output = F>,
+            {
+                if let Some((index, copy_anim)) = index.and_then(|i| anims.get(i).map(|a| (i, a))) {
+                    if anim
+                        .as_ref()
+                        .is_none_or(|(cur_index, _, _)| *cur_index != index)
+                    {
+                        *anim = Some((index, copy_anim.clone().into(), Default::default()));
+                    }
+
+                    let Some((_, anim, _)) = anim else {
+                        panic!("Should have been initialized directly before this check");
+                    };
+                    if anim_point.is_none() {
+                        let value = RenderTools::render_eval_anim(
+                            anim.points.as_slice(),
+                            time::Duration::try_from(*time).unwrap(),
+                        );
+                        *anim_point = Some(AnimPoint {
+                            time: Duration::ZERO,
+                            curve_type: AnimPointCurveType::Linear,
+                            value,
+                        });
+                    }
+                }
+            }
+            try_init_group(
+                &map.animations.pos,
+                &mut map.animations.user.active_anims.pos,
+                &mut map.animations.user.active_anim_points.pos,
+                *selected_pos_anim,
+                &map.user.ui_values.timeline.time(),
+            );
+            try_init_group(
+                &map.animations.color,
+                &mut map.animations.user.active_anims.color,
+                &mut map.animations.user.active_anim_points.color,
+                *selected_color_anim,
+                &map.user.ui_values.timeline.time(),
+            );
+            try_init_group(
+                &map.animations.sound,
+                &mut map.animations.user.active_anims.sound,
+                &mut map.animations.user.active_anim_points.sound,
+                *selected_sound_anim,
+                &map.user.ui_values.timeline.time(),
+            );
+
             let mut groups: Vec<PointGroup<'_>> = Default::default();
 
             fn add_group<'a, A: Point + DeserializeOwned + PartialOrd + Clone>(
                 groups: &mut Vec<PointGroup<'a>>,
-                anims: &'a mut [AnimBaseSkeleton<EditorAnimationProps, A>],
+                anim: &'a mut Option<(usize, AnimBase<A>, EditorActiveAnimationProps)>,
                 index: Option<usize>,
                 name: &'a str,
             ) {
-                if let Some(anim) = anims.get_mut(index.unwrap_or(usize::MAX)) {
+                if let Some((anim, props)) = anim
+                    .as_mut()
+                    .and_then(|(i, a, props)| (Some(*i) == index).then_some((a, props)))
+                {
+                    let points = anim
+                        .points
+                        .iter_mut()
+                        .map(|val| val as &mut dyn Point)
+                        .collect::<Vec<_>>();
                     groups.push(PointGroup {
                         name,
-                        points: anim
-                            .def
-                            .points
-                            .iter_mut()
-                            .map(|val| val as &mut dyn Point)
-                            .collect::<Vec<_>>(),
-                        selected_points: &mut anim.user.selected_points,
-                        hovered_point: &mut anim.user.hovered_point,
-                        selected_point_channels: &mut anim.user.selected_point_channels,
-                        hovered_point_channel: &mut anim.user.hovered_point_channels,
-                        selected_point_channel_beziers: &mut anim
-                            .user
-                            .selected_point_channel_beziers,
-                        hovered_point_channel_beziers: &mut anim.user.hovered_point_channel_beziers,
+                        points,
+                        selected_points: &mut props.selected_points,
+                        hovered_point: &mut props.hovered_point,
+                        selected_point_channels: &mut props.selected_point_channels,
+                        hovered_point_channel: &mut props.hovered_point_channels,
+                        selected_point_channel_beziers: &mut props.selected_point_channel_beziers,
+                        hovered_point_channel_beziers: &mut props.hovered_point_channel_beziers,
                     });
                 }
             }
-
             add_group(
                 &mut groups,
-                &mut map.animations.color,
+                &mut map.animations.user.active_anims.color,
                 *selected_color_anim,
                 "color",
             );
             add_group(
                 &mut groups,
-                &mut map.animations.pos,
+                &mut map.animations.user.active_anims.pos,
                 *selected_pos_anim,
                 "pos",
             );
             add_group(
                 &mut groups,
-                &mut map.animations.sound,
+                &mut map.animations.user.active_anims.sound,
                 *selected_sound_anim,
                 "sound",
             );
@@ -414,134 +488,162 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             if res.inner.inner.insert_or_replace_point {
                 handle_point_insert(pipe);
             }
+            if res.inner.inner.points_changed {
+                // generate actions for all changed points
+                handle_points_changed(pipe);
+            }
         }
     }
 }
 
 fn handle_anim_time_change(pipe: &mut UiRenderPipe<UserDataWithTab>) {
     let map = &mut pipe.user_data.editor_tab.map;
-
-    let active_layer = map.groups.active_layer();
-    let tools = &mut *pipe.user_data.tools;
-
-    if let (
-        Some(EditorLayerUnionRef::Design {
-            layer: EditorLayer::Quad(layer),
-            ..
-        }),
-        ActiveTool::Quads(ActiveToolQuads::Selection),
-        QuadSelection {
-            range: Some(range),
-            anim_point_color,
-            anim_point_pos,
-            ..
-        },
-    ) = (
-        &active_layer,
-        &tools.active_tool,
-        &mut tools.quads.selection,
-    ) {
-        let range = range.indices_checked(layer);
-        if let Some((_, quad)) = range.iter().next() {
-            if let Some(pos_anim) = quad.pos_anim {
-                let anim = &map.animations.pos[pos_anim];
-                let anim_pos = RenderTools::render_eval_anim(
-                    anim.def.points.as_slice(),
-                    time::Duration::try_from(map.user.ui_values.timeline.time()).unwrap(),
-                );
-                *anim_point_pos = AnimPointPos {
-                    time: Duration::ZERO,
-                    curve_type: AnimPointCurveType::Linear,
-                    value: anim_pos,
-                };
-            }
-            if let Some(color_anim) = quad.color_anim {
-                let anim = &map.animations.color[color_anim];
-                let anim_color = RenderTools::render_eval_anim(
-                    anim.def.points.as_slice(),
-                    time::Duration::try_from(map.user.ui_values.timeline.time()).unwrap(),
-                );
-                *anim_point_color = AnimPointColor {
-                    time: Duration::ZERO,
-                    curve_type: AnimPointCurveType::Linear,
-                    value: anim_color,
-                };
-            }
-        }
-    }
+    // reset active points
+    map.animations.user.active_anim_points = Default::default();
 }
 
 fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
     let map = &mut pipe.user_data.editor_tab.map;
-
-    let active_layer = map.groups.active_layer();
-    let tools = &mut *pipe.user_data.tools;
+    let anims = &mut map.animations.user.active_anims;
+    let anim_points = &map.animations.user.active_anim_points;
 
     let cur_time = map.user.ui_values.timeline.time();
 
-    if let (
-        Some(EditorLayerUnionRef::Design {
-            layer: EditorLayer::Quad(layer),
-            ..
-        }),
-        ActiveTool::Quads(ActiveToolQuads::Selection),
-        QuadSelection {
-            range: Some(range),
-            anim_point_color,
-            anim_point_pos,
-            ..
-        },
-    ) = (
-        &active_layer,
-        &tools.active_tool,
-        &mut tools.quads.selection,
+    fn add_or_insert<P: Clone + DeserializeOwned, const CHANNELS: usize>(
+        cur_time: Duration,
+        anim: &mut AnimBase<AnimPoint<P, CHANNELS>>,
+        insert_repl_point: &AnimPoint<P, CHANNELS>,
     ) {
-        fn add_or_insert<P: Clone + DeserializeOwned, const CHANNELS: usize>(
-            cur_time: Duration,
-            anim: &mut AnimBaseSkeleton<EditorAnimationProps, AnimPoint<P, CHANNELS>>,
-            insert_repl_point: &AnimPoint<P, CHANNELS>,
-        ) {
-            enum ReplOrInsert {
-                Repl(usize),
-                Insert(usize),
-            }
+        enum ReplOrInsert {
+            Repl(usize),
+            Insert(usize),
+        }
 
-            let index = anim.def.points.iter().enumerate().find_map(|(p, point)| {
-                match point.time.cmp(&cur_time) {
+        let index =
+            anim.points
+                .iter()
+                .enumerate()
+                .find_map(|(p, point)| match point.time.cmp(&cur_time) {
                     std::cmp::Ordering::Less => None,
                     std::cmp::Ordering::Equal => Some(ReplOrInsert::Repl(p)),
                     std::cmp::Ordering::Greater => Some(ReplOrInsert::Insert(p)),
+                });
+
+        let mut insert_repl_point = insert_repl_point.clone();
+        insert_repl_point.time = cur_time;
+
+        match index {
+            Some(mode) => match mode {
+                ReplOrInsert::Repl(index) => {
+                    anim.points[index] = insert_repl_point;
                 }
-            });
-
-            let mut insert_repl_point = insert_repl_point.clone();
-            insert_repl_point.time = cur_time;
-
-            match index {
-                Some(mode) => match mode {
-                    ReplOrInsert::Repl(index) => {
-                        anim.def.points[index] = insert_repl_point;
-                    }
-                    ReplOrInsert::Insert(index) => {
-                        anim.def.points.insert(index, insert_repl_point);
-                    }
-                },
-                None => {
-                    // nothing to do
+                ReplOrInsert::Insert(index) => {
+                    anim.points.insert(index, insert_repl_point);
                 }
-            }
-        }
-
-        let range = range.indices_checked(layer);
-        if let Some((_, quad)) = range.iter().next() {
-            if let Some(pos_anim) = quad.pos_anim {
-                let anim = &mut map.animations.pos[pos_anim];
-                add_or_insert(cur_time, anim, anim_point_pos);
-            }
-            if let Some(color_anim) = quad.color_anim {
-                let anim = &mut map.animations.color[color_anim];
-                add_or_insert(cur_time, anim, anim_point_color);
+            },
+            None => {
+                // nothing to do
             }
         }
     }
+
+    if let Some(((index, anim, _), anim_point)) = anims.pos.as_mut().zip(anim_points.pos.as_ref()) {
+        add_or_insert(cur_time, anim, anim_point);
+        pipe.user_data.editor_tab.client.execute(
+            EditorAction::ReplPosAnim(ActReplPosAnim {
+                base: ActAddRemPosAnim {
+                    index: *index,
+                    anim: anim.clone(),
+                },
+            }),
+            Some(&format!("pos-anim-repl-anim-{}", index)),
+        );
+    }
+    if let Some(((index, anim, _), anim_point)) =
+        anims.color.as_mut().zip(anim_points.color.as_ref())
+    {
+        add_or_insert(cur_time, anim, anim_point);
+        pipe.user_data.editor_tab.client.execute(
+            EditorAction::ReplColorAnim(ActReplColorAnim {
+                base: ActAddRemColorAnim {
+                    index: *index,
+                    anim: anim.clone(),
+                },
+            }),
+            Some(&format!("color-anim-repl-anim-{}", index)),
+        );
+    }
+    if let Some(((index, anim, _), anim_point)) =
+        anims.sound.as_mut().zip(anim_points.sound.as_ref())
+    {
+        add_or_insert(cur_time, anim, anim_point);
+        pipe.user_data.editor_tab.client.execute(
+            EditorAction::ReplSoundAnim(ActReplSoundAnim {
+                base: ActAddRemSoundAnim {
+                    index: *index,
+                    anim: anim.clone(),
+                },
+            }),
+            Some(&format!("sound-anim-repl-anim-{}", index)),
+        );
+    }
+}
+
+fn handle_points_changed(pipe: &mut UiRenderPipe<UserDataWithTab>) {
+    let tab = &*pipe.user_data.editor_tab;
+
+    fn check_anim<AP: DeserializeOwned + PartialOrd + Clone>(
+        client: &EditorClient,
+        anim: &Option<(usize, AnimBase<AP>, EditorActiveAnimationProps)>,
+        prefix: &str,
+        gen_action: &dyn Fn(usize, &AnimBase<AP>) -> EditorAction,
+    ) {
+        if let Some((index, anim, props)) = anim {
+            if !props.selected_point_channels.is_empty() || !props.selected_points.is_empty() {
+                client.execute(
+                    gen_action(*index, anim),
+                    Some(&format!("{}-anim-repl-anim-{}", prefix, index)),
+                );
+            }
+        }
+    }
+    check_anim(
+        &tab.client,
+        &tab.map.animations.user.active_anims.pos,
+        "pos",
+        &|index, anim| {
+            EditorAction::ReplPosAnim(ActReplPosAnim {
+                base: ActAddRemPosAnim {
+                    index,
+                    anim: anim.clone(),
+                },
+            })
+        },
+    );
+    check_anim(
+        &tab.client,
+        &tab.map.animations.user.active_anims.color,
+        "color",
+        &|index, anim| {
+            EditorAction::ReplColorAnim(ActReplColorAnim {
+                base: ActAddRemColorAnim {
+                    index,
+                    anim: anim.clone(),
+                },
+            })
+        },
+    );
+    check_anim(
+        &tab.client,
+        &tab.map.animations.user.active_anims.sound,
+        "sound",
+        &|index, anim| {
+            EditorAction::ReplSoundAnim(ActReplSoundAnim {
+                base: ActAddRemSoundAnim {
+                    index,
+                    anim: anim.clone(),
+                },
+            })
+        },
+    );
 }

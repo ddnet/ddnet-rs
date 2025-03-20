@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::collections::BTreeMap;
 
 use client_render_base::map::render_tools::{CanvasType, RenderTools};
 use graphics::handles::{
@@ -6,19 +6,20 @@ use graphics::handles::{
 };
 use graphics_types::rendering::State;
 use hiarc::Hiarc;
-use map::map::{
-    animations::{AnimPointColor, AnimPointCurveType, AnimPointPos},
-    groups::layers::design::Quad,
-};
-use math::math::vector::{dvec2, ffixed, fvec3, nfvec4, ubvec4, vec2};
+use map::map::groups::layers::design::Quad;
+use math::math::vector::{dvec2, ffixed, ubvec4, vec2};
 
 use crate::{
-    map::{EditorLayer, EditorLayerQuad, EditorLayerUnionRef, EditorMap, EditorMapInterface},
+    actions::actions::{ActChangeQuadAttr, EditorAction},
+    client::EditorClient,
+    map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
     tools::{shared::in_radius, utils::render_rect},
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
-use super::shared::{render_quad_points, QuadPointerDownPoint, QUAD_POINT_RADIUS};
+use super::shared::{
+    render_quad_points, QuadPointerDownPoint, QuadSelectionQuads, QUAD_POINT_RADIUS,
+};
 
 #[derive(Debug, Hiarc)]
 pub enum QuadPointerDownState {
@@ -39,49 +40,11 @@ impl QuadPointerDownState {
 }
 
 #[derive(Debug, Hiarc)]
-pub struct QuadSelectionQuads {
-    pub quads: BTreeMap<usize, Quad>,
-
-    /// selection x offset
-    pub x: f32,
-    /// selection y offset
-    pub y: f32,
-    /// width of the selection
-    pub w: f32,
-    /// height of the selection
-    pub h: f32,
-
-    pub point: Option<QuadPointerDownPoint>,
-}
-
-impl QuadSelectionQuads {
-    pub fn indices_checked(&mut self, layer: &EditorLayerQuad) -> BTreeMap<usize, &mut Quad> {
-        while self
-            .quads
-            .last_key_value()
-            .is_some_and(|(index, _)| *index >= layer.layer.quads.len())
-        {
-            self.quads.pop_last();
-        }
-
-        self.quads
-            .iter_mut()
-            .map(|(index, quad)| (*index, quad))
-            .collect()
-    }
-}
-
-#[derive(Debug, Hiarc)]
 pub struct QuadSelection {
     pub range: Option<QuadSelectionQuads>,
     pub pos_offset: dvec2,
 
     pub pointer_down_state: QuadPointerDownState,
-
-    /// to be used to alter the animation using quad properties
-    pub anim_point_pos: AnimPointPos,
-    /// to be used to alter the animation using quad properties
-    pub anim_point_color: AnimPointColor,
 }
 
 impl Default for QuadSelection {
@@ -96,17 +59,6 @@ impl QuadSelection {
             pointer_down_state: QuadPointerDownState::None,
             pos_offset: dvec2::default(),
             range: None,
-
-            anim_point_pos: AnimPointPos {
-                time: Duration::ZERO,
-                curve_type: AnimPointCurveType::Linear,
-                value: fvec3::default(),
-            },
-            anim_point_color: AnimPointColor {
-                time: Duration::ZERO,
-                curve_type: AnimPointCurveType::Linear,
-                value: nfvec4::default(),
-            },
         }
     }
 
@@ -223,9 +175,10 @@ impl QuadSelection {
         &mut self,
         ui_canvas: &UiCanvasSize,
         canvas_handle: &GraphicsCanvasHandle,
-        map: &EditorMap,
+        map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        client: &EditorClient,
     ) {
         let layer = map.active_layer();
         let (offset, parallax) = if let Some(layer) = &layer {
@@ -235,6 +188,9 @@ impl QuadSelection {
         };
         let Some(EditorLayerUnionRef::Design {
             layer: EditorLayer::Quad(layer),
+            is_background,
+            group_index,
+            layer_index,
             ..
         }) = layer
         else {
@@ -268,8 +224,46 @@ impl QuadSelection {
             let x_diff = x - pos.x;
             let y_diff = y - pos.y;
             *pos = vec2::new(x, y);
-            self.anim_point_pos.value.x += ffixed::from_num(x_diff);
-            self.anim_point_pos.value.y += ffixed::from_num(y_diff);
+
+            if let Some(range) = &mut self.range {
+                let quads = range.indices_checked(layer);
+                let pos_anim = quads.values().next().and_then(|q| q.pos_anim);
+                if map.user.ui_values.animations_panel_open
+                    && pos_anim.is_some_and(|a| quads.values().all(|q| q.pos_anim == Some(a)))
+                {
+                    if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
+                        pos.value.x += ffixed::from_num(x_diff);
+                        pos.value.y += ffixed::from_num(y_diff);
+                    }
+                } else {
+                    quads.into_iter().for_each(|(index, q)| {
+                        let old = *q;
+
+                        q.points.iter_mut().for_each(|p| {
+                            p.x += ffixed::from_num(x_diff);
+                            p.y += ffixed::from_num(y_diff);
+                        });
+
+                        if old != *q {
+                            client.execute(
+                                EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
+                                    is_background,
+                                    group_index,
+                                    layer_index,
+                                    old_attr: old,
+                                    new_attr: *q,
+
+                                    index,
+                                })),
+                                Some(&format!(
+                                    "change-quad-attr-{}-{}-{}-{}",
+                                    is_background, group_index, layer_index, index
+                                )),
+                            );
+                        }
+                    });
+                }
+            }
         } else {
             // check if the pointer clicked on one of the quad corner/center points
             let mut clicked_quad_point = false;
@@ -323,6 +317,10 @@ impl QuadSelection {
                     self.range = None;
                     self.pointer_down_state = QuadPointerDownState::None;
                 }
+            }
+
+            if latest_pointer.primary_released() {
+                self.pointer_down_state = QuadPointerDownState::None;
             }
         }
     }
@@ -430,9 +428,10 @@ impl QuadSelection {
         &mut self,
         ui_canvas: &UiCanvasSize,
         canvas_handle: &GraphicsCanvasHandle,
-        map: &EditorMap,
+        map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        client: &EditorClient,
     ) {
         let layer = map.active_layer();
         if !layer.as_ref().is_some_and(|layer| layer.is_quad_layer()) {
@@ -454,6 +453,7 @@ impl QuadSelection {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                client,
             );
         }
     }
