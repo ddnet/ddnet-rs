@@ -1,10 +1,12 @@
 use std::{
+    collections::HashMap,
     fmt::Debug,
     marker::PhantomData,
     ops::Deref,
     path::Path,
     rc::Rc,
-    sync::{atomic::AtomicU64, mpsc, Arc},
+    sync::{atomic::AtomicU64, mpsc, Arc, Mutex},
+    thread::ThreadId,
 };
 
 use base::join_thread::JoinThread;
@@ -18,7 +20,7 @@ use graphics_backend_traits::{
     traits::GraphicsBackendInterface,
 };
 use hiarc::{hiarc_safer_arc_mutex, Hiarc};
-use pool::mt_datatypes::PoolVec;
+use pool::mt_datatypes::PoolUnclearedVec;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use sound::backend_types::SoundBackendInterface;
 use sound::frame_fetcher_plugin::{
@@ -44,7 +46,7 @@ pub enum AvFrame {
 #[hiarc_safer_arc_mutex]
 #[derive(Debug, Hiarc)]
 pub struct AudioVideoEncoderImpl {
-    video_sender: std::sync::mpsc::Sender<(PoolVec<u8>, i64)>,
+    video_sender: std::sync::mpsc::Sender<(PoolUnclearedVec<u8>, i64)>,
     cur_video_frame: u64,
     video_frame_buffer_id: OffscreenCanvasId,
 
@@ -71,9 +73,10 @@ impl AudioVideoEncoderImpl {
         file_path: &Path,
         encoder_settings: EncoderSettings,
     ) -> anyhow::Result<Self> {
-        let (video_sender, video_receiver) = mpsc::channel::<(PoolVec<u8>, i64)>();
+        let (video_sender, video_receiver) = mpsc::channel::<(PoolUnclearedVec<u8>, i64)>();
         let (audio_sender, audio_receiver) = mpsc::channel::<(BackendAudioFrame, i64)>();
-        let (encode_sender, encode_receiver) = mpsc::channel::<AvFrame>();
+        let (encode_sender, encode_receiver) =
+            mpsc::sync_channel::<AvFrame>(encoder_settings.max_threads as usize * 4);
 
         let video_frames_in_queue: Arc<AtomicU64> = Default::default();
         let max_video_frames_in_queue: u64 = encoder_settings.max_threads;
@@ -161,22 +164,47 @@ impl AudioVideoEncoderImpl {
         let video_conversion_thread = std::thread::Builder::new()
             .name("av-convert".to_string())
             .spawn(move || {
+                let enc = Mutex::new(HashMap::<
+                    ThreadId,
+                    Arc<Mutex<sendable::SendOption<FrameConverter>>>,
+                >::with_capacity(
+                    encoder_settings.max_threads as usize
+                ));
                 thread_pool.install(|| {
                     video_receiver
                         .into_iter()
                         .par_bridge()
                         .for_each(|(rendered, index)| {
-                            let mut converter = FrameConverter::new((
-                                encoder_settings.width,
-                                encoder_settings.height,
-                            ))
-                            .unwrap();
+                            let thread_id = std::thread::current().id();
+
+                            let converter = enc
+                                .lock()
+                                .unwrap()
+                                .entry(thread_id)
+                                .or_insert_with(|| {
+                                    Arc::new(Mutex::new(sendable::SendOption::new(Some(
+                                        FrameConverter::new((
+                                            encoder_settings.width,
+                                            encoder_settings.height,
+                                        ))
+                                        .unwrap(),
+                                    ))))
+                                })
+                                .clone();
+                            let mut converter = converter.lock().unwrap();
+                            let converter = converter.as_mut().unwrap();
+
                             let encode_frame = converter.process(&rendered, index).unwrap();
                             encode_sender_thread
                                 .send(AvFrame::Video(encode_frame))
                                 .unwrap();
                         });
-                })
+                });
+
+                thread_pool.broadcast(|_| {
+                    let thread_id = std::thread::current().id();
+                    enc.lock().unwrap().remove(&thread_id);
+                });
             })
             .unwrap();
         let audio_frames_in_queue_thread = audio_frames_in_queue.clone();

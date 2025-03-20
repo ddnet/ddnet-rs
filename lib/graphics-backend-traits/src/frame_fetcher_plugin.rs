@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use anyhow::Error;
 use hiarc::Hiarc;
-use pool::mt_datatypes::PoolVec;
+use pool::mt_datatypes::PoolUnclearedVec;
 use thiserror::Error;
 
 pub type OffscreenCanvasId = u128;
@@ -31,7 +31,7 @@ impl From<Error> for FetchCanvasError {
 pub struct BackendPresentedImageDataRgba {
     pub width: u32,
     pub height: u32,
-    pub dest_data_buffer: PoolVec<u8>,
+    pub dest_data_buffer: PoolUnclearedVec<u8>,
 }
 
 pub trait BackendFrameFetcher: Debug + Sync + Send + 'static {

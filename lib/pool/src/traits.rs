@@ -1,13 +1,47 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    ops::{Deref, DerefMut},
+};
 
 use hashlink::{LinkedHashMap, LinkedHashSet};
 use rustc_hash::{FxHashMap, FxHashSet};
+use serde::{Deserialize, Serialize};
 
 pub trait Recyclable {
     fn new() -> Self;
     fn reset(&mut self);
     fn should_put_to_pool(&self) -> bool {
         true
+    }
+}
+
+/// Specifically for pooled vectors this vector simply skips the
+/// [`Recyclable::reset`] call, the user has to be careful.
+/// Useful if performance matters.
+#[cfg_attr(feature = "enable_hiarc", derive(hiarc::Hiarc))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnclearedVec<T>(Vec<T>);
+impl<T> Default for UnclearedVec<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+impl<T> Recyclable for UnclearedVec<T> {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn reset(&mut self) {}
+}
+impl<T> Deref for UnclearedVec<T> {
+    type Target = Vec<T>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<T> DerefMut for UnclearedVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

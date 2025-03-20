@@ -51,7 +51,7 @@ use graphics_types::{
 use ash::vk::{self};
 use hiarc::Hiarc;
 use log::{info, warn};
-use pool::{arc::PoolArc, mt_pool::Pool as MtPool};
+use pool::{arc::PoolArc, mt_pool::Pool as MtPool, traits::UnclearedVec};
 use pool::{datatypes::PoolVec, pool::Pool};
 
 use crate::{
@@ -563,7 +563,7 @@ pub struct VulkanBackend {
     last_presented_swap_chain_image_index: u32,
     #[hiarc_skip_unsafe]
     frame_fetchers: FxLinkedHashMap<String, Arc<dyn BackendFrameFetcher>>,
-    frame_data_pool: MtPool<Vec<u8>>,
+    frame_data_pool: MtPool<UnclearedVec<u8>>,
     /// Offscreen canvases that asked to be skiped this frame,
     /// e.g. because they couldn't render.
     offscreen_canvases_frame_fetching_skips: HashSet<OffscreenCanvasId>,
@@ -1138,11 +1138,12 @@ impl VulkanBackend {
                     Default::default(),
                 ); // extra space for flipping
             }
-            dest_data_buff
+            let dst_buff = dest_data_buff
                 .as_mut_slice()
                 .split_at_mut(real_full_image_size)
-                .0
-                .copy_from_slice(res_image_data.split_at_mut(real_full_image_size).0);
+                .0;
+            let src_buff = res_image_data.split_at(real_full_image_size).0;
+            dst_buff.copy_from_slice(src_buff);
 
             // pack image data together without any offset
             // that the driver might require

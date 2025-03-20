@@ -720,6 +720,7 @@ dependencies = [
  "log",
  "pool",
  "rayon",
+ "sendable",
  "sound",
  "sound-backend",
  "tokio",

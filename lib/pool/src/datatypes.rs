@@ -6,7 +6,11 @@ use std::{
 use hashlink::{LinkedHashMap, LinkedHashSet};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{pool::Pool, recycle::Recycle, traits::Recyclable};
+use crate::{
+    pool::Pool,
+    recycle::Recycle,
+    traits::{Recyclable, UnclearedVec},
+};
 
 pub type PoolLinkedHashMap<K, V> = Recycle<LinkedHashMap<K, V>>;
 pub type PoolLinkedHashSet<K> = Recycle<LinkedHashSet<K>>;
@@ -17,6 +21,7 @@ pub type PoolHashSet<K> = Recycle<HashSet<K>>;
 pub type PoolFxHashMap<K, V> = Recycle<FxHashMap<K, V>>;
 pub type PoolFxHashSet<K> = Recycle<FxHashSet<K>>;
 
+pub type PoolUnclearedVec<T> = Recycle<UnclearedVec<T>>;
 pub type PoolVec<T> = Recycle<Vec<T>>;
 pub type PoolVecDeque<T> = Recycle<VecDeque<T>>;
 pub type PoolBTreeMap<K, V> = Recycle<BTreeMap<K, V>>;

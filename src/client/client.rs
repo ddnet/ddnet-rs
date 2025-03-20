@@ -3396,7 +3396,12 @@ impl FromNativeImpl for ClientNativeImpl {
                     u64::MAX
                 })
         } else {
-            self.config.game.cl.refresh_rate
+            // use full power during encoding
+            if self.demo_player.as_ref().is_some_and(|p| p.is_encoder()) {
+                0
+            } else {
+                self.config.game.cl.refresh_rate
+            }
         };
         if refresh_rate > 0 {
             let time_until_tick_nanos = Duration::from_secs(1).as_nanos() as u64 / refresh_rate;
