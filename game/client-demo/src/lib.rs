@@ -969,6 +969,11 @@ impl DemoViewerImpl {
         )?;
         Ok(render_input)
     }
+
+    /// Whether an encoder is active in this demo viewer
+    pub fn is_encoder(&self) -> bool {
+        self.data.av_encoder.is_some()
+    }
 }
 
 pub struct DemoViewerLoading {
@@ -1311,5 +1316,14 @@ impl DemoViewer {
             DemoViewer::None => {}
         }
         Ok(self.try_get())
+    }
+
+    /// Whether encoder is active in this demo viewer
+    pub fn is_encoder(&self) -> bool {
+        if let Self::Rendering(viewer) = self {
+            viewer.is_encoder()
+        } else {
+            false
+        }
     }
 }

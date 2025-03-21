@@ -21,8 +21,9 @@ log = "0.4.26"
 anyhow = { version = "1.0.97", features = ["backtrace"] }
 tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 rayon = "1.10.0"
+sendable = "0.6.1"
 
-ffmpeg-next = { version = "7.1.0", features = ["build", "build-license-gpl", "build-license-nonfree", "build-lib-x264", "static"], optional = true }
+ffmpeg-next = { version = "7.1.0", features = ["build", "build-license-gpl", "build-lib-x264", "static"], optional = true }
 
 [features]
 ffmpeg = ["ffmpeg-next"]
