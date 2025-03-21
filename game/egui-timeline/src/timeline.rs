@@ -85,6 +85,8 @@ pub struct TimelineResponse {
     pub insert_or_replace_point: bool,
     /// At least one point changed by the implementation
     pub points_changed: bool,
+    /// A point deleted
+    pub point_deleted: Option<(String, usize)>,
 }
 
 /// represents animation points in twmaps
@@ -431,6 +433,7 @@ impl Timeline {
         ui: &egui::Ui,
         point_groups: &mut [PointGroup<'_>],
         point_changed: &mut bool,
+        point_deleted: &mut Option<(String, usize)>,
     ) {
         let not_point_pointer_down =
             !self.pointer_down_pos.is_timeline_point() && !self.pointer_down_pos.is_none();
@@ -543,6 +546,16 @@ impl Timeline {
                     // reset all selected points (if any)
                     for point_group in point_groups.iter_mut() {
                         point_group.selected_points.clear();
+                    }
+                }
+            } else if i.pointer.secondary_clicked() {
+                'outer: for (g, point_group) in point_groups.iter_mut().enumerate() {
+                    for (p, point) in point_group.points.iter_mut().enumerate() {
+                        // check if the pointer clicked on this point
+                        if pointer_in_point_radius(g, *point) {
+                            *point_deleted = Some((point_group.name.to_string(), p));
+                            break 'outer;
+                        }
                     }
                 }
             } else if self.pointer_down_pos.is_timeline_point() {
@@ -893,9 +906,10 @@ impl Timeline {
         ui: &mut egui::Ui,
         point_groups: &mut [PointGroup<'_>],
         point_changed: &mut bool,
+        point_deleted: &mut Option<(String, usize)>,
     ) {
         Self::background(ui, false);
-        self.handle_input_timeline_points(ui, point_groups, point_changed);
+        self.handle_input_timeline_points(ui, point_groups, point_changed, point_deleted);
         self.handle_input(ui, false);
 
         let inner_rect = self.inner_graph_rect(ui);
@@ -1417,6 +1431,7 @@ impl Timeline {
         ui: &mut egui::Ui,
         point_groups: &mut [PointGroup<'_>],
         point_changed: &mut bool,
+        point_deleted: &mut Option<(String, usize)>,
     ) {
         ui.with_layout(
             egui::Layout::top_down(egui::Align::Center)
@@ -1449,7 +1464,7 @@ impl Timeline {
                     .vertical(|mut strip| {
                         strip.cell(|ui| {
                             // timeline graph
-                            self.timeline_graph(ui, point_groups, point_changed);
+                            self.timeline_graph(ui, point_groups, point_changed, point_deleted);
                         });
                         strip.cell(|ui| {
                             // envelope curve types
@@ -1487,7 +1502,12 @@ impl Timeline {
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
                     // the graphs, time dragger etc.
-                    self.render_timeline(ui, point_groups, &mut res.points_changed);
+                    self.render_timeline(
+                        ui,
+                        point_groups,
+                        &mut res.points_changed,
+                        &mut res.point_deleted,
+                    );
                 });
 
                 strip.cell(|ui| {

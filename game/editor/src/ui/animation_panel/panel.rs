@@ -32,6 +32,10 @@ use crate::{
     ui::user_data::UserDataWithTab,
 };
 
+const COLOR_GROUP_NAME: &str = "color";
+const POS_GROUP_NAME: &str = "pos";
+const SOUND_GROUP_NAME: &str = "sound";
+
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let map = &mut pipe.user_data.editor_tab.map;
     if !map.user.ui_values.animations_panel_open {
@@ -505,19 +509,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 &mut groups,
                 &mut map.animations.user.active_anims.color,
                 *selected_color_anim,
-                "color",
+                COLOR_GROUP_NAME,
             );
             add_group(
                 &mut groups,
                 &mut map.animations.user.active_anims.pos,
                 *selected_pos_anim,
-                "pos",
+                POS_GROUP_NAME,
             );
             add_group(
                 &mut groups,
                 &mut map.animations.user.active_anims.sound,
                 *selected_sound_anim,
-                "sound",
+                SOUND_GROUP_NAME,
             );
 
             ui.allocate_new_ui(
@@ -542,6 +546,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 // generate actions for all changed points
                 handle_points_changed(pipe);
             }
+            if let Some((group_name, point_index)) = res.inner.inner.point_deleted {
+                handle_point_delete(pipe, &group_name, point_index);
+            }
         }
     }
 }
@@ -563,6 +570,7 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
         cur_time: Duration,
         anim: &mut AnimBase<AnimPoint<P, CHANNELS>>,
         insert_repl_point: &AnimPoint<P, CHANNELS>,
+        props: &mut EditorActiveAnimationProps,
     ) {
         enum ReplOrInsert {
             Repl(usize),
@@ -589,16 +597,52 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 }
                 ReplOrInsert::Insert(index) => {
                     anim.points.insert(index, insert_repl_point);
+
+                    fn new_point(p: usize, point_index: usize) -> usize {
+                        match p.cmp(&point_index) {
+                            std::cmp::Ordering::Less => p,
+                            std::cmp::Ordering::Equal | std::cmp::Ordering::Greater => p + 1,
+                        }
+                    }
+                    props.hovered_point = props.hovered_point.map(|p| new_point(p, index));
+                    props.hovered_point_channels = props
+                        .hovered_point_channels
+                        .drain()
+                        .map(|(p, rest)| (new_point(p, index), rest))
+                        .collect();
+                    props.hovered_point_channel_beziers = props
+                        .hovered_point_channel_beziers
+                        .drain()
+                        .map(|(p, rest)| (new_point(p, index), rest))
+                        .collect();
+                    props.selected_points = props
+                        .selected_points
+                        .drain()
+                        .map(|p| new_point(p, index))
+                        .collect();
+                    props.selected_point_channels = props
+                        .selected_point_channels
+                        .drain()
+                        .map(|(p, rest)| (new_point(p, index), rest))
+                        .collect();
+                    props.selected_point_channel_beziers = props
+                        .selected_point_channel_beziers
+                        .drain()
+                        .map(|(p, rest)| (new_point(p, index), rest))
+                        .collect();
                 }
             },
             None => {
-                // nothing to do
+                // push new point
+                anim.points.push(insert_repl_point);
             }
         }
     }
 
-    if let Some(((index, anim, _), anim_point)) = anims.pos.as_mut().zip(anim_points.pos.as_ref()) {
-        add_or_insert(cur_time, anim, anim_point);
+    if let Some(((index, anim, props), anim_point)) =
+        anims.pos.as_mut().zip(anim_points.pos.as_ref())
+    {
+        add_or_insert(cur_time, anim, anim_point, props);
         pipe.user_data.editor_tab.client.execute(
             EditorAction::ReplPosAnim(ActReplPosAnim {
                 base: ActAddRemPosAnim {
@@ -609,10 +653,10 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
             Some(&format!("pos-anim-repl-anim-{}", index)),
         );
     }
-    if let Some(((index, anim, _), anim_point)) =
+    if let Some(((index, anim, props), anim_point)) =
         anims.color.as_mut().zip(anim_points.color.as_ref())
     {
-        add_or_insert(cur_time, anim, anim_point);
+        add_or_insert(cur_time, anim, anim_point, props);
         pipe.user_data.editor_tab.client.execute(
             EditorAction::ReplColorAnim(ActReplColorAnim {
                 base: ActAddRemColorAnim {
@@ -623,10 +667,10 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
             Some(&format!("color-anim-repl-anim-{}", index)),
         );
     }
-    if let Some(((index, anim, _), anim_point)) =
+    if let Some(((index, anim, props), anim_point)) =
         anims.sound.as_mut().zip(anim_points.sound.as_ref())
     {
-        add_or_insert(cur_time, anim, anim_point);
+        add_or_insert(cur_time, anim, anim_point, props);
         pipe.user_data.editor_tab.client.execute(
             EditorAction::ReplSoundAnim(ActReplSoundAnim {
                 base: ActAddRemSoundAnim {
@@ -695,5 +739,114 @@ fn handle_points_changed(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 },
             })
         },
+    );
+}
+
+fn handle_point_delete(
+    pipe: &mut UiRenderPipe<UserDataWithTab>,
+    group_name: &str,
+    point_index: usize,
+) {
+    let anims = &mut pipe.user_data.editor_tab.map.animations.user.active_anims;
+
+    fn delete_point_anim<AP: DeserializeOwned + PartialOrd + Clone>(
+        client: &EditorClient,
+        anim: &mut Option<(usize, AnimBase<AP>, EditorActiveAnimationProps)>,
+        gen_action: &dyn Fn(usize, &AnimBase<AP>) -> EditorAction,
+        group_name: &str,
+        point_index: usize,
+        expected_group_name: &str,
+    ) {
+        if let Some((index, anim, props)) = (group_name == expected_group_name)
+            .then_some(anim.as_mut())
+            .flatten()
+        {
+            if point_index < anim.points.len() {
+                anim.points.remove(point_index);
+                client.execute(
+                    gen_action(*index, anim),
+                    Some(&format!("{}-anim-repl-anim-{}", group_name, index)),
+                );
+
+                fn new_point(p: usize, point_index: usize) -> Option<usize> {
+                    match p.cmp(&point_index) {
+                        std::cmp::Ordering::Less => Some(p),
+                        std::cmp::Ordering::Equal => None,
+                        std::cmp::Ordering::Greater => p.checked_sub(1),
+                    }
+                }
+                props.hovered_point = props.hovered_point.and_then(|p| new_point(p, point_index));
+                props.hovered_point_channels = props
+                    .hovered_point_channels
+                    .drain()
+                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                    .collect();
+                props.hovered_point_channel_beziers = props
+                    .hovered_point_channel_beziers
+                    .drain()
+                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                    .collect();
+                props.selected_points = props
+                    .selected_points
+                    .drain()
+                    .filter_map(|p| new_point(p, point_index))
+                    .collect();
+                props.selected_point_channels = props
+                    .selected_point_channels
+                    .drain()
+                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                    .collect();
+                props.selected_point_channel_beziers = props
+                    .selected_point_channel_beziers
+                    .drain()
+                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                    .collect();
+            }
+        }
+    }
+    delete_point_anim(
+        &pipe.user_data.editor_tab.client,
+        &mut anims.color,
+        &|index, anim| {
+            EditorAction::ReplColorAnim(ActReplColorAnim {
+                base: ActAddRemColorAnim {
+                    index,
+                    anim: anim.clone(),
+                },
+            })
+        },
+        group_name,
+        point_index,
+        COLOR_GROUP_NAME,
+    );
+    delete_point_anim(
+        &pipe.user_data.editor_tab.client,
+        &mut anims.pos,
+        &|index, anim| {
+            EditorAction::ReplPosAnim(ActReplPosAnim {
+                base: ActAddRemPosAnim {
+                    index,
+                    anim: anim.clone(),
+                },
+            })
+        },
+        group_name,
+        point_index,
+        POS_GROUP_NAME,
+    );
+    delete_point_anim(
+        &pipe.user_data.editor_tab.client,
+        &mut anims.sound,
+        &|index, anim| {
+            EditorAction::ReplSoundAnim(ActReplSoundAnim {
+                base: ActAddRemSoundAnim {
+                    index,
+                    anim: anim.clone(),
+                },
+            })
+        },
+        group_name,
+        point_index,
+        SOUND_GROUP_NAME,
     );
 }
