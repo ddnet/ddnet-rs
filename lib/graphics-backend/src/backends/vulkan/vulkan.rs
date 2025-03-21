@@ -1161,13 +1161,12 @@ impl VulkanBackend {
                         .split_at_mut(real_full_image_size);
 
                     let unpacked_part = img_part.split_at(offset_image_unpacked).1;
-                    help_part.copy_from_slice(unpacked_part.split_at(width as usize * 4).0);
+                    help_part[..width as usize * 4]
+                        .copy_from_slice(&unpacked_part[..width as usize * 4]);
 
                     let packed_part = img_part.split_at_mut(offset_image_packed).1;
-                    packed_part
-                        .split_at_mut(width as usize * 4)
-                        .0
-                        .copy_from_slice(help_part);
+                    packed_part[..width as usize * 4]
+                        .copy_from_slice(&help_part[..width as usize * 4]);
                 }
             }
 
