@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use egui::{
-    epaint::PathStroke, pos2, vec2, Align2, Color32, DragValue, Key, KeyboardShortcut, Modifiers,
-    Pos2, Rect, RichText, Sense, Shape, Stroke, UiBuilder, Vec2,
+    pos2, vec2, Align2, Color32, DragValue, FontId, Key, KeyboardShortcut, Modifiers, Pos2, Rect,
+    RichText, Sense, Shape, Stroke, UiBuilder, Vec2,
 };
 use egui_extras::{Size, StripBuilder};
 use map::map::animations::{AnimBezier, AnimBezierPoint};
@@ -147,7 +147,7 @@ impl Timeline {
             ui.available_rect_before_wrap(),
             0.0,
             if value_graph {
-                Color32::DARK_GRAY
+                Color32::from_rgb(50, 50, 50)
             } else {
                 Color32::BLACK
             },
@@ -409,16 +409,20 @@ impl Timeline {
             (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x)) - self.props.offset.x;
         let x_off = x_off + time_offset;
 
-        painter.add(Shape::Path(egui::epaint::PathShape {
-            points: vec![
-                pos2(x_off - 5.0, y_off),
-                pos2(x_off + 5.0, y_off),
-                pos2(x_off, y_off + 10.0),
-            ],
-            closed: true,
-            fill: Color32::RED,
-            stroke: PathStroke::NONE,
-        }));
+        let id = painter.add(Shape::Noop);
+
+        let rect = painter.text(
+            egui::pos2(x_off, y_off + 10.0),
+            Align2::CENTER_CENTER,
+            format!("{:.2}", self.time().as_secs_f64()),
+            FontId::monospace(10.0),
+            Color32::WHITE,
+        );
+
+        painter.set(
+            id,
+            Shape::rect_filled(rect.expand(3.0), 5.0, Color32::from_rgb(50, 50, 200)),
+        );
     }
 
     /// the points on the timeline without y axis
@@ -894,7 +898,23 @@ impl Timeline {
         self.handle_input_timeline_points(ui, point_groups, point_changed);
         self.handle_input(ui, false);
 
-        ui.allocate_new_ui(UiBuilder::new().max_rect(self.inner_graph_rect(ui)), |ui| {
+        let inner_rect = self.inner_graph_rect(ui);
+        ui.allocate_new_ui(UiBuilder::new().max_rect(inner_rect), |ui| {
+            // render a blue line for where the current time is
+            let x_off = inner_rect.min.x;
+            let y_off = inner_rect.min.y;
+
+            let time_offset = (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x))
+                - self.props.offset.x;
+            let x_off = x_off + time_offset;
+            ui.painter().line(
+                vec![
+                    egui::pos2(x_off, y_off),
+                    egui::pos2(x_off, y_off + ui.available_height()),
+                ],
+                Stroke::new(2.0, Color32::from_rgb(50, 50, 200)),
+            );
+
             let width = ui.available_width();
             let AxisValue { x_axis_y_off, .. } = self.draw_axes(ui, false);
 
@@ -1045,6 +1065,7 @@ impl Timeline {
         self.handle_input_value_points(ui, point_groups, point_changed);
         self.handle_input(ui, true);
 
+        let inner_rect = self.inner_graph_rect(ui);
         let rect = ui.available_rect_before_wrap();
         ui.allocate_new_ui(
             UiBuilder::new().max_rect(egui::Rect::from_min_size(
@@ -1053,6 +1074,22 @@ impl Timeline {
             )),
             |ui| {
                 ui.set_clip_rect(rect);
+
+                // render a blue line for where the current time is
+                let x_off = inner_rect.min.x;
+                let y_off = inner_rect.min.y;
+
+                let time_offset = (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x))
+                    - self.props.offset.x;
+                let x_off = x_off + time_offset;
+                ui.painter().line(
+                    vec![
+                        egui::pos2(x_off, y_off),
+                        egui::pos2(x_off, y_off + ui.available_height()),
+                    ],
+                    Stroke::new(2.0, Color32::from_rgb(50, 50, 200)),
+                );
+
                 let width = ui.available_width();
 
                 let AxisValue {
@@ -1394,7 +1431,7 @@ impl Timeline {
                 let width = ui.available_width();
                 ui.allocate_new_ui(
                     UiBuilder::new()
-                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 10.0))),
+                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 20.0))),
                     |ui| {
                         ui.set_height(ui.available_height());
                         self.draw_time_tri(ui, point_groups);
