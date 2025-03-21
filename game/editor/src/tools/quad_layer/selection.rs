@@ -292,7 +292,9 @@ impl QuadSelection {
                     p.iter_mut().enumerate().for_each(|(index, p)| {
                         *p = in_radius(&points[index], &pointer_cur, radius)
                     });
-                    if let Some((index, _)) = p.iter().enumerate().find(|(_, &p)| p) {
+                    // for now only respect the center point.
+                    if p[4] {
+                        let index = 4;
                         // pointer is in a drag mode
                         clicked_quad_point = true;
                         let down_point = if index == 4 {

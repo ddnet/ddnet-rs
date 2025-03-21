@@ -205,7 +205,7 @@ impl ToolSoundLayer {
         ui_canvas: &UiCanvasSize,
         active_tool: &ActiveToolSounds,
         canvas_handle: &GraphicsCanvasHandle,
-        map: &EditorMap,
+        map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         client: &mut EditorClient,

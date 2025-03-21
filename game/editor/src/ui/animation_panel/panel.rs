@@ -28,7 +28,7 @@ use crate::{
         EditorActiveAnimationProps, EditorAnimationProps, EditorGroups, EditorLayer,
         EditorLayerUnionRef, EditorMapGroupsInterface,
     },
-    tools::tool::{ActiveTool, ActiveToolQuads},
+    tools::tool::{ActiveTool, ActiveToolQuads, ActiveToolSounds},
     ui::user_data::UserDataWithTab,
 };
 
@@ -55,10 +55,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         // they basically automatically select their active animations
         let mut selected_color_anim_selection;
         let mut selected_pos_anim_selection;
-        let mut quad_sel_dummy = None;
+        let mut selected_sound_anim_selection;
         //let mut selected_sound_anim_selection;
         let (selected_color_anim, selected_pos_anim, selected_sound_anim) = {
-            let (can_change_pos_anim, can_change_color_anim) = if let (
+            let (can_change_pos_anim, can_change_color_anim, can_change_sound_anim) = if let (
                 Some(EditorLayerUnionRef::Design {
                     layer: EditorLayer::Quad(layer),
                     ..
@@ -73,11 +73,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     tools.active_tool,
                     ActiveTool::Quads(ActiveToolQuads::Selection)
                 ) {
-                    &mut tools.quads.selection.range
+                    tools.quads.selection.range.as_mut()
                 } else if matches!(tools.active_tool, ActiveTool::Quads(ActiveToolQuads::Brush)) {
-                    &mut tools.quads.brush.last_selection
+                    tools.quads.brush.last_selection.as_mut()
                 } else {
-                    &mut quad_sel_dummy
+                    None
                 },
                 map.user.options.no_animations_with_properties.then_some(()),
             ) {
@@ -103,9 +103,54 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     } else {
                         None
                     },
+                    None,
+                )
+            } else if let (
+                Some(EditorLayerUnionRef::Design {
+                    layer: EditorLayer::Sound(_),
+                    ..
+                }),
+                ActiveTool::Sounds(ActiveToolSounds::Brush),
+                Some(range),
+                None,
+            ) = (
+                &active_layer,
+                &tools.active_tool,
+                if matches!(
+                    tools.active_tool,
+                    ActiveTool::Sounds(ActiveToolSounds::Brush)
+                ) {
+                    tools.sounds.brush.last_selection.as_mut()
+                } else {
+                    None
+                },
+                map.user.options.no_animations_with_properties.then_some(()),
+            ) {
+                let range: Vec<_> = vec![(range.sound_index, &mut range.sound)];
+
+                (
+                    if range
+                        .windows(2)
+                        .all(|window| window[0].1.pos_anim == window[1].1.pos_anim)
+                        && !range.is_empty()
+                    {
+                        range[0].1.pos_anim
+                    } else {
+                        None
+                    },
+                    None,
+                    if range
+                        .windows(2)
+                        .all(|window| window[0].1.sound_anim == window[1].1.sound_anim)
+                        && !range.is_empty()
+                    {
+                        range[0].1.sound_anim
+                    } else {
+                        None
+                    },
                 )
             } else {
-                (None, None)
+                (None, None, None)
             };
             (
                 if let Some(anim) = can_change_color_anim {
@@ -120,7 +165,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 } else {
                     &mut map.animations.user.selected_pos_anim
                 },
-                &mut map.animations.user.selected_sound_anim,
+                if let Some(anim) = can_change_sound_anim {
+                    selected_sound_anim_selection = Some(anim);
+                    &mut selected_sound_anim_selection
+                } else {
+                    &mut map.animations.user.selected_sound_anim
+                },
             )
         };
 

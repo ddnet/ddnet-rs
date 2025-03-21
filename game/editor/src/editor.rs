@@ -2178,7 +2178,7 @@ impl Editor {
                     ui_canvas,
                     tool,
                     &self.canvas_handle,
-                    &tab.map,
+                    &mut tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
                     &mut tab.client,
