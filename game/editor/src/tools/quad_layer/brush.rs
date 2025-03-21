@@ -262,7 +262,7 @@ impl QuadBrush {
                     p.iter_mut().enumerate().for_each(|(index, p)| {
                         *p = in_radius(&points[index], &pointer_cur, radius)
                     });
-                    if let Some((index, _)) = p.iter().enumerate().find(|(_, &p)| p) {
+                    if let Some((index, _)) = p.iter().enumerate().rev().find(|(_, &p)| p) {
                         // pointer is in a drag mode
                         clicked_quad_point = true;
                         let down_point = if index == 4 {
