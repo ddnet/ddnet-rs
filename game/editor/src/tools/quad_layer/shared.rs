@@ -141,7 +141,7 @@ pub fn render_quad_points(
             map.groups.user.parallax_aware_zoom,
         );
         for quad in &layer.layer.quads {
-            let points = get_quad_points_animated(quad, map, map.user.time);
+            let points = get_quad_points_animated(quad, map, map.user.render_time());
 
             let mut state = State::new();
             RenderTools::map_canvas_of_group(

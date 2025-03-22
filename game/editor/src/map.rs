@@ -647,6 +647,17 @@ pub struct EditorMapProps {
     pub time_scale: u32,
 }
 
+impl EditorMapProps {
+    /// If animation panel is open, it uses that time, otherwise the editor time.
+    pub fn render_time(&self) -> Duration {
+        if self.ui_values.animations_panel_open {
+            self.ui_values.timeline.time()
+        } else {
+            self.time
+        }
+    }
+}
+
 pub type EditorMap = MapSkeleton<
     EditorMapProps,
     (),

@@ -1730,11 +1730,7 @@ impl Editor {
         as_tile_flag: Option<&TextureContainer2dArray>,
         layer_rect: &mut Vec<LayerRect>,
     ) {
-        let time = if map.user.ui_values.animations_panel_open {
-            map.user.ui_values.timeline.time()
-        } else {
-            map.user.time
-        };
+        let time = map.user.render_time();
 
         map_render.render_layer(
             animations,
@@ -1904,14 +1900,10 @@ impl Editor {
                         );
                     }
                     if let MapLayerSkeleton::Sound(layer) = layer {
-                        let time = if map.user.ui_values.animations_panel_open {
-                            map.user.ui_values.timeline.time()
-                        } else {
-                            map.user.time
-                        };
+                        let time = map.user.render_time();
                         map_render.sound.handle_sound_layer(
                             &map.animations,
-                            &map.user.time,
+                            &time,
                             &RenderMap::calc_anim_time(
                                 50.try_into().unwrap(),
                                 (time.as_millis() / (1000 / 50)).max(1) as GameTickType,
@@ -1950,11 +1942,7 @@ impl Editor {
         as_tile_index: Option<&TextureContainer2dArray>,
         as_tile_flag: Option<&TextureContainer2dArray>,
     ) {
-        let time = if map.user.ui_values.animations_panel_open {
-            map.user.ui_values.timeline.time()
-        } else {
-            map.user.time
-        };
+        let time = map.user.render_time();
         map_render.render_physics_layer(
             &map.animations,
             entities_container,
@@ -1968,7 +1956,7 @@ impl Editor {
                 parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
                 forced_aspect_ratio: None,
             },
-            &map.user.time,
+            &time,
             &RenderMap::calc_anim_time(
                 map.game_time_info().ticks_per_second,
                 (time.as_millis() / (1000 / 50)).max(1) as GameTickType,

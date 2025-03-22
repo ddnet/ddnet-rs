@@ -507,7 +507,7 @@ impl SoundBrush {
         RenderMap::render_sounds(
             stream_handle,
             &map.animations,
-            &map.user.time,
+            &map.user.render_time(),
             &map.animation_time(),
             brush.sounds.iter(),
             state,

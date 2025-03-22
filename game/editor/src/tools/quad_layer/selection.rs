@@ -122,7 +122,8 @@ impl QuadSelection {
             let mut quads: BTreeMap<usize, Quad> = Default::default();
 
             for (q, quad) in layer.layer.quads.iter().enumerate() {
-                let points = super::shared::get_quad_points_animated(quad, map, map.user.time);
+                let points =
+                    super::shared::get_quad_points_animated(quad, map, map.user.render_time());
 
                 if super::shared::in_box(&points[0], x0, y0, x1, y1)
                     || super::shared::in_box(&points[1], x0, y0, x1, y1)
@@ -269,7 +270,8 @@ impl QuadSelection {
             let mut clicked_quad_point = false;
             if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
                 for quad in layer.layer.quads.iter() {
-                    let points = super::shared::get_quad_points_animated(quad, map, map.user.time);
+                    let points =
+                        super::shared::get_quad_points_animated(quad, map, map.user.render_time());
 
                     let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
