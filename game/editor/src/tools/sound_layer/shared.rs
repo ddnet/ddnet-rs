@@ -73,7 +73,7 @@ pub fn render_sound_points(
             map.groups.user.parallax_aware_zoom,
         );
         for sound in &layer.layer.sounds {
-            let point = get_sound_point_animated(sound, map, map.user.time);
+            let point = get_sound_point_animated(sound, map, map.user.render_time());
 
             let mut state = State::new();
             RenderTools::map_canvas_of_group(

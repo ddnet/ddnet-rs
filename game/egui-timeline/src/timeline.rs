@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use egui::{
-    epaint::PathStroke, pos2, vec2, Align2, Color32, DragValue, Key, KeyboardShortcut, Modifiers,
-    Pos2, Rect, RichText, Sense, Shape, Stroke, UiBuilder, Vec2,
+    pos2, vec2, Align2, Color32, DragValue, FontId, Key, KeyboardShortcut, Modifiers, Pos2, Rect,
+    RichText, Sense, Shape, Stroke, UiBuilder, Vec2,
 };
 use egui_extras::{Size, StripBuilder};
 use map::map::animations::{AnimBezier, AnimBezierPoint};
@@ -83,6 +83,10 @@ pub struct TimelineResponse {
     /// (or replace an existing one) at the current position,
     /// if the implementation supports adding frame point data outside of this panel
     pub insert_or_replace_point: bool,
+    /// At least one point changed by the implementation
+    pub points_changed: bool,
+    /// A point deleted
+    pub point_deleted: Option<(String, usize)>,
 }
 
 /// represents animation points in twmaps
@@ -145,7 +149,7 @@ impl Timeline {
             ui.available_rect_before_wrap(),
             0.0,
             if value_graph {
-                Color32::DARK_GRAY
+                Color32::from_rgb(50, 50, 50)
             } else {
                 Color32::BLACK
             },
@@ -407,20 +411,30 @@ impl Timeline {
             (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x)) - self.props.offset.x;
         let x_off = x_off + time_offset;
 
-        painter.add(Shape::Path(egui::epaint::PathShape {
-            points: vec![
-                pos2(x_off - 5.0, y_off),
-                pos2(x_off + 5.0, y_off),
-                pos2(x_off, y_off + 10.0),
-            ],
-            closed: true,
-            fill: Color32::RED,
-            stroke: PathStroke::new(5.0, Color32::TRANSPARENT),
-        }));
+        let id = painter.add(Shape::Noop);
+
+        let rect = painter.text(
+            egui::pos2(x_off, y_off + 10.0),
+            Align2::CENTER_CENTER,
+            format!("{:.2}", self.time().as_secs_f64()),
+            FontId::monospace(10.0),
+            Color32::WHITE,
+        );
+
+        painter.set(
+            id,
+            Shape::rect_filled(rect.expand(3.0), 5.0, Color32::from_rgb(50, 50, 200)),
+        );
     }
 
     /// the points on the timeline without y axis
-    fn handle_input_timeline_points(&mut self, ui: &egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+    fn handle_input_timeline_points(
+        &mut self,
+        ui: &egui::Ui,
+        point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
+        point_deleted: &mut Option<(String, usize)>,
+    ) {
         let not_point_pointer_down =
             !self.pointer_down_pos.is_timeline_point() && !self.pointer_down_pos.is_none();
         // check if a point was clicked on, regardless of the pointer state
@@ -508,6 +522,7 @@ impl Timeline {
                                 }
 
                                 *time = Duration::from_secs_f32(time_secs);
+                                *point_changed = true;
                             }
                         }
                     }
@@ -533,6 +548,16 @@ impl Timeline {
                         point_group.selected_points.clear();
                     }
                 }
+            } else if i.pointer.secondary_clicked() {
+                'outer: for (g, point_group) in point_groups.iter_mut().enumerate() {
+                    for (p, point) in point_group.points.iter_mut().enumerate() {
+                        // check if the pointer clicked on this point
+                        if pointer_in_point_radius(g, *point) {
+                            *point_deleted = Some((point_group.name.to_string(), p));
+                            break 'outer;
+                        }
+                    }
+                }
             } else if self.pointer_down_pos.is_timeline_point() {
                 self.pointer_down_pos = PointerDownState::None;
             }
@@ -540,7 +565,12 @@ impl Timeline {
     }
 
     /// the points on the value graph with y axis
-    fn handle_input_value_points(&mut self, ui: &egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+    fn handle_input_value_points(
+        &mut self,
+        ui: &egui::Ui,
+        point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
+    ) {
         let not_point_pointer_down =
             !self.pointer_down_pos.is_value_point() && !self.pointer_down_pos.is_none();
         let not_point_bezier_pointer_down =
@@ -721,6 +751,7 @@ impl Timeline {
                                     val = val.clamp(*range.start(), *range.end());
 
                                     channel.set_value(val);
+                                    *point_changed = true;
                                 }
                             }
                         }
@@ -766,6 +797,7 @@ impl Timeline {
                                 }
 
                                 point.set_curve(PointCurve::Bezier(beziers));
+                                *point_changed = true;
                             }
                         }
                     }
@@ -869,12 +901,34 @@ impl Timeline {
         self.draw_point_radius_scale(ui, point_time, color, y, 1.0)
     }
 
-    fn timeline_graph(&mut self, ui: &mut egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+    fn timeline_graph(
+        &mut self,
+        ui: &mut egui::Ui,
+        point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
+        point_deleted: &mut Option<(String, usize)>,
+    ) {
         Self::background(ui, false);
-        self.handle_input_timeline_points(ui, point_groups);
+        self.handle_input_timeline_points(ui, point_groups, point_changed, point_deleted);
         self.handle_input(ui, false);
 
-        ui.allocate_new_ui(UiBuilder::new().max_rect(self.inner_graph_rect(ui)), |ui| {
+        let inner_rect = self.inner_graph_rect(ui);
+        ui.allocate_new_ui(UiBuilder::new().max_rect(inner_rect), |ui| {
+            // render a blue line for where the current time is
+            let x_off = inner_rect.min.x;
+            let y_off = inner_rect.min.y;
+
+            let time_offset = (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x))
+                - self.props.offset.x;
+            let x_off = x_off + time_offset;
+            ui.painter().line(
+                vec![
+                    egui::pos2(x_off, y_off),
+                    egui::pos2(x_off, y_off + ui.available_height()),
+                ],
+                Stroke::new(2.0, Color32::from_rgb(50, 50, 200)),
+            );
+
             let width = ui.available_width();
             let AxisValue { x_axis_y_off, .. } = self.draw_axes(ui, false);
 
@@ -917,7 +971,12 @@ impl Timeline {
         });
     }
 
-    fn curves(&mut self, ui: &mut egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+    fn curves(
+        &mut self,
+        ui: &mut egui::Ui,
+        point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
+    ) {
         ui.painter().rect_filled(
             ui.available_rect_before_wrap(),
             0.0,
@@ -1002,6 +1061,7 @@ impl Timeline {
                                 PointCurve::Bezier(_) => PointCurve::Step,
                             };
                             point.set_curve(curve);
+                            *point_changed = true;
                         }
                     }
                 }
@@ -1009,11 +1069,17 @@ impl Timeline {
         );
     }
 
-    fn value_graph(&mut self, ui: &mut egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+    fn value_graph(
+        &mut self,
+        ui: &mut egui::Ui,
+        point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
+    ) {
         Self::background(ui, true);
-        self.handle_input_value_points(ui, point_groups);
+        self.handle_input_value_points(ui, point_groups, point_changed);
         self.handle_input(ui, true);
 
+        let inner_rect = self.inner_graph_rect(ui);
         let rect = ui.available_rect_before_wrap();
         ui.allocate_new_ui(
             UiBuilder::new().max_rect(egui::Rect::from_min_size(
@@ -1022,6 +1088,22 @@ impl Timeline {
             )),
             |ui| {
                 ui.set_clip_rect(rect);
+
+                // render a blue line for where the current time is
+                let x_off = inner_rect.min.x;
+                let y_off = inner_rect.min.y;
+
+                let time_offset = (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x))
+                    - self.props.offset.x;
+                let x_off = x_off + time_offset;
+                ui.painter().line(
+                    vec![
+                        egui::pos2(x_off, y_off),
+                        egui::pos2(x_off, y_off + ui.available_height()),
+                    ],
+                    Stroke::new(2.0, Color32::from_rgb(50, 50, 200)),
+                );
+
                 let width = ui.available_width();
 
                 let AxisValue {
@@ -1229,6 +1311,7 @@ impl Timeline {
         &mut self,
         ui: &mut egui::Ui,
         point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
     ) {
         enum PointSelectionMode {
             Single,
@@ -1272,6 +1355,7 @@ impl Timeline {
                                 .speed(0.05),
                         );
                         channel.set_value(val);
+                        *point_changed = true;
                     }
                 }
             }
@@ -1292,6 +1376,7 @@ impl Timeline {
                             time_secs += self.drag_val / size_per_int(self.props.scale.x);
                             time_secs = time_secs.clamp(0.0, f32::MAX);
                             *time = Duration::from_secs_f32(time_secs);
+                            *point_changed = true;
                         }
                     }
                 }
@@ -1341,7 +1426,13 @@ impl Timeline {
         }
     }
 
-    fn render_timeline(&mut self, ui: &mut egui::Ui, point_groups: &mut [PointGroup<'_>]) {
+    fn render_timeline(
+        &mut self,
+        ui: &mut egui::Ui,
+        point_groups: &mut [PointGroup<'_>],
+        point_changed: &mut bool,
+        point_deleted: &mut Option<(String, usize)>,
+    ) {
         ui.with_layout(
             egui::Layout::top_down(egui::Align::Center)
                 .with_main_justify(true)
@@ -1355,7 +1446,7 @@ impl Timeline {
                 let width = ui.available_width();
                 ui.allocate_new_ui(
                     UiBuilder::new()
-                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 10.0))),
+                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 20.0))),
                     |ui| {
                         ui.set_height(ui.available_height());
                         self.draw_time_tri(ui, point_groups);
@@ -1373,15 +1464,15 @@ impl Timeline {
                     .vertical(|mut strip| {
                         strip.cell(|ui| {
                             // timeline graph
-                            self.timeline_graph(ui, point_groups);
+                            self.timeline_graph(ui, point_groups, point_changed, point_deleted);
                         });
                         strip.cell(|ui| {
                             // envelope curve types
-                            self.curves(ui, point_groups);
+                            self.curves(ui, point_groups, point_changed);
                         });
                         strip.cell(|ui| {
                             // value graph
-                            self.value_graph(ui, point_groups);
+                            self.value_graph(ui, point_groups, point_changed);
                         });
                     });
             },
@@ -1411,13 +1502,18 @@ impl Timeline {
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
                     // the graphs, time dragger etc.
-                    self.render_timeline(ui, point_groups);
+                    self.render_timeline(
+                        ui,
+                        point_groups,
+                        &mut res.points_changed,
+                        &mut res.point_deleted,
+                    );
                 });
 
                 strip.cell(|ui| {
                     ui.style_mut().wrap_mode = None;
                     // properties of selected point or similar
-                    self.render_selected_points_ui(ui, point_groups);
+                    self.render_selected_points_ui(ui, point_groups, &mut res.points_changed);
                 });
             });
 

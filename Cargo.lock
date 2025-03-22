@@ -3270,6 +3270,7 @@ dependencies = [
  "egui_commonmark",
  "egui_extras",
  "enum_dispatch",
+ "fixed",
  "game-base",
  "game-config",
  "game-interface",

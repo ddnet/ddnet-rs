@@ -52,13 +52,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 ActiveTool::Sounds(ActiveToolSounds::Brush) => {
                     let brush = &mut pipe.user_data.tools.sounds.brush;
                     let point = brush
-                        .last_selection
+                        .last_popup
                         .as_ref()
                         .map(|selection| selection.point)
                         .unwrap_or(SoundPointerDownPoint::Center);
                     let mut res: BTreeMap<usize, &mut Sound> = Default::default();
                     if let Some((selection, sound)) =
-                        brush.last_selection.as_mut().and_then(|selection| {
+                        brush.last_popup.as_mut().and_then(|selection| {
                             if selection.sound_index < layer.layer.sounds.len() {
                                 Some((selection.sound_index, &mut selection.sound))
                             } else {
@@ -599,7 +599,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             if intersected.is_some_and(|(outside, clicked)| outside && clicked) {
                 match &pipe.user_data.tools.active_tool {
                     ActiveTool::Sounds(ActiveToolSounds::Brush) => {
-                        pipe.user_data.tools.sounds.brush.last_selection = None;
+                        pipe.user_data.tools.sounds.brush.last_popup = None;
                     }
                     ActiveTool::Quads(_) | ActiveTool::Tiles(_) => {
                         // ignore

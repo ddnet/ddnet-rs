@@ -47,8 +47,11 @@ impl<'de> Deserialize<'de> for MapLayerTile {
 
 #[derive(Debug, Hiarc, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Quad {
+    /// tl, tr, bl, br, center
     pub points: [fvec2; 5],
+    /// tl, tr, bl, br
     pub colors: [nfvec4; 4],
+    /// tl, tr, bl, br
     pub tex_coords: [fvec2; 4],
 
     pub pos_anim: Option<usize>,

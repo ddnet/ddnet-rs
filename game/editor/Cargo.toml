@@ -51,6 +51,7 @@ x509-cert = { version = "0.2.5" }
 log = "0.4.26"
 enum_dispatch = "0.3.13"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+fixed = "1.29.0"
 
 [features]
 legacy = ["map-convert-lib"]
