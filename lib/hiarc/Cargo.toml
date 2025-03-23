@@ -29,6 +29,7 @@ crossbeam = { version = "0.8.4", default-features = false, optional = true }
 ash = { version = "0.38.0", default-features = false, optional = true }
 chrono = { version = "0.4.40", default-features = false, optional = true }
 winit = { version = "0.30.9", default-features = false, optional = true }
+serde_json = { version = "1.0.140", default-features = false, optional = true }
 
 [features]
 derive = ["hiarc-macro"]
@@ -54,3 +55,4 @@ enable_crossbeam = ["crossbeam"]
 enable_ash = ["ash"]
 enable_chrono = ["chrono"]
 enable_winit = ["winit"]
+enable_serde_json = ["serde_json"]

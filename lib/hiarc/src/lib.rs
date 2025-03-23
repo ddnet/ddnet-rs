@@ -585,6 +585,11 @@ unsafe impl HiarcTrait for winit::event::MouseButton {
     const HI_VAL: u64 = 0;
 }
 
+#[cfg(feature = "enable_serde_json")]
+unsafe impl HiarcTrait for serde_json::Value {
+    const HI_VAL: u64 = 0;
+}
+
 unsafe impl<T: HiarcTrait> HiarcTrait for Option<T> {
     const HI_VAL: u64 = T::HI_VAL;
 }

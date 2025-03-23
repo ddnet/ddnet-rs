@@ -1,8 +1,11 @@
-use assets_base::AssetsIndex;
+use assets_base::{
+    loader::read_tar,
+    verify::{ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
+    AssetsIndex,
+};
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use std::{
     borrow::Borrow,
-    io::{BufRead, Read},
     marker::PhantomData,
     num::NonZeroUsize,
     path::{Path, PathBuf},
@@ -10,7 +13,6 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use tar::EntryType;
 use tokio::sync::Semaphore;
 
 use anyhow::anyhow;
@@ -36,9 +38,8 @@ use image_utils::{
 };
 use log::info;
 use sound::{
-    ogg_vorbis::verify_ogg_vorbis, scene_object::SceneObject, sound::SoundManager,
-    sound_handle::SoundObjectHandle, sound_mt::SoundMultiThreaded,
-    sound_mt_types::SoundBackendMemory,
+    scene_object::SceneObject, sound::SoundManager, sound_handle::SoundObjectHandle,
+    sound_mt::SoundMultiThreaded, sound_mt_types::SoundBackendMemory,
 };
 use url::Url;
 
@@ -428,6 +429,7 @@ where
                         PngValidatorOptions {
                             max_width: 4096.try_into().unwrap(),
                             max_height: 4096.try_into().unwrap(),
+                            ..Default::default()
                         }
                     } else {
                         Default::default()
@@ -453,36 +455,13 @@ where
                     return false;
                 }
             }
-            "txt" => {
-                for line in file.lines() {
-                    match line {
-                        Ok(line) =>
-                        // also check if only allowed characters are inside the strings
-                        {
-                            for char in line.chars() {
-                                if !char.is_ascii_graphic() && !char.is_ascii_whitespace() {
-                                    log::warn!(
-                                        "downloaded text resource (txt) \
-                                        ({}) contains an unallowed character: \"{}\"",
-                                        file_name,
-                                        char
-                                    );
-                                    return false;
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            log::warn!(
-                                "downloaded text resource (txt) \
-                                ({}) is not an allowed text file: {}",
-                                file_name,
-                                err
-                            );
-                            return false;
-                        }
-                    }
+            "txt" => match verify_txt(file, file_name) {
+                Ok(_) => {}
+                Err(err) => {
+                    log::warn!("{err}");
+                    return false;
                 }
-            }
+            },
             _ => {
                 log::warn!(
                     "Unsupported resource type {} for {} \
@@ -539,46 +518,6 @@ where
         resource_http_download: HttpIndexAndUrl,
     ) -> anyhow::Result<ContainerLoadedItem> {
         let allow_hq_assets = false;
-
-        let read_tar = |file: &[u8]| {
-            let mut file = tar::Archive::new(std::io::Cursor::new(file));
-            match file.entries() {
-                Ok(entries) => entries
-                    .filter_map(|entry| {
-                        entry
-                            .map_err(|err| anyhow::anyhow!(err))
-                            .map(|mut entry| {
-                                let ty = entry.header().entry_type();
-                                if let EntryType::Regular = ty {
-                                    Some(
-                                        entry
-                                            .path()
-                                            .map(|path| path.to_path_buf())
-                                            .map_err(|err| anyhow::anyhow!(err))
-                                            .and_then(|path| {
-                                                let mut file: Vec<_> = Default::default();
-
-                                                entry
-                                                    .read_to_end(&mut file)
-                                                    .map(|_| (path, file))
-                                                    .map_err(|err| anyhow::anyhow!(err))
-                                            }),
-                                    )
-                                } else if matches!(ty, EntryType::Directory) {
-                                    None
-                                } else {
-                                    Some(Err(anyhow!(
-                                        "The tar reader expects files & dictionaries only"
-                                    )))
-                                }
-                            })
-                            .transpose()
-                            .map(|r| r.and_then(|r| r))
-                    })
-                    .collect::<anyhow::Result<HashMap<_, _>>>(),
-                Err(err) => Err(anyhow::anyhow!(err)),
-            }
-        };
 
         let save_to_disk = |name: &str, file: &[u8]| {
             let name = name.to_string();

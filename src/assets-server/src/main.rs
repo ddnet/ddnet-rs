@@ -1,14 +1,23 @@
+pub mod delete;
 pub mod index_dir;
+pub mod upload;
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, num::NonZeroU32, sync::Arc};
 
 use anyhow::anyhow;
 use assets_base::AssetsIndex;
-use axum::Router;
+use axum::{extract::DefaultBodyLimit, Json, Router};
 use base::hash::{fmt_hash, generate_hash_for};
 use clap::{command, Parser};
+use delete::asset_delete;
+use image_utils::png::PngValidatorOptions;
 use index_dir::IndexDir;
+use tokio::sync::Mutex;
 use tower_http::trace::TraceLayer;
+use upload::{
+    asset_upload,
+    verify::{AllowedResource, AllowedResources},
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -21,33 +30,312 @@ struct Args {
     no_cache: bool,
 }
 
+struct AssetUploadRouter {
+    upload: Router,
+    delete: Router,
+}
+
+struct AssetRouter {
+    download: Router,
+    upload: Option<AssetUploadRouter>,
+}
+
+impl AssetRouter {
+    fn merge(self, other: Self) -> Self {
+        Self {
+            download: self.download.merge(other.download),
+            upload: match (self.upload, other.upload) {
+                (None, None) => None,
+                (None, Some(r)) | (Some(r), None) => Some(r),
+                (Some(r1), Some(r2)) => Some(AssetUploadRouter {
+                    upload: r1.upload.merge(r2.upload),
+                    delete: r1.delete.merge(r2.delete),
+                }),
+            },
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv()?;
+    if std::env::var("RUST_LOG").is_err() {
+        unsafe { std::env::set_var("RUST_LOG", "info") };
+    }
+    env_logger::init();
+
     let args = Args::parse();
 
     let port = args.port.unwrap_or(3002);
     let addr: SocketAddr = format!("127.0.0.1:{port}").parse()?;
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
-    let app = skins(args.no_cache)
-        .await?
-        .merge(entities(args.no_cache).await?)
-        .merge(ctfs(args.no_cache).await?)
-        .merge(emoticons(args.no_cache).await?)
-        .merge(flags(args.no_cache).await?)
-        .merge(freezes(args.no_cache).await?)
-        .merge(games(args.no_cache).await?)
-        .merge(hooks(args.no_cache).await?)
-        .merge(huds(args.no_cache).await?)
-        .merge(ninjas(args.no_cache).await?)
-        .merge(particles(args.no_cache).await?)
-        .merge(weapons(args.no_cache).await?);
-    axum::serve(listener, app.layer(TraceLayer::new_for_http())).await?;
+    let upload_password = std::env::var("ASSETS_UPLOAD_PASSWORD").ok().map(Arc::new);
+
+    if upload_password.is_none() {
+        log::warn!("No upload password given, uploading will be disabled. (ASSETS_UPLOAD_PASSWORD env var)");
+    }
+
+    let skin_limits = AllowedResource::Png(PngValidatorOptions {
+        max_width: NonZeroU32::new(256).unwrap(),
+        max_height: NonZeroU32::new(128).unwrap(),
+        min_width: Some(NonZeroU32::new(256).unwrap()),
+        min_height: Some(NonZeroU32::new(128).unwrap()),
+        divisible_width: None,
+        divisible_height: None,
+    });
+    let entities_limits = AllowedResource::Png(PngValidatorOptions {
+        max_width: NonZeroU32::new(1024).unwrap(),
+        max_height: NonZeroU32::new(1024).unwrap(),
+        min_width: Some(NonZeroU32::new(1024).unwrap()),
+        min_height: Some(NonZeroU32::new(1024).unwrap()),
+        divisible_width: None,
+        divisible_height: None,
+    });
+    let default_png = AllowedResource::Png(Default::default());
+    let emoticons_limits = AllowedResource::Png(PngValidatorOptions {
+        max_width: NonZeroU32::new(512).unwrap(),
+        max_height: NonZeroU32::new(512).unwrap(),
+        min_width: Some(NonZeroU32::new(512).unwrap()),
+        min_height: Some(NonZeroU32::new(512).unwrap()),
+        divisible_width: None,
+        divisible_height: None,
+    });
+    let hud_limits = AllowedResource::Png(PngValidatorOptions {
+        max_width: NonZeroU32::new(512).unwrap(),
+        max_height: NonZeroU32::new(512).unwrap(),
+        min_width: Some(NonZeroU32::new(512).unwrap()),
+        min_height: Some(NonZeroU32::new(512).unwrap()),
+        divisible_width: None,
+        divisible_height: None,
+    });
+    let particles_limits = AllowedResource::Png(PngValidatorOptions {
+        max_width: NonZeroU32::new(512).unwrap(),
+        max_height: NonZeroU32::new(512).unwrap(),
+        min_width: Some(NonZeroU32::new(512).unwrap()),
+        min_height: Some(NonZeroU32::new(512).unwrap()),
+        divisible_width: None,
+        divisible_height: None,
+    });
+    let map_resources_img = AllowedResource::PngCategory {
+        per_category: vec![
+            (
+                "tileset".to_string(),
+                PngValidatorOptions {
+                    max_width: NonZeroU32::new(1024).unwrap(),
+                    max_height: NonZeroU32::new(1024).unwrap(),
+                    min_width: Some(NonZeroU32::new(1024).unwrap()),
+                    min_height: Some(NonZeroU32::new(1024).unwrap()),
+                    divisible_width: None,
+                    divisible_height: None,
+                },
+            ),
+            ("img".to_string(), Default::default()),
+        ]
+        .into_iter()
+        .collect(),
+        fallback: None,
+    };
+    let map_resources_snd = AllowedResource::Ogg;
+    let app = skins(
+        args.no_cache,
+        &upload_password,
+        vec![
+            AllowedResources::File(skin_limits.clone()),
+            AllowedResources::Tar(vec![
+                skin_limits,
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ]),
+        ],
+    )
+    .await?
+    .merge(
+        entities(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::File(entities_limits)],
+        )
+        .await?,
+    )
+    .merge(
+        ctfs(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png.clone(),
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        emoticons(
+            args.no_cache,
+            &upload_password,
+            vec![
+                AllowedResources::File(emoticons_limits),
+                AllowedResources::Tar(vec![
+                    default_png.clone(),
+                    AllowedResource::Txt,
+                    AllowedResource::Ogg,
+                ]),
+            ],
+        )
+        .await?,
+    )
+    .merge(
+        flags(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png.clone(),
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        freezes(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png.clone(),
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        games(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png.clone(),
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        hooks(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png.clone(),
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        huds(
+            args.no_cache,
+            &upload_password,
+            vec![
+                AllowedResources::File(hud_limits),
+                AllowedResources::Tar(vec![
+                    default_png.clone(),
+                    AllowedResource::Txt,
+                    AllowedResource::Ogg,
+                ]),
+            ],
+        )
+        .await?,
+    )
+    .merge(
+        ninjas(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png.clone(),
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        particles(
+            args.no_cache,
+            &upload_password,
+            vec![
+                AllowedResources::File(particles_limits),
+                AllowedResources::Tar(vec![
+                    default_png.clone(),
+                    AllowedResource::Txt,
+                    AllowedResource::Ogg,
+                ]),
+            ],
+        )
+        .await?,
+    )
+    .merge(
+        weapons(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::Tar(vec![
+                default_png,
+                AllowedResource::Txt,
+                AllowedResource::Ogg,
+            ])],
+        )
+        .await?,
+    )
+    .merge(
+        map_resources_images(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::File(map_resources_img)],
+        )
+        .await?,
+    )
+    .merge(
+        map_resources_sounds(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::File(map_resources_snd)],
+        )
+        .await?,
+    )
+    .merge(
+        editor_rules(
+            args.no_cache,
+            &upload_password,
+            vec![AllowedResources::File(AllowedResource::Txt)],
+        )
+        .await?,
+    );
+    let app = match app.upload {
+        Some(r) => app.download.merge(r.upload.merge(r.delete)),
+        None => app.download,
+    };
+    axum::serve(
+        listener,
+        // 3 MiB for uploads
+        app.layer(DefaultBodyLimit::max(1024 * 1024 * 3))
+            .layer(TraceLayer::new_for_http()),
+    )
+    .await?;
 
     Ok(())
 }
 
-async fn assets_generic(base_path: &str, ignore_cached: bool) -> anyhow::Result<Router> {
+async fn assets_generic(
+    base_path: &str,
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assert!(
+        base_path != "upload" && base_path != "delete",
+        "upload & delete are reserved words and cannot be used."
+    );
     // make sure there is an index file for this path
     let index_path = format!("{base_path}/index.json");
     if !tokio::fs::try_exists(&index_path).await.unwrap_or_default() || ignore_cached {
@@ -56,55 +344,201 @@ async fn assets_generic(base_path: &str, ignore_cached: bool) -> anyhow::Result<
         tokio::fs::write(index_path, serde_json::to_vec(&index)?).await?;
     }
 
-    Ok(Router::new().nest_service(&format!("/{base_path}"), IndexDir::new(base_path).await?))
+    let index_dir = IndexDir::new(base_path).await?;
+    let index = index_dir.index.clone();
+    let write_lock = Arc::new(Mutex::new(()));
+    Ok(AssetRouter {
+        download: Router::new().nest_service(&format!("/{base_path}"), index_dir),
+        upload: upload_password.clone().map(|upload_password| {
+            let base_path_upload = base_path.into();
+            let write_lock_task = write_lock.clone();
+            let index_task = index.clone();
+            let upload_password_task = upload_password.clone();
+            let upload = Router::new().route(
+                &format!("/upload/{base_path}"),
+                axum::routing::post(move |payload: Json<_>| {
+                    asset_upload(
+                        write_lock_task,
+                        index_task,
+                        base_path_upload,
+                        upload_password_task,
+                        allowed_resources,
+                        payload,
+                    )
+                }),
+            );
+            let base_path_delete = base_path.into();
+            let delete = Router::new().route(
+                &format!("/delete/{base_path}"),
+                axum::routing::post(move |payload: Json<_>| {
+                    asset_delete(
+                        write_lock,
+                        index,
+                        base_path_delete,
+                        upload_password,
+                        payload,
+                    )
+                }),
+            );
+            AssetUploadRouter { upload, delete }
+        }),
+    })
 }
 
-async fn skins(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("skins", ignore_cached).await
+async fn skins(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("skins", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn entities(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("entities", ignore_cached).await
+async fn entities(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic(
+        "entities",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+    )
+    .await
 }
 
-async fn ctfs(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("ctfs", ignore_cached).await
+async fn ctfs(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("ctfs", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn emoticons(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("emoticons", ignore_cached).await
+async fn emoticons(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic(
+        "emoticons",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+    )
+    .await
 }
 
-async fn flags(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("flags", ignore_cached).await
+async fn flags(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("flags", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn freezes(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("freezes", ignore_cached).await
+async fn freezes(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("freezes", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn games(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("games", ignore_cached).await
+async fn games(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("games", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn hooks(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("hooks", ignore_cached).await
+async fn hooks(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("hooks", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn huds(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("huds", ignore_cached).await
+async fn huds(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("huds", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn ninjas(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("ninjas", ignore_cached).await
+async fn ninjas(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("ninjas", ignore_cached, upload_password, allowed_resources).await
 }
 
-async fn particles(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("particles", ignore_cached).await
+async fn particles(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic(
+        "particles",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+    )
+    .await
 }
 
-async fn weapons(ignore_cached: bool) -> anyhow::Result<Router> {
-    assets_generic("weapons", ignore_cached).await
+async fn weapons(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic("weapons", ignore_cached, upload_password, allowed_resources).await
+}
+
+async fn map_resources_images(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic(
+        "map/resources/images",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+    )
+    .await
+}
+
+async fn map_resources_sounds(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic(
+        "map/resources/sounds",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+    )
+    .await
+}
+
+async fn editor_rules(
+    ignore_cached: bool,
+    upload_password: &Option<Arc<String>>,
+    allowed_resources: Vec<AllowedResources>,
+) -> anyhow::Result<AssetRouter> {
+    assets_generic(
+        "editor/rules",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+    )
+    .await
 }
 
 async fn prepare_index_generic(base_path: &str) -> anyhow::Result<AssetsIndex> {

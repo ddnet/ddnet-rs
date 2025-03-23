@@ -581,9 +581,15 @@ dependencies = [
 name = "assets-base"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base",
+ "chrono",
  "hiarc",
+ "rustc-hash 2.1.1",
  "serde",
+ "serde_json",
+ "symphonia",
+ "tar",
 ]
 
 [[package]]
@@ -595,6 +601,11 @@ dependencies = [
  "axum",
  "base",
  "clap 4.5.32",
+ "dotenvy",
+ "env_logger",
+ "image-utils",
+ "log",
+ "parking_lot",
  "serde_json",
  "tokio",
  "tower-http",
@@ -1578,7 +1589,6 @@ dependencies = [
  "rustc-hash 2.1.1",
  "serde_json",
  "sound",
- "tar",
  "tokio",
  "url",
 ]
@@ -1708,6 +1718,7 @@ name = "client-render-base"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assets-base",
  "base",
  "base-io",
  "bincode",
@@ -4849,6 +4860,7 @@ dependencies = [
  "parking_lot",
  "rayon",
  "rustc-hash 2.1.1",
+ "serde_json",
  "spin",
  "thiserror 2.0.12",
  "time",
@@ -9033,7 +9045,6 @@ dependencies = [
  "hiarc",
  "math",
  "serde",
- "symphonia",
  "thiserror 2.0.12",
 ]
 

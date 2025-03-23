@@ -113,6 +113,12 @@ where
 pub struct PngValidatorOptions {
     pub max_width: NonZeroU32,
     pub max_height: NonZeroU32,
+    pub min_width: Option<NonZeroU32>,
+    pub min_height: Option<NonZeroU32>,
+    /// Whether the width must be divisible (without rest) by the given value
+    pub divisible_width: Option<NonZeroU32>,
+    /// Whether the height must be divisible (without rest) by the given value
+    pub divisible_height: Option<NonZeroU32>,
 }
 
 impl Default for PngValidatorOptions {
@@ -121,6 +127,10 @@ impl Default for PngValidatorOptions {
         Self {
             max_width: 2048.try_into().unwrap(),
             max_height: 2048.try_into().unwrap(),
+            min_width: None,
+            min_height: None,
+            divisible_width: None,
+            divisible_height: None,
         }
     }
 }
@@ -141,6 +151,24 @@ pub fn is_png_image_valid(file: &[u8], options: PngValidatorOptions) -> anyhow::
     anyhow::ensure!(
         img.width > 0 && img.height > 0,
         "width and height must be >= 1"
+    );
+    anyhow::ensure!(
+        options.min_width.is_none_or(|w| img.width >= w.get())
+            && options.min_height.is_none_or(|h| img.height >= h.get()),
+        "width and height must be at least {}x{}",
+        options.min_width.map(|w| w.get()).unwrap_or(1),
+        options.min_height.map(|h| h.get()).unwrap_or(1),
+    );
+    anyhow::ensure!(
+        options
+            .divisible_width
+            .is_none_or(|d| img.width % d.get() == 0)
+            && options
+                .divisible_height
+                .is_none_or(|d| img.height % d.get() == 0),
+        "width and height must be divisible by {} - {}",
+        options.divisible_width.map(|w| w.get()).unwrap_or(1),
+        options.divisible_height.map(|h| h.get()).unwrap_or(1),
     );
     Ok(())
 }

@@ -184,6 +184,7 @@ pub async fn legacy_to_new_from_buf_async(
                 res.ty = "ogg".into();
 
                 let hash = generate_hash_for(&transcoded_ogg);
+                res.buf = transcoded_ogg;
                 hashes.lock().unwrap().insert(old_hash, hash);
                 anyhow::Ok((hash, res))
             })
