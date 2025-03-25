@@ -218,6 +218,16 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         {
                             tab.dbg_panel.open = !tab.dbg_panel.open;
                         }
+
+                        if ui
+                            .add(
+                                Button::new("\u{f54e} Assets store")
+                                    .selected(tab.assets_store_open),
+                            )
+                            .clicked()
+                        {
+                            tab.assets_store_open = !tab.assets_store_open;
+                        }
                     }
                 });
 

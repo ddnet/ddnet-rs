@@ -1,10 +1,5 @@
-use std::collections::BTreeMap;
-
 use egui::{Color32, InnerResponse};
-use map::map::{
-    animations::{AnimPointColor, AnimPointPos},
-    groups::layers::design::Quad,
-};
+use map::map::groups::layers::design::Quad;
 use math::math::vector::{dvec2, ffixed, nffixed, nfvec4, vec2_base};
 use time::Duration;
 use ui_base::types::{UiRenderPipe, UiState};
@@ -44,49 +39,42 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         ..
     }) = layer
     {
-        let (mut selected_quads, point, pos_offset, pos_anim, color_anim) =
-            match &pipe.user_data.tools.active_tool {
-                ActiveTool::Quads(ActiveToolQuads::Brush) => {
-                    let brush = &mut pipe.user_data.tools.quads.brush;
-                    let point = brush
-                        .last_selection
-                        .as_ref()
-                        .map(|selection| selection.point)
-                        .unwrap_or(QuadPointerDownPoint::Center);
-                    let mut res: BTreeMap<usize, &mut Quad> = Default::default();
-                    if let Some((selection, quad)) =
-                        brush.last_selection.as_mut().and_then(|selection| {
-                            if selection.quad_index < layer.layer.quads.len() {
-                                Some((selection.quad_index, &mut selection.quad))
-                            } else {
-                                None
-                            }
-                        })
-                    {
-                        res.insert(selection, quad);
-                    }
-                    (res, Some(point), None, None, None)
-                }
-                ActiveTool::Quads(ActiveToolQuads::Selection) => {
-                    let selection = &mut pipe.user_data.tools.quads.selection;
-                    let point = selection.range.as_ref().and_then(|range| range.point);
-                    (
-                        selection
-                            .range
-                            .as_mut()
-                            .map(|range| range.indices_checked(layer))
-                            .unwrap_or_default(),
-                        point,
-                        Some(&mut selection.pos_offset),
-                        Some(&mut selection.anim_point_pos),
-                        Some(&mut selection.anim_point_color),
-                    )
-                }
-                ActiveTool::Sounds(_) | ActiveTool::Tiles(_) => {
-                    // ignore
-                    (Default::default(), None, None, None, None)
-                }
-            };
+        let (mut selected_quads, point, pos_offset) = match &pipe.user_data.tools.active_tool {
+            ActiveTool::Quads(ActiveToolQuads::Brush) => {
+                let brush = &mut pipe.user_data.tools.quads.brush;
+                let point = brush
+                    .last_popup
+                    .as_ref()
+                    .and_then(|selection| selection.point)
+                    .unwrap_or(QuadPointerDownPoint::Center);
+                (
+                    brush
+                        .last_popup
+                        .as_mut()
+                        .map(|selection| selection.indices_checked(layer))
+                        .unwrap_or_default(),
+                    Some(point),
+                    Some(&mut brush.pos_offset),
+                )
+            }
+            ActiveTool::Quads(ActiveToolQuads::Selection) => {
+                let selection = &mut pipe.user_data.tools.quads.selection;
+                let point = selection.range.as_ref().and_then(|range| range.point);
+                (
+                    selection
+                        .range
+                        .as_mut()
+                        .map(|range| range.indices_checked(layer))
+                        .unwrap_or_default(),
+                    point,
+                    Some(&mut selection.pos_offset),
+                )
+            }
+            ActiveTool::Sounds(_) | ActiveTool::Tiles(_) => {
+                // ignore
+                (Default::default(), None, None)
+            }
+        };
 
         if point.is_none() {
             return;
@@ -109,14 +97,19 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             quad: &mut Quad,
             // make a "move pos" instead of x, y directly
             pos_offset: Option<&mut dvec2>,
-            mut anim_pos: Option<&mut AnimPointPos>,
-            anim_color: Option<&mut AnimPointColor>,
             can_change_pos_anim: bool,
             can_change_color_anim: bool,
             animations_panel_open: bool,
-            animations: &EditorAnimations,
+            animations: &mut EditorAnimations,
             pointer_is_used: &mut bool,
         ) -> InnerResponse<bool> {
+            let mut anim_pos = can_change_pos_anim
+                .then_some(animations.user.active_anim_points.pos.as_mut())
+                .flatten();
+            let anim_color = can_change_color_anim
+                .then_some(animations.user.active_anim_points.color.as_mut())
+                .flatten();
+
             let mut delete = false;
             egui::Grid::new("design group attr grid")
                 .num_columns(2)
@@ -417,12 +410,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         point,
                         quad,
                         None,
-                        None,
-                        None,
                         true,
                         true,
                         animations_panel_open,
-                        &map.animations,
+                        &mut map.animations,
                         pipe.user_data.pointer_is_used,
                     )
                 });
@@ -494,12 +485,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         point,
                         &mut quad,
                         pos_offset,
-                        can_change_pos_anim.then_some(pos_anim).flatten(),
-                        can_change_color_anim.then_some(color_anim).flatten(),
                         can_change_pos_anim,
                         can_change_color_anim,
                         animations_panel_open,
-                        &map.animations,
+                        &mut map.animations,
                         pipe.user_data.pointer_is_used,
                     )
                 });
@@ -641,7 +630,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             {
                 match &pipe.user_data.tools.active_tool {
                     ActiveTool::Quads(ActiveToolQuads::Brush) => {
-                        pipe.user_data.tools.quads.brush.last_selection = None;
+                        pipe.user_data.tools.quads.brush.last_popup = None;
                     }
                     ActiveTool::Quads(ActiveToolQuads::Selection) => {
                         pipe.user_data.tools.quads.selection.range = None;

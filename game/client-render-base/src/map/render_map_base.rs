@@ -13,6 +13,7 @@ use super::{
     },
 };
 use anyhow::anyhow;
+use assets_base::verify::ogg_vorbis::verify_ogg_vorbis;
 use base::{
     benchmark::Benchmark,
     hash::{fmt_hash, Hash},
@@ -38,10 +39,7 @@ use image_utils::{
 use map::map::Map;
 use math::math::vector::vec2;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sound::{
-    commands::SoundSceneCreateProps, ogg_vorbis::verify_ogg_vorbis, scene_handle::SoundSceneHandle,
-    sound::SoundManager,
-};
+use sound::{commands::SoundSceneCreateProps, scene_handle::SoundSceneHandle, sound::SoundManager};
 use url::Url;
 use vanilla::collision::collision::Collision;
 
@@ -477,6 +475,7 @@ impl RenderMapLoading {
                         PngValidatorOptions {
                             max_width: 4096.try_into().unwrap(),
                             max_height: 4096.try_into().unwrap(),
+                            ..Default::default()
                         }
                     } else {
                         Default::default()

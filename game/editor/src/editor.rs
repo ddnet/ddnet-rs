@@ -46,7 +46,7 @@ use hiarc::HiarcTrait;
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::{
-        animations::{AnimBase, AnimPointCurveType, AnimPointPos},
+        animations::{AnimBase, AnimPoint, AnimPointCurveType},
         config::Config,
         groups::{
             layers::{
@@ -80,7 +80,10 @@ use network::network::types::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use sound::{scene_handle::SoundSceneHandle, sound::SoundManager, sound_mt::SoundMultiThreaded};
+use sound::{
+    scene_handle::SoundSceneHandle, scene_object::SceneObject, sound::SoundManager,
+    sound_mt::SoundMultiThreaded,
+};
 use ui_base::ui::UiCreator;
 
 use crate::{
@@ -88,13 +91,14 @@ use crate::{
     editor_ui::{EditorUiRender, EditorUiRenderPipe},
     event::EditorEventOverwriteMap,
     fs::read_file_editor,
+    image_store_container::{load_image_store_container, ImageStoreContainer},
     map::{
-        EditorAnimations, EditorAnimationsProps, EditorArbitraryLayerProps, EditorColorAnimation,
-        EditorCommonGroupOrLayerAttr, EditorCommonLayerOrGroupAttrInterface, EditorConfig,
-        EditorGroup, EditorGroupPhysics, EditorGroupProps, EditorGroups, EditorGroupsProps,
-        EditorImage, EditorImage2dArray, EditorLayer, EditorLayerArbitrary, EditorLayerQuad,
-        EditorLayerSound, EditorLayerTile, EditorLayerUnionRef, EditorMap,
-        EditorMapGroupsInterface, EditorMapInterface, EditorMapProps, EditorMetadata,
+        EditorActiveAnimationProps, EditorAnimations, EditorAnimationsProps,
+        EditorArbitraryLayerProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr,
+        EditorCommonLayerOrGroupAttrInterface, EditorConfig, EditorGroup, EditorGroupPhysics,
+        EditorGroupProps, EditorGroups, EditorGroupsProps, EditorImage, EditorImage2dArray,
+        EditorLayer, EditorLayerArbitrary, EditorLayerQuad, EditorLayerSound, EditorLayerTile,
+        EditorLayerUnionRef, EditorMap, EditorMapInterface, EditorMapProps, EditorMetadata,
         EditorPhysicsGroupProps, EditorPhysicsLayer, EditorPhysicsLayerProps, EditorPosAnimation,
         EditorQuadLayerProps, EditorQuadLayerPropsPropsSelection, EditorResource, EditorResources,
         EditorSound, EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
@@ -108,6 +112,7 @@ use crate::{
     notifications::{EditorNotification, EditorNotifications},
     physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
+    sound_store_container::{load_sound_store_container, SoundStoreContainer},
     tab::EditorTab,
     tile_overlays::TileLayerOverlaysDdnet,
     tools::{
@@ -182,6 +187,9 @@ pub struct Editor {
     // events triggered by ui
     ui_events: Vec<EditorUiEvent>,
 
+    quad_tile_images_container: ImageStoreContainer,
+    sounds_container: SoundStoreContainer,
+
     // editor tool
     tools: Tools,
     auto_mapper: TileLayerAutoMapper,
@@ -211,6 +219,7 @@ pub struct Editor {
     // sound
     sound_mt: SoundMultiThreaded,
     scene_handle: SoundSceneHandle,
+    container_scene: SceneObject,
 
     entities_container: EntitiesContainer,
     fake_texture_array: TextureContainer2dArray,
@@ -248,7 +257,6 @@ impl Editor {
             io.clone(),
             tp.clone(),
             default_entities,
-            false,
             None,
             None,
             "entities-container",
@@ -256,6 +264,7 @@ impl Editor {
             sound,
             &scene,
             ENTITIES_CONTAINER_PATH.as_ref(),
+            Default::default(),
         );
 
         // fake texture array texture for non textured layers
@@ -305,6 +314,23 @@ impl Editor {
         let mut res = Self {
             tabs: Default::default(),
             active_tab: "".into(),
+
+            quad_tile_images_container: load_image_store_container(
+                io.clone(),
+                tp.clone(),
+                "quad_or_tilesets",
+                graphics,
+                sound,
+                scene.clone(),
+            ),
+            sounds_container: load_sound_store_container(
+                io.clone(),
+                tp.clone(),
+                "sounds",
+                graphics,
+                sound,
+                scene.clone(),
+            ),
 
             ui: EditorUiRender::new(graphics, tp.clone(), &ui_creator),
             ui_events: Default::default(),
@@ -359,6 +385,7 @@ impl Editor {
             stream_handle: graphics.stream_handle.clone(),
 
             scene_handle: sound.scene_handle.clone(),
+            container_scene: scene,
             sound_mt: sound.get_sound_mt(),
 
             entities_container,
@@ -569,6 +596,8 @@ impl Editor {
                 last_info_update: None,
                 admin_panel: Default::default(),
                 dbg_panel: Default::default(),
+                assets_store: Default::default(),
+                assets_store_open: Default::default(),
             },
         );
         self.active_tab = name.into();
@@ -1150,6 +1179,8 @@ impl Editor {
                 last_info_update: None,
                 admin_panel: Default::default(),
                 dbg_panel: Default::default(),
+                assets_store: Default::default(),
+                assets_store_open: Default::default(),
             },
         );
         self.active_tab = name;
@@ -1302,6 +1333,8 @@ impl Editor {
                 last_info_update: None,
                 admin_panel: Default::default(),
                 dbg_panel: Default::default(),
+                assets_store: Default::default(),
+                assets_store_open: Default::default(),
             },
         );
         self.active_tab = name;
@@ -1730,11 +1763,7 @@ impl Editor {
         as_tile_flag: Option<&TextureContainer2dArray>,
         layer_rect: &mut Vec<LayerRect>,
     ) {
-        let time = if map.user.ui_values.animations_panel_open {
-            map.user.ui_values.timeline.time()
-        } else {
-            map.user.time
-        };
+        let time = map.user.render_time();
 
         map_render.render_layer(
             animations,
@@ -1904,14 +1933,10 @@ impl Editor {
                         );
                     }
                     if let MapLayerSkeleton::Sound(layer) = layer {
-                        let time = if map.user.ui_values.animations_panel_open {
-                            map.user.ui_values.timeline.time()
-                        } else {
-                            map.user.time
-                        };
+                        let time = map.user.render_time();
                         map_render.sound.handle_sound_layer(
                             &map.animations,
-                            &map.user.time,
+                            &time,
                             &RenderMap::calc_anim_time(
                                 50.try_into().unwrap(),
                                 (time.as_millis() / (1000 / 50)).max(1) as GameTickType,
@@ -1950,11 +1975,7 @@ impl Editor {
         as_tile_index: Option<&TextureContainer2dArray>,
         as_tile_flag: Option<&TextureContainer2dArray>,
     ) {
-        let time = if map.user.ui_values.animations_panel_open {
-            map.user.ui_values.timeline.time()
-        } else {
-            map.user.time
-        };
+        let time = map.user.render_time();
         map_render.render_physics_layer(
             &map.animations,
             entities_container,
@@ -1968,7 +1989,7 @@ impl Editor {
                 parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
                 forced_aspect_ratio: None,
             },
-            &map.user.time,
+            &time,
             &RenderMap::calc_anim_time(
                 map.game_time_info().ticks_per_second,
                 (time.as_millis() / (1000 / 50)).max(1) as GameTickType,
@@ -2111,25 +2132,28 @@ impl Editor {
                 Some(layer) => match layer {
                     EditorLayerUnionRef::Physics { .. } => {
                         if !matches!(self.tools.active_tool, ActiveTool::Tiles(_)) {
-                            self.tools.active_tool = ActiveTool::Tiles(ActiveToolTiles::Brush);
+                            self.tools
+                                .set_tool(ActiveTool::Tiles(ActiveToolTiles::Brush));
                         }
                     }
                     EditorLayerUnionRef::Design { layer, .. } => match layer {
                         MapLayerSkeleton::Abritrary(_) => {}
                         MapLayerSkeleton::Tile(_) => {
                             if !matches!(self.tools.active_tool, ActiveTool::Tiles(_)) {
-                                self.tools.active_tool = ActiveTool::Tiles(ActiveToolTiles::Brush);
+                                self.tools
+                                    .set_tool(ActiveTool::Tiles(ActiveToolTiles::Brush));
                             }
                         }
                         MapLayerSkeleton::Quad(_) => {
                             if !matches!(self.tools.active_tool, ActiveTool::Quads(_)) {
-                                self.tools.active_tool = ActiveTool::Quads(ActiveToolQuads::Brush);
+                                self.tools
+                                    .set_tool(ActiveTool::Quads(ActiveToolQuads::Brush));
                             }
                         }
                         MapLayerSkeleton::Sound(_) => {
                             if !matches!(self.tools.active_tool, ActiveTool::Sounds(_)) {
-                                self.tools.active_tool =
-                                    ActiveTool::Sounds(ActiveToolSounds::Brush);
+                                self.tools
+                                    .set_tool(ActiveTool::Sounds(ActiveToolSounds::Brush));
                             }
                         }
                     },
@@ -2164,7 +2188,7 @@ impl Editor {
                     &self.buffer_object_handle,
                     &self.backend_handle,
                     &self.canvas_handle,
-                    &tab.map,
+                    &mut tab.map,
                     &self.fake_texture,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
@@ -2175,7 +2199,7 @@ impl Editor {
                     ui_canvas,
                     tool,
                     &self.canvas_handle,
-                    &tab.map,
+                    &mut tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
                     &mut tab.client,
@@ -2192,25 +2216,28 @@ impl Editor {
                 Some(layer) => match layer {
                     EditorLayerUnionRef::Physics { .. } => {
                         if !matches!(self.tools.active_tool, ActiveTool::Tiles(_)) {
-                            self.tools.active_tool = ActiveTool::Tiles(ActiveToolTiles::Brush);
+                            self.tools
+                                .set_tool(ActiveTool::Tiles(ActiveToolTiles::Brush));
                         }
                     }
                     EditorLayerUnionRef::Design { layer, .. } => match layer {
                         MapLayerSkeleton::Abritrary(_) => {}
                         MapLayerSkeleton::Tile(_) => {
                             if !matches!(self.tools.active_tool, ActiveTool::Tiles(_)) {
-                                self.tools.active_tool = ActiveTool::Tiles(ActiveToolTiles::Brush);
+                                self.tools
+                                    .set_tool(ActiveTool::Tiles(ActiveToolTiles::Brush));
                             }
                         }
                         MapLayerSkeleton::Quad(_) => {
                             if !matches!(self.tools.active_tool, ActiveTool::Quads(_)) {
-                                self.tools.active_tool = ActiveTool::Quads(ActiveToolQuads::Brush);
+                                self.tools
+                                    .set_tool(ActiveTool::Quads(ActiveToolQuads::Brush));
                             }
                         }
                         MapLayerSkeleton::Sound(_) => {
                             if !matches!(self.tools.active_tool, ActiveTool::Sounds(_)) {
-                                self.tools.active_tool =
-                                    ActiveTool::Sounds(ActiveToolSounds::Brush);
+                                self.tools
+                                    .set_tool(ActiveTool::Sounds(ActiveToolSounds::Brush));
                             }
                         }
                     },
@@ -2270,7 +2297,7 @@ impl Editor {
         }));
     }
 
-    fn add_fake_anim_point(tools: &mut Tools, map: &mut EditorMap) {
+    fn add_fake_anim_point(map: &mut EditorMap) {
         Self::clone_anim_from_map(
             &mut map.animations.user.animations.color,
             &map.animations.color,
@@ -2281,79 +2308,84 @@ impl Editor {
             &map.animations.sound,
         );
 
-        let active_layer = map.groups.active_layer();
-        if let (
-            Some(EditorLayerUnionRef::Design {
-                layer: EditorLayer::Quad(layer),
-                ..
-            }),
-            ActiveTool::Quads(ActiveToolQuads::Selection),
-            QuadSelection {
-                range: Some(range),
-                anim_point_pos,
-                ..
-            },
-        ) = (
-            &active_layer,
-            &tools.active_tool,
-            &mut tools.quads.selection,
+        let anims = &map.animations.user.active_anims;
+        let anim_points = &map.animations.user.active_anim_points;
+
+        fn repl_or_insert<A: DeserializeOwned + Clone + Copy, const CHANNELS: usize>(
+            animations: &mut [AnimBaseSkeleton<(), AnimPoint<A, CHANNELS>>],
+            anim: &Option<(
+                usize,
+                AnimBase<AnimPoint<A, CHANNELS>>,
+                EditorActiveAnimationProps,
+            )>,
+            anim_point: &Option<AnimPoint<A, CHANNELS>>,
+            t: Duration,
         ) {
-            let range = range.indices_checked(layer);
-
-            if !range.is_empty() {
-                let (_, quad) = range.iter().next().map(|(i, q)| (*i, *(*q))).unwrap();
-
-                if let Some(pos_anim) = quad.pos_anim {
-                    enum ReplOrInsert {
-                        Repl(usize),
-                        Insert(usize),
-                    }
-                    let t = map.user.ui_values.timeline.time();
-                    if let Some(index) = map.animations.user.animations.pos[pos_anim]
-                        .def
-                        .points
-                        .iter()
-                        .enumerate()
-                        .find_map(|(p, point)| match point.time.cmp(&t) {
-                            std::cmp::Ordering::Less => None,
-                            std::cmp::Ordering::Equal => Some(ReplOrInsert::Repl(p)),
-                            std::cmp::Ordering::Greater => Some(ReplOrInsert::Insert(p)),
+            if let Some((anim_index, _, _)) = anim.as_ref() {
+                enum ReplOrInsert {
+                    Repl(usize),
+                    Insert(usize),
+                }
+                if let Some((mode, point)) = animations
+                    .get(*anim_index)
+                    .and_then(|anim| {
+                        anim.def.points.iter().enumerate().find_map(|(p, point)| {
+                            match point.time.cmp(&t) {
+                                std::cmp::Ordering::Less => None,
+                                std::cmp::Ordering::Equal => Some(ReplOrInsert::Repl(p)),
+                                std::cmp::Ordering::Greater => Some(ReplOrInsert::Insert(p)),
+                            }
                         })
-                    {
-                        match index {
-                            ReplOrInsert::Repl(index) => {
-                                map.animations.user.animations.pos[pos_anim].def.points[index] =
-                                    AnimPointPos {
-                                        time: t,
-                                        curve_type: AnimPointCurveType::Linear,
-                                        value: anim_point_pos.value,
-                                    };
-                            }
-                            ReplOrInsert::Insert(index) => {
-                                map.animations.user.animations.pos[pos_anim]
-                                    .def
-                                    .points
-                                    .insert(
-                                        index,
-                                        AnimPointPos {
-                                            time: t,
-                                            curve_type: AnimPointCurveType::Linear,
-                                            value: anim_point_pos.value,
-                                        },
-                                    );
-                            }
+                    })
+                    .zip(anim_point.as_ref())
+                {
+                    match mode {
+                        ReplOrInsert::Repl(index) => {
+                            animations[*anim_index].def.points[index] = AnimPoint {
+                                time: t,
+                                curve_type: AnimPointCurveType::Linear,
+                                value: point.value,
+                            };
+                        }
+                        ReplOrInsert::Insert(index) => {
+                            animations[*anim_index].def.points.insert(
+                                index,
+                                AnimPoint {
+                                    time: t,
+                                    curve_type: AnimPointCurveType::Linear,
+                                    value: point.value,
+                                },
+                            );
                         }
                     }
                 }
             }
         }
+        repl_or_insert(
+            &mut map.animations.user.animations.pos,
+            &anims.pos,
+            &anim_points.pos,
+            map.user.ui_values.timeline.time(),
+        );
+        repl_or_insert(
+            &mut map.animations.user.animations.color,
+            &anims.color,
+            &anim_points.color,
+            map.user.ui_values.timeline.time(),
+        );
+        repl_or_insert(
+            &mut map.animations.user.animations.sound,
+            &anims.sound,
+            &anim_points.sound,
+            map.user.ui_values.timeline.time(),
+        );
     }
 
     pub fn render_world(&mut self) {
         if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
             // update anim if anim panel is open and e.g. quad selection is active
             if tab.map.user.ui_values.animations_panel_open {
-                Self::add_fake_anim_point(&mut self.tools, &mut tab.map);
+                Self::add_fake_anim_point(&mut tab.map);
             }
         }
         let active_tab = self.tabs.get(&self.active_tab);
@@ -2446,6 +2478,10 @@ impl Editor {
             tools: &mut self.tools,
             auto_mapper: &mut self.auto_mapper,
             io: &self.io,
+
+            quad_tile_images_container: &mut self.quad_tile_images_container,
+            sound_images_container: &mut self.sounds_container,
+            container_scene: &self.container_scene,
         });
 
         let mut forced_result = None;

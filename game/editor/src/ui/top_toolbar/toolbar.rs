@@ -1,6 +1,6 @@
 use egui::Button;
 use map::map::groups::layers::design::{Quad, Sound, SoundShape};
-use math::math::vector::uffixed;
+use math::math::vector::{ffixed, nffixed, uffixed, vec2, vec2_base, vec4_base};
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
@@ -15,6 +15,7 @@ use crate::{
     map::{EditorLayer, EditorLayerUnionRef, EditorMapInterface},
     tools::tool::{ActiveTool, ActiveToolQuads, ActiveToolSounds, ActiveToolTiles},
     ui::user_data::UserDataWithTab,
+    utils::ui_pos_to_world_pos,
 };
 
 use super::tile_mirror::{
@@ -141,6 +142,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         });
 
     ui_state.add_blur_rect(res.response.rect, 0.0);
+
+    let ui_pos = ui.ctx().screen_rect().center();
 
     let tools = &mut pipe.user_data.tools;
     let res = match &tools.active_tool {
@@ -339,14 +342,28 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 })
                                 .clicked()
                             {
+                                let map = &pipe.user_data.editor_tab.map;
                                 if let Some(EditorLayerUnionRef::Design {
                                     group_index,
                                     layer_index,
                                     is_background,
                                     layer: EditorLayer::Quad(layer),
-                                    ..
-                                }) = pipe.user_data.editor_tab.map.active_layer()
+                                    group,
+                                }) = map.active_layer()
                                 {
+                                    let pos = ui_pos_to_world_pos(
+                                        pipe.user_data.canvas_handle,
+                                        &ui.ctx().screen_rect(),
+                                        map.groups.user.zoom,
+                                        vec2::new(ui_pos.x, ui_pos.y),
+                                        map.groups.user.pos.x,
+                                        map.groups.user.pos.y,
+                                        group.attr.offset.x.to_num(),
+                                        group.attr.offset.y.to_num(),
+                                        group.attr.parallax.x.to_num(),
+                                        group.attr.parallax.y.to_num(),
+                                        map.groups.user.parallax_aware_zoom,
+                                    );
                                     let index = layer.layer.quads.len();
                                     pipe.user_data.editor_tab.client.execute(
                                         EditorAction::QuadLayerAddQuads(ActQuadLayerAddQuads {
@@ -355,7 +372,75 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 group_index,
                                                 layer_index,
                                                 index,
-                                                quads: vec![Quad::default()],
+                                                quads: vec![Quad {
+                                                    points: [
+                                                        vec2_base::new(
+                                                            ffixed::from_num(pos.x - 10.0),
+                                                            ffixed::from_num(pos.y - 10.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(pos.x + 10.0),
+                                                            ffixed::from_num(pos.y - 10.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(pos.x - 10.0),
+                                                            ffixed::from_num(pos.y + 10.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(pos.x + 10.0),
+                                                            ffixed::from_num(pos.y + 10.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(pos.x),
+                                                            ffixed::from_num(pos.y),
+                                                        ),
+                                                    ],
+                                                    colors: [
+                                                        vec4_base::new(
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                        ),
+                                                        vec4_base::new(
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                        ),
+                                                        vec4_base::new(
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                        ),
+                                                        vec4_base::new(
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                            nffixed::from_num(1.0),
+                                                        ),
+                                                    ],
+                                                    tex_coords: [
+                                                        vec2_base::new(
+                                                            ffixed::from_num(0.0),
+                                                            ffixed::from_num(0.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(1.0),
+                                                            ffixed::from_num(0.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(0.0),
+                                                            ffixed::from_num(1.0),
+                                                        ),
+                                                        vec2_base::new(
+                                                            ffixed::from_num(1.0),
+                                                            ffixed::from_num(1.0),
+                                                        ),
+                                                    ],
+                                                    ..Default::default()
+                                                }],
                                             },
                                         }),
                                         Some(&format!("quad-add design {}", layer_index)),
@@ -388,14 +473,28 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 })
                                 .clicked()
                             {
+                                let map = &pipe.user_data.editor_tab.map;
                                 if let Some(EditorLayerUnionRef::Design {
                                     group_index,
                                     layer_index,
                                     is_background,
                                     layer: EditorLayer::Sound(layer),
-                                    ..
-                                }) = pipe.user_data.editor_tab.map.active_layer()
+                                    group,
+                                }) = map.active_layer()
                                 {
+                                    let pos = ui_pos_to_world_pos(
+                                        pipe.user_data.canvas_handle,
+                                        &ui.ctx().screen_rect(),
+                                        map.groups.user.zoom,
+                                        vec2::new(ui_pos.x, ui_pos.y),
+                                        map.groups.user.pos.x,
+                                        map.groups.user.pos.y,
+                                        group.attr.offset.x.to_num(),
+                                        group.attr.offset.y.to_num(),
+                                        group.attr.parallax.x.to_num(),
+                                        group.attr.parallax.y.to_num(),
+                                        map.groups.user.parallax_aware_zoom,
+                                    );
                                     let index = layer.layer.sounds.len();
                                     pipe.user_data.editor_tab.client.execute(
                                         EditorAction::SoundLayerAddSounds(ActSoundLayerAddSounds {
@@ -405,7 +504,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 layer_index,
                                                 index,
                                                 sounds: vec![Sound {
-                                                    pos: Default::default(),
+                                                    pos: vec2_base::new(
+                                                        ffixed::from_num(pos.x),
+                                                        ffixed::from_num(pos.y),
+                                                    ),
                                                     looped: true,
                                                     panning: true,
                                                     time_delay: Default::default(),

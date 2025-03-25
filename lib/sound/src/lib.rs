@@ -2,7 +2,6 @@ pub mod backend_handle;
 pub mod backend_types;
 pub mod commands;
 pub mod frame_fetcher_plugin;
-pub mod ogg_vorbis;
 pub mod scene_handle;
 pub mod scene_object;
 pub mod scene_object_shared;

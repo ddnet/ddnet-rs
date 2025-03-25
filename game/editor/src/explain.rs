@@ -230,3 +230,15 @@ of the third most bottom expression and so on.  \n\
 If an expression is _negated_, then this negation operator is applied on the \
 expression itself and not on expressions below or above.  \n\
 ";
+
+pub const SERVER_COMMANDS_CONFIG_VAR: &str = "\
+# Server commands & config variables\
+\n\
+First things first, the difference between config variables and \
+commands is very blurry and depends on the game mod.  \n\
+In ddrace usually config variables are the same as commands.  \n\
+Config variables have the advantage that they can be parsed \
+before the game is created, which allows to even modify \
+config that changes the type of game (e.g. ctf vs dm and similar).  \n\
+If unsure, prefer server commands.\
+";

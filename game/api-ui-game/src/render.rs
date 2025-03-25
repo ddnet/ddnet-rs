@@ -1,5 +1,6 @@
 use api::{GRAPHICS, IO, RUNTIME_THREAD_POOL, SOUND};
 use client_containers::{
+    container::ContainerLoadOptions,
     ctf::{CtfContainer, CTF_CONTAINER_PATH},
     emoticons::{EmoticonsContainer, EMOTICONS_CONTAINER_PATH},
     entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
@@ -23,7 +24,6 @@ pub fn create_skin_container() -> SkinContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_skin,
-        true,
         None,
         None,
         "skin-container",
@@ -31,6 +31,10 @@ pub fn create_skin_container() -> SkinContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         SKIN_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -45,7 +49,6 @@ pub fn create_emoticons_container() -> EmoticonsContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_emoticons,
-        true,
         None,
         None,
         "emoticons-container",
@@ -53,6 +56,10 @@ pub fn create_emoticons_container() -> EmoticonsContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         EMOTICONS_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -65,7 +72,6 @@ pub fn create_weapon_container() -> WeaponContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_weapon,
-        true,
         None,
         None,
         "weapon-container",
@@ -73,6 +79,10 @@ pub fn create_weapon_container() -> WeaponContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         WEAPON_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -85,7 +95,6 @@ pub fn create_flags_container() -> FlagsContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_flags,
-        true,
         None,
         None,
         "flags-container",
@@ -93,6 +102,10 @@ pub fn create_flags_container() -> FlagsContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         FLAGS_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -105,7 +118,6 @@ pub fn create_hook_container() -> HookContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_hooks,
-        true,
         None,
         None,
         "hooks-container",
@@ -113,6 +125,10 @@ pub fn create_hook_container() -> HookContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -127,7 +143,6 @@ pub fn create_entities_container() -> EntitiesContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "entities-container",
@@ -135,6 +150,10 @@ pub fn create_entities_container() -> EntitiesContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -147,7 +166,6 @@ pub fn create_freeze_container() -> FreezeContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "freeze-container",
@@ -155,6 +173,10 @@ pub fn create_freeze_container() -> FreezeContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -169,7 +191,6 @@ pub fn create_particles_container() -> ParticlesContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "particles-container",
@@ -177,6 +198,10 @@ pub fn create_particles_container() -> ParticlesContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -189,7 +214,6 @@ pub fn create_ninja_container() -> NinjaContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "ninja-container",
@@ -197,6 +221,10 @@ pub fn create_ninja_container() -> NinjaContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -209,7 +237,6 @@ pub fn create_game_container() -> GameContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "game-container",
@@ -217,6 +244,10 @@ pub fn create_game_container() -> GameContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -229,7 +260,6 @@ pub fn create_hud_container() -> HudContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "hud-container",
@@ -237,6 +267,10 @@ pub fn create_hud_container() -> HudContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -249,7 +283,6 @@ pub fn create_ctf_container() -> CtfContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "ctf-container",
@@ -257,5 +290,9 @@ pub fn create_ctf_container() -> CtfContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }

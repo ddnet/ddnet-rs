@@ -1,4 +1,5 @@
 use api::{GRAPHICS, IO, RUNTIME_THREAD_POOL, SOUND};
+use client_containers::container::ContainerLoadOptions;
 use client_ui::main_menu::theme_container::{ThemeContainer, THEME_CONTAINER_PATH};
 
 pub mod page;
@@ -13,7 +14,6 @@ pub fn create_theme_container() -> ThemeContainer {
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         "theme-container",
@@ -21,5 +21,9 @@ pub fn create_theme_container() -> ThemeContainer {
         &SOUND.with(|g| (*g).clone()),
         &scene,
         THEME_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::BTreeMap, time::Duration};
 
 use client_render_base::map::render_tools::{CanvasType, RenderTools};
 use graphics::handles::{
@@ -12,7 +12,7 @@ use map::map::groups::layers::design::Quad;
 use math::math::vector::{ffixed, fvec2, nffixed, nfvec4, ubvec4, vec2};
 
 use crate::{
-    map::{EditorLayer, EditorLayerUnionRef, EditorMap},
+    map::{EditorLayer, EditorLayerQuad, EditorLayerUnionRef, EditorMap},
     tools::shared::{in_radius, rotate},
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
@@ -21,6 +21,39 @@ use crate::{
 pub enum QuadPointerDownPoint {
     Center,
     Corner(usize),
+}
+
+#[derive(Debug, Hiarc)]
+pub struct QuadSelectionQuads {
+    pub quads: BTreeMap<usize, Quad>,
+
+    /// selection x offset
+    pub x: f32,
+    /// selection y offset
+    pub y: f32,
+    /// width of the selection
+    pub w: f32,
+    /// height of the selection
+    pub h: f32,
+
+    pub point: Option<QuadPointerDownPoint>,
+}
+
+impl QuadSelectionQuads {
+    pub fn indices_checked(&mut self, layer: &EditorLayerQuad) -> BTreeMap<usize, &mut Quad> {
+        while self
+            .quads
+            .last_key_value()
+            .is_some_and(|(index, _)| *index >= layer.layer.quads.len())
+        {
+            self.quads.pop_last();
+        }
+
+        self.quads
+            .iter_mut()
+            .map(|(index, quad)| (*index, quad))
+            .collect()
+    }
 }
 
 pub fn in_box(pos: &fvec2, x0: f32, y0: f32, x1: f32, y1: f32) -> bool {
@@ -108,7 +141,7 @@ pub fn render_quad_points(
             map.groups.user.parallax_aware_zoom,
         );
         for quad in &layer.layer.quads {
-            let points = get_quad_points_animated(quad, map, map.user.time);
+            let points = get_quad_points_animated(quad, map, map.user.render_time());
 
             let mut state = State::new();
             RenderTools::map_canvas_of_group(

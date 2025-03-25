@@ -184,6 +184,7 @@ pub async fn legacy_to_new_from_buf_async(
                 res.ty = "ogg".into();
 
                 let hash = generate_hash_for(&transcoded_ogg);
+                res.buf = transcoded_ogg;
                 hashes.lock().unwrap().insert(old_hash, hash);
                 anyhow::Ok((hash, res))
             })
@@ -197,6 +198,7 @@ pub async fn legacy_to_new_from_buf_async(
             .for_each(|res| {
                 // update hash after conversion
                 res.meta.blake3_hash = *hashes.lock().unwrap().get(&res.meta.blake3_hash).unwrap();
+                res.meta.ty = "ogg".try_into().unwrap();
             });
 
         anyhow::Ok(())

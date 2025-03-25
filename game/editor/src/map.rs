@@ -21,6 +21,10 @@ use graphics::handles::texture::texture::{TextureContainer, TextureContainer2dAr
 use hiarc::Hiarc;
 use map::{
     map::{
+        animations::{
+            AnimPointColor, AnimPointPos, AnimPointSound, ColorAnimation, PosAnimation,
+            SoundAnimation,
+        },
         command_value::CommandValue,
         groups::{
             layers::{
@@ -283,18 +287,7 @@ pub type EditorResources = MapResourcesSkeleton<
 >;
 
 #[derive(Debug, Hiarc, Default, Clone)]
-pub struct EditorAnimationsProps {
-    pub selected_pos_anim: Option<usize>,
-    pub selected_color_anim: Option<usize>,
-    pub selected_sound_anim: Option<usize>,
-
-    /// these animations are for if the animations panel is open and
-    /// fake anim points have to be inserted
-    pub animations: AnimationsSkeleton<(), ()>,
-}
-
-#[derive(Debug, Hiarc, Default, Clone)]
-pub struct EditorAnimationProps {
+pub struct EditorActiveAnimationProps {
     // timeline graph
     pub selected_points: HashSet<usize>,
     pub hovered_point: Option<usize>,
@@ -304,6 +297,37 @@ pub struct EditorAnimationProps {
     pub selected_point_channel_beziers: HashMap<usize, HashSet<(usize, bool)>>,
     pub hovered_point_channel_beziers: HashMap<usize, HashSet<(usize, bool)>>,
 }
+
+#[derive(Debug, Hiarc, Default, Clone)]
+pub struct EditorActiveAnim {
+    pub pos: Option<(usize, PosAnimation, EditorActiveAnimationProps)>,
+    pub color: Option<(usize, ColorAnimation, EditorActiveAnimationProps)>,
+    pub sound: Option<(usize, SoundAnimation, EditorActiveAnimationProps)>,
+}
+
+#[derive(Debug, Hiarc, Default, Clone)]
+pub struct EditorActiveAnimPoint {
+    pub pos: Option<AnimPointPos>,
+    pub color: Option<AnimPointColor>,
+    pub sound: Option<AnimPointSound>,
+}
+
+#[derive(Debug, Hiarc, Default, Clone)]
+pub struct EditorAnimationsProps {
+    pub selected_pos_anim: Option<usize>,
+    pub selected_color_anim: Option<usize>,
+    pub selected_sound_anim: Option<usize>,
+
+    /// these animations are for if the animations panel is open and
+    /// fake anim points have to be inserted
+    pub animations: AnimationsSkeleton<(), ()>,
+
+    // current selected anim points to fake
+    pub active_anims: EditorActiveAnim,
+    pub active_anim_points: EditorActiveAnimPoint,
+}
+
+pub type EditorAnimationProps = ();
 
 pub type EditorAnimations = AnimationsSkeleton<EditorAnimationsProps, EditorAnimationProps>;
 pub type EditorPosAnimation = PosAnimationSkeleton<EditorAnimationProps>;
@@ -621,6 +645,17 @@ pub struct EditorMapProps {
     pub time: Duration,
     // the scale how much the time should be progress, 0 = paused, 1 = normal speed etc.
     pub time_scale: u32,
+}
+
+impl EditorMapProps {
+    /// If animation panel is open, it uses that time, otherwise the editor time.
+    pub fn render_time(&self) -> Duration {
+        if self.ui_values.animations_panel_open {
+            self.ui_values.timeline.time()
+        } else {
+            self.time
+        }
+    }
 }
 
 pub type EditorMap = MapSkeleton<

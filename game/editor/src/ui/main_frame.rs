@@ -31,6 +31,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             graphics_mt: pipe.user_data.graphics_mt,
             buffer_object_handle: pipe.user_data.buffer_object_handle,
             backend_handle: pipe.user_data.backend_handle,
+            quad_tile_images_container: pipe.user_data.quad_tile_images_container,
+            sound_images_container: pipe.user_data.sound_images_container,
+            container_scene: pipe.user_data.container_scene,
         };
         let mut pipe = UiRenderPipe {
             cur_time: pipe.cur_time,
@@ -48,6 +51,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         super::group_and_layer::sound_props::render(ui, &mut pipe, ui_state);
 
         super::chat_panel::panel::render(ui, &mut pipe, ui_state);
+        super::assets_store_panel::panel::render(ui, &mut pipe, ui_state);
 
         super::tool_overlays::tile_brush::render(ui, &mut pipe);
 

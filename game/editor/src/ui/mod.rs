@@ -1,4 +1,5 @@
 pub mod animation_panel;
+pub mod assets_store_panel;
 pub mod auto_mapper;
 pub mod auto_saver;
 pub mod bottom_panel;

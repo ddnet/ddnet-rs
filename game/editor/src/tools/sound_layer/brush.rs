@@ -37,7 +37,7 @@ pub struct SoundSelection {
     pub sound_index: usize,
     pub sound: Sound,
     pub point: SoundPointerDownPoint,
-    pub cursor_in_world_pos: Option<vec2>,
+    pub cursor_in_world_pos: vec2,
 }
 
 #[derive(Debug, Hiarc)]
@@ -62,8 +62,11 @@ pub struct SoundBrush {
 
     /// this is the last sound selected (clicked on the corner selectors), this can be used
     /// for the animation to know the current sound
+    pub last_popup: Option<SoundSelection>,
+    /// Last moving of a sound
+    pub last_translation: Option<SoundSelection>,
+    /// The sound point last selected, moved etc.
     pub last_selection: Option<SoundSelection>,
-    pub last_active: Option<SoundSelection>,
 
     pub pointer_down_state: SoundPointerDownState,
 
@@ -80,8 +83,9 @@ impl SoundBrush {
     pub fn new() -> Self {
         Self {
             brush: Default::default(),
+            last_popup: None,
+            last_translation: None,
             last_selection: None,
-            last_active: None,
             pointer_down_state: SoundPointerDownState::None,
 
             parallax_aware_brush: false,
@@ -92,7 +96,7 @@ impl SoundBrush {
         &mut self,
         ui_canvas: &UiCanvasSize,
         canvas_handle: &GraphicsCanvasHandle,
-        map: &EditorMap,
+        map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         client: &mut EditorClient,
@@ -209,9 +213,9 @@ impl SoundBrush {
                         let down_point = SoundPointerDownPoint::Center;
                         self.pointer_down_state = SoundPointerDownState::Point(down_point);
                         *if latest_pointer.primary_pressed() {
-                            &mut self.last_active
+                            &mut self.last_translation
                         } else {
-                            &mut self.last_selection
+                            &mut self.last_popup
                         } = Some(SoundSelection {
                             is_background,
                             group: group_index,
@@ -219,7 +223,16 @@ impl SoundBrush {
                             sound_index: s,
                             sound: *sound,
                             point: down_point,
-                            cursor_in_world_pos: None,
+                            cursor_in_world_pos: vec2::new(x1, y1),
+                        });
+                        self.last_selection = Some(SoundSelection {
+                            is_background,
+                            group: group_index,
+                            layer: layer_index,
+                            sound_index: s,
+                            sound: *sound,
+                            point: down_point,
+                            cursor_in_world_pos: vec2::new(x1, y1),
                         });
 
                         break;
@@ -229,7 +242,7 @@ impl SoundBrush {
             // else check if the pointer is down now
             if !clicked_sound_point
                 && latest_pointer.primary_pressed()
-                && self.last_active.is_none()
+                && self.last_translation.is_none()
             {
                 let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
                 let pos = ui_pos_to_world_pos(
@@ -248,24 +261,40 @@ impl SoundBrush {
                 self.pointer_down_state = SoundPointerDownState::Selection(pos);
             }
             if !clicked_sound_point && latest_pointer.primary_pressed() {
-                self.last_active = None;
+                self.last_translation = None;
+                self.last_selection = None;
             }
-            if latest_pointer.primary_down() && self.last_active.is_some() {
-                let last_active = self.last_active.as_mut().unwrap();
-                if let Some(edit_sound) = layer.layer.sounds.get(last_active.sound_index) {
+            if latest_pointer.primary_down() && self.last_translation.is_some() {
+                let last_active = self.last_translation.as_mut().unwrap();
+                if let Some(edit_sound) = layer.layer.sounds.get(last_active.sound_index).copied() {
                     let sound = &mut last_active.sound;
 
-                    // handle position
-                    sound.pos.x = ffixed::from_num(x1);
-                    sound.pos.y = ffixed::from_num(y1);
+                    let pos_anim = edit_sound.pos_anim;
+                    let alter_anim_point =
+                        map.user.ui_values.animations_panel_open && pos_anim.is_some();
 
-                    if *sound != *edit_sound {
+                    let cursor_pos = last_active.cursor_in_world_pos;
+                    // handle position
+                    let diff_x = ffixed::from_num(x1 - cursor_pos.x);
+                    let diff_y = ffixed::from_num(y1 - cursor_pos.y);
+
+                    if alter_anim_point {
+                        if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
+                            pos.value.x += diff_x;
+                            pos.value.y += diff_y;
+                        }
+                    } else {
+                        sound.pos.x = diff_x;
+                        sound.pos.y = diff_y;
+                    }
+
+                    if *sound != edit_sound {
                         client.execute(
                             EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
                                 is_background,
                                 group_index,
                                 layer_index,
-                                old_attr: *edit_sound,
+                                old_attr: edit_sound,
                                 new_attr: *sound,
 
                                 index: last_active.sound_index,
@@ -277,7 +306,7 @@ impl SoundBrush {
                     }
                 }
 
-                last_active.cursor_in_world_pos = Some(vec2::new(x1, y1));
+                last_active.cursor_in_world_pos = vec2::new(x1, y1);
             }
         }
     }
@@ -478,7 +507,7 @@ impl SoundBrush {
         RenderMap::render_sounds(
             stream_handle,
             &map.animations,
-            &map.user.time,
+            &map.user.render_time(),
             &map.animation_time(),
             brush.sounds.iter(),
             state,
@@ -503,7 +532,7 @@ impl SoundBrush {
         &mut self,
         ui_canvas: &UiCanvasSize,
         canvas_handle: &GraphicsCanvasHandle,
-        map: &EditorMap,
+        map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         client: &mut EditorClient,

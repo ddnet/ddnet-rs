@@ -311,15 +311,11 @@ impl SoundBackendDriverInterface for SoundBackendKira {
                     },
                     SoundCommandState::Swap => {
                         // check which scenes were inactive and pause those
-                        while let Some((&scene_id, scene)) = self.scenes.front() {
+                        for scene in self.scenes.values_mut() {
                             if scene.is_onair()
                                 && scene.last_active_sound_frame < self.cur_sound_frame
                             {
-                                if let Some(scene) = self.scenes.get_mut(&scene_id) {
-                                    if !scene.pause()? {
-                                        break;
-                                    }
-                                }
+                                scene.pause()?;
                             } else {
                                 break;
                             }

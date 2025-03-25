@@ -49,3 +49,16 @@ pub fn verify_ogg_vorbis(file: &[u8]) -> anyhow::Result<()> {
         Err(anyhow!("Vorbis verify check failed."))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::verify_ogg_vorbis;
+
+    #[test]
+    fn test_verify() {
+        verify_ogg_vorbis(include_bytes!(
+            "../../../../data/skins/default/audio/spawn_001.ogg"
+        ))
+        .unwrap();
+    }
+}

@@ -1,9 +1,10 @@
-use egui::{text::LayoutJob, Button, Color32};
+use egui::{text::LayoutJob, Button, Color32, DragValue};
 use egui_extras::Size;
 use math::math::vector::vec2;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
+    explain::SERVER_COMMANDS_CONFIG_VAR,
     ui::user_data::{EditorUiEvent, UserDataWithTab},
     utils::ui_pos_to_world_pos,
 };
@@ -42,6 +43,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         .add(Button::new("Server commands").selected(
                                             editor_tab.map.user.ui_values.server_commands_open,
                                         ))
+                                        .on_hover_ui(|ui| {
+                                            let mut cache =
+                                                egui_commonmark::CommonMarkCache::default();
+                                            egui_commonmark::CommonMarkViewer::new().show(
+                                                ui,
+                                                &mut cache,
+                                                SERVER_COMMANDS_CONFIG_VAR,
+                                            );
+                                        })
                                         .clicked()
                                     {
                                         editor_tab.map.user.ui_values.server_commands_open =
@@ -57,6 +67,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                     .server_config_variables_open,
                                             ),
                                         )
+                                        .on_hover_ui(|ui| {
+                                            let mut cache =
+                                                egui_commonmark::CommonMarkCache::default();
+                                            egui_commonmark::CommonMarkViewer::new().show(
+                                                ui,
+                                                &mut cache,
+                                                SERVER_COMMANDS_CONFIG_VAR,
+                                            );
+                                        })
                                         .clicked()
                                     {
                                         editor_tab
@@ -78,6 +97,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         editor_tab.map.groups.user.parallax_aware_zoom =
                                             !editor_tab.map.groups.user.parallax_aware_zoom;
                                     }
+                                    ui.menu_button("\u{f017}", |ui| {
+                                        ui.label("Control over how time in the editor advances.");
+                                        ui.label("Affects for example the animations.");
+                                        ui.add_space(10.0);
+                                        ui.label("Time multiplier:");
+                                        ui.add(DragValue::new(&mut editor_tab.map.user.time_scale));
+                                    })
                                 });
                             });
                             strip.cell(|ui| {

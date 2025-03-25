@@ -1,19 +1,57 @@
 use std::{
+    borrow::Borrow,
     collections::HashMap,
+    hash::Hash,
     path::Path,
     str::FromStr,
+    sync::Arc,
     task::{Context, Poll},
 };
 
-use assets_base::AssetsIndex;
+use assets_base::{AssetIndexEntry, AssetsIndex};
 use axum::http::{Request, Uri};
 use base::hash::fmt_hash;
+use parking_lot::RwLock;
 use tower_http::services::ServeDir;
 use tower_service::Service;
 
 #[derive(Debug, Clone)]
+pub struct Index {
+    cache: HashMap<String, String>,
+    index: AssetsIndex,
+}
+
+impl Index {
+    pub fn get_from_full_path<Q>(&self, k: &Q) -> Option<&String>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
+        self.cache.get(k)
+    }
+
+    pub fn insert(&mut self, k: String, v: AssetIndexEntry) {
+        let full_path = format!("{}_{}.{}", k, fmt_hash(&v.hash), v.ty);
+        let cache_path = format!("{}.{}", k, v.ty);
+        self.index.insert(k.clone(), v);
+        self.cache.insert(full_path, cache_path);
+    }
+
+    pub fn remove(&mut self, k: &String) {
+        if let Some(v) = self.index.remove(k) {
+            let full_path = format!("{}_{}.{}", k, fmt_hash(&v.hash), v.ty);
+            self.cache.remove(&full_path);
+        }
+    }
+
+    pub fn to_json(&self) -> Vec<u8> {
+        serde_json::to_vec(&self.index).unwrap()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct IndexDir {
-    index: HashMap<String, String>,
+    pub(crate) index: Arc<RwLock<Index>>,
     serve: ServeDir,
 }
 
@@ -23,10 +61,10 @@ impl IndexDir {
         P: AsRef<Path>,
     {
         let index = tokio::fs::read(path.as_ref().join("index.json")).await?;
-        let index: AssetsIndex = serde_json::from_slice(&index)?;
+        let assets_index: AssetsIndex = serde_json::from_slice(&index)?;
 
-        let index = index
-            .into_iter()
+        let index = assets_index
+            .iter()
             .map(|(name, entry)| {
                 let full_path = format!("{name}_{}.{}", fmt_hash(&entry.hash), entry.ty);
                 (full_path, format!("{name}.{}", entry.ty))
@@ -34,7 +72,10 @@ impl IndexDir {
             .collect();
 
         Ok(Self {
-            index,
+            index: Arc::new(RwLock::new(Index {
+                cache: index,
+                index: assets_index,
+            })),
             serve: ServeDir::new(path),
         })
     }
@@ -83,8 +124,9 @@ impl<ReqBody: 'static + Send> Service<Request<ReqBody>> for IndexDir {
             })
             .and_then(|(name, parent)| {
                 self.index
-                    .get(name)
-                    .map(|name| urlencoding::encode(name))
+                    .read()
+                    .get_from_full_path(name)
+                    .map(|name| urlencoding::encode(name).to_string())
                     .zip(Some(parent))
             }) {
             if !parent.is_empty() {
