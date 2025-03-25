@@ -22,7 +22,7 @@ pub struct Index {
 }
 
 impl Index {
-    pub fn get<Q>(&self, k: &Q) -> Option<&String>
+    pub fn get_from_full_path<Q>(&self, k: &Q) -> Option<&String>
     where
         String: Borrow<Q>,
         Q: ?Sized + Hash + Eq,
@@ -32,17 +32,16 @@ impl Index {
 
     pub fn insert(&mut self, k: String, v: AssetIndexEntry) {
         let full_path = format!("{}_{}.{}", k, fmt_hash(&v.hash), v.ty);
+        let cache_path = format!("{}.{}", k, v.ty);
         self.index.insert(k.clone(), v);
-        self.cache.insert(k, full_path);
+        self.cache.insert(full_path, cache_path);
     }
 
-    pub fn remove<Q>(&mut self, k: &Q)
-    where
-        String: Borrow<Q>,
-        Q: ?Sized + Hash + Eq,
-    {
-        self.index.remove(k);
-        self.cache.remove(k);
+    pub fn remove(&mut self, k: &String) {
+        if let Some(v) = self.index.remove(k) {
+            let full_path = format!("{}_{}.{}", k, fmt_hash(&v.hash), v.ty);
+            self.cache.remove(&full_path);
+        }
     }
 
     pub fn to_json(&self) -> Vec<u8> {
@@ -126,7 +125,7 @@ impl<ReqBody: 'static + Send> Service<Request<ReqBody>> for IndexDir {
             .and_then(|(name, parent)| {
                 self.index
                     .read()
-                    .get(name)
+                    .get_from_full_path(name)
                     .map(|name| urlencoding::encode(name).to_string())
                     .zip(Some(parent))
             }) {

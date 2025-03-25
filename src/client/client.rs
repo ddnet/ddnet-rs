@@ -22,6 +22,7 @@ use client_console::console::{
     remote_console::RemoteConsoleEvent,
 };
 use client_containers::{
+    container::ContainerLoadOptions,
     entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
     skins::{SkinContainer, SKIN_CONTAINER_PATH},
 };
@@ -2592,7 +2593,6 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             io.clone(),
             thread_pool.clone(),
             default_entities,
-            true,
             None,
             None,
             "entities-container",
@@ -2600,13 +2600,16 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             &sound,
             &scene,
             ENTITIES_CONTAINER_PATH.as_ref(),
+            ContainerLoadOptions {
+                assume_unused: true,
+                ..Default::default()
+            },
         );
         let default_skin = SkinContainer::load_default(&io, SKIN_CONTAINER_PATH.as_ref());
         let skin_container = SkinContainer::new(
             io.clone(),
             thread_pool.clone(),
             default_skin,
-            true,
             Some(HTTP_RESOURCE_URL.try_into().unwrap()),
             None,
             "skin-container",
@@ -2614,6 +2617,10 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             &sound,
             &scene,
             SKIN_CONTAINER_PATH.as_ref(),
+            ContainerLoadOptions {
+                assume_unused: true,
+                ..Default::default()
+            },
         );
         let render_tee = RenderTee::new(&graphics);
 

@@ -16,10 +16,13 @@ use graphics::{
 };
 use math::math::vector::vec2;
 use serde::{Deserialize, Serialize};
+use sound::scene_object::SceneObject;
 
 use crate::{
     event::ActionDbg,
+    image_store_container::ImageStoreContainer,
     notifications::EditorNotifications,
+    sound_store_container::SoundStoreContainer,
     tab::{EditorAdminPanelStateAuthed, EditorTab},
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     utils::UiCanvasSize,
@@ -285,6 +288,10 @@ pub struct UserData<'a> {
     pub graphics_mt: &'a GraphicsMultiThreaded,
     pub buffer_object_handle: &'a GraphicsBufferObjectHandle,
     pub backend_handle: &'a GraphicsBackendHandle,
+
+    pub quad_tile_images_container: &'a mut ImageStoreContainer,
+    pub sound_images_container: &'a mut SoundStoreContainer,
+    pub container_scene: &'a SceneObject,
 }
 
 pub struct UserDataWithTab<'a> {
@@ -303,4 +310,8 @@ pub struct UserDataWithTab<'a> {
     pub graphics_mt: &'a GraphicsMultiThreaded,
     pub buffer_object_handle: &'a GraphicsBufferObjectHandle,
     pub backend_handle: &'a GraphicsBackendHandle,
+
+    pub quad_tile_images_container: &'a mut ImageStoreContainer,
+    pub sound_images_container: &'a mut SoundStoreContainer,
+    pub container_scene: &'a SceneObject,
 }

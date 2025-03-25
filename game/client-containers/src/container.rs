@@ -1,7 +1,7 @@
 use assets_base::{
     loader::read_tar,
     verify::{ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
-    AssetsIndex,
+    AssetsIndex, AssetsMeta,
 };
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use std::{
@@ -36,7 +36,7 @@ use image_utils::{
     png::{is_png_image_valid, load_png_image_as_rgba, PngResultPersistent, PngValidatorOptions},
     utils::texture_2d_to_3d,
 };
-use log::info;
+use log::{debug, info};
 use sound::{
     scene_object::SceneObject, sound::SoundManager, sound_handle::SoundObjectHandle,
     sound_mt::SoundMultiThreaded, sound_mt_types::SoundBackendMemory,
@@ -118,6 +118,12 @@ impl Drop for DefaultItemNotifyOnDrop {
     }
 }
 
+#[derive(Debug, Hiarc, Default)]
+pub struct ContainerLoadOptions {
+    pub assume_unused: bool,
+    pub allows_single_audio_or_txt_files: bool,
+}
+
 #[derive(Debug, Hiarc)]
 struct DefaultItem<L> {
     // notifier must be before the task
@@ -189,15 +195,28 @@ pub struct Container<A, L> {
     /// the [Self::base_path].
     downloaded_path: PathBuf,
 
+    /// Whether single audio or txt files can trigger a load
+    /// of a container item. Usually audio or txt only
+    /// makes no sense.
+    allows_single_audio_or_txt_files: bool,
+
     /// An index, downloaded as JSON, that contains file paths + hashes
     /// over all downloadable files of the http download
     /// server. This is downloaded once and must exist
     /// in order to download further assets from the server
     resource_http_download_index: Arc<tokio::sync::Mutex<Option<Arc<anyhow::Result<AssetsIndex>>>>>,
-    /// Non async version
+    /// Non async version of [`Self::resource_http_download_index`]
     cached_http_download_index: Option<Arc<anyhow::Result<AssetsIndex>>>,
     // double option is intended here
     http_download_index_task: Option<Option<IoRuntimeTask<()>>>,
+
+    /// An meta data record, downloaded as JSON, that contains meta data about
+    /// downloadable items.
+    resource_http_download_meta: Arc<tokio::sync::Mutex<Option<Arc<anyhow::Result<AssetsMeta>>>>>,
+    /// Non async version of [`Self::resource_http_download_meta`]
+    cached_http_download_meta: Option<Arc<anyhow::Result<AssetsMeta>>>,
+    // double option is intended here
+    http_download_meta_task: Option<Option<IoRuntimeTask<()>>>,
 
     /// A list of entries the client can load without hashes
     /// usually it makes sense to combine it with `resource_http_download_index`
@@ -252,7 +271,6 @@ where
         io: Io,
         runtime_thread_pool: Arc<rayon::ThreadPool>,
         default_item: IoRuntimeTask<ContainerLoadedItem>,
-        assume_unused: bool,
         resource_http_download_url: Option<Url>,
         resource_server_download_url: Option<Url>,
         container_name: &str,
@@ -260,6 +278,7 @@ where
         sound: &SoundManager,
         sound_scene: &SceneObject,
         base_path: &Path,
+        options: ContainerLoadOptions,
     ) -> Self {
         let items = LinkedHashMap::new();
         Self {
@@ -271,7 +290,7 @@ where
             default_item: Some({
                 let runtime_thread_pool = runtime_thread_pool.clone();
                 let mut graphics_mt = graphics.get_graphics_mt();
-                let notifier: Option<Arc<tokio::sync::Notify>> = if assume_unused {
+                let notifier: Option<Arc<tokio::sync::Notify>> = if options.assume_unused {
                     graphics_mt.do_lazy_allocs();
                     Some(Default::default())
                 } else {
@@ -310,6 +329,8 @@ where
             default_loaded_item: Arc::new(ContainerLoadedItemDir::new(Default::default())),
             default_key: Rc::new("default".try_into().unwrap()),
 
+            allows_single_audio_or_txt_files: options.allows_single_audio_or_txt_files,
+
             io,
             graphics_mt: graphics.get_graphics_mt(),
             texture_handle: graphics.texture_handle.clone(),
@@ -328,6 +349,10 @@ where
             cached_http_download_index: Default::default(),
             http_download_index_task: None,
             resource_dir_index: Either::Right(None),
+
+            resource_http_download_meta: Default::default(),
+            cached_http_download_meta: Default::default(),
+            http_download_meta_task: None,
 
             last_update_time: None,
             last_update_interval_time: None,
@@ -506,6 +531,37 @@ where
         }
     }
 
+    async fn try_load_container_http_meta(
+        container_name: &str,
+        http: &Arc<dyn HttpClientInterface>,
+        http_meta: &mut Option<Arc<anyhow::Result<AssetsMeta>>>,
+        base_path: &Path,
+        resource_http_download_url: &Url,
+    ) {
+        // try to download meta index
+        if http_meta.is_none() {
+            if let Some(download_url) = relative_path_to_url(&base_path.join("meta.json"))
+                .ok()
+                .and_then(|name| resource_http_download_url.join(&name).ok())
+            {
+                let r = http
+                    .download_text(download_url)
+                    .await
+                    .map_err(|err| anyhow!(err))
+                    .and_then(|file| {
+                        serde_json::from_str::<AssetsMeta>(&file)
+                            .map_err(|err| anyhow::anyhow!(err))
+                    });
+
+                if let Err(err) = &r {
+                    debug!(target: &container_name, "failed to create http meta index for {container_name}: {err}");
+                }
+
+                *http_meta = Some(Arc::new(r));
+            }
+        }
+    }
+
     async fn load_container_item(
         container_name: String,
         fs: Arc<dyn FileSystemInterface>,
@@ -516,6 +572,7 @@ where
         key: ContainerKey,
         game_server_http: Option<Url>,
         resource_http_download: HttpIndexAndUrl,
+        allows_single_audio_or_txt_files: bool,
     ) -> anyhow::Result<ContainerLoadedItem> {
         let allow_hq_assets = false;
 
@@ -743,7 +800,10 @@ where
                                 ContainerLoadedItemDir::new(tar_files),
                             ));
                         }
-                    } else if entry.ty == "png" {
+                    } else if entry.ty == "png"
+                        || (allows_single_audio_or_txt_files && entry.ty == "ogg")
+                        || (allows_single_audio_or_txt_files && entry.ty == "txt")
+                    {
                         files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
                     }
                 }
@@ -801,6 +861,20 @@ where
                                 } else {
                                     false
                                 }
+                            } else if allows_single_audio_or_txt_files && ty == "ogg" {
+                                if Self::verify_resource("ogg", &name, &file, allow_hq_assets) {
+                                    files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else if allows_single_audio_or_txt_files && ty == "txt" {
+                                if Self::verify_resource("txt", &name, &file, allow_hq_assets) {
+                                    files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+                                    true
+                                } else {
+                                    false
+                                }
                             } else {
                                 false
                             };
@@ -846,6 +920,7 @@ where
                 "default".try_into().unwrap(),
                 None,
                 None,
+                false,
             )
             .await
         })
@@ -864,6 +939,7 @@ where
         game_server_http: Option<Url>,
         resource_http_download: HttpIndexAndUrl,
         default_loaded_item: Arc<ContainerLoadedItemDir>,
+        allows_single_audio_or_txt_files: bool,
     ) -> IoRuntimeTask<L> {
         let fs = io.fs.clone();
         let http = io.http.clone();
@@ -883,6 +959,7 @@ where
                 key,
                 game_server_http,
                 resource_http_download,
+                allows_single_audio_or_txt_files,
             )
             .await;
 
@@ -945,6 +1022,7 @@ where
                         game_server_http,
                         resource_http.map(|url| (self.resource_http_download_index.clone(), url)),
                         default_loaded_item,
+                        self.allows_single_audio_or_txt_files,
                     ),
                 );
                 None
@@ -1044,15 +1122,14 @@ where
         }
     }
 
-    /// Returns `true` if the resource was loaded or failed to load (and will not be loaded),
-    /// `false` otherwise.
+    /// Returns `true` if the resource was loaded without a fail.
     ///
     /// This call is non-blocking.
-    pub fn is_loaded_or_failed<Q>(&mut self, name: &Q) -> bool
+    pub fn is_loaded<Q>(&mut self, name: &Q) -> bool
     where
         Q: Borrow<ContainerKey>,
     {
-        self.failed_tasks.contains(name.borrow()) || {
+        {
             let item_res = self.items.get(name.borrow());
             if item_res.is_none() {
                 // try to load the resource
@@ -1062,6 +1139,17 @@ where
                 true
             }
         }
+    }
+
+    /// Returns `true` if the resource was loaded or failed to load (and will not be loaded),
+    /// `false` otherwise.
+    ///
+    /// This call is non-blocking.
+    pub fn is_loaded_or_failed<Q>(&mut self, name: &Q) -> bool
+    where
+        Q: Borrow<ContainerKey>,
+    {
+        self.failed_tasks.contains(name.borrow()) || self.is_loaded(name)
     }
 
     /// Blocking wait for the item to be finished.
@@ -1084,7 +1172,7 @@ where
 
     /// Get a list of entries that can potentially be loaded by this
     /// container.
-    /// This also includes skins downloaded over http (if supported/active)
+    /// This also includes assets downloaded over http (if supported/active)
     pub fn entries_index(&mut self) -> HashMap<String, ContainerItemIndexType> {
         let mut entries: HashMap<String, ContainerItemIndexType> = Default::default();
         // do http first so that on collision, disk overwrites the ContainerItemIndexType
@@ -1242,6 +1330,79 @@ where
                         });
 
                         *dir_index = Either::Right(Some(task));
+                    }
+                }
+            }
+        }
+        entries
+    }
+
+    /// Get a list of meta data for entries. It should generally be assumed that
+    /// not all entries also exist in the [`Self::entries_index`] or vise versa.
+    pub fn entries_meta_data(&mut self) -> AssetsMeta {
+        let mut entries: AssetsMeta = Default::default();
+        // check if there already is a http index
+        if let Some(dir_index) = &self.cached_http_download_meta {
+            if let Ok(dir_index) = dir_index.as_ref() {
+                entries.extend(dir_index.clone());
+            }
+        } else {
+            let mut needs_download = false;
+            // else first check if it was already downloaded
+            if let Ok(dir_index) = self.resource_http_download_meta.try_lock() {
+                needs_download |= dir_index.is_none();
+                self.cached_http_download_meta = (*dir_index).clone();
+            }
+            // else start a download
+            else {
+                needs_download = true;
+            }
+            if needs_download {
+                match self.http_download_meta_task.as_mut() {
+                    Some(task) => {
+                        match task {
+                            Some(inner_task) => {
+                                if inner_task.is_finished() {
+                                    if let Err(err) =
+                                        task.take().map(|t| t.get_storage()).transpose()
+                                    {
+                                        log::error!(
+                                            "Failed to download http meta index for {}: {err}",
+                                            self.container_name
+                                        );
+                                    }
+                                }
+                            }
+                            None => {
+                                // ignore
+                            }
+                        }
+                    }
+                    None => {
+                        let resource_http_download_meta = self.resource_http_download_meta.clone();
+                        let container_name = self.container_name.clone();
+                        let http = self.io.http.clone();
+                        let base_path = self.base_path.clone();
+                        let resource_http_download_url = self.resource_http_download_url.clone();
+                        self.http_download_meta_task = Some(Some(self.io.rt.spawn(async move {
+                            let mut meta_index = resource_http_download_meta.lock().await;
+                            if let Some(resource_http_download_url) = resource_http_download_url {
+                                if meta_index.is_none() {
+                                    Self::try_load_container_http_meta(
+                                        &container_name,
+                                        &http,
+                                        &mut meta_index,
+                                        &base_path,
+                                        &resource_http_download_url,
+                                    )
+                                    .await;
+                                }
+                            } else {
+                                *meta_index =
+                                    Some(Arc::new(Err(anyhow!("http download url is not given"))));
+                            }
+                            Ok(())
+                        })));
                     }
                 }
             }
@@ -1463,6 +1624,7 @@ pub fn load_file_part_list_and_upload(
     Ok(textures)
 }
 
+#[derive(Debug, Hiarc)]
 pub struct SoundFilePartResult {
     pub mem: SoundBackendMemory,
     /// Was loaded by the default fallback mechanism

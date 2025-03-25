@@ -13,6 +13,7 @@ use graphics::{
         texture::texture::GraphicsTextureHandle,
     },
 };
+use sound::scene_object::SceneObject;
 use ui_base::{
     types::UiRenderPipe,
     ui::{UiContainer, UiCreator},
@@ -20,7 +21,9 @@ use ui_base::{
 use ui_generic::generic_ui_renderer;
 
 use crate::{
+    image_store_container::ImageStoreContainer,
     notifications::EditorNotifications,
+    sound_store_container::SoundStoreContainer,
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     ui::{
         page::EditorUi,
@@ -44,6 +47,10 @@ pub struct EditorUiRenderPipe<'a> {
     pub auto_mapper: &'a mut TileLayerAutoMapper,
     pub notifications: &'a EditorNotifications,
     pub io: &'a Io,
+
+    pub quad_tile_images_container: &'a mut ImageStoreContainer,
+    pub sound_images_container: &'a mut SoundStoreContainer,
+    pub container_scene: &'a SceneObject,
 }
 
 pub struct EditorUiRender {
@@ -126,6 +133,10 @@ impl EditorUiRender {
                     graphics_mt: &self.graphics_mt,
                     buffer_object_handle: &self.buffer_object_handle,
                     backend_handle: &self.backend_handle,
+
+                    quad_tile_images_container: pipe.quad_tile_images_container,
+                    sound_images_container: pipe.sound_images_container,
+                    container_scene: pipe.container_scene,
                 },
             ),
             pipe.inp,

@@ -198,6 +198,7 @@ pub async fn legacy_to_new_from_buf_async(
             .for_each(|res| {
                 // update hash after conversion
                 res.meta.blake3_hash = *hashes.lock().unwrap().get(&res.meta.blake3_hash).unwrap();
+                res.meta.ty = "ogg".try_into().unwrap();
             });
 
         anyhow::Ok(())

@@ -78,6 +78,10 @@ impl SoundPlayProps {
         self.base.volume = volume;
         self
     }
+    pub fn with_looped(mut self, looped: bool) -> Self {
+        self.base.looped = looped;
+        self
+    }
 }
 
 #[derive(Debug, Hiarc, Clone, Copy, Serialize, Deserialize)]

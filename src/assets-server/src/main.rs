@@ -76,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
         log::warn!("No upload password given, uploading will be disabled. (ASSETS_UPLOAD_PASSWORD env var)");
     }
 
+    let write_lock = Arc::new(Mutex::new(()));
     let skin_limits = AllowedResource::Png(PngValidatorOptions {
         max_width: NonZeroU32::new(256).unwrap(),
         max_height: NonZeroU32::new(128).unwrap(),
@@ -148,6 +149,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Ogg,
             ]),
         ],
+        write_lock.clone(),
     )
     .await?
     .merge(
@@ -155,6 +157,7 @@ async fn main() -> anyhow::Result<()> {
             args.no_cache,
             &upload_password,
             vec![AllowedResources::File(entities_limits)],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -167,6 +170,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -182,6 +186,7 @@ async fn main() -> anyhow::Result<()> {
                     AllowedResource::Ogg,
                 ]),
             ],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -194,6 +199,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -206,6 +212,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -218,6 +225,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -230,6 +238,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -245,6 +254,7 @@ async fn main() -> anyhow::Result<()> {
                     AllowedResource::Ogg,
                 ]),
             ],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -257,6 +267,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -272,6 +283,7 @@ async fn main() -> anyhow::Result<()> {
                     AllowedResource::Ogg,
                 ]),
             ],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -284,6 +296,7 @@ async fn main() -> anyhow::Result<()> {
                 AllowedResource::Txt,
                 AllowedResource::Ogg,
             ])],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -292,6 +305,7 @@ async fn main() -> anyhow::Result<()> {
             args.no_cache,
             &upload_password,
             vec![AllowedResources::File(map_resources_img)],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -300,6 +314,7 @@ async fn main() -> anyhow::Result<()> {
             args.no_cache,
             &upload_password,
             vec![AllowedResources::File(map_resources_snd)],
+            write_lock.clone(),
         )
         .await?,
     )
@@ -308,6 +323,7 @@ async fn main() -> anyhow::Result<()> {
             args.no_cache,
             &upload_password,
             vec![AllowedResources::File(AllowedResource::Txt)],
+            write_lock,
         )
         .await?,
     );
@@ -331,6 +347,7 @@ async fn assets_generic(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assert!(
         base_path != "upload" && base_path != "delete",
@@ -346,7 +363,6 @@ async fn assets_generic(
 
     let index_dir = IndexDir::new(base_path).await?;
     let index = index_dir.index.clone();
-    let write_lock = Arc::new(Mutex::new(()));
     Ok(AssetRouter {
         download: Router::new().nest_service(&format!("/{base_path}"), index_dir),
         upload: upload_password.clone().map(|upload_password| {
@@ -389,20 +405,30 @@ async fn skins(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("skins", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "skins",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn entities(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assets_generic(
         "entities",
         ignore_cached,
         upload_password,
         allowed_resources,
+        write_lock,
     )
     .await
 }
@@ -411,20 +437,30 @@ async fn ctfs(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("ctfs", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "ctfs",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn emoticons(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assets_generic(
         "emoticons",
         ignore_cached,
         upload_password,
         allowed_resources,
+        write_lock,
     )
     .await
 }
@@ -433,60 +469,110 @@ async fn flags(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("flags", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "flags",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn freezes(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("freezes", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "freezes",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn games(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("games", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "games",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn hooks(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("hooks", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "hooks",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn huds(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("huds", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "huds",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn ninjas(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("ninjas", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "ninjas",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn particles(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assets_generic(
         "particles",
         ignore_cached,
         upload_password,
         allowed_resources,
+        write_lock,
     )
     .await
 }
@@ -495,20 +581,30 @@ async fn weapons(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
-    assets_generic("weapons", ignore_cached, upload_password, allowed_resources).await
+    assets_generic(
+        "weapons",
+        ignore_cached,
+        upload_password,
+        allowed_resources,
+        write_lock,
+    )
+    .await
 }
 
 async fn map_resources_images(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assets_generic(
         "map/resources/images",
         ignore_cached,
         upload_password,
         allowed_resources,
+        write_lock,
     )
     .await
 }
@@ -517,12 +613,14 @@ async fn map_resources_sounds(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assets_generic(
         "map/resources/sounds",
         ignore_cached,
         upload_password,
         allowed_resources,
+        write_lock,
     )
     .await
 }
@@ -531,12 +629,14 @@ async fn editor_rules(
     ignore_cached: bool,
     upload_password: &Option<Arc<String>>,
     allowed_resources: Vec<AllowedResources>,
+    write_lock: Arc<Mutex<()>>,
 ) -> anyhow::Result<AssetRouter> {
     assets_generic(
         "editor/rules",
         ignore_cached,
         upload_password,
         allowed_resources,
+        write_lock,
     )
     .await
 }

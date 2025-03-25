@@ -80,7 +80,10 @@ use network::network::types::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use sound::{scene_handle::SoundSceneHandle, sound::SoundManager, sound_mt::SoundMultiThreaded};
+use sound::{
+    scene_handle::SoundSceneHandle, scene_object::SceneObject, sound::SoundManager,
+    sound_mt::SoundMultiThreaded,
+};
 use ui_base::ui::UiCreator;
 
 use crate::{
@@ -88,6 +91,7 @@ use crate::{
     editor_ui::{EditorUiRender, EditorUiRenderPipe},
     event::EditorEventOverwriteMap,
     fs::read_file_editor,
+    image_store_container::{load_image_store_container, ImageStoreContainer},
     map::{
         EditorActiveAnimationProps, EditorAnimations, EditorAnimationsProps,
         EditorArbitraryLayerProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr,
@@ -108,6 +112,7 @@ use crate::{
     notifications::{EditorNotification, EditorNotifications},
     physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
+    sound_store_container::{load_sound_store_container, SoundStoreContainer},
     tab::EditorTab,
     tile_overlays::TileLayerOverlaysDdnet,
     tools::{
@@ -182,6 +187,9 @@ pub struct Editor {
     // events triggered by ui
     ui_events: Vec<EditorUiEvent>,
 
+    quad_tile_images_container: ImageStoreContainer,
+    sounds_container: SoundStoreContainer,
+
     // editor tool
     tools: Tools,
     auto_mapper: TileLayerAutoMapper,
@@ -211,6 +219,7 @@ pub struct Editor {
     // sound
     sound_mt: SoundMultiThreaded,
     scene_handle: SoundSceneHandle,
+    container_scene: SceneObject,
 
     entities_container: EntitiesContainer,
     fake_texture_array: TextureContainer2dArray,
@@ -248,7 +257,6 @@ impl Editor {
             io.clone(),
             tp.clone(),
             default_entities,
-            false,
             None,
             None,
             "entities-container",
@@ -256,6 +264,7 @@ impl Editor {
             sound,
             &scene,
             ENTITIES_CONTAINER_PATH.as_ref(),
+            Default::default(),
         );
 
         // fake texture array texture for non textured layers
@@ -305,6 +314,23 @@ impl Editor {
         let mut res = Self {
             tabs: Default::default(),
             active_tab: "".into(),
+
+            quad_tile_images_container: load_image_store_container(
+                io.clone(),
+                tp.clone(),
+                "quad_or_tilesets",
+                graphics,
+                sound,
+                scene.clone(),
+            ),
+            sounds_container: load_sound_store_container(
+                io.clone(),
+                tp.clone(),
+                "sounds",
+                graphics,
+                sound,
+                scene.clone(),
+            ),
 
             ui: EditorUiRender::new(graphics, tp.clone(), &ui_creator),
             ui_events: Default::default(),
@@ -359,6 +385,7 @@ impl Editor {
             stream_handle: graphics.stream_handle.clone(),
 
             scene_handle: sound.scene_handle.clone(),
+            container_scene: scene,
             sound_mt: sound.get_sound_mt(),
 
             entities_container,
@@ -569,6 +596,8 @@ impl Editor {
                 last_info_update: None,
                 admin_panel: Default::default(),
                 dbg_panel: Default::default(),
+                assets_store: Default::default(),
+                assets_store_open: Default::default(),
             },
         );
         self.active_tab = name.into();
@@ -1150,6 +1179,8 @@ impl Editor {
                 last_info_update: None,
                 admin_panel: Default::default(),
                 dbg_panel: Default::default(),
+                assets_store: Default::default(),
+                assets_store_open: Default::default(),
             },
         );
         self.active_tab = name;
@@ -1302,6 +1333,8 @@ impl Editor {
                 last_info_update: None,
                 admin_panel: Default::default(),
                 dbg_panel: Default::default(),
+                assets_store: Default::default(),
+                assets_store_open: Default::default(),
             },
         );
         self.active_tab = name;
@@ -2445,6 +2478,10 @@ impl Editor {
             tools: &mut self.tools,
             auto_mapper: &mut self.auto_mapper,
             io: &self.io,
+
+            quad_tile_images_container: &mut self.quad_tile_images_container,
+            sound_images_container: &mut self.sounds_container,
+            container_scene: &self.container_scene,
         });
 
         let mut forced_result = None;

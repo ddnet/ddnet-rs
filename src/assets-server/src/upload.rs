@@ -23,7 +23,12 @@ pub async fn asset_upload(
         return Json(AssetUploadResponse::IncorrectPassword);
     }
 
-    if data.meta.authors.is_empty() || data.meta.licenses.is_empty() {
+    if data.meta.authors.is_empty()
+        || data.meta.licenses.is_empty()
+        || data.meta.authors.iter().any(|a| a.is_empty())
+        || data.meta.licenses.iter().any(|a| a.is_empty())
+        || data.meta.tags.iter().any(|a| a.is_empty())
+    {
         return Json(AssetUploadResponse::IncompleteMetadata);
     }
 

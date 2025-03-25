@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use anyhow::anyhow;
 use base_io::{io::Io, runtime::IoRuntimeTask};
+use game_base::assets_url::HTTP_RESOURCE_URL;
 use graphics::{
     graphics::graphics::Graphics,
     graphics_mt::GraphicsMultiThreaded,
@@ -18,53 +19,50 @@ use client_containers::container::{
 };
 
 use client_containers::container::{Container, ContainerItemLoadData, ContainerLoad};
-use url::Url;
 
 #[derive(Debug, Hiarc, Clone)]
-pub struct Thumbnail {
-    pub thumbnail: TextureContainer,
+pub struct ImageStore {
+    pub tex: TextureContainer,
     pub width: u32,
     pub height: u32,
+    pub file: Vec<u8>,
+    pub name: String,
 }
 
 #[derive(Debug, Hiarc)]
-pub struct LoadThumbnail {
-    thumbnail: ContainerItemLoadData,
+pub struct LoadImageStore {
+    image: ContainerItemLoadData,
+    file: Vec<u8>,
 
-    thumbnail_name: String,
+    name: String,
 }
 
-impl LoadThumbnail {
+impl LoadImageStore {
     pub fn new(
         graphics_mt: &GraphicsMultiThreaded,
         files: ContainerLoadedItemDir,
         default_files: &ContainerLoadedItemDir,
-        thumbnail_name: &str,
+        name: &str,
     ) -> anyhow::Result<Self> {
+        let path: &Path = "icon.png".as_ref();
+        let file = files
+            .files
+            .get(path)
+            .cloned()
+            .ok_or_else(|| anyhow!("File missing"))?;
         Ok(Self {
-            thumbnail: load_file_part_and_upload(
+            image: load_file_part_and_upload(
                 graphics_mt,
                 &files,
                 default_files,
-                thumbnail_name,
+                name,
                 &[],
-                "thumbnail",
-            )
-            .or_else(|err| {
-                // also try icon as alternative
-                load_file_part_and_upload(
-                    graphics_mt,
-                    &files,
-                    default_files,
-                    thumbnail_name,
-                    &[],
-                    "icon",
-                )
-                .map_err(|err2| anyhow!("{err}. {err2}"))
-            })?
+                "icon",
+            )?
             .img,
+            file,
 
-            thumbnail_name: thumbnail_name.to_string(),
+            name: name.to_string(),
         })
     }
 
@@ -81,7 +79,7 @@ impl LoadThumbnail {
     }
 }
 
-impl ContainerLoad<Thumbnail> for LoadThumbnail {
+impl ContainerLoad<ImageStore> for LoadImageStore {
     fn load(
         item_name: &str,
         files: ContainerLoadedItem,
@@ -97,7 +95,7 @@ impl ContainerLoad<Thumbnail> for LoadThumbnail {
             ContainerLoadedItem::SingleFile(file) => {
                 let mut files = ContainerLoadedItemDir::new(Default::default());
 
-                files.files.insert("thumbnail.png".into(), file);
+                files.files.insert("icon.png".into(), file);
 
                 Self::new(graphics_mt, files, default_files, item_name)
             }
@@ -108,49 +106,43 @@ impl ContainerLoad<Thumbnail> for LoadThumbnail {
         self,
         texture_handle: &GraphicsTextureHandle,
         _sound_object_handle: &SoundObjectHandle,
-    ) -> Thumbnail {
-        let (thumbnail, width, height) = LoadThumbnail::load_file_into_texture(
-            texture_handle,
-            self.thumbnail,
-            &self.thumbnail_name,
-        );
-        Thumbnail {
-            thumbnail,
+    ) -> ImageStore {
+        let (tex, width, height) =
+            LoadImageStore::load_file_into_texture(texture_handle, self.image, &self.name);
+        ImageStore {
+            tex,
             width,
             height,
+            file: self.file,
+            name: self.name,
         }
     }
 }
 
-/// General purpose image container.
-///
-/// Can be used for thumbnails, icons etc.
-pub type ThumbnailContainer = Container<Thumbnail, LoadThumbnail>;
-pub const DEFAULT_THUMBNAIL_CONTAINER_PATH: &str = "thumbnails/";
+/// Image container for map resources.
+pub type ImageStoreContainer = Container<ImageStore, LoadImageStore>;
 
-pub fn load_thumbnail_container(
+pub fn load_image_store_container(
     io: Io,
     tp: Arc<rayon::ThreadPool>,
-    path: &str,
     container_name: &str,
     graphics: &Graphics,
     sound: &SoundManager,
     scene: SceneObject,
-    resource_server_download_url: Option<Url>,
-) -> ThumbnailContainer {
+) -> ImageStoreContainer {
     let default_item: IoRuntimeTask<client_containers::container::ContainerLoadedItem> =
-        ThumbnailContainer::load_default(&io, path.as_ref());
-    ThumbnailContainer::new(
+        ImageStoreContainer::load_default(&io, "map/resources/images/".as_ref());
+    ImageStoreContainer::new(
         io,
         tp,
         default_item,
+        Some(HTTP_RESOURCE_URL.try_into().unwrap()),
         None,
-        resource_server_download_url,
         container_name,
         graphics,
         sound,
         &scene,
-        path.as_ref(),
+        "map/resources/images".as_ref(),
         ContainerLoadOptions {
             assume_unused: true,
             ..Default::default()

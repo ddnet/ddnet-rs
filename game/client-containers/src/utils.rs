@@ -6,6 +6,7 @@ use sound::{scene_object::SceneObject, sound::SoundManager};
 use url::Url;
 
 use crate::{
+    container::ContainerLoadOptions,
     ctf::{CtfContainer, CTF_CONTAINER_PATH},
     emoticons::{EmoticonsContainer, EMOTICONS_CONTAINER_PATH},
     entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
@@ -68,7 +69,6 @@ pub fn load_containers(
         io.clone(),
         thread_pool.clone(),
         default_skin,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "skin-container",
@@ -76,12 +76,15 @@ pub fn load_containers(
         sound,
         scene,
         SKIN_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let weapon_container = WeaponContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_weapon,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "weapon-container",
@@ -89,12 +92,15 @@ pub fn load_containers(
         sound,
         scene,
         WEAPON_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let hook_container = HookContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_hook,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "hook-container",
@@ -102,12 +108,15 @@ pub fn load_containers(
         sound,
         scene,
         HOOK_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let ctf_container = CtfContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_ctf,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "ctf-container",
@@ -115,12 +124,15 @@ pub fn load_containers(
         sound,
         scene,
         CTF_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let ninja_container = NinjaContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_ninja,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "ninja-container",
@@ -128,12 +140,15 @@ pub fn load_containers(
         sound,
         scene,
         NINJA_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let freeze_container = FreezeContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_freeze,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "freeze-container",
@@ -141,12 +156,15 @@ pub fn load_containers(
         sound,
         scene,
         FREEZE_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let entities_container = EntitiesContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_entities,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "entities-container",
@@ -154,12 +172,15 @@ pub fn load_containers(
         sound,
         scene,
         ENTITIES_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let hud_container = HudContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_hud,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "hud-container",
@@ -167,12 +188,15 @@ pub fn load_containers(
         sound,
         scene,
         HUD_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let emoticons_container = EmoticonsContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_emoticons,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "emoticons-container",
@@ -180,12 +204,15 @@ pub fn load_containers(
         sound,
         scene,
         EMOTICONS_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let particles_container = ParticlesContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_particles,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "particles-container",
@@ -193,12 +220,15 @@ pub fn load_containers(
         sound,
         scene,
         PARTICLES_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let game_container = GameContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_games,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "games-container",
@@ -206,12 +236,15 @@ pub fn load_containers(
         sound,
         scene,
         GAME_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
     let flags_container = FlagsContainer::new(
         io.clone(),
         thread_pool.clone(),
         default_flags,
-        assume_unused,
         resource_http_download_url.clone(),
         resource_server_download_url.clone(),
         "flags-container",
@@ -219,6 +252,10 @@ pub fn load_containers(
         sound,
         scene,
         FLAGS_CONTAINER_PATH.as_ref(),
+        ContainerLoadOptions {
+            assume_unused,
+            ..Default::default()
+        },
     );
 
     RenderGameContainers {

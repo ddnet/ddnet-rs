@@ -1,4 +1,5 @@
 use api::{GRAPHICS, IO, RUNTIME_THREAD_POOL, SOUND};
+use client_containers::container::ContainerLoadOptions;
 use client_ui::thumbnail_container::ThumbnailContainer;
 
 pub mod page;
@@ -11,7 +12,6 @@ pub fn create_thumbnail_container(path: &str, container_name: &str) -> Thumbnail
         IO.with(|g| (*g).clone()),
         RUNTIME_THREAD_POOL.clone(),
         default_item,
-        true,
         None,
         None,
         container_name,
@@ -19,5 +19,9 @@ pub fn create_thumbnail_container(path: &str, container_name: &str) -> Thumbnail
         &SOUND.with(|g| (*g).clone()),
         &scene,
         path.as_ref(),
+        ContainerLoadOptions {
+            assume_unused: true,
+            ..Default::default()
+        },
     )
 }
