@@ -14,7 +14,6 @@ pub mod collision {
         },
         MapGroupPhysics,
     };
-    use num::FromPrimitive;
     use serde::{Deserialize, Serialize};
 
     use math::math::{
@@ -282,25 +281,21 @@ pub mod collision {
         }
 
         #[inline(always)]
-        pub fn get_tile(&self, x: i32, y: i32) -> DdraceTileNum {
+        pub fn get_tile(&self, x: i32, y: i32) -> u8 {
             let pos = self.tile_index(x, y);
 
-            let index = self.tiles[pos].index;
-            if index >= DdraceTileNum::Solid as u8 && index <= DdraceTileNum::NoLaser as u8 {
-                return DdraceTileNum::from_u8(index).unwrap_or(DdraceTileNum::Air);
-            }
-            DdraceTileNum::Air
+            self.tiles[pos].index
         }
 
         #[inline(always)]
         pub fn is_solid(&self, x: i32, y: i32) -> bool {
             let index = self.get_tile(x, y);
-            index == DdraceTileNum::Solid || index == DdraceTileNum::NoHook
+            index == DdraceTileNum::Solid as u8 || index == DdraceTileNum::NoHook as u8
         }
 
         pub fn is_death(&self, x: f32, y: f32) -> bool {
             let index = self.get_tile(round_to_int(x), round_to_int(y));
-            index == DdraceTileNum::Death
+            index == DdraceTileNum::Death as u8
         }
 
         #[inline(always)]
@@ -314,8 +309,7 @@ pub mod collision {
 
         #[inline(always)]
         pub fn test_box(&self, pos: &ivec2, size_param: &ivec2) -> bool {
-            let mut size = *size_param;
-            size /= 2;
+            let size = *size_param / 2;
             self.check_point(pos.x - size.x, pos.y + size.y)
                 || self.check_point(pos.x + size.x, pos.y + size.y)
                 || self.check_point(pos.x - size.x, pos.y - size.y)
@@ -369,7 +363,6 @@ pub mod collision {
             let mut vel = *in_out_vel;
 
             let vel_distance = dot(&vel, &vel);
-            let max = vel_distance as i32;
 
             enum CollisionCoords {
                 X,
@@ -389,6 +382,8 @@ pub mod collision {
 
                 let mut prev_last_pos_x = last_pos_x;
                 let mut prev_last_pos_y = last_pos_y;
+
+                let max = vel_distance.sqrt() as i32;
 
                 let fraction = 1.0 / (max + 1) as f32;
                 for _i in 0..=max {
@@ -546,7 +541,19 @@ pub mod collision {
         }
 
         fn get_collision_at(&self, x: f32, y: f32) -> DdraceTileNum {
-            self.get_tile(round_to_int(x), round_to_int(y))
+            let index = self.get_tile(round_to_int(x), round_to_int(y));
+
+            if index == DdraceTileNum::Solid as u8 {
+                DdraceTileNum::Solid
+            } else if index == DdraceTileNum::Death as u8 {
+                DdraceTileNum::Death
+            } else if index == DdraceTileNum::NoHook as u8 {
+                DdraceTileNum::NoHook
+            } else if index == DdraceTileNum::NoLaser as u8 {
+                DdraceTileNum::NoLaser
+            } else {
+                DdraceTileNum::Air
+            }
         }
 
         #[inline(always)]

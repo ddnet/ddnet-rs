@@ -42,20 +42,20 @@ mod test {
             player_info::{PlayerClientInfo, PlayerUniqueId},
         },
     };
-    use math::math::{vector::dvec2, Rng};
+    use math::math::{
+        vector::{dvec2, ivec2, vec2},
+        Rng,
+    };
     use pool::pool::Pool;
 
     use crate::{config::config::ConfigVanilla, state::state::GameState};
 
-    #[test]
-    fn benchmark() {
+    fn get_game<const NUM_PLAYERS: usize>() -> GameState {
         let file = include_bytes!("../../../data/map/maps/ctf1.twmap");
-
-        const NUM_PLAYERS: usize = 64;
 
         let rt = create_runtime();
         let io_rt = IoRuntime::new(rt);
-        let (mut game, _) = GameState::new(
+        let (game, _) = GameState::new(
             file.to_vec(),
             "ctf1".try_into().unwrap(),
             GameStateCreateOptions {
@@ -73,6 +73,13 @@ mod test {
             Arc::new(DummyDb),
         )
         .unwrap();
+        game
+    }
+
+    #[test]
+    fn ticks() {
+        const NUM_PLAYERS: usize = 64;
+        let mut game = get_game::<NUM_PLAYERS>();
 
         let mut rng = Rng::new(0);
 
@@ -148,5 +155,37 @@ mod test {
         };
         bench_inner();
         bench_inner();
+    }
+
+    #[test]
+    fn move_box() {
+        let game = get_game::<1>();
+        pub const PHYSICAL_SIZE: f32 = 28.0;
+        const fn physical_size_vec2() -> ivec2 {
+            ivec2 {
+                x: PHYSICAL_SIZE as i32,
+                y: PHYSICAL_SIZE as i32,
+            }
+        }
+        let bench = || {
+            let now = Instant::now();
+            let iterations = 1000000;
+            let mut pos = Default::default();
+            let mut vel = Default::default();
+            for _ in 0..iterations {
+                pos = vec2::new(10.0, 10.0) * 32.0;
+                vel = vec2::new(10.0, 10.0) * 32.0;
+                game.collision
+                    .move_box(&mut pos, &mut vel, &physical_size_vec2(), 0.0);
+            }
+            let took = Instant::now().duration_since(now);
+            println!("{} s - pos: {:?}, vel: {:?}", took.as_secs_f64(), pos, vel);
+            let calls_per_second = iterations as f64 / took.as_secs_f64();
+            println!("{} call/s", calls_per_second);
+        };
+        bench();
+        bench();
+        bench();
+        bench();
     }
 }
