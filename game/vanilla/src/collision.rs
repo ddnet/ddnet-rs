@@ -309,8 +309,7 @@ pub mod collision {
 
         #[inline(always)]
         pub fn test_box(&self, pos: &ivec2, size_param: &ivec2) -> bool {
-            let mut size = *size_param;
-            size /= 2;
+            let size = *size_param / 2;
             self.check_point(pos.x - size.x, pos.y + size.y)
                 || self.check_point(pos.x + size.x, pos.y + size.y)
                 || self.check_point(pos.x - size.x, pos.y - size.y)
