@@ -1,15 +1,15 @@
 use egui::{
     text::LayoutJob, Button, Color32, CornerRadius, FontId, Grid, Modal, Stroke, WidgetText,
 };
-use ui_base::types::UiRenderPipe;
+use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::ui::user_data::{EditorModalDialogMode, EditorUiEvent, UserData};
 
-pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
+pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let style = ui.style();
     // 4.0 is some margin for strokes
     let height = style.spacing.interact_size.y + style.spacing.item_spacing.y + 4.0;
-    egui::TopBottomPanel::top("top_tabs")
+    let res = egui::TopBottomPanel::top("top_tabs")
         .resizable(false)
         .default_height(height)
         .height_range(height..=height)
@@ -139,4 +139,5 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                 }
             })
         });
+    ui_state.add_blur_rect(res.response.rect, 0.0);
 }

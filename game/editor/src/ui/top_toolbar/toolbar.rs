@@ -12,6 +12,10 @@ use crate::{
         TEXT_ADD_QUAD, TEXT_ADD_SOUND, TEXT_QUAD_BRUSH, TEXT_QUAD_SELECTION, TEXT_SOUND_BRUSH,
         TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR, TEXT_TILE_SELECT,
     },
+    hotkeys::{
+        EditorHotkeyEvent, EditorHotkeyEventTileBrush, EditorHotkeyEventTileTool,
+        EditorHotkeyEventTools,
+    },
     map::{EditorLayer, EditorLayerUnionRef, EditorMapInterface},
     tools::tool::{ActiveTool, ActiveToolQuads, ActiveToolSounds, ActiveToolTiles},
     ui::user_data::UserDataWithTab,
@@ -162,6 +166,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             ui.horizontal(|ui| {
                                 // mirror y
                                 let btn = Button::new("\u{f07d}");
+                                let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                    &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                        EditorHotkeyEventTileTool::Brush(
+                                            EditorHotkeyEventTileBrush::FlipY,
+                                        ),
+                                    )),
+                                );
                                 if ui
                                     .add(btn)
                                     .on_hover_ui(|ui| {
@@ -173,6 +184,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         );
                                     })
                                     .clicked()
+                                    || by_hotkey
                                 {
                                     match tool {
                                         ActiveToolTiles::Brush => {
@@ -204,7 +216,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 }
                                 // mirror x
                                 let btn = Button::new("\u{f07e}");
-                                if ui.add(btn).clicked() {
+                                let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                    &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                        EditorHotkeyEventTileTool::Brush(
+                                            EditorHotkeyEventTileBrush::FlipX,
+                                        ),
+                                    )),
+                                );
+                                if ui.add(btn).clicked() || by_hotkey {
                                     match tool {
                                         ActiveToolTiles::Brush => {
                                             if let Some(brush) = &mut tools.tiles.brush.brush {
@@ -237,7 +256,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     ActiveToolTiles::Brush => {
                                         // rotate -90°
                                         let btn = Button::new("\u{f2ea}");
-                                        if ui.add(btn).clicked() {
+                                        let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                            &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                                EditorHotkeyEventTileTool::Brush(
+                                                    EditorHotkeyEventTileBrush::RotMinus90,
+                                                ),
+                                            )),
+                                        );
+                                        if ui.add(btn).clicked() || by_hotkey {
                                             if let Some(brush) = &mut tools.tiles.brush.brush {
                                                 // use 3 times 90° here, bcs the 90° logic also "fixes" the cursor
                                                 // x,y mirror does not
@@ -269,7 +295,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         }
                                         // rotate +90°
                                         let btn = Button::new("\u{f2f9}");
-                                        if ui.add(btn).clicked() {
+                                        let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                            &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                                EditorHotkeyEventTileTool::Brush(
+                                                    EditorHotkeyEventTileBrush::RotPlus90,
+                                                ),
+                                            )),
+                                        );
+                                        if ui.add(btn).clicked() || by_hotkey {
                                             if let Some(brush) = &mut tools.tiles.brush.brush {
                                                 rotate_tiles_plus_90(
                                                     pipe.user_data.tp,
@@ -283,7 +316,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         }
                                         // rotate tiles (only by flags) +90°
                                         let btn = Button::new("\u{e4f6}");
-                                        if ui.add(btn).clicked() {
+                                        let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                            &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                                EditorHotkeyEventTileTool::Brush(
+                                                    EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
+                                                ),
+                                            )),
+                                        );
+                                        if ui.add(btn).clicked() || by_hotkey {
                                             if let Some(brush) = &mut tools.tiles.brush.brush {
                                                 rotate_tile_flags_plus_90(
                                                     pipe.user_data.tp,
@@ -302,7 +342,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                         {
                                             // rotate inner tiles (flags) by 90°
                                             let btn = Button::new("\u{e4f6}");
-                                            if ui.add(btn).clicked() {
+                                            let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                                &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                                    EditorHotkeyEventTileTool::Brush(
+                                                        EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
+                                                    ),
+                                                )),
+                                            );
+                                            if ui.add(btn).clicked() ||  by_hotkey{
                                                 if let Some(range) = &tools.tiles.selection.range {
                                                     rotate_layer_tiles_plus_90(
                                                         pipe.user_data.tp,

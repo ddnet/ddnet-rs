@@ -1,7 +1,4 @@
-use egui::{
-    scroll_area::ScrollBarVisibility, Color32, Frame, Key, KeyboardShortcut, Layout, Modifiers,
-    ScrollArea, TextEdit,
-};
+use egui::{scroll_area::ScrollBarVisibility, Color32, Frame, Key, Layout, ScrollArea, TextEdit};
 use egui_extras::{Size, StripBuilder};
 use ui_base::types::{UiRenderPipe, UiState};
 
@@ -12,7 +9,11 @@ use crate::{
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let map = &mut pipe.user_data.editor_tab.map;
-    if ui.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter))) {
+    if pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&crate::hotkeys::EditorHotkeyEvent::Chat)
+    {
         map.user.ui_values.chat_panel_open = Some(EditorChatState::default());
     }
 

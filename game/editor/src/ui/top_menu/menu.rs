@@ -1,13 +1,14 @@
 use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Align2, Button, DragValue, Grid, Key, KeyboardShortcut, Modifiers, TextEdit, Window};
+use egui::{Align2, Button, DragValue, Grid, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
     explain::TEXT_ANIM_PANEL_AND_PROPS,
+    hotkeys::{EditorHotkeyEvent, EditorHotkeyEventEdit, EditorHotkeyEventFile},
     tab::EditorAdminPanelState,
     ui::user_data::{
         EditorMenuDialogJoinProps, EditorMenuDialogMode, EditorMenuHostDialogMode,
@@ -19,7 +20,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
     let style = ui.style();
     // 4.0 is some margin for strokes
     let height = style.spacing.interact_size.y + style.spacing.item_spacing.y + 4.0;
-    egui::TopBottomPanel::top("top_menu")
+    let res = egui::TopBottomPanel::top("top_menu")
         .resizable(false)
         .default_height(height)
         .height_range(height..=height)
@@ -93,6 +94,14 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                         }
                     });
+
+                    let hotkeys_open = &mut pipe.user_data.editor_options.hotkeys_open;
+                    if ui
+                        .add(Button::new("Hotkeys").selected(*hotkeys_open))
+                        .clicked()
+                    {
+                        *hotkeys_open = !*hotkeys_open;
+                    }
 
                     ui.menu_button("Tools", |ui| {
                         if ui
@@ -489,6 +498,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                     crate::ui::auto_mapper::auto_mapper::render(pipe, ui, ui_state);
                 }
 
+                let cur_hotkeys = &mut *pipe.user_data.cur_hotkey_events;
                 if let Some(tab) = pipe.user_data.editor_tabs.active_tab() {
                     if tab.auto_saver.active {
                         crate::ui::auto_saver::render(
@@ -499,11 +509,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         );
                     }
 
-                    if tab.server.is_some()
-                        && ui.input_mut(|i| {
-                            i.consume_shortcut(&KeyboardShortcut::new(Modifiers::ALT, Key::F12))
-                        })
-                    {
+                    if tab.server.is_some() && cur_hotkeys.remove(&EditorHotkeyEvent::DbgMode) {
                         tab.dbg_panel.show = true;
                     }
                     if tab.dbg_panel.open {
@@ -516,28 +522,17 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                     }
                 }
 
-                if ui.input_mut(|i| {
-                    i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::S))
-                }) {
+                if cur_hotkeys.remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::Save)) {
                     pipe.user_data.ui_events.push(EditorUiEvent::SaveCurMap);
                 }
-                if ui.input_mut(|i| {
-                    i.consume_shortcut(&KeyboardShortcut::new(
-                        Modifiers::CTRL.plus(Modifiers::SHIFT),
-                        Key::Z,
-                    )) || i.consume_shortcut(&KeyboardShortcut::new(
-                        Modifiers::CTRL.plus(Modifiers::SHIFT),
-                        Key::Y,
-                    ))
-                }) {
+                if cur_hotkeys.remove(&EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Redo)) {
                     pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                 }
-                if ui.input_mut(|i| {
-                    i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::Z))
-                        || i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::Y))
-                }) {
+                if cur_hotkeys.remove(&EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Redo)) {
                     pipe.user_data.ui_events.push(EditorUiEvent::Undo);
                 }
             });
         });
+
+    ui_state.add_blur_rect(res.response.rect, 0.0);
 }

@@ -24,6 +24,7 @@ use crate::{
         utils::{rem_color_anim, rem_pos_anim, rem_sound_anim},
     },
     client::EditorClient,
+    hotkeys::{EditorHotkeyEvent, EditorHotkeyEventTimeline},
     map::{
         EditorActiveAnimationProps, EditorAnimationProps, EditorGroups, EditorLayer,
         EditorLayerUnionRef, EditorMapGroupsInterface,
@@ -539,7 +540,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 // handle time change, e.g. modify the props of selected quads
                 handle_anim_time_change(pipe);
             }
-            if res.inner.inner.insert_or_replace_point {
+
+            // the upper implementation should insert a new animation point
+            // (or replace an existing one) at the current position,
+            // if the implementation supports adding frame point data outside of this panel
+            if pipe
+                .user_data
+                .cur_hotkey_events
+                .remove(&EditorHotkeyEvent::Timeline(
+                    EditorHotkeyEventTimeline::InsertPoint,
+                ))
+            {
                 handle_point_insert(pipe);
             }
             if res.inner.inner.points_changed {
