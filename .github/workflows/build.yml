@@ -77,6 +77,8 @@ jobs:
         brew install pkg-config autoconf automake || true
         # for ffmpeg
         brew install ffmpeg || true
+        # for building molten vk
+        brew install python-setuptools || true
 
     - name: Prepare msys dependencies
       if: contains(matrix.os, 'windows')
