@@ -162,7 +162,7 @@ pub mod collision {
         Tune(&'a TuneTile),
     }
 
-    #[derive(Default)]
+    #[derive(Debug)]
     pub struct Collision {
         tiles: Vec<TileBase>,
         front_tiles: Vec<TileBase>,
@@ -173,12 +173,15 @@ pub mod collision {
         width: u32,
         height: u32,
 
-        pub(crate) tune_zones: Vec<Tunings>,
+        pub(crate) tune_zones: [Tunings; u8::MAX as usize + 1],
     }
 
     // TODO: use u8 or an enum for tile indices, instead of i32
     impl Collision {
-        pub fn new(physics_group: &MapGroupPhysics, load_all_layers: bool) -> anyhow::Result<Self> {
+        pub fn new(
+            physics_group: &MapGroupPhysics,
+            load_all_layers: bool,
+        ) -> anyhow::Result<Box<Self>> {
             let width = physics_group.attr.width.get() as u32;
             let height = physics_group.attr.height.get() as u32;
 
@@ -238,10 +241,10 @@ pub mod collision {
                 )
             });
 
-            let mut tune_zones = vec![Tunings::default()];
+            let mut tune_zones = vec![Tunings::default(); 256];
             let tune_tiles: Vec<_> =
                 if let Some((tune_zone_list, tune_tiles)) = tune_zones_and_tiles {
-                    tune_zones = tune_zone_list.to_vec();
+                    tune_zones = tune_zone_list;
                     let mut tune_tiles = tune_tiles.to_vec();
                     tune_tiles.shrink_to_fit();
                     tune_tiles
@@ -251,7 +254,7 @@ pub mod collision {
                     tune_tiles
                 };
 
-            Ok(Self {
+            Ok(Box::new(Self {
                 width,
                 height,
                 tiles: {
@@ -260,7 +263,7 @@ pub mod collision {
                     tiles
                 },
                 tune_tiles,
-                tune_zones,
+                tune_zones: tune_zones.try_into().unwrap(),
                 front_tiles: front_layer
                     .map(|l| l.tiles.to_vec())
                     .unwrap_or_else(|| vec![Default::default(); game_layer.tiles.len()]),
@@ -269,7 +272,7 @@ pub mod collision {
                     .unwrap_or_else(|| vec![Default::default(); game_layer.tiles.len()]),
                 speedup_tiles: vec![Default::default(); game_layer.tiles.len()],
                 switch_tiles: vec![Default::default(); game_layer.tiles.len()],
-            })
+            }))
         }
 
         pub fn get_playfield_width(&self) -> u32 {

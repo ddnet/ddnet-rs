@@ -1,13 +1,17 @@
 use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Align2, Button, DragValue, Grid, Key, KeyboardShortcut, Modifiers, TextEdit, Window};
+use egui::{Align2, Button, DragValue, Grid, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
     explain::TEXT_ANIM_PANEL_AND_PROPS,
+    hotkeys::{
+        EditorHotkeyEvent, EditorHotkeyEventEdit, EditorHotkeyEventFile, EditorHotkeyEventPanels,
+        EditorHotkeyEventPreferences,
+    },
     tab::EditorAdminPanelState,
     ui::user_data::{
         EditorMenuDialogJoinProps, EditorMenuDialogMode, EditorMenuHostDialogMode,
@@ -19,7 +23,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
     let style = ui.style();
     // 4.0 is some margin for strokes
     let height = style.spacing.interact_size.y + style.spacing.item_spacing.y + 4.0;
-    egui::TopBottomPanel::top("top_menu")
+    let res = egui::TopBottomPanel::top("top_menu")
         .resizable(false)
         .default_height(height)
         .height_range(height..=height)
@@ -29,13 +33,40 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
 
                 ui.horizontal(|ui| {
                     ui.menu_button("File", |ui| {
-                        if ui.button("New map").clicked() {
+                        let cur_hotkeys = &mut *pipe.user_data.cur_hotkey_events;
+                        let binds = &*pipe.user_data.hotkeys;
+                        let per_ev = &mut *pipe.user_data.cached_binds_per_event;
+                        let by_hotkey = cur_hotkeys
+                            .remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::New));
+                        if ui
+                            .add(Button::new("New map").shortcut_text(binds.fmt_ev_bind(
+                                per_ev,
+                                &EditorHotkeyEvent::File(EditorHotkeyEventFile::New),
+                            )))
+                            .clicked()
+                            || by_hotkey
+                        {
                             pipe.user_data.ui_events.push(EditorUiEvent::NewMap);
                         }
-                        if ui.button("Open map").clicked() {
+                        let by_hotkey = cur_hotkeys
+                            .remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::Open));
+                        if ui
+                            .add(Button::new("Open map").shortcut_text(binds.fmt_ev_bind(
+                                per_ev,
+                                &EditorHotkeyEvent::File(EditorHotkeyEventFile::Open),
+                            )))
+                            .clicked()
+                            || by_hotkey
+                        {
                             *menu_dialog_mode = EditorMenuDialogMode::open(pipe.user_data.io);
                         }
-                        if ui.button("Save map").clicked() {
+                        if ui
+                            .add(Button::new("Save map").shortcut_text(binds.fmt_ev_bind(
+                                per_ev,
+                                &EditorHotkeyEvent::File(EditorHotkeyEventFile::Save),
+                            )))
+                            .clicked()
+                        {
                             *menu_dialog_mode = EditorMenuDialogMode::save(pipe.user_data.io);
                         }
                         ui.separator();
@@ -55,6 +86,8 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                     });
 
                     ui.menu_button("Edit", |ui| {
+                        let binds = &*pipe.user_data.hotkeys;
+                        let per_ev = &mut *pipe.user_data.cached_binds_per_event;
                         ui.set_min_width(250.0);
                         let undo_label = pipe.user_data.editor_tabs.active_tab().and_then(|t| {
                             t.server
@@ -68,6 +101,10 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                 Button::new(format!(
                                     "Undo{}",
                                     undo_label.map(|l| format!(": {l}")).unwrap_or_default()
+                                ))
+                                .shortcut_text(binds.fmt_ev_bind(
+                                    per_ev,
+                                    &EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Undo),
                                 )),
                             )
                             .clicked()
@@ -86,6 +123,10 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                 Button::new(format!(
                                     "Redo{}",
                                     redo_label.map(|l| format!(": {l}")).unwrap_or_default()
+                                ))
+                                .shortcut_text(binds.fmt_ev_bind(
+                                    per_ev,
+                                    &EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Redo),
                                 )),
                             )
                             .clicked()
@@ -93,6 +134,14 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                         }
                     });
+
+                    let hotkeys_open = &mut pipe.user_data.editor_options.hotkeys_open;
+                    if ui
+                        .add(Button::new("Hotkeys").selected(*hotkeys_open))
+                        .clicked()
+                    {
+                        *hotkeys_open = !*hotkeys_open;
+                    }
 
                     ui.menu_button("Tools", |ui| {
                         if ui
@@ -133,9 +182,22 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                 tab.map.user.options.no_animations_with_properties =
                                     !tab.map.user.options.no_animations_with_properties;
                             }
+                            let binds = &*pipe.user_data.hotkeys;
+                            let per_ev = &mut *pipe.user_data.cached_binds_per_event;
                             let btn = Button::new("Show tile layer indices")
-                                .selected(tab.map.user.options.show_tile_numbers);
-                            if ui.add(btn).clicked() {
+                                .selected(tab.map.user.options.show_tile_numbers)
+                                .shortcut_text(binds.fmt_ev_bind(
+                                    per_ev,
+                                    &EditorHotkeyEvent::Preferences(
+                                        EditorHotkeyEventPreferences::ShowTileLayerIndices,
+                                    ),
+                                ));
+                            let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
+                                &EditorHotkeyEvent::Preferences(
+                                    EditorHotkeyEventPreferences::ShowTileLayerIndices,
+                                ),
+                            );
+                            if ui.add(btn).clicked() || by_hotkey {
                                 tab.map.user.options.show_tile_numbers =
                                     !tab.map.user.options.show_tile_numbers;
                             }
@@ -219,12 +281,19 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             tab.dbg_panel.open = !tab.dbg_panel.open;
                         }
 
+                        let by_hotkey =
+                            pipe.user_data
+                                .cur_hotkey_events
+                                .remove(&EditorHotkeyEvent::Panels(
+                                    EditorHotkeyEventPanels::ToggleAssetsStore,
+                                ));
                         if ui
                             .add(
                                 Button::new("\u{f54e} Assets store")
                                     .selected(tab.assets_store_open),
                             )
                             .clicked()
+                            || by_hotkey
                         {
                             tab.assets_store_open = !tab.assets_store_open;
                         }
@@ -489,6 +558,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                     crate::ui::auto_mapper::auto_mapper::render(pipe, ui, ui_state);
                 }
 
+                let cur_hotkeys = &mut *pipe.user_data.cur_hotkey_events;
                 if let Some(tab) = pipe.user_data.editor_tabs.active_tab() {
                     if tab.auto_saver.active {
                         crate::ui::auto_saver::render(
@@ -499,11 +569,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         );
                     }
 
-                    if tab.server.is_some()
-                        && ui.input_mut(|i| {
-                            i.consume_shortcut(&KeyboardShortcut::new(Modifiers::ALT, Key::F12))
-                        })
-                    {
+                    if tab.server.is_some() && cur_hotkeys.remove(&EditorHotkeyEvent::DbgMode) {
                         tab.dbg_panel.show = true;
                     }
                     if tab.dbg_panel.open {
@@ -516,28 +582,17 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                     }
                 }
 
-                if ui.input_mut(|i| {
-                    i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::S))
-                }) {
+                if cur_hotkeys.remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::Save)) {
                     pipe.user_data.ui_events.push(EditorUiEvent::SaveCurMap);
                 }
-                if ui.input_mut(|i| {
-                    i.consume_shortcut(&KeyboardShortcut::new(
-                        Modifiers::CTRL.plus(Modifiers::SHIFT),
-                        Key::Z,
-                    )) || i.consume_shortcut(&KeyboardShortcut::new(
-                        Modifiers::CTRL.plus(Modifiers::SHIFT),
-                        Key::Y,
-                    ))
-                }) {
+                if cur_hotkeys.remove(&EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Redo)) {
                     pipe.user_data.ui_events.push(EditorUiEvent::Redo);
                 }
-                if ui.input_mut(|i| {
-                    i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::Z))
-                        || i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::Y))
-                }) {
+                if cur_hotkeys.remove(&EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Undo)) {
                     pipe.user_data.ui_events.push(EditorUiEvent::Undo);
                 }
             });
         });
+
+    ui_state.add_blur_rect(res.response.rect, 0.0);
 }

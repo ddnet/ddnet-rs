@@ -198,7 +198,7 @@ pub mod state {
         pub stage_0_id: StageId,
 
         // physics
-        pub(crate) collision: Collision,
+        pub(crate) collision: Box<Collision>,
         pub(crate) spawns: Rc<GameSpawns>,
         /// empty definitions for previous state
         pub(crate) prev_game_objects_definitions: Rc<GameObjectDefinitions>,

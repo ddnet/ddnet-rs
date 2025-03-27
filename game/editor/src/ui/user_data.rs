@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use base::linked_hash_map_view::FxLinkedHashMap;
 use base_io::io::Io;
@@ -20,8 +20,10 @@ use sound::scene_object::SceneObject;
 
 use crate::{
     event::ActionDbg,
+    hotkeys::{BindsPerEvent, EditorBindsFile, EditorHotkeyEvent},
     image_store_container::ImageStoreContainer,
     notifications::EditorNotifications,
+    options::EditorOptions,
     sound_store_container::SoundStoreContainer,
     tab::{EditorAdminPanelStateAuthed, EditorTab},
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
@@ -280,7 +282,11 @@ pub struct UserData<'a> {
     pub menu_dialog_mode: &'a mut EditorMenuDialogMode,
     pub modal_dialog_mode: &'a mut EditorModalDialogMode,
     pub tools: &'a mut Tools,
+
+    pub editor_options: &'a mut EditorOptions,
+
     pub auto_mapper: &'a mut TileLayerAutoMapper,
+
     pub pointer_is_used: &'a mut bool,
     pub io: &'a Io,
 
@@ -292,6 +298,10 @@ pub struct UserData<'a> {
     pub quad_tile_images_container: &'a mut ImageStoreContainer,
     pub sound_images_container: &'a mut SoundStoreContainer,
     pub container_scene: &'a SceneObject,
+
+    pub hotkeys: &'a mut EditorBindsFile,
+    pub cur_hotkey_events: &'a mut HashSet<EditorHotkeyEvent>,
+    pub cached_binds_per_event: &'a mut Option<BindsPerEvent>,
 }
 
 pub struct UserDataWithTab<'a> {
@@ -304,6 +314,8 @@ pub struct UserDataWithTab<'a> {
     pub pointer_is_used: &'a mut bool,
     pub io: &'a Io,
 
+    pub editor_options: &'a mut EditorOptions,
+
     pub auto_mapper: &'a mut TileLayerAutoMapper,
 
     pub tp: &'a Arc<rayon::ThreadPool>,
@@ -314,4 +326,8 @@ pub struct UserDataWithTab<'a> {
     pub quad_tile_images_container: &'a mut ImageStoreContainer,
     pub sound_images_container: &'a mut SoundStoreContainer,
     pub container_scene: &'a SceneObject,
+
+    pub hotkeys: &'a mut EditorBindsFile,
+    pub cur_hotkey_events: &'a mut HashSet<EditorHotkeyEvent>,
+    pub cached_binds_per_event: &'a mut Option<BindsPerEvent>,
 }

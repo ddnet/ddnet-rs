@@ -20,9 +20,10 @@ use crate::{
     },
     event::EditorEventAutoMap,
     explain::TEXT_LAYER_PROPS_COLOR,
+    hotkeys::{EditorHotkeyEvent, EditorHotkeyEventMap},
     map::{
-        EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorMap, EditorMapInterface,
-        EditorPhysicsLayer, ResourceSelection,
+        EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorLayerUnionRef, EditorMap,
+        EditorMapInterface, EditorPhysicsLayer, ResourceSelection,
     },
     ui::{
         group_and_layer::{
@@ -1158,5 +1159,142 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         intersected.is_some_and(|(outside, _)| !outside)
     } else {
         false
+    };
+
+    let move_up = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Map(EditorHotkeyEventMap::MoveLayerUp));
+    let move_down = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Map(EditorHotkeyEventMap::MoveLayerDown));
+    let active_layer = map.active_layer();
+    // move
+    if let Some(act) = active_layer
+        .and_then(|layer| {
+            if let EditorLayerUnionRef::Design {
+                group_index,
+                is_background,
+                layer_index,
+                group,
+                ..
+            } = layer
+            {
+                Some((
+                    is_background,
+                    group_index,
+                    layer_index,
+                    if is_background {
+                        map.groups.background.len()
+                    } else {
+                        map.groups.foreground.len()
+                    },
+                    group.layers.len(),
+                ))
+            } else {
+                None
+            }
+        })
+        .and_then(|(is_background, g, l, group_len, layers_in_group)| {
+            if move_up {
+                if g == 0 && l == 0 && !is_background {
+                    layer_move_to_act(MoveLayer::IsBackground(true), is_background, g, l, map)
+                } else if g > 0 && l == 0 {
+                    layer_move_to_act(MoveLayer::Group(g - 1), is_background, g, l, map)
+                } else if l > 0 {
+                    layer_move_to_act(MoveLayer::Layer(l - 1), is_background, g, l, map)
+                } else {
+                    None
+                }
+            } else if move_down {
+                if g + 1 == group_len && l + 1 == layers_in_group && is_background {
+                    layer_move_to_act(MoveLayer::IsBackground(false), is_background, g, l, map)
+                } else if g + 1 < group_len && l + 1 == layers_in_group {
+                    layer_move_to_act(MoveLayer::Group(g + 1), is_background, g, l, map)
+                } else if l + 1 < layers_in_group {
+                    layer_move_to_act(MoveLayer::Layer(l + 1), is_background, g, l, map)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+    {
+        tab.client.execute(EditorAction::MoveLayer(act), None);
+    }
+    let delete_layer = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Map(EditorHotkeyEventMap::DeleteLayer));
+    if let Some(layer) = delete_layer.then(|| map.active_layer()).flatten() {
+        match layer {
+            EditorLayerUnionRef::Design {
+                layer,
+                group_index,
+                layer_index,
+                is_background,
+                ..
+            } => {
+                match layer {
+                    EditorLayer::Tile(layer) => {
+                        tab.client.execute(
+                            EditorAction::RemTileLayer(ActRemTileLayer {
+                                base: ActAddRemTileLayer {
+                                    is_background,
+                                    group_index,
+                                    index: layer_index,
+                                    layer: layer.clone().into(),
+                                },
+                            }),
+                            None,
+                        );
+                    }
+                    EditorLayer::Quad(layer) => {
+                        tab.client.execute(
+                            EditorAction::RemQuadLayer(ActRemQuadLayer {
+                                base: ActAddRemQuadLayer {
+                                    is_background,
+                                    group_index,
+                                    index: layer_index,
+                                    layer: layer.clone().into(),
+                                },
+                            }),
+                            None,
+                        );
+                    }
+                    EditorLayer::Sound(layer) => {
+                        tab.client.execute(
+                            EditorAction::RemSoundLayer(ActRemSoundLayer {
+                                base: ActAddRemSoundLayer {
+                                    is_background,
+                                    group_index,
+                                    index: layer_index,
+                                    layer: layer.clone().into(),
+                                },
+                            }),
+                            None,
+                        );
+                    }
+                    EditorLayer::Abritrary(_) => {
+                        // ignore
+                    }
+                }
+            }
+            EditorLayerUnionRef::Physics {
+                layer, layer_index, ..
+            } => {
+                tab.client.execute(
+                    EditorAction::RemPhysicsTileLayer(ActRemPhysicsTileLayer {
+                        base: ActAddRemPhysicsTileLayer {
+                            index: layer_index,
+                            layer: layer.clone().into(),
+                        },
+                    }),
+                    None,
+                );
+            }
+        }
     }
 }

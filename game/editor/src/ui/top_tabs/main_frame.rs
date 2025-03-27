@@ -1,15 +1,18 @@
 use egui::{
     text::LayoutJob, Button, Color32, CornerRadius, FontId, Grid, Modal, Stroke, WidgetText,
 };
-use ui_base::types::UiRenderPipe;
+use ui_base::types::{UiRenderPipe, UiState};
 
-use crate::ui::user_data::{EditorModalDialogMode, EditorUiEvent, UserData};
+use crate::{
+    hotkeys::{EditorHotkeyEvent, EditorHotkeyEventTabs},
+    ui::user_data::{EditorModalDialogMode, EditorUiEvent, UserData},
+};
 
-pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
+pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let style = ui.style();
     // 4.0 is some margin for strokes
     let height = style.spacing.interact_size.y + style.spacing.item_spacing.y + 4.0;
-    egui::TopBottomPanel::top("top_tabs")
+    let res = egui::TopBottomPanel::top("top_tabs")
         .resizable(false)
         .default_height(height)
         .height_range(height..=height)
@@ -90,6 +93,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     if btn.clicked() {
                         *pipe.user_data.editor_tabs.active_tab = tab_name.clone();
                     }
+
                     let style = ui.style_mut();
                     let r = CornerRadius {
                         ne: old_rouding,
@@ -104,6 +108,69 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         remove_tab = Some((tab_name.clone(), tab.client.should_save));
                     }
                     ui.add_space(10.0);
+                }
+
+                let next_by_hotkey = pipe
+                    .user_data
+                    .cur_hotkey_events
+                    .remove(&EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Next));
+                if next_by_hotkey {
+                    let mut it = pipe
+                        .user_data
+                        .editor_tabs
+                        .tabs
+                        .keys()
+                        .chain(pipe.user_data.editor_tabs.tabs.keys())
+                        .skip_while(|name| name.as_str() != pipe.user_data.editor_tabs.active_tab);
+                    // skips the match
+                    it.next();
+                    if let Some(name) = it
+                        .next()
+                        .or_else(|| pipe.user_data.editor_tabs.tabs.keys().next())
+                    {
+                        *pipe.user_data.editor_tabs.active_tab = name.clone();
+                    }
+                }
+                let prev_by_hotkey = pipe
+                    .user_data
+                    .cur_hotkey_events
+                    .remove(&EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Previous));
+                if prev_by_hotkey {
+                    let mut it = pipe
+                        .user_data
+                        .editor_tabs
+                        .tabs
+                        .keys()
+                        .rev()
+                        .chain(pipe.user_data.editor_tabs.tabs.keys().rev())
+                        .skip_while(|name| name.as_str() != pipe.user_data.editor_tabs.active_tab);
+                    // skips the match
+                    it.next();
+                    if let Some(name) = it
+                        .next()
+                        .or_else(|| pipe.user_data.editor_tabs.tabs.keys().next_back())
+                    {
+                        *pipe.user_data.editor_tabs.active_tab = name.clone();
+                    }
+                }
+
+                let by_hotkey = pipe
+                    .user_data
+                    .cur_hotkey_events
+                    .remove(&EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Close));
+                if let Some(tab) = by_hotkey
+                    .then(|| {
+                        pipe.user_data
+                            .editor_tabs
+                            .tabs
+                            .get(pipe.user_data.editor_tabs.active_tab)
+                    })
+                    .flatten()
+                {
+                    remove_tab = Some((
+                        pipe.user_data.editor_tabs.active_tab.clone(),
+                        tab.client.should_save,
+                    ));
                 }
 
                 if let Some((tab, should_save)) = remove_tab {
@@ -139,4 +206,5 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                 }
             })
         });
+    ui_state.add_blur_rect(res.response.rect, 0.0);
 }

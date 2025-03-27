@@ -44,7 +44,7 @@ use url::Url;
 use vanilla::collision::collision::Collision;
 
 pub struct ClientMapFileData {
-    pub collision: Collision,
+    pub collision: Box<Collision>,
     pub buffered_map: ClientMapBuffered,
 }
 
@@ -55,7 +55,7 @@ pub struct ClientMapRenderAndFile {
 
 pub struct ClientMapFileProcessed {
     pub upload_data: ClientMapBufferUploadData,
-    pub collision: Collision,
+    pub collision: Box<Collision>,
     pub images: ClientMapImagesLoading,
     pub sounds: ClientMapSoundsLoading,
 }

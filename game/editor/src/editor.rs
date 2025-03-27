@@ -91,6 +91,7 @@ use crate::{
     editor_ui::{EditorUiRender, EditorUiRenderPipe},
     event::EditorEventOverwriteMap,
     fs::read_file_editor,
+    hotkeys::{BindsPerEvent, EditorBindsFile, EditorHotkeyEvent},
     image_store_container::{load_image_store_container, ImageStoreContainer},
     map::{
         EditorActiveAnimationProps, EditorAnimations, EditorAnimationsProps,
@@ -110,6 +111,7 @@ use crate::{
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
     notifications::{EditorNotification, EditorNotifications},
+    options::EditorOptions,
     physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
     sound_store_container::{load_sound_store_container, SoundStoreContainer},
@@ -194,6 +196,12 @@ pub struct Editor {
     tools: Tools,
     auto_mapper: TileLayerAutoMapper,
 
+    editor_options: EditorOptions,
+
+    hotkeys: EditorBindsFile,
+    cur_hotkey_events: HashSet<EditorHotkeyEvent>,
+    cached_binds_per_event: Option<BindsPerEvent>,
+
     middle_down_pointer_pos: Option<egui::Pos2>,
     current_pointer_pos: egui::Pos2,
     current_scroll_delta: egui::Vec2,
@@ -249,6 +257,8 @@ impl Editor {
         tp: &Arc<rayon::ThreadPool>,
         font_data: &FontDefinitions,
     ) -> Self {
+        let hotkeys_file = EditorBindsFile::load_file(io);
+
         let sys = System::new();
         let default_entities =
             EntitiesContainer::load_default(io, ENTITIES_CONTAINER_PATH.as_ref());
@@ -311,6 +321,9 @@ impl Editor {
         let overlays = PhysicsLayerOverlaysDdnet::new(io, tp, graphics)
             .expect("Data files for editor are wrong");
 
+        let mut hotkeys: EditorBindsFile = hotkeys_file.get_storage().unwrap_or_default();
+        hotkeys.apply_defaults();
+
         let mut res = Self {
             tabs: Default::default(),
             active_tab: "".into(),
@@ -354,6 +367,13 @@ impl Editor {
                 },
                 active_tool: ActiveTool::Tiles(ActiveToolTiles::Brush),
             },
+
+            editor_options: Default::default(),
+
+            hotkeys,
+            cur_hotkey_events: Default::default(),
+            cached_binds_per_event: None,
+
             auto_mapper: TileLayerAutoMapper::new(graphics, io.clone().into(), tp.clone()),
             middle_down_pointer_pos: None,
             current_scroll_delta: Default::default(),
@@ -2476,12 +2496,17 @@ impl Editor {
             input_state: &mut input_state,
             canvas_size: &mut ui_canvas,
             tools: &mut self.tools,
+            editor_options: &mut self.editor_options,
             auto_mapper: &mut self.auto_mapper,
             io: &self.io,
 
             quad_tile_images_container: &mut self.quad_tile_images_container,
             sound_images_container: &mut self.sounds_container,
             container_scene: &self.container_scene,
+
+            hotkeys: &mut self.hotkeys,
+            cur_hotkey_events: &mut self.cur_hotkey_events,
+            cached_binds_per_event: &mut self.cached_binds_per_event,
         });
 
         let mut forced_result = None;
