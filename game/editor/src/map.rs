@@ -619,7 +619,7 @@ impl Default for EditorMapPropsUiValues {
             server_commands_open: false,
             server_config_variables_open: false,
             chat_panel_open: None,
-            timeline: Timeline::new(),
+            timeline: Timeline::default(),
         }
     }
 }
