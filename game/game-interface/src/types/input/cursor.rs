@@ -4,7 +4,7 @@ use serde::{de, ser, Serialize};
 
 /// the character cursor has few guarantees:
 /// - x and y are never both 0 at the same time
-///     (they have a threshold so that normalizing always works)
+///   (they have a threshold so that normalizing always works)
 /// - x and y are in range [-1000.0 - u16::MAX * 2.0]
 #[derive(Debug, Hiarc, Copy, Clone, PartialEq)]
 pub struct CharacterInputCursor {

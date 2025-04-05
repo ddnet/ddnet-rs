@@ -954,7 +954,7 @@ impl RenderGame {
             let cam_player_id = match &render_for_game.render_for_player.cam_mode {
                 RenderPlayerCameraMode::Default | RenderPlayerCameraMode::AtPos { .. } => player_id,
                 RenderPlayerCameraMode::OnCharacters { character_ids, .. } => {
-                    if character_ids.len() > 0 {
+                    if !character_ids.is_empty() {
                         character_ids.iter().next().unwrap()
                     } else {
                         player_id

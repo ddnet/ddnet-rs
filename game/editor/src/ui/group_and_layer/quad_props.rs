@@ -1,4 +1,4 @@
-use egui::{Color32, InnerResponse};
+use egui::{Button, Color32, InnerResponse};
 use map::map::groups::layers::design::Quad;
 use math::math::vector::{dvec2, ffixed, nffixed, nfvec4, vec2_base};
 use time::Duration;
@@ -9,6 +9,10 @@ use crate::{
         ActChangeQuadAttr, ActQuadLayerAddRemQuads, ActQuadLayerRemQuads, EditorAction,
     },
     explain::TEXT_QUAD_PROP_COLOR,
+    hotkeys::{
+        BindsPerEvent, EditorBindsFile, EditorHotkeyEvent, EditorHotkeyEventQuadBrush,
+        EditorHotkeyEventQuadTool, EditorHotkeyEventSharedTool, EditorHotkeyEventTools,
+    },
     map::{EditorAnimations, EditorLayer, EditorLayerUnionRefMut, EditorMapGroupsInterface},
     tools::{
         quad_layer::shared::QuadPointerDownPoint,
@@ -25,6 +29,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         Multi,
         None,
     }
+
+    let binds = &*pipe.user_data.hotkeys;
+    let per_ev = &mut *pipe.user_data.cached_binds_per_event;
 
     let map = &mut pipe.user_data.editor_tab.map;
     let animations_panel_open =
@@ -90,8 +97,27 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             };
         }
 
+        fn square(quad: &mut Quad) {
+            let mut min = quad.points[0];
+            let mut max = quad.points[0];
+
+            for i in 0..4 {
+                min.x = quad.points[i].x.min(min.x);
+                min.y = quad.points[i].y.min(min.y);
+                max.x = quad.points[i].x.max(max.x);
+                max.y = quad.points[i].y.max(max.y);
+            }
+
+            quad.points[0] = min;
+            quad.points[1] = vec2_base::new(max.x, min.y);
+            quad.points[2] = vec2_base::new(min.x, max.y);
+            quad.points[3] = max;
+        }
+
         fn quad_attr_ui(
             ui: &mut egui::Ui,
+            binds: &EditorBindsFile,
+            per_ev: &mut Option<BindsPerEvent>,
             quads_count: usize,
             point: QuadPointerDownPoint,
             quad: &mut Quad,
@@ -309,25 +335,56 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
 
                         // square
-                        if ui.button("Square").clicked() {
-                            let mut min = quad.points[0];
-                            let mut max = quad.points[0];
-
-                            for i in 0..4 {
-                                min.x = quad.points[i].x.min(min.x);
-                                min.y = quad.points[i].y.min(min.y);
-                                max.x = quad.points[i].x.max(max.x);
-                                max.y = quad.points[i].y.max(max.y);
-                            }
-
-                            quad.points[0] = min;
-                            quad.points[1] = vec2_base::new(max.x, min.y);
-                            quad.points[2] = vec2_base::new(min.x, max.y);
-                            quad.points[3] = max;
+                        if ui
+                            .button("Square")
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey: `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Tools(
+                                                EditorHotkeyEventTools::Quad(
+                                                    EditorHotkeyEventQuadTool::Brush(
+                                                        EditorHotkeyEventQuadBrush::Square
+                                                    )
+                                                )
+                                            ),
+                                        )
+                                    ),
+                                );
+                            })
+                            .clicked()
+                        {
+                            square(quad);
                         }
                         ui.end_row();
 
-                        if ui.button("Delete").clicked() {
+                        if ui
+                            .add(Button::new("Delete"))
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey: `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Tools(
+                                                EditorHotkeyEventTools::Shared(
+                                                    EditorHotkeyEventSharedTool::DeleteQuadOrSound,
+                                                )
+                                            ),
+                                        )
+                                    ),
+                                );
+                            })
+                            .clicked()
+                        {
                             delete = true;
                         }
                         ui.end_row();
@@ -406,6 +463,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 let window_res = window.show(ui.ctx(), |ui| {
                     quad_attr_ui(
                         ui,
+                        binds,
+                        per_ev,
                         quads_count,
                         point,
                         quad,
@@ -481,6 +540,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 let window_res = window.show(ui.ctx(), |ui| {
                     quad_attr_ui(
                         ui,
+                        binds,
+                        per_ev,
                         quads_count,
                         point,
                         &mut quad,
@@ -643,6 +704,82 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             intersected.is_some_and(|(outside, _)| !outside)
         } else {
             false
+        };
+
+        // additional to the visible ui there is also some handling for hotkeys
+        let mut selected_quads = match &pipe.user_data.tools.active_tool {
+            ActiveTool::Quads(ActiveToolQuads::Brush) => {
+                let brush = &mut pipe.user_data.tools.quads.brush;
+                brush
+                    .last_selection
+                    .as_mut()
+                    .map(|selection| selection.indices_checked(layer))
+                    .unwrap_or_default()
+            }
+            ActiveTool::Quads(ActiveToolQuads::Selection) => {
+                let selection = &mut pipe.user_data.tools.quads.selection;
+                selection
+                    .range
+                    .as_mut()
+                    .map(|range| range.indices_checked(layer))
+                    .unwrap_or_default()
+            }
+            ActiveTool::Sounds(_) | ActiveTool::Tiles(_) => {
+                // ignore
+                Default::default()
+            }
+        };
+        let square_quads = pipe
+            .user_data
+            .cur_hotkey_events
+            .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Quad(
+                EditorHotkeyEventQuadTool::Brush(EditorHotkeyEventQuadBrush::Square),
+            )));
+        if square_quads {
+            for (&index, q) in selected_quads.iter_mut() {
+                let mut new_quad = **q;
+                square(&mut new_quad);
+                pipe.user_data.editor_tab.client.execute(
+                    EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
+                        is_background,
+                        group_index,
+                        layer_index,
+                        old_attr: **q,
+                        new_attr: new_quad,
+
+                        index,
+                    })),
+                    Some(&format!(
+                        "change-quad-attr-{is_background}-{group_index}-{layer_index}-{index}"
+                    )),
+                );
+            }
+        }
+        if !selected_quads.is_empty() {
+            let delete_quads = pipe
+                .user_data
+                .cur_hotkey_events
+                .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Shared(
+                    EditorHotkeyEventSharedTool::DeleteQuadOrSound,
+                )));
+            if delete_quads {
+                for (&index, q) in selected_quads.iter_mut() {
+                    pipe.user_data.editor_tab.client.execute(
+                        EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads {
+                            base: ActQuadLayerAddRemQuads {
+                                is_background,
+                                group_index,
+                                layer_index,
+                                index,
+                                quads: vec![**q],
+                            },
+                        }),
+                        Some(&format!(
+                            "delete-quad-{is_background}-{group_index}-{layer_index}-{index}"
+                        )),
+                    );
+                }
+            }
         }
     }
 }

@@ -198,7 +198,7 @@ pub mod state {
         pub stage_0_id: StageId,
 
         // physics
-        pub(crate) collision: Collision,
+        pub(crate) collision: Box<Collision>,
         pub(crate) spawns: Rc<GameSpawns>,
         /// empty definitions for previous state
         pub(crate) prev_game_objects_definitions: Rc<GameObjectDefinitions>,
@@ -1682,7 +1682,7 @@ pub mod state {
             let spectator_players = players.iter().map(|(_, player)| {
                 let (player_info, stage_id) = (
                     CharacterPlayerInfo {
-                        cam_mode: if player.spectated_characters.len() == 0 {
+                        cam_mode: if player.spectated_characters.is_empty() {
                             PlayerCameraMode::Free
                         } else {
                             PlayerCameraMode::LockedOn {
@@ -1690,7 +1690,7 @@ pub mod state {
                                 locked_ingame: false,
                             }
                         },
-                        force_scoreboard_visible: player.spectated_characters.len() > 0
+                        force_scoreboard_visible: !player.spectated_characters.is_empty()
                             && player
                                 .spectated_characters
                                 .iter()

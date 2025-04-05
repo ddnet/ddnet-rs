@@ -3395,7 +3395,8 @@ impl FromNativeImpl for ClientNativeImpl {
 
         // force limit fps in menus
         let refresh_rate = if self.ui_manager.ui.ui_state.is_ui_open && self.demo_player.is_none() {
-            ((self.config.engine.wnd.refresh_rate_mhz as u64 + 999) / 1000)
+            (self.config.engine.wnd.refresh_rate_mhz as u64)
+                .div_ceil(1000)
                 .clamp(60, u64::MAX)
                 .min(if self.config.game.cl.refresh_rate > 0 {
                     self.config.game.cl.refresh_rate

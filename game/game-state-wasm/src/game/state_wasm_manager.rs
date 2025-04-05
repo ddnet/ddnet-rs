@@ -59,7 +59,7 @@ pub enum GameStateMod {
 }
 
 enum GameStateWrapper {
-    Native(GameState),
+    Native(Box<GameState>),
     //Ddnet(Ddnet),
     Wasm(StateWasm),
 }
@@ -67,7 +67,7 @@ enum GameStateWrapper {
 impl GameStateWrapper {
     pub fn as_ref(&self) -> &dyn GameStateInterface {
         match self {
-            Self::Native(state) => state,
+            Self::Native(state) => state.as_ref(),
             //GameStateWrapper::Ddnet(state) => state,
             Self::Wasm(state) => state,
         }
@@ -75,7 +75,7 @@ impl GameStateWrapper {
 
     pub fn as_mut(&mut self) -> &mut dyn GameStateInterface {
         match self {
-            Self::Native(state) => state,
+            Self::Native(state) => state.as_mut(),
             //GameStateWrapper::Ddnet(state) => state,
             Self::Wasm(state) => state,
         }
@@ -121,14 +121,14 @@ impl GameStateWasmManager {
             GameStateMod::Native => {
                 let (state, info) = GameState::new(map, map_name, options, io.rt.clone(), db)
                     .map_err(|err| anyhow!(err))?;
-                (GameStateWrapper::Native(state), info)
+                (GameStateWrapper::Native(Box::new(state)), info)
             }
             GameStateMod::Ddnet => {
                 // TODO: let (state, info) = <Ddnet as GameStateCreate>::new(map, options);
                 // (GameStateWrapper::Ddnet(state), info)
                 let (state, info) = GameState::new(map, map_name, options, io.rt.clone(), db)
                     .map_err(|err| anyhow!(err))?;
-                (GameStateWrapper::Native(state), info)
+                (GameStateWrapper::Native(Box::new(state)), info)
             }
             GameStateMod::Wasm { file: wasm_module } => {
                 let mut info = GameStateStaticInfo {

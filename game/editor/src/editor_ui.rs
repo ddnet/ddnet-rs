@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use base_io::io::Io;
 use config::config::ConfigEngine;
@@ -21,8 +21,10 @@ use ui_base::{
 use ui_generic::generic_ui_renderer;
 
 use crate::{
+    hotkeys::{BindsPerEvent, EditorBindsFile, EditorHotkeyEvent},
     image_store_container::ImageStoreContainer,
     notifications::EditorNotifications,
+    options::EditorOptions,
     sound_store_container::SoundStoreContainer,
     tools::{tile_layer::auto_mapper::TileLayerAutoMapper, tool::Tools},
     ui::{
@@ -44,13 +46,21 @@ pub struct EditorUiRenderPipe<'a> {
     pub input_state: &'a mut Option<InputState>,
     pub canvas_size: &'a mut Option<UiCanvasSize>,
     pub tools: &'a mut Tools,
+
+    pub editor_options: &'a mut EditorOptions,
+
     pub auto_mapper: &'a mut TileLayerAutoMapper,
+
     pub notifications: &'a EditorNotifications,
     pub io: &'a Io,
 
     pub quad_tile_images_container: &'a mut ImageStoreContainer,
     pub sound_images_container: &'a mut SoundStoreContainer,
     pub container_scene: &'a SceneObject,
+
+    pub hotkeys: &'a mut EditorBindsFile,
+    pub cur_hotkey_events: &'a mut HashSet<EditorHotkeyEvent>,
+    pub cached_binds_per_event: &'a mut Option<BindsPerEvent>,
 }
 
 pub struct EditorUiRender {
@@ -124,6 +134,8 @@ impl EditorUiRender {
                     modal_dialog_mode: &mut self.modal_dialog_mode,
                     tools: pipe.tools,
 
+                    editor_options: pipe.editor_options,
+
                     auto_mapper: pipe.auto_mapper,
 
                     pointer_is_used: &mut needs_pointer,
@@ -137,6 +149,10 @@ impl EditorUiRender {
                     quad_tile_images_container: pipe.quad_tile_images_container,
                     sound_images_container: pipe.sound_images_container,
                     container_scene: pipe.container_scene,
+
+                    hotkeys: pipe.hotkeys,
+                    cur_hotkey_events: pipe.cur_hotkey_events,
+                    cached_binds_per_event: pipe.cached_binds_per_event,
                 },
             ),
             pipe.inp,

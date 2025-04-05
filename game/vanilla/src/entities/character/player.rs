@@ -159,7 +159,7 @@ pub mod player {
         pub fn to_snapshot_local_player(&self, id: &PlayerId) -> Option<SnapshotLocalPlayer> {
             self.players.get(id).map(|p| SnapshotLocalPlayer {
                 id: p.player_info.id,
-                input_cam_mode: if p.spectated_characters.len() == 0 {
+                input_cam_mode: if p.spectated_characters.is_empty() {
                     PlayerCameraMode::Free
                 } else {
                     PlayerCameraMode::LockedOn {

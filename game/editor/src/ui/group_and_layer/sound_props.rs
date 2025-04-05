@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use egui::{Color32, InnerResponse};
+use egui::{Button, Color32, InnerResponse};
 use map::map::{
     animations::AnimPointPos,
     groups::layers::design::{Sound, SoundShape},
@@ -16,7 +16,13 @@ use ui_base::{
 };
 
 use crate::{
-    actions::actions::{ActChangeSoundAttr, EditorAction},
+    actions::actions::{
+        ActChangeSoundAttr, ActSoundLayerAddRemSounds, ActSoundLayerRemSounds, EditorAction,
+    },
+    hotkeys::{
+        BindsPerEvent, EditorBindsFile, EditorHotkeyEvent, EditorHotkeyEventSharedTool,
+        EditorHotkeyEventSoundBrush, EditorHotkeyEventSoundTool, EditorHotkeyEventTools,
+    },
     map::{EditorAnimations, EditorLayer, EditorLayerUnionRefMut, EditorMapGroupsInterface},
     tools::{
         sound_layer::shared::SoundPointerDownPoint,
@@ -33,6 +39,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         Multi,
         None,
     }
+
+    let binds = &*pipe.user_data.hotkeys;
+    let per_ev = &mut *pipe.user_data.cached_binds_per_event;
 
     let map = &mut pipe.user_data.editor_tab.map;
     let animations_panel_open =
@@ -90,8 +99,28 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             };
         }
 
+        fn to_circle(sound: &mut Sound) {
+            if let SoundShape::Rect { size } = sound.shape {
+                sound.shape = SoundShape::Circle {
+                    radius: uffixed::from_num(
+                        length(&dvec2::new(size.x.to_num(), size.y.to_num())) / 2_f64.sqrt(),
+                    ),
+                };
+            }
+        }
+
+        fn to_rect(sound: &mut Sound) {
+            if let SoundShape::Circle { radius } = sound.shape {
+                sound.shape = SoundShape::Rect {
+                    size: ufvec2::new(radius.to_num(), radius.to_num()),
+                };
+            }
+        }
+
         fn sound_attr_ui(
             ui: &mut egui::Ui,
+            binds: &EditorBindsFile,
+            per_ev: &mut Option<BindsPerEvent>,
             sounds_count: usize,
             point: SoundPointerDownPoint,
             sound: &mut Sound,
@@ -103,7 +132,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             animations_panel_open: bool,
             animations: &EditorAnimations,
             pointer_is_used: &mut bool,
-        ) -> InnerResponse<()> {
+        ) -> InnerResponse<bool> {
+            let mut delete = false;
             egui::Grid::new("design group attr grid")
                 .num_columns(2)
                 .spacing([20.0, 4.0])
@@ -310,24 +340,32 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             })
                             .show_ui(ui, |ui| {
                                 if ui.button("circle").clicked() {
-                                    if let SoundShape::Rect { size } = sound.shape {
-                                        sound.shape = SoundShape::Circle {
-                                            radius: uffixed::from_num(
-                                                length(&dvec2::new(
-                                                    size.x.to_num(),
-                                                    size.y.to_num(),
-                                                )) / 2_f64.sqrt(),
-                                            ),
-                                        };
-                                    }
+                                    to_circle(sound);
                                 }
                                 if ui.button("rect").clicked() {
-                                    if let SoundShape::Circle { radius } = sound.shape {
-                                        sound.shape = SoundShape::Rect {
-                                            size: ufvec2::new(radius.to_num(), radius.to_num()),
-                                        };
-                                    }
+                                    to_rect(sound);
                                 }
+                            })
+                            .response
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey: `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Tools(
+                                                EditorHotkeyEventTools::Sound(
+                                                    EditorHotkeyEventSoundTool::Brush(
+                                                        EditorHotkeyEventSoundBrush::ToggleShape
+                                                    )
+                                                )
+                                            ),
+                                        )
+                                    ),
+                                );
                             });
                         ui.end_row();
 
@@ -335,7 +373,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             let intersected = ui.input(|i| {
                                 if i.pointer.primary_down() {
                                     Some((
-                                        !res.response.rect.intersects({
+                                        !res.rect.intersects({
                                             let min = i.pointer.interact_pos().unwrap_or_default();
                                             let max = min;
                                             [min, max].into()
@@ -421,6 +459,29 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                     }
 
+                    if ui
+                        .add(Button::new("Delete"))
+                        .on_hover_ui(|ui| {
+                            let mut cache = egui_commonmark::CommonMarkCache::default();
+                            egui_commonmark::CommonMarkViewer::new().show(
+                                ui,
+                                &mut cache,
+                                &format!(
+                                    "Hotkey: `{}`",
+                                    binds.fmt_ev_bind(
+                                        per_ev,
+                                        &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Shared(
+                                            EditorHotkeyEventSharedTool::DeleteQuadOrSound,
+                                        )),
+                                    )
+                                ),
+                            );
+                        })
+                        .clicked()
+                    {
+                        delete = true;
+                    }
+
                     if animations_panel_open {
                         ui.colored_label(
                             Color32::RED,
@@ -431,6 +492,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         .on_hover_ui(animations_panel_open_warning);
                         ui.end_row();
                     }
+                    delete
                 })
         }
 
@@ -446,6 +508,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 let window_res = window.show(ui.ctx(), |ui| {
                     sound_attr_ui(
                         ui,
+                        binds,
+                        per_ev,
                         sounds_count,
                         point,
                         sound,
@@ -458,6 +522,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         pipe.user_data.pointer_is_used,
                     )
                 });
+
+                let delete = window_res
+                    .as_ref()
+                    .is_some_and(|r| r.inner.as_ref().is_some_and(|r| r.inner));
 
                 if *sound != sound_cmp && !animations_panel_open {
                     let layer_sound = &layer.layer.sounds[index];
@@ -473,6 +541,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }),
                         Some(&format!(
                             "change-sound-attr-{is_background}-{group_index}-{layer_index}-{index}"
+                        )),
+                    );
+                } else if delete {
+                    pipe.user_data.editor_tab.client.execute(
+                        EditorAction::SoundLayerRemSounds(ActSoundLayerRemSounds {
+                            base: ActSoundLayerAddRemSounds {
+                                is_background,
+                                group_index,
+                                layer_index,
+                                index,
+                                sounds: vec![*sound],
+                            },
+                        }),
+                        Some(&format!(
+                            "sound-rem-design-{is_background}-{group_index}-{layer_index}-{index}"
                         )),
                     );
                 }
@@ -503,6 +586,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 let window_res = window.show(ui.ctx(), |ui| {
                     sound_attr_ui(
                         ui,
+                        binds,
+                        per_ev,
                         sounds_count,
                         point,
                         &mut sound,
@@ -515,6 +600,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         pipe.user_data.pointer_is_used,
                     )
                 });
+
+                let delete = window_res
+                    .as_ref()
+                    .is_some_and(|r| r.inner.as_ref().is_some_and(|r| r.inner));
 
                 if sound != sound_cmp {
                     let prop_sound = sound;
@@ -567,6 +656,34 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             );
                         }
                     });
+                } else if delete {
+                    // rewrite the sound indices, since they get invalid every time a sound is deleted.
+                    for i in 0..selected_sounds.len() {
+                        let (delete_index, _) = selected_sounds[i];
+                        for (index, _) in selected_sounds.iter_mut().skip(i + 1) {
+                            if *index > delete_index {
+                                *index = index.saturating_sub(1);
+                            }
+                        }
+                    }
+
+                    for (index, sound) in selected_sounds {
+                        pipe.user_data.editor_tab.client.execute(
+                            EditorAction::SoundLayerRemSounds(ActSoundLayerRemSounds {
+                                base: ActSoundLayerAddRemSounds {
+                                    is_background,
+                                    group_index,
+                                    layer_index,
+                                    index,
+                                    sounds: vec![*sound],
+                                },
+                            }),
+                            Some(&format!(
+                                "sound-rem-design-{is_background}-\
+                                {group_index}-{layer_index}-{index}"
+                            )),
+                        );
+                    }
                 }
 
                 window_res
@@ -609,6 +726,85 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             intersected.is_some_and(|(outside, _)| !outside)
         } else {
             false
+        };
+
+        // additional to the visible ui there is also some handling for hotkeys
+        let mut selected_sounds = match &pipe.user_data.tools.active_tool {
+            ActiveTool::Sounds(ActiveToolSounds::Brush) => {
+                let brush = &mut pipe.user_data.tools.sounds.brush;
+                let mut res: BTreeMap<usize, &mut Sound> = Default::default();
+                if let Some((selection, sound)) =
+                    brush.last_selection.as_mut().and_then(|selection| {
+                        if selection.sound_index < layer.layer.sounds.len() {
+                            Some((selection.sound_index, &mut selection.sound))
+                        } else {
+                            None
+                        }
+                    })
+                {
+                    res.insert(selection, sound);
+                }
+                res
+            }
+            ActiveTool::Quads(_) | ActiveTool::Tiles(_) => {
+                // ignore
+                Default::default()
+            }
+        };
+        let change_shape_sound =
+            pipe.user_data
+                .cur_hotkey_events
+                .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Sound(
+                    EditorHotkeyEventSoundTool::Brush(EditorHotkeyEventSoundBrush::ToggleShape),
+                )));
+        if change_shape_sound {
+            for (&index, s) in selected_sounds.iter_mut() {
+                let mut new_snd = **s;
+                match &new_snd.shape {
+                    SoundShape::Rect { .. } => to_circle(&mut new_snd),
+                    SoundShape::Circle { .. } => to_rect(&mut new_snd),
+                }
+                pipe.user_data.editor_tab.client.execute(
+                    EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
+                        is_background,
+                        group_index,
+                        layer_index,
+                        old_attr: **s,
+                        new_attr: new_snd,
+
+                        index,
+                    }),
+                    Some(&format!(
+                        "change-sound-attr-{is_background}-{group_index}-{layer_index}-{index}"
+                    )),
+                );
+            }
+        }
+        if !selected_sounds.is_empty() {
+            let delete_sounds = pipe
+                .user_data
+                .cur_hotkey_events
+                .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Shared(
+                    EditorHotkeyEventSharedTool::DeleteQuadOrSound,
+                )));
+            if delete_sounds {
+                for (&index, s) in selected_sounds.iter_mut() {
+                    pipe.user_data.editor_tab.client.execute(
+                        EditorAction::SoundLayerRemSounds(ActSoundLayerRemSounds {
+                            base: ActSoundLayerAddRemSounds {
+                                is_background,
+                                group_index,
+                                layer_index,
+                                index,
+                                sounds: vec![**s],
+                            },
+                        }),
+                        Some(&format!(
+                            "delete-sound-{is_background}-{group_index}-{layer_index}-{index}"
+                        )),
+                    );
+                }
+            }
         }
     }
 }

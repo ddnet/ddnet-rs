@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use egui::{
-    pos2, vec2, Align2, Color32, DragValue, FontId, Key, KeyboardShortcut, Modifiers, Pos2, Rect,
-    RichText, Sense, Shape, Stroke, UiBuilder, Vec2,
+    pos2, vec2, Align2, Color32, DragValue, FontId, Pos2, Rect, RichText, Sense, Shape, Stroke,
+    UiBuilder, Vec2,
 };
 use egui_extras::{Size, StripBuilder};
 use map::map::animations::{AnimBezier, AnimBezierPoint};
@@ -79,10 +79,6 @@ pub struct TimelineResponse {
     /// the time changed, either because the timeline is currently set to `playing`
     /// or because the user moved the time dragger
     pub time_changed: bool,
-    /// the upper implementation should insert a new animation point
-    /// (or replace an existing one) at the current position,
-    /// if the implementation supports adding frame point data outside of this panel
-    pub insert_or_replace_point: bool,
     /// At least one point changed by the implementation
     pub points_changed: bool,
     /// A point deleted
@@ -1520,10 +1516,6 @@ impl Timeline {
         if self.time.time != res_time {
             res.time_changed = true;
         }
-        res.insert_or_replace_point = !res.time_changed
-            && ui.input_mut(|i| {
-                i.consume_shortcut(&KeyboardShortcut::new(Modifiers::default(), Key::I))
-            });
         res
     }
 

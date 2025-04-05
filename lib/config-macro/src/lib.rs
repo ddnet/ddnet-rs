@@ -442,7 +442,7 @@ pub fn config(tokens: TokenStream) -> TokenStream {
 /// the `config_default` macro implements default for the struct which it attributes.
 /// the `config_default` macro has two attributes interesting for implementing a default & serialization for a field:
 /// - `#[default = ...]` will implement the given value as default value for this struct. Additionally, if the field is missing
-///     during deserialization or if the deserlization has an error, it will automatically use this default value
+///   during deserialization or if the deserlization has an error, it will automatically use this default value
 /// - `#[conf_valid(...)]` can validate certain attributes (where `...` is replaced by below syntax, for both the min & max are optional):
 ///     - length(min = x, max = y): the min/max length of a String or Vec. Note: length of a String here is the unicode length (so basically str.chars().count())
 ///     - range(min = x, max = y) a range of a primitive numeric type.
