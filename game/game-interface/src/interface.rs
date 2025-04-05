@@ -186,10 +186,10 @@ pub trait GameStateCreate {
 /// The 3 main areas in the interface are:
 ///
 /// - handle game, player input, players joining/leaving, generating snapshots
-///     (which is usually called by both server & client)
+///   (which is usually called by both server & client)
 /// - collecting render information, which the client uses to render all game objects
 /// - handling of certain events, e.g. how chat is displayed in the client
-///     or how chat commands are processed, rcon handling etc.
+///   or how chat commands are processed, rcon handling etc.
 ///
 /// # Prediction code
 /// Maybe one of the harder parts is that prediction happens inside the physics module,
@@ -400,7 +400,7 @@ pub trait GameStateInterface: GameStateCreate {
     /// The idea behind this call is:
     /// - [`GameStateInterface::tick`] (or other functions) collect events
     /// - Server/client calls [`GameStateInterface::events_for`]
-    ///     for every client that is of interest
+    ///   for every client that is of interest
     /// - Server/client calls this function so the implementation can clear all events
     fn clear_events(&mut self);
 

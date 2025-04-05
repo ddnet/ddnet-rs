@@ -390,7 +390,7 @@ pub mod world {
                     self.game_options.clone(),
                 ),
             );
-            self.characters.values_mut().last().unwrap()
+            self.characters.values_mut().next_back().unwrap()
         }
 
         /// returns closest distance, intersection position and the character id

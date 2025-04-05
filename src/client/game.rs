@@ -823,12 +823,14 @@ impl Game {
                             initial_rcon_input: Default::default(),
                         },
                         render_props,
-                        info.spatial_chat
-                            .then(|| {
+                        if info.spatial_chat {
+                            {
                                 pipe.spatial_chat
                                     .create_world(spatial_chat_scene, pipe.config_game)
-                            })
-                            .unwrap_or(SpatialChatGameWorldTy::None),
+                            }
+                        } else {
+                            SpatialChatGameWorldTy::None
+                        },
                         connecting.auto_cleanup,
                         expected_local_players,
                         local_player_id_counter,
@@ -919,12 +921,14 @@ impl Game {
                             initial_rcon_input: Default::default(),
                         },
                         render_props,
-                        info.spatial_chat
-                            .then(|| {
+                        if info.spatial_chat {
+                            {
                                 pipe.spatial_chat
                                     .create_world(spatial_chat_scene, pipe.config_game)
-                            })
-                            .unwrap_or(SpatialChatGameWorldTy::None),
+                            }
+                        } else {
+                            SpatialChatGameWorldTy::None
+                        },
                         game.auto_cleanup,
                         expected_local_players,
                         local_player_id_counter,

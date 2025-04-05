@@ -158,10 +158,10 @@ struct DefaultItem<L> {
 ///   Both http server & game server mode try to load from a disk cache first.
 ///   File modes:
 /// - Single file: A single file, most commonly a texture, was loaded and the implementations
-///     must ensure to load proper default values for other resources of an item (sounds etc.)
+///   must ensure to load proper default values for other resources of an item (sounds etc.)
 /// - Directory: A directory with many different resources was loaded. Missing resources must be filled
-///     with values of the default item. A directory might be archieved in a .tar ball, which is automatically
-///     unpacked and processed.
+///   with values of the default item. A directory might be archieved in a .tar ball, which is automatically
+///   unpacked and processed.
 #[derive(Debug, Hiarc)]
 pub struct Container<A, L> {
     items: LinkedHashMap<ContainerKey, ContainerItem<A>>,
@@ -259,14 +259,14 @@ where
     ///
     /// Interesting parameters are:
     /// - `resource_http_download_url`:
-    ///     The resource server for general purpose, cross server resources
+    ///   The resource server for general purpose, cross server resources
     /// - `resource_server_download_url`:
-    ///     The resource for a game server, which are only downloaded if a hash
-    ///     is provided.
+    ///   The resource for a game server, which are only downloaded if a hash
+    ///   is provided.
     /// - `sound_scene`:
-    ///     The scene in which the sounds are created in.
+    ///   The scene in which the sounds are created in.
     /// - `assume_unused`:
-    ///     Assumes that the container will most likely never be used.
+    ///   Assumes that the container will most likely never be used.
     pub fn new(
         io: Io,
         runtime_thread_pool: Arc<rayon::ThreadPool>,

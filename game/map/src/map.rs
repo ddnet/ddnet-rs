@@ -31,10 +31,10 @@ use self::{
 ///
 /// - resources are external resources like images and sounds
 /// - layers are either physics related or design related characteristics of the map.
-///     layers are grouped, each group has own properties like parallax effects & offsets.
-///     their ordering is important for rendering / sound etc.
+///   layers are grouped, each group has own properties like parallax effects & offsets.
+///   their ordering is important for rendering / sound etc.
 /// - animations are a collection of animation frames, which can be used to control for example the color,
-///     position or similar stuff of elements in the map layers.
+///   position or similar stuff of elements in the map layers.
 ///
 /// Serialization & Deserialization of all items in the collection happens indepentially (mostly to allow parallel processing).
 /// To make it easy use [`Map::read`] &  [`Map::write`], which automatically de-/serializes and compresses the map
@@ -207,22 +207,21 @@ impl Map {
 
     /// All maps that the client knows MUST start with "twmap", even if the version changes etc.
     pub fn validate_twmap_header(file: &[u8]) -> bool {
-        let twmap_str_len = Self::FILE_TY.bytes().len();
+        let twmap_str_len = Self::FILE_TY.len();
         file.len() >= twmap_str_len
-            && String::from_utf8_lossy(&file[..Self::FILE_TY.bytes().len()]) == Self::FILE_TY
+            && String::from_utf8_lossy(&file[..Self::FILE_TY.len()]) == Self::FILE_TY
     }
 
     /// Read the map resources (and the file header). Returns the number of bytes read.
     pub fn read_resources_and_header(file: &[u8]) -> anyhow::Result<(Resources, usize)> {
-        let header_len = Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>();
+        let header_len = Self::FILE_TY.len() + std::mem::size_of::<u64>();
         anyhow::ensure!(
             file.len() >= header_len && Self::validate_twmap_header(file),
             "file smaller than the size of the header."
         );
         anyhow::ensure!(
             u64::from_le_bytes(
-                file[Self::FILE_TY.bytes().len()
-                    ..Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>()]
+                file[Self::FILE_TY.len()..Self::FILE_TY.len() + std::mem::size_of::<u64>()]
                     .try_into()?
             ) == Self::VERSION,
             "file version mismatch."
@@ -263,15 +262,14 @@ impl Map {
 
     /// Read a map file
     pub fn read(file: &[u8], tp: &rayon::ThreadPool) -> anyhow::Result<Self> {
-        let header_len = Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>();
+        let header_len = Self::FILE_TY.len() + std::mem::size_of::<u64>();
         anyhow::ensure!(
             file.len() >= header_len && Self::validate_twmap_header(file),
             "file smaller than the size of the header."
         );
         anyhow::ensure!(
             u64::from_le_bytes(
-                file[Self::FILE_TY.bytes().len()
-                    ..Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>()]
+                file[Self::FILE_TY.len()..Self::FILE_TY.len() + std::mem::size_of::<u64>()]
                     .try_into()?
             ) == Self::VERSION,
             "file version mismatch."
@@ -304,15 +302,14 @@ impl Map {
     ///
     /// This is usually nice to use on the server.
     pub fn read_physics_group_and_config(file: &[u8]) -> anyhow::Result<(MapGroupPhysics, Config)> {
-        let header_len = Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>();
+        let header_len = Self::FILE_TY.len() + std::mem::size_of::<u64>();
         anyhow::ensure!(
             file.len() >= header_len && Self::validate_twmap_header(file),
             "file smaller than the size of the header."
         );
         anyhow::ensure!(
             u64::from_le_bytes(
-                file[Self::FILE_TY.bytes().len()
-                    ..Self::FILE_TY.bytes().len() + std::mem::size_of::<u64>()]
+                file[Self::FILE_TY.len()..Self::FILE_TY.len() + std::mem::size_of::<u64>()]
                     .try_into()?
             ) == Self::VERSION,
             "file version mismatch."

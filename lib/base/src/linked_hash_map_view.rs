@@ -83,7 +83,7 @@ where
     FV: Fn(&V) -> bool,
     S: std::hash::BuildHasher,
 {
-    pub fn new(
+    pub const fn new(
         hash_map: &'a mut LinkedHashMap<K, V, S>,
         key_filter_func: F,
         val_filter_func: FV,

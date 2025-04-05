@@ -32,9 +32,9 @@ pub enum ReducedAsciiStringError {
 ///
 /// A few guarantees this should give are:
 /// - That a string can safely passed as name
-///     for a file path without changing directory or simiar.
+///   for a file path without changing directory or simiar.
 /// - Not allowing hash like names helps keeping the string pool clean for hash usecases.
-///     of ddnet related projects, if a hash is needed, put it into an extra attribute instead.
+///   of ddnet related projects, if a hash is needed, put it into an extra attribute instead.
 #[derive(Debug, Default, Hiarc, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 pub struct ReducedAsciiString(ascii::AsciiString);
 

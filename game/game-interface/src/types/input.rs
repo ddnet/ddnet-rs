@@ -225,10 +225,10 @@ pub struct CharacterInputState {
 
 /// character input splits into two categories:
 /// - consumable input: these inputs are private and can only be queried by
-///     comparing it to another input. They represent an input event
-///     (was fired, has jumped, was weapon changed etc.)
+///   comparing it to another input. They represent an input event
+///   (was fired, has jumped, was weapon changed etc.)
 /// - stateful input: these inputs are like a current state of the input and
-///     can be queried all the time (current cursor, hold hook button, hold fire button etc.)
+///   can be queried all the time (current cursor, hold hook button, hold fire button etc.)
 #[derive(Debug, Hiarc, Copy, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CharacterInput {
     pub cursor: InputVarState<CharacterInputCursor>,
