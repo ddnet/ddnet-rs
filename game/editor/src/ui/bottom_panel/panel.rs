@@ -4,14 +4,204 @@ use math::math::vector::vec2;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
-    explain::SERVER_COMMANDS_CONFIG_VAR,
-    hotkeys::{EditorHotkeyEvent, EditorHotkeyEventPanels, EditorHotkeyEventPreferences},
+    explain::{ANIMATION_PANEL, SERVER_COMMANDS_CONFIG_VAR},
+    hotkeys::{
+        EditorHotkeyEvent, EditorHotkeyEventPanels, EditorHotkeyEventPreferences,
+        EditorHotkeyEventTimeline,
+    },
     ui::user_data::{EditorUiEvent, UserDataWithTab},
     utils::ui_pos_to_world_pos,
 };
 
-pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
+fn render_buttons(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
     let editor_tab = &mut *pipe.user_data.editor_tab;
+    let binds = &*pipe.user_data.hotkeys;
+    let per_ev = &mut *pipe.user_data.cached_binds_per_event;
+    let by_hotkey = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Panels(
+            EditorHotkeyEventPanels::ToggleAnimation,
+        ));
+    if ui
+        .add(
+            egui::Button::new("Animations")
+                .selected(editor_tab.map.user.ui_values.animations_panel_open),
+        )
+        .on_hover_ui(|ui| {
+            let mut cache = egui_commonmark::CommonMarkCache::default();
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut cache,
+                &format!(
+                    "{}\n\nHotkey: `{}`",
+                    ANIMATION_PANEL.replace(
+                        "$ANIM_POINT_INSERT$",
+                        &binds.fmt_ev_bind(
+                            per_ev,
+                            &EditorHotkeyEvent::Timeline(EditorHotkeyEventTimeline::InsertPoint),
+                        )
+                    ),
+                    binds.fmt_ev_bind(
+                        per_ev,
+                        &EditorHotkeyEvent::Panels(EditorHotkeyEventPanels::ToggleAnimation),
+                    )
+                ),
+            );
+        })
+        .clicked()
+        || by_hotkey
+    {
+        editor_tab.map.user.ui_values.animations_panel_open =
+            !editor_tab.map.user.ui_values.animations_panel_open;
+    }
+    let by_hotkey = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Panels(
+            EditorHotkeyEventPanels::ToggleServerCommands,
+        ));
+    if ui
+        .add(
+            Button::new("Server commands")
+                .selected(editor_tab.map.user.ui_values.server_commands_open),
+        )
+        .on_hover_ui(|ui| {
+            let mut cache = egui_commonmark::CommonMarkCache::default();
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut cache,
+                &format!(
+                    "{}\n\nHotkey: `{}`",
+                    SERVER_COMMANDS_CONFIG_VAR,
+                    binds.fmt_ev_bind(
+                        per_ev,
+                        &EditorHotkeyEvent::Panels(EditorHotkeyEventPanels::ToggleServerCommands,),
+                    )
+                ),
+            );
+        })
+        .clicked()
+        || by_hotkey
+    {
+        editor_tab.map.user.ui_values.server_commands_open =
+            !editor_tab.map.user.ui_values.server_commands_open;
+    }
+    let by_hotkey = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Panels(
+            EditorHotkeyEventPanels::ToggleServerConfigVars,
+        ));
+    if ui
+        .add(
+            Button::new("Server config variables")
+                .selected(editor_tab.map.user.ui_values.server_config_variables_open),
+        )
+        .on_hover_ui(|ui| {
+            let mut cache = egui_commonmark::CommonMarkCache::default();
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut cache,
+                &format!(
+                    "{}\n\nHotkey: `{}`",
+                    SERVER_COMMANDS_CONFIG_VAR,
+                    binds.fmt_ev_bind(
+                        per_ev,
+                        &EditorHotkeyEvent::Panels(EditorHotkeyEventPanels::ToggleServerConfigVars),
+                    )
+                ),
+            );
+        })
+        .clicked()
+        || by_hotkey
+    {
+        editor_tab.map.user.ui_values.server_config_variables_open =
+            !editor_tab.map.user.ui_values.server_config_variables_open;
+    }
+    let by_hotkey = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Preferences(
+            EditorHotkeyEventPreferences::ToggleParallaxZoom,
+        ));
+    if ui
+        .add(Button::new("Parallax zoom").selected(editor_tab.map.groups.user.parallax_aware_zoom))
+        .on_hover_ui(|ui| {
+            let mut cache = egui_commonmark::CommonMarkCache::default();
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut cache,
+                &format!(
+                    "Hotkey: `{}`",
+                    binds.fmt_ev_bind(
+                        per_ev,
+                        &EditorHotkeyEvent::Preferences(
+                            EditorHotkeyEventPreferences::ToggleParallaxZoom,
+                        ),
+                    )
+                ),
+            );
+        })
+        .clicked()
+        || by_hotkey
+    {
+        editor_tab.map.groups.user.parallax_aware_zoom =
+            !editor_tab.map.groups.user.parallax_aware_zoom;
+    }
+
+    // Editor time
+    let increase_by_hotkey =
+        pipe.user_data
+            .cur_hotkey_events
+            .remove(&EditorHotkeyEvent::Preferences(
+                EditorHotkeyEventPreferences::IncreaseMapTimeSpeed,
+            ));
+    if increase_by_hotkey {
+        editor_tab.map.user.time_scale = (editor_tab.map.user.time_scale * 2).max(1);
+    }
+    let decrease_by_hotkey =
+        pipe.user_data
+            .cur_hotkey_events
+            .remove(&EditorHotkeyEvent::Preferences(
+                EditorHotkeyEventPreferences::DecreaseMapTimeSpeed,
+            ));
+    if decrease_by_hotkey {
+        editor_tab.map.user.time_scale /= 2;
+    }
+    ui.menu_button("\u{f017}", |ui| {
+        ui.label("Control over how time in the editor advances.");
+        ui.label("Affects for example the animations.");
+        ui.add_space(10.0);
+        ui.label("Time multiplier:");
+        ui.add(DragValue::new(&mut editor_tab.map.user.time_scale));
+    })
+    .response
+    .on_hover_ui(|ui| {
+        let mut cache = egui_commonmark::CommonMarkCache::default();
+        egui_commonmark::CommonMarkViewer::new().show(
+            ui,
+            &mut cache,
+            &format!(
+                "Increase time factor hotkey: `{}`  \nDecrease time factor hotkey: `{}`",
+                binds.fmt_ev_bind(
+                    per_ev,
+                    &EditorHotkeyEvent::Preferences(
+                        EditorHotkeyEventPreferences::IncreaseMapTimeSpeed,
+                    ),
+                ),
+                binds.fmt_ev_bind(
+                    per_ev,
+                    &EditorHotkeyEvent::Preferences(
+                        EditorHotkeyEventPreferences::DecreaseMapTimeSpeed,
+                    ),
+                )
+            ),
+        );
+    });
+}
+
+pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {
     let style = ui.style();
     let item_height = style.spacing.interact_size.y;
     let row_height = item_height + style.spacing.item_spacing.y;
@@ -31,124 +221,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             strip.cell(|ui| {
                                 ui.style_mut().wrap_mode = None;
                                 ui.horizontal(|ui| {
-                                    let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
-                                        &EditorHotkeyEvent::Panels(
-                                            EditorHotkeyEventPanels::ToggleAnimation,
-                                        ),
-                                    );
-                                    if ui
-                                        .add(egui::Button::new("Animations").selected(
-                                            editor_tab.map.user.ui_values.animations_panel_open,
-                                        ))
-                                        .clicked()
-                                        || by_hotkey
-                                    {
-                                        editor_tab.map.user.ui_values.animations_panel_open =
-                                            !editor_tab.map.user.ui_values.animations_panel_open;
-                                    }
-                                    let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
-                                        &EditorHotkeyEvent::Panels(
-                                            EditorHotkeyEventPanels::ToggleServerCommands,
-                                        ),
-                                    );
-                                    if ui
-                                        .add(Button::new("Server commands").selected(
-                                            editor_tab.map.user.ui_values.server_commands_open,
-                                        ))
-                                        .on_hover_ui(|ui| {
-                                            let mut cache =
-                                                egui_commonmark::CommonMarkCache::default();
-                                            egui_commonmark::CommonMarkViewer::new().show(
-                                                ui,
-                                                &mut cache,
-                                                SERVER_COMMANDS_CONFIG_VAR,
-                                            );
-                                        })
-                                        .clicked()
-                                        || by_hotkey
-                                    {
-                                        editor_tab.map.user.ui_values.server_commands_open =
-                                            !editor_tab.map.user.ui_values.server_commands_open;
-                                    }
-                                    let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
-                                        &EditorHotkeyEvent::Panels(
-                                            EditorHotkeyEventPanels::ToggleServerConfigVars,
-                                        ),
-                                    );
-                                    if ui
-                                        .add(
-                                            Button::new("Server config variables").selected(
-                                                editor_tab
-                                                    .map
-                                                    .user
-                                                    .ui_values
-                                                    .server_config_variables_open,
-                                            ),
-                                        )
-                                        .on_hover_ui(|ui| {
-                                            let mut cache =
-                                                egui_commonmark::CommonMarkCache::default();
-                                            egui_commonmark::CommonMarkViewer::new().show(
-                                                ui,
-                                                &mut cache,
-                                                SERVER_COMMANDS_CONFIG_VAR,
-                                            );
-                                        })
-                                        .clicked()
-                                        || by_hotkey
-                                    {
-                                        editor_tab
-                                            .map
-                                            .user
-                                            .ui_values
-                                            .server_config_variables_open = !editor_tab
-                                            .map
-                                            .user
-                                            .ui_values
-                                            .server_config_variables_open;
-                                    }
-                                    let by_hotkey = pipe.user_data.cur_hotkey_events.remove(
-                                        &EditorHotkeyEvent::Preferences(
-                                            EditorHotkeyEventPreferences::ToggleParallaxZoom,
-                                        ),
-                                    );
-                                    if ui
-                                        .add(Button::new("Parallax zoom").selected(
-                                            editor_tab.map.groups.user.parallax_aware_zoom,
-                                        ))
-                                        .clicked()
-                                        || by_hotkey
-                                    {
-                                        editor_tab.map.groups.user.parallax_aware_zoom =
-                                            !editor_tab.map.groups.user.parallax_aware_zoom;
-                                    }
-                                    ui.menu_button("\u{f017}", |ui| {
-                                        ui.label("Control over how time in the editor advances.");
-                                        ui.label("Affects for example the animations.");
-                                        ui.add_space(10.0);
-                                        ui.label("Time multiplier:");
-                                        ui.add(DragValue::new(&mut editor_tab.map.user.time_scale));
-
-                                        let increase_by_hotkey = pipe
-                                            .user_data
-                                            .cur_hotkey_events
-                                            .remove(&EditorHotkeyEvent::Preferences(
-                                                EditorHotkeyEventPreferences::IncreaseMapTimeSpeed,
-                                            ));
-                                        if increase_by_hotkey {
-                                            editor_tab.map.user.time_scale =
-                                                (editor_tab.map.user.time_scale * 2).max(1);
-                                        }
-                                        let decrease_by_hotkey = pipe
-                                            .user_data
-                                            .cur_hotkey_events
-                                            .remove(&EditorHotkeyEvent::Preferences(
-                                                EditorHotkeyEventPreferences::DecreaseMapTimeSpeed,
-                                            ));
-                                        if decrease_by_hotkey {
-                                            editor_tab.map.user.time_scale /= 2;
-                                        }
-                                    })
+                                    render_buttons(ui, pipe);
                                 });
                             });
                             strip.cell(|ui| {
@@ -159,6 +232,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     .size(Size::remainder())
                                     .clip(true)
                                     .horizontal(|mut strip| {
+                                        let editor_tab = &mut *pipe.user_data.editor_tab;
                                         strip.cell(|ui| {
                                             ui.style_mut().wrap_mode = None;
                                             let mut layout = LayoutJob::default();

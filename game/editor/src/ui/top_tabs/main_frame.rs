@@ -70,9 +70,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         Button::new(tab_display_name)
                             .selected(pipe.user_data.editor_tabs.active_tab == tab_name),
                     );
-                    if tab.client.clients.len() > 1 {
-                        btn = btn.on_hover_ui(|ui| {
-                            ui.vertical(|ui| {
+                    btn = btn.on_hover_ui(|ui| {
+                        ui.vertical(|ui| {
+                            if tab.client.clients.len() > 1 {
                                 Grid::new("overview-mappers-network-tooltip")
                                     .num_columns(2)
                                     .show(ui, |ui| {
@@ -87,9 +87,38 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                             ui.end_row();
                                         }
                                     });
-                            });
-                        })
-                    }
+
+                                ui.add_space(20.0);
+                                ui.separator();
+                                ui.add_space(20.0);
+                            }
+                            let binds = &*pipe.user_data.hotkeys;
+                            let per_ev = &mut *pipe.user_data.cached_binds_per_event;
+
+                            let mut cache = egui_commonmark::CommonMarkCache::default();
+                            egui_commonmark::CommonMarkViewer::new().show(
+                                ui,
+                                &mut cache,
+                                &format!(
+                                    "Next tab hotkey: `{}`  \n\
+                                    Prev tab hotkey: `{}`  \n\
+                                    Close tab hotkey: `{}`",
+                                    binds.fmt_ev_bind(
+                                        per_ev,
+                                        &EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Next),
+                                    ),
+                                    binds.fmt_ev_bind(
+                                        per_ev,
+                                        &EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Previous),
+                                    ),
+                                    binds.fmt_ev_bind(
+                                        per_ev,
+                                        &EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Close),
+                                    ),
+                                ),
+                            );
+                        });
+                    });
                     if btn.clicked() {
                         *pipe.user_data.editor_tabs.active_tab = tab_name.clone();
                     }

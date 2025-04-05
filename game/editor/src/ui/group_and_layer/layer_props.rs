@@ -193,6 +193,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         None,
     }
 
+    let binds = &*pipe.user_data.hotkeys;
+    let per_ev = &mut *pipe.user_data.cached_binds_per_event;
+
     // check which layers are `selected`
     let tab = &mut *pipe.user_data.editor_tab;
     let map = &mut tab.map;
@@ -586,7 +589,26 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         ui.end_row();
                         // delete
-                        if ui.button("Delete layer").clicked() {
+                        if ui
+                            .add(Button::new("Delete layer"))
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey (when active): `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Map(
+                                                EditorHotkeyEventMap::DeleteLayer
+                                            ),
+                                        )
+                                    ),
+                                );
+                            })
+                            .clicked()
+                        {
                             delete_layer = true;
                         }
                         ui.end_row();
@@ -850,7 +872,26 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.text_edit_singleline(&mut layer_editor.name);
                         ui.end_row();
                         // delete
-                        if ui.button("Delete layer").clicked() {
+                        if ui
+                            .add(Button::new("Delete layer"))
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey (when active): `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Map(
+                                                EditorHotkeyEventMap::DeleteLayer
+                                            ),
+                                        )
+                                    ),
+                                );
+                            })
+                            .clicked()
+                        {
                             delete_layer = true;
                         }
                         ui.end_row();
@@ -989,7 +1030,26 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.text_edit_singleline(&mut layer_editor.name);
                         ui.end_row();
                         // delete
-                        if ui.button("Delete layer").clicked() {
+                        if ui
+                            .add(Button::new("Delete layer"))
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey (when active): `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Map(
+                                                EditorHotkeyEventMap::DeleteLayer
+                                            ),
+                                        )
+                                    ),
+                                );
+                            })
+                            .clicked()
+                        {
                             delete_layer = true;
                         }
                         ui.end_row();
@@ -1098,7 +1158,24 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     .label("Physics layers have no properties. Look in the physics group instead.");
                 if !matches!(layer, EditorPhysicsLayer::Game(_)) {
                     // delete
-                    if ui.button("Delete layer").clicked() {
+                    if ui
+                        .add(Button::new("Delete layer"))
+                        .on_hover_ui(|ui| {
+                            let mut cache = egui_commonmark::CommonMarkCache::default();
+                            egui_commonmark::CommonMarkViewer::new().show(
+                                ui,
+                                &mut cache,
+                                &format!(
+                                    "Hotkey (when active): `{}`",
+                                    binds.fmt_ev_bind(
+                                        per_ev,
+                                        &EditorHotkeyEvent::Map(EditorHotkeyEventMap::DeleteLayer),
+                                    )
+                                ),
+                            );
+                        })
+                        .clicked()
+                    {
                         delete_layer = true;
                     }
                 }
@@ -1285,15 +1362,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             EditorLayerUnionRef::Physics {
                 layer, layer_index, ..
             } => {
-                tab.client.execute(
-                    EditorAction::RemPhysicsTileLayer(ActRemPhysicsTileLayer {
-                        base: ActAddRemPhysicsTileLayer {
-                            index: layer_index,
-                            layer: layer.clone().into(),
-                        },
-                    }),
-                    None,
-                );
+                if !matches!(layer, EditorPhysicsLayer::Game(_)) {
+                    tab.client.execute(
+                        EditorAction::RemPhysicsTileLayer(ActRemPhysicsTileLayer {
+                            base: ActAddRemPhysicsTileLayer {
+                                index: layer_index,
+                                layer: layer.clone().into(),
+                            },
+                        }),
+                        None,
+                    );
+                }
             }
         }
     }

@@ -163,6 +163,8 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         }
                     });
 
+                    let binds = &*pipe.user_data.hotkeys;
+                    let per_ev = &mut *pipe.user_data.cached_binds_per_event;
                     if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
                         ui.menu_button("\u{f013}", |ui| {
                             let btn = Button::new("Disable animations panel + properties")
@@ -182,8 +184,6 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                 tab.map.user.options.no_animations_with_properties =
                                     !tab.map.user.options.no_animations_with_properties;
                             }
-                            let binds = &*pipe.user_data.hotkeys;
-                            let per_ev = &mut *pipe.user_data.cached_binds_per_event;
                             let btn = Button::new("Show tile layer indices")
                                 .selected(tab.map.user.options.show_tile_numbers)
                                 .shortcut_text(binds.fmt_ev_bind(
@@ -292,6 +292,22 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                 Button::new("\u{f54e} Assets store")
                                     .selected(tab.assets_store_open),
                             )
+                            .on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    &format!(
+                                        "Hotkey: `{}`",
+                                        binds.fmt_ev_bind(
+                                            per_ev,
+                                            &EditorHotkeyEvent::Panels(
+                                                EditorHotkeyEventPanels::ToggleAssetsStore
+                                            ),
+                                        )
+                                    ),
+                                );
+                            })
                             .clicked()
                             || by_hotkey
                         {

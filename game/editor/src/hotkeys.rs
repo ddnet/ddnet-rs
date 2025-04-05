@@ -250,7 +250,7 @@ impl EditorBindsFile {
             EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Shared(
                 EditorHotkeyEventSharedTool::DeleteQuadOrSound,
             )),
-            KeyboardShortcut::new(Modifiers::CTRL, Key::Delete),
+            KeyboardShortcut::new(Modifiers::default(), Key::Delete),
         );
         hotkey(
             EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Quad(
@@ -318,7 +318,7 @@ impl EditorBindsFile {
         );
         hotkey(
             EditorHotkeyEvent::Map(EditorHotkeyEventMap::DeleteLayer),
-            KeyboardShortcut::new(Modifiers::default(), Key::Delete),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::Delete),
         );
     }
 

@@ -24,8 +24,8 @@ The quad selection is a specialized tool that focuses on making working with exi
 You can change many shared properties at once to many quads. E.g. the color of one of the quad corners.\n\
 Align many quads at once and so on similar to the `Quad brush`.  \n\
 First select your quad(s) using `left click`:\n\
-- `right click` on a quad corner or center _point_ to open the property\
-window for all selected quads for the given _point_.\n\
+- `right click` on a quad corner or center _point_ to open the property \
+  window for all selected quads for the given _point_.\n\
 - `left click` on a corner point to drag the corner of all quads.\n\
 - `left click` on a center point to drag all quads.\n\
 - `shift + left click` on a center point to drag the center point of all quads.\n\
@@ -229,6 +229,21 @@ expression, this whole expression is then evaluated with the operator \
 of the third most bottom expression and so on.  \n\
 If an expression is _negated_, then this negation operator is applied on the \
 expression itself and not on expressions below or above.  \n\
+";
+
+pub const ANIMATION_PANEL: &str = "\
+# Animations\
+\n\
+Animations are categorized into 3:\n\
+- Position & rotation\n\
+- Color\n\
+- Sound\n\
+\n\n\
+Position & rotation affects sound sources and quads, while \
+color affects tile layers & quads. Sound animations are \
+for sound sources only.  \n\
+To insert a new animation point press the `$ANIM_POINT_INSERT$` hotkey.  \n\
+To delete a point simply `right click` the point in the time graph.\
 ";
 
 pub const SERVER_COMMANDS_CONFIG_VAR: &str = "\
