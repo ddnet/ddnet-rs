@@ -186,6 +186,8 @@ pub fn test_ingame_skins(
     graphics: &Graphics,
     creator: &UiCreator,
     containers: &mut RenderGameContainers,
+    skin_color: NetworkSkinInfo,
+    include_default: bool,
     save_screenshot: impl Fn(&str),
     runs: usize,
 ) {
@@ -199,7 +201,7 @@ pub fn test_ingame_skins(
         .skin_container
         .entries_index()
         .into_iter()
-        .filter_map(|(key, _)| (key != "default").then_some(key))
+        .filter_map(|(key, _)| (include_default || key != "default").then_some(key))
         .collect();
     entries.sort();
     for entry in entries.iter() {
@@ -211,7 +213,7 @@ pub fn test_ingame_skins(
                     info.skin = entry.as_str().try_into().unwrap_or_default();
                     PoolRc::from_item_without_pool(info)
                 },
-                skin_info: NetworkSkinInfo::Original,
+                skin_info: skin_color,
                 laser_info: Default::default(),
                 stage_id: Some(id_gen.next_id()),
                 side: None,
@@ -262,7 +264,7 @@ pub fn test_ingame_skins(
             };
             let camera = Camera {
                 pos: vec2::new(ppr as f32, ppr as f32),
-                zoom: 2.5,
+                zoom: 2.7,
                 parallax_aware_zoom: true,
                 forced_aspect_ratio: None,
             };
