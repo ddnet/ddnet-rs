@@ -745,13 +745,12 @@ impl LoadSkin {
 
         // make the texture gray scale
         for i in 0..tex.width as usize * tex.height as usize {
-            let v = ((tex.data[i * pixel_step] as u32
-                + tex.data[i * pixel_step + 1] as u32
-                + tex.data[i * pixel_step + 2] as u32)
-                / 3) as u8;
-            tex.data[i * pixel_step] = v;
-            tex.data[i * pixel_step + 1] = v;
-            tex.data[i * pixel_step + 2] = v;
+            let [r, g, b] = tex.data[i * pixel_step..=i * pixel_step + 2] else {
+                panic!("greyscale rgb assign bug, can't happen");
+            };
+            let luma = (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) as u8;
+
+            tex.data[i * pixel_step..=i * pixel_step + 2].copy_from_slice(&[luma, luma, luma]);
         }
     }
 
@@ -801,12 +800,12 @@ impl LoadSkin {
         });
 
         let mut freq: [i32; 256] = [0; 256];
-        let mut org_weight: i32 = 0;
-        let new_weight: i32 = 192;
+        let mut org_weight: u8 = 1;
+        let new_weight: u8 = 192;
 
         let body_pitch = body.width as usize * pixel_step;
 
-        // find most common frequence
+        // find most common non-zero frequence
         for y in 0..body.height as usize {
             for x in 0..body.width as usize {
                 if body.data[y * body_pitch + x * pixel_step + 3] > 128 {
@@ -815,7 +814,7 @@ impl LoadSkin {
             }
         }
 
-        for i in 1..256 {
+        for i in 1..=255 {
             if freq[org_weight as usize] < freq[i as usize] {
                 org_weight = i;
             }
@@ -826,20 +825,16 @@ impl LoadSkin {
         let inv_new_weight = 255 - new_weight;
         for y in 0..body.height as usize {
             for x in 0..body.width as usize {
-                let mut v = body.data[y * body_pitch + x * pixel_step] as i32;
-                if v <= org_weight && org_weight == 0 {
-                    v = 0;
-                } else if v <= org_weight {
-                    v = ((v as f32 / org_weight as f32) * new_weight as f32) as i32;
-                } else if inv_org_weight == 0 {
-                    v = new_weight;
+                let mut v = body.data[y * body_pitch + x * pixel_step];
+                if v <= org_weight {
+                    v = ((v as f32 / org_weight as f32) * new_weight as f32) as u8;
                 } else {
                     v = (((v - org_weight) as f32 / inv_org_weight as f32) * inv_new_weight as f32
-                        + new_weight as f32) as i32;
+                        + new_weight as f32) as u8;
                 }
-                body.data[y * body_pitch + x * pixel_step] = v as u8;
-                body.data[y * body_pitch + x * pixel_step + 1] = v as u8;
-                body.data[y * body_pitch + x * pixel_step + 2] = v as u8;
+                body.data[y * body_pitch + x * pixel_step] = v;
+                body.data[y * body_pitch + x * pixel_step + 1] = v;
+                body.data[y * body_pitch + x * pixel_step + 2] = v;
             }
         }
     }
