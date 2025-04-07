@@ -9,8 +9,10 @@ use client_render_base::render::{tee::RenderTee, toolkit::ToolkitRender};
 use client_ui::thumbnail_container::{
     load_thumbnail_container, ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH,
 };
+use game_interface::types::character_info::NetworkSkinInfo;
 use graphics::graphics::graphics::Graphics;
 use graphics_backend::backend::GraphicsBackend;
+use math::math::vector::ubvec4;
 use ui_base::{
     font_data::{UiFontData, UiFontDataLoading},
     ui::UiCreator,
@@ -166,8 +168,8 @@ fn test_all_skins() {
     let (graphics, graphics_backend, creator, mut containers, _, _, _) = prepare(
         false,
         Some(Options {
-            width: 4000,
-            height: 4000,
+            width: 8000,
+            height: 8000,
         }),
     );
     let entries = loop {
@@ -194,7 +196,72 @@ fn test_all_skins() {
         &graphics,
         &creator,
         &mut containers,
-        |name| save_screenshot(&graphics, &graphics_backend, name),
+        NetworkSkinInfo::Original,
+        true,
+        |name| save_screenshot(&graphics, &graphics_backend, &format!("original_{}", name)),
         1,
     );
+    let mut custom = |prefix: &str, body_color: ubvec4, feet_color: ubvec4| {
+        test_ingame_skins(
+            &graphics,
+            &creator,
+            &mut containers,
+            NetworkSkinInfo::Custom {
+                body_color,
+                feet_color,
+            },
+            true,
+            |name| save_screenshot(&graphics, &graphics_backend, &format!("{prefix}_{name}")),
+            1,
+        )
+    };
+    // grey scales
+    custom(
+        "white",
+        ubvec4::new(255, 255, 255, 255),
+        ubvec4::new(255, 255, 255, 255),
+    );
+    custom(
+        "dark_grey",
+        ubvec4::new(50, 50, 50, 255),
+        ubvec4::new(50, 50, 50, 255),
+    );
+    let mut colors = |prefix: &str, div_factor: u8, zero_offset: u8| {
+        custom(
+            &format!("{prefix}yellow_red"),
+            ubvec4::new(255 / div_factor, 255 / div_factor, zero_offset, 255),
+            ubvec4::new(255 / div_factor, zero_offset, zero_offset, 255),
+        );
+        custom(
+            &format!("{prefix}red_yellow"),
+            ubvec4::new(255 / div_factor, zero_offset, zero_offset, 255),
+            ubvec4::new(255 / div_factor, 255 / div_factor, zero_offset, 255),
+        );
+        custom(
+            &format!("{prefix}purple_blue"),
+            ubvec4::new(255 / div_factor, zero_offset, 255 / div_factor, 255),
+            ubvec4::new(zero_offset, zero_offset, 255 / div_factor, 255),
+        );
+        custom(
+            &format!("{prefix}blue_purple"),
+            ubvec4::new(zero_offset, zero_offset, 255 / div_factor, 255),
+            ubvec4::new(255 / div_factor, zero_offset, 255 / div_factor, 255),
+        );
+        custom(
+            &format!("{prefix}cyan_green"),
+            ubvec4::new(zero_offset, 255 / div_factor, 255 / div_factor, 255),
+            ubvec4::new(zero_offset, 255 / div_factor, zero_offset, 255),
+        );
+        custom(
+            &format!("{prefix}green_cyan"),
+            ubvec4::new(zero_offset, 255 / div_factor, zero_offset, 255),
+            ubvec4::new(zero_offset, 255 / div_factor, 255 / div_factor, 255),
+        );
+    };
+    // normal
+    colors("", 1, 0);
+    // dark
+    colors("dark_", 4, 0);
+    // light
+    colors("light_", 1, 128);
 }
