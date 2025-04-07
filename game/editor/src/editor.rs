@@ -24,6 +24,7 @@ use client_render_base::map::{
         ClientMapBufferQuadLayer, MapBufferPhysicsTileLayer, MapBufferTileLayer, SoundLayerSounds,
     },
     render_pipe::Camera,
+    render_tools::{CanvasType, RenderTools},
 };
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
@@ -37,12 +38,13 @@ use graphics::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         canvas::canvas::GraphicsCanvasHandle,
-        stream::stream::GraphicsStreamHandle,
+        stream::stream::{GraphicsStreamHandle, LinesStreamHandle},
+        stream_types::StreamedLine,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
 };
-use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use hiarc::HiarcTrait;
+use graphics_types::{commands::TexFlags, rendering::State, types::GraphicsMemoryAllocationType};
+use hiarc::{hi_closure, HiarcTrait};
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::{
@@ -2222,6 +2224,7 @@ impl Editor {
                     &mut tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
+                    &self.latest_modifiers,
                     &mut tab.client,
                 ),
             }
@@ -2468,6 +2471,73 @@ impl Editor {
         }
     }
 
+    fn render_grid(&mut self) {
+        let Some(tab) = self.tabs.get(&self.active_tab) else {
+            return;
+        };
+
+        let Some(grid_size) = tab.map.user.options.render_grid else {
+            return;
+        };
+
+        let Some(layer) = tab.map.active_layer() else {
+            return;
+        };
+
+        let attr = layer.get_or_fake_group_attr();
+
+        let grid_size = grid_size as f32;
+
+        let mut state = State::new();
+        RenderTools::map_canvas_of_group(
+            CanvasType::Handle(&self.canvas_handle),
+            &mut state,
+            tab.map.groups.user.pos.x,
+            tab.map.groups.user.pos.y,
+            Some(&attr),
+            tab.map.groups.user.zoom,
+            tab.map.groups.user.parallax_aware_zoom,
+        );
+        let (width, height) = (state.get_canvas_width(), state.get_canvas_height());
+
+        let offset = state.canvas_tl;
+
+        let mut lines: Vec<StreamedLine> = vec![];
+        let color = ubvec4::new(255, 100, 100, 128);
+
+        let mut x = 1.0 - offset.x.rem_euclid(grid_size) - 1.0;
+
+        while x < width {
+            lines.push(StreamedLine::new().with_color(color).from_pos([
+                vec2::new(offset.x + x, offset.y),
+                vec2::new(offset.x + x, offset.y + height),
+            ]));
+            x += grid_size;
+        }
+
+        let mut y = 1.0 - offset.y.rem_euclid(grid_size) - 1.0;
+
+        while y < height {
+            lines.push(StreamedLine::new().with_color(color).from_pos([
+                vec2::new(offset.x, offset.y + y),
+                vec2::new(offset.x + width, offset.y + y),
+            ]));
+            y += grid_size;
+        }
+
+        self.stream_handle.render_lines(
+            hi_closure!(
+                [lines: Vec<StreamedLine>],
+                |mut stream_handle: LinesStreamHandle<'_>| -> () {
+                    for line in lines {
+                        stream_handle.add_vertices(line.into());
+                    }
+                }
+            ),
+            state,
+        );
+    }
+
     fn render_ui(
         &mut self,
         input: egui::RawInput,
@@ -2699,6 +2769,9 @@ impl EditorInterface for Editor {
 
         // if msaa is enabled, consume them now
         self.backend_handle.consumble_multi_samples();
+
+        // render the grid, if active
+        self.render_grid();
 
         // render the tools directly after the world
         // the handling/update of the tools & world happens after the UI tho

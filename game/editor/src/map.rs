@@ -631,6 +631,8 @@ pub struct EditorGlobalOptions {
     pub no_animations_with_properties: bool,
     /// show tile numbers for the current active tile layer
     pub show_tile_numbers: bool,
+    /// Whether to render a grid for aligning quads & sounds.
+    pub render_grid: Option<f64>,
 }
 
 #[derive(Debug, Clone)]

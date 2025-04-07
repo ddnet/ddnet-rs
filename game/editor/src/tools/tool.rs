@@ -208,6 +208,7 @@ impl ToolSoundLayer {
         map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        latest_modifiers: &egui::Modifiers,
         client: &mut EditorClient,
     ) {
         match active_tool {
@@ -217,6 +218,7 @@ impl ToolSoundLayer {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                latest_modifiers,
                 client,
             ),
         }

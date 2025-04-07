@@ -1,4 +1,4 @@
-use egui::{Align2, Window};
+use egui::{Align2, ModifierNames, Window};
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::network::{NetworkClientState, NetworkState};
@@ -120,7 +120,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     // clear and handle new hotkeys
     *pipe.user_data.cached_binds_per_event = None;
     pipe.user_data.cur_hotkey_events.clear();
-    for (shortcut, hotkey) in pipe.user_data.hotkeys.binds.iter() {
+    let mut binds_sorted: Vec<_> = pipe
+        .user_data
+        .hotkeys
+        .binds
+        .iter()
+        .map(|(s, ev)| (ModifierNames::NAMES.format(&s.modifiers, false), s, ev))
+        .collect();
+    binds_sorted.sort_by(|(s1, _, _), (s2, _, _)| s1.cmp(s2).reverse());
+    for (_, shortcut, hotkey) in binds_sorted {
         if ui.input_mut(|i| i.consume_shortcut(shortcut)) {
             pipe.user_data.cur_hotkey_events.insert(*hotkey);
         }

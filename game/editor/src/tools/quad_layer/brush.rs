@@ -58,6 +58,7 @@ pub struct QuadSelection {
     pub quad: Quad,
     pub point: QuadPointerDownPoint,
     pub cursor_in_world_pos: vec2,
+    pub cursor_corner_offset: vec2,
 }
 
 #[derive(Debug, Hiarc)]
@@ -236,6 +237,30 @@ impl QuadBrush {
                 self.pointer_down_state = QuadPointerDownState::None;
             }
         } else {
+            let align_pos = |mut pos: vec2| {
+                if let Some(grid_size) = latest_modifiers
+                    .alt
+                    .then_some(map.user.options.render_grid)
+                    .flatten()
+                {
+                    let grid_size = grid_size as f32;
+                    fn round_mod(v: f32, rhs: f32) -> f32 {
+                        let r = v.rem_euclid(rhs);
+
+                        if r <= rhs / 2.0 {
+                            -r
+                        } else {
+                            rhs - r
+                        }
+                    }
+                    pos.x += round_mod(pos.x, grid_size);
+                    pos.y += round_mod(pos.y, grid_size);
+                    Some(pos)
+                } else {
+                    None
+                }
+            };
+
             // check if the pointer clicked on one of the quad corner/center points
             let mut clicked_quad_point = false;
             if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
@@ -272,6 +297,9 @@ impl QuadBrush {
                         } else {
                             QuadPointerDownPoint::Corner(index)
                         };
+                        let quad_pos =
+                            vec2::new(points[index].x.to_num(), points[index].y.to_num());
+                        let cursor = vec2::new(x1, y1);
                         self.pointer_down_state = QuadPointerDownState::Point(down_point);
                         if latest_pointer.primary_pressed() {
                             self.last_translation = Some(QuadSelection {
@@ -281,7 +309,8 @@ impl QuadBrush {
                                 quad_index: q,
                                 quad: *quad,
                                 point: down_point,
-                                cursor_in_world_pos: vec2::new(x1, y1),
+                                cursor_in_world_pos: cursor,
+                                cursor_corner_offset: cursor - quad_pos,
                             });
                         } else {
                             self.last_popup = Some(QuadSelectionQuads {
@@ -333,10 +362,19 @@ impl QuadBrush {
             }
             if latest_pointer.primary_down() && self.last_translation.is_some() {
                 let last_active = self.last_translation.as_mut().unwrap();
+                let mut new_pos = vec2::new(x1, y1);
                 if let Some(edit_quad) = layer.layer.quads.get(last_active.quad_index).copied() {
                     let p = match last_active.point {
                         QuadPointerDownPoint::Center => 4,
                         QuadPointerDownPoint::Corner(index) => index,
+                    };
+                    let cursor_pos = last_active.cursor_in_world_pos;
+
+                    let aligned_pos = align_pos(new_pos);
+                    new_pos = if let Some(aligned_pos) = aligned_pos {
+                        aligned_pos + last_active.cursor_corner_offset
+                    } else {
+                        new_pos
                     };
 
                     let quad = &mut last_active.quad;
@@ -348,9 +386,8 @@ impl QuadBrush {
                     if matches!(last_active.point, QuadPointerDownPoint::Center)
                         && latest_modifiers.ctrl
                     {
-                        let cursor_pos = last_active.cursor_in_world_pos;
                         // handle rotation
-                        let diff = vec2::new(x1, y1) - vec2::new(cursor_pos.x, cursor_pos.y);
+                        let diff = new_pos - vec2::new(cursor_pos.x, cursor_pos.y);
                         let diff = diff.x;
 
                         let (points, center) = quad.points.split_at_mut(4);
@@ -363,10 +400,9 @@ impl QuadBrush {
                             rotate(&center[0], ffixed::from_num(diff), points);
                         }
                     } else {
-                        let cursor_pos = last_active.cursor_in_world_pos;
                         // handle position
-                        let diff_x = ffixed::from_num(x1 - cursor_pos.x);
-                        let diff_y = ffixed::from_num(y1 - cursor_pos.y);
+                        let diff_x = ffixed::from_num(new_pos.x - cursor_pos.x);
+                        let diff_y = ffixed::from_num(new_pos.y - cursor_pos.y);
 
                         if alter_anim_point {
                             if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
@@ -408,7 +444,7 @@ impl QuadBrush {
                     }
                 }
 
-                last_active.cursor_in_world_pos = vec2::new(x1, y1);
+                last_active.cursor_in_world_pos = new_pos;
             }
         }
     }

@@ -13,7 +13,8 @@ Corner points:\n\
 - `Left click` allows dragging the quad's corner.\n\
 - `Right click` opens the corner property panel.\n\n\
 ---\n\n\
-Press `right click` to unset the selection.\
+Press `right click` to unset the selection.  \n
+If the grid is active, then hold `alt` while dragging to snap to the next grid point.\
 ";
 
 pub const TEXT_QUAD_SELECTION: &str =
@@ -24,14 +25,13 @@ The quad selection is a specialized tool that focuses on making working with exi
 You can change many shared properties at once to many quads. E.g. the color of one of the quad corners.\n\
 Align many quads at once and so on similar to the `Quad brush`.  \n\
 First select your quad(s) using `left click`:\n\
-- `right click` on a quad corner or center _point_ to open the property \
+- `right click` on a quad _point_ to open the property \
   window for all selected quads for the given _point_.\n\
-- `left click` on a corner point to drag the corner of all quads.\n\
 - `left click` on a center point to drag all quads.\n\
 - `shift + left click` on a center point to drag the center point of all quads.\n\
 - `ctrl + left click` on a center point to rotate all quads.\n\n\
-The `Alt`-key will always try to snap the above actions to the `Grid` (if active).\n\n\
 Press `right click` on no quad to unset the selection.\n\n\
+If the grid is active, holding `alt`-key will always snap the above actions to the nearest grid point.\n\n\
 ### Animations\n\
 \n\
 If one or more quads are selected with at least one shared \
