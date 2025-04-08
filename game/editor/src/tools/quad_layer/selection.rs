@@ -13,7 +13,10 @@ use crate::{
     actions::actions::{ActChangeQuadAttr, EditorAction},
     client::EditorClient,
     map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
-    tools::{shared::in_radius, utils::render_rect},
+    tools::{
+        shared::{align_pos, in_radius, rotate},
+        utils::render_rect,
+    },
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
@@ -27,7 +30,8 @@ pub enum QuadPointerDownState {
     /// quad corner/center point
     Point {
         point: QuadPointerDownPoint,
-        pos: vec2,
+        cursor_in_world_pos: vec2,
+        cursor_corner_offset: vec2,
     },
     /// selection of quads
     Selection(vec2),
@@ -179,6 +183,7 @@ impl QuadSelection {
         map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        latest_modifiers: &egui::Modifiers,
         client: &EditorClient,
     ) {
         let layer = map.active_layer();
@@ -217,22 +222,41 @@ impl QuadSelection {
 
         if let Some(QuadPointerDownState::Point {
             point: QuadPointerDownPoint::Center,
-            pos,
+            cursor_in_world_pos,
+            cursor_corner_offset,
         }) = latest_pointer
             .primary_down()
             .then_some(&mut self.pointer_down_state)
         {
-            let x_diff = x - pos.x;
-            let y_diff = y - pos.y;
-            *pos = vec2::new(x, y);
+            let align_pos = |pos: vec2| align_pos(map, latest_modifiers, pos);
+
+            let new_pos = vec2::new(x, y);
+            let aligned_pos = align_pos(new_pos);
+            let new_pos = if let Some(aligned_pos) = aligned_pos {
+                aligned_pos + *cursor_corner_offset
+            } else {
+                new_pos
+            };
+
+            let x_diff = new_pos.x - cursor_in_world_pos.x;
+            let y_diff = new_pos.y - cursor_in_world_pos.y;
+            // for rotation
+            let diff = x_diff;
+
+            *cursor_in_world_pos = new_pos;
 
             if let Some(range) = &mut self.range {
                 let quads = range.indices_checked(layer);
                 let pos_anim = quads.values().next().and_then(|q| q.pos_anim);
-                if map.user.ui_values.animations_panel_open
-                    && pos_anim.is_some_and(|a| quads.values().all(|q| q.pos_anim == Some(a)))
-                {
-                    if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
+
+                let alter_anim_point = map.user.ui_values.animations_panel_open
+                    && pos_anim.is_some_and(|a| quads.values().all(|q| q.pos_anim == Some(a)));
+                if alter_anim_point {
+                    if latest_modifiers.ctrl {
+                        if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
+                            pos.value.z += ffixed::from_num(diff);
+                        }
+                    } else if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
                         pos.value.x += ffixed::from_num(x_diff);
                         pos.value.y += ffixed::from_num(y_diff);
                     }
@@ -240,10 +264,25 @@ impl QuadSelection {
                     quads.into_iter().for_each(|(index, q)| {
                         let old = *q;
 
-                        q.points.iter_mut().for_each(|p| {
-                            p.x += ffixed::from_num(x_diff);
-                            p.y += ffixed::from_num(y_diff);
-                        });
+                        if latest_modifiers.ctrl {
+                            // handle rotation
+                            let (points, center) = q.points.split_at_mut(4);
+
+                            rotate(&center[0], ffixed::from_num(diff), points);
+                        } else {
+                            let diff_x = ffixed::from_num(x_diff);
+                            let diff_y = ffixed::from_num(y_diff);
+                            q.points[4].x += diff_x;
+                            q.points[4].y += diff_y;
+
+                            if !latest_modifiers.shift {
+                                // move other points too (because shift is not pressed to only move center)
+                                for i in 0..4 {
+                                    q.points[i].x += diff_x;
+                                    q.points[i].y += diff_y;
+                                }
+                            }
+                        }
 
                         if old != *q {
                             client.execute(
@@ -263,6 +302,12 @@ impl QuadSelection {
                             );
                         }
                     });
+
+                    // move the selection, small visual upgrade
+                    if !latest_modifiers.ctrl {
+                        range.x += x_diff;
+                        range.y += y_diff;
+                    }
                 }
             }
         } else {
@@ -304,10 +349,14 @@ impl QuadSelection {
                         } else {
                             QuadPointerDownPoint::Corner(index)
                         };
+                        let quad_pos =
+                            vec2::new(points[index].x.to_num(), points[index].y.to_num());
+                        let cursor = vec2::new(x, y);
                         if latest_pointer.primary_pressed() {
                             self.pointer_down_state = QuadPointerDownState::Point {
                                 point: down_point,
-                                pos: vec2::new(x, y),
+                                cursor_in_world_pos: cursor,
+                                cursor_corner_offset: cursor - quad_pos,
                             };
                         } else {
                             range.point = Some(down_point);
@@ -435,6 +484,7 @@ impl QuadSelection {
         map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        latest_modifiers: &egui::Modifiers,
         client: &EditorClient,
     ) {
         let layer = map.active_layer();
@@ -457,6 +507,7 @@ impl QuadSelection {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                latest_modifiers,
                 client,
             );
         }

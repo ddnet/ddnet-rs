@@ -16,7 +16,10 @@ use crate::{
     },
     client::EditorClient,
     map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
-    tools::{shared::in_radius, utils::render_rect},
+    tools::{
+        shared::{align_pos, in_radius},
+        utils::render_rect,
+    },
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
@@ -188,29 +191,7 @@ impl SoundBrush {
                 self.pointer_down_state = SoundPointerDownState::None;
             }
         } else {
-            let align_pos = |mut pos: vec2| {
-                if let Some(grid_size) = latest_modifiers
-                    .alt
-                    .then_some(map.user.options.render_grid)
-                    .flatten()
-                {
-                    let grid_size = grid_size as f32;
-                    fn round_mod(v: f32, rhs: f32) -> f32 {
-                        let r = v.rem_euclid(rhs);
-
-                        if r <= rhs / 2.0 {
-                            -r
-                        } else {
-                            rhs - r
-                        }
-                    }
-                    pos.x += round_mod(pos.x, grid_size);
-                    pos.y += round_mod(pos.y, grid_size);
-                    Some(pos)
-                } else {
-                    None
-                }
-            };
+            let align_pos = |pos: vec2| align_pos(map, latest_modifiers, pos);
 
             // check if the pointer clicked on one of the sound corner/center points
             let mut clicked_sound_point = false;
@@ -298,7 +279,13 @@ impl SoundBrush {
             }
             if latest_pointer.primary_down() && self.last_translation.is_some() {
                 let last_active = self.last_translation.as_mut().unwrap();
-                let mut new_pos = vec2::new(x1, y1);
+                let new_pos = vec2::new(x1, y1);
+                let aligned_pos = align_pos(new_pos);
+                let new_pos = if let Some(aligned_pos) = aligned_pos {
+                    aligned_pos + last_active.cursor_corner_offset
+                } else {
+                    new_pos
+                };
                 if let Some(edit_sound) = layer.layer.sounds.get(last_active.sound_index).copied() {
                     let sound = &mut last_active.sound;
 
@@ -307,13 +294,6 @@ impl SoundBrush {
                         map.user.ui_values.animations_panel_open && pos_anim.is_some();
 
                     let cursor_pos = last_active.cursor_in_world_pos;
-
-                    let aligned_pos = align_pos(new_pos);
-                    new_pos = if let Some(aligned_pos) = aligned_pos {
-                        aligned_pos + last_active.cursor_corner_offset
-                    } else {
-                        new_pos
-                    };
 
                     // handle position
                     let diff_x = ffixed::from_num(new_pos.x - cursor_pos.x);

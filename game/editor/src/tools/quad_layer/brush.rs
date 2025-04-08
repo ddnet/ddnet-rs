@@ -30,7 +30,7 @@ use crate::{
     map_tools::{finish_design_quad_layer_buffer, upload_design_quad_layer_buffer},
     tools::{
         quad_layer::shared::QUAD_POINT_RADIUS,
-        shared::{in_radius, rotate},
+        shared::{align_pos, in_radius, rotate},
         utils::render_rect,
     },
     utils::{ui_pos_to_world_pos, UiCanvasSize},
@@ -237,29 +237,7 @@ impl QuadBrush {
                 self.pointer_down_state = QuadPointerDownState::None;
             }
         } else {
-            let align_pos = |mut pos: vec2| {
-                if let Some(grid_size) = latest_modifiers
-                    .alt
-                    .then_some(map.user.options.render_grid)
-                    .flatten()
-                {
-                    let grid_size = grid_size as f32;
-                    fn round_mod(v: f32, rhs: f32) -> f32 {
-                        let r = v.rem_euclid(rhs);
-
-                        if r <= rhs / 2.0 {
-                            -r
-                        } else {
-                            rhs - r
-                        }
-                    }
-                    pos.x += round_mod(pos.x, grid_size);
-                    pos.y += round_mod(pos.y, grid_size);
-                    Some(pos)
-                } else {
-                    None
-                }
-            };
+            let align_pos = |pos: vec2| align_pos(map, latest_modifiers, pos);
 
             // check if the pointer clicked on one of the quad corner/center points
             let mut clicked_quad_point = false;
@@ -362,20 +340,19 @@ impl QuadBrush {
             }
             if latest_pointer.primary_down() && self.last_translation.is_some() {
                 let last_active = self.last_translation.as_mut().unwrap();
-                let mut new_pos = vec2::new(x1, y1);
+                let new_pos = vec2::new(x1, y1);
+                let aligned_pos = align_pos(new_pos);
+                let new_pos = if let Some(aligned_pos) = aligned_pos {
+                    aligned_pos + last_active.cursor_corner_offset
+                } else {
+                    new_pos
+                };
                 if let Some(edit_quad) = layer.layer.quads.get(last_active.quad_index).copied() {
                     let p = match last_active.point {
                         QuadPointerDownPoint::Center => 4,
                         QuadPointerDownPoint::Corner(index) => index,
                     };
                     let cursor_pos = last_active.cursor_in_world_pos;
-
-                    let aligned_pos = align_pos(new_pos);
-                    new_pos = if let Some(aligned_pos) = aligned_pos {
-                        aligned_pos + last_active.cursor_corner_offset
-                    } else {
-                        new_pos
-                    };
 
                     let quad = &mut last_active.quad;
 

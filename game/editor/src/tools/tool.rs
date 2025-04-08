@@ -158,6 +158,7 @@ impl ToolQuadLayer {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                latest_modifiers,
                 client,
             ),
         }
