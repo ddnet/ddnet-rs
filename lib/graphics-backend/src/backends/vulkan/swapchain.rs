@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use anyhow::anyhow;
 use ash::vk::{self};
@@ -183,36 +183,61 @@ impl Swapchain {
         surface: &BackendSurface,
     ) -> anyhow::Result<vk::SurfaceFormatKHR> {
         let _surf_formats: u32 = 0;
-        let surf_format_list = unsafe {
-            surface
-                .get_physical_device_surface_formats(phy_device.cur_device)
-        }.map_err(|err| {
-            if  err != vk::Result::INCOMPLETE {
-                anyhow!("The device surface format fetching failed.")
-            }
-            else {
-                anyhow!("warning: not all surface formats are requestable with your current settings.\nThe device surface format fetching failed.")
-            }
-        })?;
+        let surf_format_list =
+            unsafe { surface.get_physical_device_surface_formats(phy_device.cur_device) }.map_err(
+                |err| {
+                    if err != vk::Result::INCOMPLETE {
+                        anyhow!("The device surface format fetching failed.")
+                    } else {
+                        anyhow!(
+                            "warning: not all surface formats are \
+                            requestable with your current settings.\n\
+                            The device surface format fetching failed."
+                        )
+                    }
+                },
+            )?;
 
         if surf_format_list.len() == 1 && surf_format_list[0].format == vk::Format::UNDEFINED {
-            // TODO dbg_msg("vulkan", "warning: surface format was undefined. This can potentially cause bugs.");
+            log::warn!(
+                target: "vulkan",
+                "warning: surface format was undefined. \
+                This can potentially cause bugs."
+            );
             return Ok(vk::SurfaceFormatKHR::default()
                 .format(vk::Format::B8G8R8A8_UNORM)
                 .color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR));
         }
 
-        for find_format in &surf_format_list {
-            if !(find_format.color_space != vk::ColorSpaceKHR::SRGB_NONLINEAR
-                || find_format.format != vk::Format::B8G8R8A8_UNORM
-                    && find_format.format != vk::Format::R8G8B8A8_UNORM)
-            {
-                return Ok(*find_format);
-            }
+        let fallback = surf_format_list[0];
+        let mut surf_formats: HashMap<_, _> = surf_format_list
+            .into_iter()
+            .filter_map(|f| {
+                (f.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR).then_some((f.format, f))
+            })
+            .collect();
+
+        // Try rgb formats first on macos
+        #[cfg(target_os = "macos")]
+        if let Some(format) = surf_formats.remove(&vk::Format::R16G16B16A16_SFLOAT) {
+            log::debug!("Using surface format: {:?}", format);
+            return Ok(format);
         }
 
-        // TODO dbg_msg("vulkan", "warning: surface format was not RGBA(or variants of it). This can potentially cause weird looking images(too bright etc.).");
-        Ok(surf_format_list[0])
+        if let Some(format) = surf_formats
+            .remove(&vk::Format::R8G8B8A8_UNORM)
+            .or_else(|| surf_formats.remove(&vk::Format::B8G8R8A8_UNORM))
+        {
+            log::debug!("Using surface format: {:?}", format);
+            return Ok(format);
+        }
+
+        log::warn!(
+            target: "vulkan",
+            "warning: surface format was not RGBA8(or variants of it). \
+            This can potentially cause weird looking images(too bright etc.)."
+        );
+        Ok(fallback)
     }
 
     pub fn get_swap_chain_image_handles(

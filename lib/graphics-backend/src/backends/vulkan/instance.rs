@@ -29,7 +29,10 @@ impl Instance {
         display_requirements: &BackendDisplayRequirements,
         dbg_mode: GfxDebugModes,
     ) -> anyhow::Result<Arc<Self>> {
+        #[cfg(not(target_os = "macos"))]
         let entry = unsafe { ash::Entry::load() }?;
+        #[cfg(target_os = "macos")]
+        let entry = ash_molten::load();
 
         let extensions = &display_requirements.extensions;
 
