@@ -199,6 +199,91 @@ fn render_buttons(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
             ),
         );
     });
+
+    // Editor grid
+    let toggle_by_hotkey =
+        pipe.user_data
+            .cur_hotkey_events
+            .remove(&EditorHotkeyEvent::Preferences(
+                EditorHotkeyEventPreferences::ToggleGrid,
+            ));
+    if toggle_by_hotkey {
+        editor_tab.map.user.options.render_grid = match editor_tab.map.user.options.render_grid {
+            Some(_) => None,
+            None => Some(1.0),
+        };
+    }
+    if let Some(grid_size) = &mut editor_tab.map.user.options.render_grid {
+        let increase_by_hotkey =
+            pipe.user_data
+                .cur_hotkey_events
+                .remove(&EditorHotkeyEvent::Preferences(
+                    EditorHotkeyEventPreferences::IncreaseGridSize,
+                ));
+        if increase_by_hotkey {
+            *grid_size = (*grid_size + 0.2).clamp(0.01, 20.0);
+        }
+        let decrease_by_hotkey =
+            pipe.user_data
+                .cur_hotkey_events
+                .remove(&EditorHotkeyEvent::Preferences(
+                    EditorHotkeyEventPreferences::DecreaseGridSize,
+                ));
+        if decrease_by_hotkey {
+            *grid_size = (*grid_size - 0.2).clamp(0.01, 20.0);
+        }
+    }
+    ui.menu_button("Grid", |ui| {
+        ui.label("Render a grid that helps to align quads & sounds:");
+        let mut has_grid = editor_tab.map.user.options.render_grid.is_some();
+        ui.checkbox(&mut has_grid, "");
+        if has_grid && editor_tab.map.user.options.render_grid.is_none() {
+            editor_tab.map.user.options.render_grid = Some(1.0);
+        } else if !has_grid && editor_tab.map.user.options.render_grid.is_some() {
+            editor_tab.map.user.options.render_grid = None;
+        }
+        if let Some(grid_size) = &mut editor_tab.map.user.options.render_grid {
+            ui.add_space(10.0);
+            ui.label("Grid size (x1 = 1 tile):");
+            ui.add(
+                DragValue::new(grid_size)
+                    .range(0.01..=20.0)
+                    .speed(0.2)
+                    .fixed_decimals(2),
+            );
+        }
+    })
+    .response
+    .on_hover_ui(|ui| {
+        let mut cache = egui_commonmark::CommonMarkCache::default();
+        egui_commonmark::CommonMarkViewer::new().show(
+            ui,
+            &mut cache,
+            &format!(
+                "Toggle grid hotkey: `{}`  \n\
+                Increase grid size hotkey: `{}`  \n\
+                Decrease grid size hotkey: `{}`",
+                binds.fmt_ev_bind(
+                    per_ev,
+                    &EditorHotkeyEvent::Preferences(
+                        EditorHotkeyEventPreferences::ToggleGrid,
+                    ),
+                ),
+                binds.fmt_ev_bind(
+                    per_ev,
+                    &EditorHotkeyEvent::Preferences(
+                        EditorHotkeyEventPreferences::IncreaseGridSize,
+                    ),
+                ),
+                binds.fmt_ev_bind(
+                    per_ev,
+                    &EditorHotkeyEvent::Preferences(
+                        EditorHotkeyEventPreferences::DecreaseGridSize,
+                    ),
+                )
+            ),
+        );
+    });
 }
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_state: &mut UiState) {

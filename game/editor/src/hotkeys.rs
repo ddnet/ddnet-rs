@@ -85,6 +85,9 @@ pub enum EditorHotkeyEventPreferences {
     ToggleParallaxZoom,
     IncreaseMapTimeSpeed,
     DecreaseMapTimeSpeed,
+    ToggleGrid,
+    IncreaseGridSize,
+    DecreaseGridSize,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
@@ -291,6 +294,18 @@ impl EditorBindsFile {
         hotkey(
             EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::DecreaseMapTimeSpeed),
             KeyboardShortcut::new(Modifiers::CTRL, Key::Minus),
+        );
+        hotkey(
+            EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::ToggleGrid),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::G),
+        );
+        hotkey(
+            EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::IncreaseGridSize),
+            KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Plus),
+        );
+        hotkey(
+            EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::DecreaseGridSize),
+            KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Minus),
         );
         hotkey(
             EditorHotkeyEvent::Panels(EditorHotkeyEventPanels::ToggleAnimation),

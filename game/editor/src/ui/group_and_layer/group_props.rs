@@ -378,7 +378,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             ui.add(
                                 egui::DragValue::new(&mut w)
                                     .update_while_editing(false)
-                                    .update_while_editing(false)
                                     .range(1..=u16::MAX - 1),
                             );
                             attr.width = NonZeroU16MinusOne::new(w).unwrap();
@@ -388,7 +387,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             let mut h = attr.height.get();
                             ui.add(
                                 egui::DragValue::new(&mut h)
-                                    .update_while_editing(false)
                                     .update_while_editing(false)
                                     .range(1..=u16::MAX - 1),
                             );

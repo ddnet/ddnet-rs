@@ -4,7 +4,7 @@ use math::math::vector::{ubvec4, vec2, vec4};
 
 use crate::streaming::rotate;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Hiarc, Copy, Clone)]
 pub struct StreamedLine {
     vertices: [GlVertex; 2],
 }

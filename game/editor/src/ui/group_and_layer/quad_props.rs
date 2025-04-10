@@ -34,8 +34,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
     let per_ev = &mut *pipe.user_data.cached_binds_per_event;
 
     let map = &mut pipe.user_data.editor_tab.map;
-    let animations_panel_open =
-        map.user.ui_values.animations_panel_open && !map.user.options.no_animations_with_properties;
+    let animations_panel_open = map.user.change_animations();
     let layer = map.groups.active_layer_mut();
     let mut attr_mode = QuadAttrMode::None;
     if let Some(EditorLayerUnionRefMut::Design {
@@ -129,7 +128,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             animations: &mut EditorAnimations,
             pointer_is_used: &mut bool,
         ) -> InnerResponse<bool> {
-            let mut anim_pos = can_change_pos_anim
+            let anim_pos = can_change_pos_anim
                 .then_some(animations.user.active_anim_points.pos.as_mut())
                 .flatten();
             let anim_color = can_change_color_anim
@@ -149,61 +148,113 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         QuadPointerDownPoint::Center => 4,
                         QuadPointerDownPoint::Corner(index) => index,
                     };
-                    if !animations_panel_open || (can_change_pos_anim && quad.pos_anim.is_some()) {
-                        if let Some(pos_offset) = pos_offset {
+
+                    if animations_panel_open
+                        && ((can_change_color_anim && quad.color_anim.is_some())
+                            || (can_change_pos_anim && quad.pos_anim.is_some()))
+                    {
+                        ui.colored_label(
+                            Color32::RED,
+                            "The animation panel is open,\n\
+                            there are animation properties and quad properites now!",
+                        )
+                        .on_hover_ui(animations_panel_open_warning);
+                        ui.end_row();
+
+                        ui.heading("Animation propterties");
+                        ui.end_row();
+
+                        if let Some(pos) = anim_pos {
                             // x
-                            ui.label("move x by");
-                            ui.horizontal(|ui| {
-                                ui.add(
-                                    egui::DragValue::new(&mut pos_offset.x)
-                                        .update_while_editing(false),
-                                );
-                                if ui.button("move").clicked() {
-                                    if let Some(pos_anim) = &mut anim_pos {
-                                        pos_anim.value.x = ffixed::from_num(pos_offset.x);
-                                    } else {
-                                        quad.points[p].x = ffixed::from_num(
-                                            quad.points[p].x.to_num::<f64>() + pos_offset.x,
-                                        );
-                                    }
-                                }
-                            });
-                            ui.end_row();
-                            // y
-                            ui.label("move y by");
-                            ui.horizontal(|ui| {
-                                ui.add(
-                                    egui::DragValue::new(&mut pos_offset.y)
-                                        .update_while_editing(false),
-                                );
-                                if ui.button("move").clicked() {
-                                    if let Some(pos_anim) = anim_pos {
-                                        pos_anim.value.y = ffixed::from_num(pos_offset.y);
-                                    } else {
-                                        quad.points[p].y = ffixed::from_num(
-                                            quad.points[p].y.to_num::<f64>() + pos_offset.y,
-                                        );
-                                    }
-                                }
-                            });
-                            ui.end_row();
-                        } else {
-                            // x
-                            ui.label("x");
-                            let mut x = quad.points[p].x.to_num::<f64>();
+                            ui.label("X");
+                            let mut x = pos.value.x.to_num::<f64>();
                             ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
-                            quad.points[p].x = ffixed::from_num(x);
+                            pos.value.x = ffixed::from_num(x);
                             ui.end_row();
                             // y
-                            ui.label("y");
-                            let mut y = quad.points[p].y.to_num::<f64>();
+                            ui.label("Y");
+                            let mut y = pos.value.y.to_num::<f64>();
                             ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
-                            quad.points[p].y = ffixed::from_num(y);
+                            pos.value.y = ffixed::from_num(y);
                             ui.end_row();
                         }
+
+                        if let Some(color_anim) = anim_color {
+                            ui.label("Color \u{f05a}").on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    TEXT_QUAD_PROP_COLOR,
+                                );
+                            });
+                            let mut color = [
+                                (color_anim.value.r().to_num::<f32>() * 255.0) as u8,
+                                (color_anim.value.g().to_num::<f32>() * 255.0) as u8,
+                                (color_anim.value.b().to_num::<f32>() * 255.0) as u8,
+                                (color_anim.value.a().to_num::<f32>() * 255.0) as u8,
+                            ];
+                            ui.color_edit_button_srgba_unmultiplied(&mut color);
+                            color_anim.value = nfvec4::new(
+                                nffixed::from_num(color[0] as f32 / 255.0),
+                                nffixed::from_num(color[1] as f32 / 255.0),
+                                nffixed::from_num(color[2] as f32 / 255.0),
+                                nffixed::from_num(color[3] as f32 / 255.0),
+                            );
+                            ui.end_row();
+                        }
+
+                        ui.separator();
+                        ui.separator();
+                        ui.end_row();
+
+                        ui.heading("Properties");
+                        ui.end_row();
                     }
 
-                    if matches!(point, QuadPointerDownPoint::Center) && !animations_panel_open {
+                    if let Some(pos_offset) = pos_offset {
+                        // x
+                        ui.label("Move x by");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut pos_offset.x).update_while_editing(false),
+                            );
+                            if ui.button("Move").clicked() {
+                                quad.points[p].x = ffixed::from_num(
+                                    quad.points[p].x.to_num::<f64>() + pos_offset.x,
+                                );
+                            }
+                        });
+                        ui.end_row();
+                        // y
+                        ui.label("Move y by");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut pos_offset.y).update_while_editing(false),
+                            );
+                            if ui.button("Move").clicked() {
+                                quad.points[p].y = ffixed::from_num(
+                                    quad.points[p].y.to_num::<f64>() + pos_offset.y,
+                                );
+                            }
+                        });
+                        ui.end_row();
+                    } else {
+                        // x
+                        ui.label("X");
+                        let mut x = quad.points[p].x.to_num::<f64>();
+                        ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
+                        quad.points[p].x = ffixed::from_num(x);
+                        ui.end_row();
+                        // y
+                        ui.label("Y");
+                        let mut y = quad.points[p].y.to_num::<f64>();
+                        ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
+                        quad.points[p].y = ffixed::from_num(y);
+                        ui.end_row();
+                    }
+
+                    if matches!(point, QuadPointerDownPoint::Center) {
                         fn combobox_name(ty: &str, index: usize, name: &str) -> String {
                             name.is_empty()
                                 .then_some(format!("{ty} #{}", index))
@@ -211,7 +262,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         if can_change_pos_anim {
                             // pos anim
-                            ui.label("pos anim");
+                            ui.label("Pos anim");
                             let res = egui::ComboBox::new("quad-select-pos-anim".to_string(), "")
                                 .selected_text(
                                     animations
@@ -261,7 +312,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             };
 
                             // pos time offset
-                            ui.label("pos anim time offset");
+                            ui.label("Pos anim time offset");
                             let mut millis = quad.pos_anim_offset.whole_milliseconds() as i64;
                             if ui
                                 .add(egui::DragValue::new(&mut millis).update_while_editing(false))
@@ -273,7 +324,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         if can_change_color_anim {
                             // color anim
-                            ui.label("color anim");
+                            ui.label("Color anim");
                             let res = egui::ComboBox::new("quad-select-color-anim".to_string(), "")
                                 .selected_text(
                                     animations
@@ -323,7 +374,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             };
 
                             // color time offset
-                            ui.label("color anim time offset");
+                            ui.label("Color anim time offset");
                             let mut millis = quad.color_anim_offset.whole_milliseconds() as i64;
                             if ui
                                 .add(egui::DragValue::new(&mut millis).update_while_editing(false))
@@ -391,62 +442,25 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     } else if let QuadPointerDownPoint::Corner(c) = point {
                         // corner:
                         // color
-                        if !animations_panel_open
-                            || (can_change_color_anim && quad.color_anim.is_some())
-                        {
-                            ui.label("Color \u{f05a}").on_hover_ui(|ui| {
-                                let mut cache = egui_commonmark::CommonMarkCache::default();
-                                egui_commonmark::CommonMarkViewer::new().show(
-                                    ui,
-                                    &mut cache,
-                                    TEXT_QUAD_PROP_COLOR,
-                                );
-                            });
-                            if let Some(color_anim) = anim_color {
-                                let mut color = [
-                                    (color_anim.value.r().to_num::<f32>() * 255.0) as u8,
-                                    (color_anim.value.g().to_num::<f32>() * 255.0) as u8,
-                                    (color_anim.value.b().to_num::<f32>() * 255.0) as u8,
-                                    (color_anim.value.a().to_num::<f32>() * 255.0) as u8,
-                                ];
-                                ui.color_edit_button_srgba_unmultiplied(&mut color);
-                                color_anim.value = nfvec4::new(
-                                    nffixed::from_num(color[0] as f32 / 255.0),
-                                    nffixed::from_num(color[1] as f32 / 255.0),
-                                    nffixed::from_num(color[2] as f32 / 255.0),
-                                    nffixed::from_num(color[3] as f32 / 255.0),
-                                );
-                            } else {
-                                let mut color = [
-                                    (quad.colors[c].r().to_num::<f32>() * 255.0) as u8,
-                                    (quad.colors[c].g().to_num::<f32>() * 255.0) as u8,
-                                    (quad.colors[c].b().to_num::<f32>() * 255.0) as u8,
-                                    (quad.colors[c].a().to_num::<f32>() * 255.0) as u8,
-                                ];
-                                ui.color_edit_button_srgba_unmultiplied(&mut color);
-                                quad.colors[c] = nfvec4::new(
-                                    nffixed::from_num(color[0] as f32 / 255.0),
-                                    nffixed::from_num(color[1] as f32 / 255.0),
-                                    nffixed::from_num(color[2] as f32 / 255.0),
-                                    nffixed::from_num(color[3] as f32 / 255.0),
-                                );
-                            }
-                            ui.end_row();
-                        }
-                        // tex u
-                        // tex v
-                    }
-
-                    if animations_panel_open {
-                        ui.colored_label(
-                            Color32::RED,
-                            "The animation panel is open,\n\
-                                changing attributes will not apply them\n\
-                                to the quad permanently!",
-                        )
-                        .on_hover_ui(animations_panel_open_warning);
+                        ui.label("Color");
+                        let mut color = [
+                            (quad.colors[c].r().to_num::<f32>() * 255.0) as u8,
+                            (quad.colors[c].g().to_num::<f32>() * 255.0) as u8,
+                            (quad.colors[c].b().to_num::<f32>() * 255.0) as u8,
+                            (quad.colors[c].a().to_num::<f32>() * 255.0) as u8,
+                        ];
+                        ui.color_edit_button_srgba_unmultiplied(&mut color);
+                        quad.colors[c] = nfvec4::new(
+                            nffixed::from_num(color[0] as f32 / 255.0),
+                            nffixed::from_num(color[1] as f32 / 255.0),
+                            nffixed::from_num(color[2] as f32 / 255.0),
+                            nffixed::from_num(color[3] as f32 / 255.0),
+                        );
                         ui.end_row();
                     }
+                    // tex u
+                    // tex v
+
                     delete
                 })
         }
@@ -612,7 +626,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
 
                         // generate events for all selected quads
-                        if !animations_panel_open {
                             pipe.user_data.editor_tab.client.execute(
                                 EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
                                     is_background,
@@ -627,7 +640,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     "change-quad-attr-{is_background}-{group_index}-{layer_index}-{index}"
                                 )),
                             );
-                        }
                     });
                 } else if delete {
                     // rewrite the quad indices, since they get invalid every time a quad is deleted.

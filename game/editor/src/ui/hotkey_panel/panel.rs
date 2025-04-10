@@ -320,6 +320,37 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                         binds_per_event,
                         pipe.user_data.hotkeys,
                     );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Toggle grid",
+                        "",
+                        EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::ToggleGrid),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Increase grid size",
+                        "",
+                        EditorHotkeyEvent::Preferences(
+                            EditorHotkeyEventPreferences::IncreaseGridSize,
+                        ),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Decrease grid size",
+                        "",
+                        EditorHotkeyEvent::Preferences(
+                            EditorHotkeyEventPreferences::DecreaseGridSize,
+                        ),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
                     ui.separator();
                     ui.separator();
                     ui.end_row();
