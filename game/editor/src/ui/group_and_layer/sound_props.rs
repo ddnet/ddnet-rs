@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
 use egui::{Button, Color32, InnerResponse};
-use map::map::{
-    animations::AnimPointPos,
-    groups::layers::design::{Sound, SoundShape},
-};
+use map::map::groups::layers::design::{Sound, SoundShape};
 use math::math::{
     length,
     vector::{dvec2, ffixed, nffixed, uffixed, ufvec2},
@@ -44,8 +41,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
     let per_ev = &mut *pipe.user_data.cached_binds_per_event;
 
     let map = &mut pipe.user_data.editor_tab.map;
-    let animations_panel_open =
-        map.user.ui_values.animations_panel_open && !map.user.options.no_animations_with_properties;
+    let animations_panel_open = map.user.change_animations();
     let layer = map.groups.active_layer_mut();
     let mut attr_mode = SoundAttrMode::None;
     if let Some(EditorLayerUnionRefMut::Design {
@@ -56,34 +52,31 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         ..
     }) = layer
     {
-        let (mut selected_sounds, point, pos_offset, pos_anim) =
-            match &pipe.user_data.tools.active_tool {
-                ActiveTool::Sounds(ActiveToolSounds::Brush) => {
-                    let brush = &mut pipe.user_data.tools.sounds.brush;
-                    let point = brush
-                        .last_popup
-                        .as_ref()
-                        .map(|selection| selection.point)
-                        .unwrap_or(SoundPointerDownPoint::Center);
-                    let mut res: BTreeMap<usize, &mut Sound> = Default::default();
-                    if let Some((selection, sound)) =
-                        brush.last_popup.as_mut().and_then(|selection| {
-                            if selection.sound_index < layer.layer.sounds.len() {
-                                Some((selection.sound_index, &mut selection.sound))
-                            } else {
-                                None
-                            }
-                        })
-                    {
-                        res.insert(selection, sound);
+        let (mut selected_sounds, point, pos_offset) = match &pipe.user_data.tools.active_tool {
+            ActiveTool::Sounds(ActiveToolSounds::Brush) => {
+                let brush = &mut pipe.user_data.tools.sounds.brush;
+                let point = brush
+                    .last_popup
+                    .as_ref()
+                    .map(|selection| selection.point)
+                    .unwrap_or(SoundPointerDownPoint::Center);
+                let mut res: BTreeMap<usize, &mut Sound> = Default::default();
+                if let Some((selection, sound)) = brush.last_popup.as_mut().and_then(|selection| {
+                    if selection.sound_index < layer.layer.sounds.len() {
+                        Some((selection.sound_index, &mut selection.sound))
+                    } else {
+                        None
                     }
-                    (res, Some(point), None, None)
+                }) {
+                    res.insert(selection, sound);
                 }
-                ActiveTool::Quads(_) | ActiveTool::Tiles(_) => {
-                    // ignore
-                    (Default::default(), None, None, None)
-                }
-            };
+                (res, Some(point), None)
+            }
+            ActiveTool::Quads(_) | ActiveTool::Tiles(_) => {
+                // ignore
+                (Default::default(), None, None)
+            }
+        };
 
         if point.is_none() {
             return;
@@ -126,77 +119,121 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             sound: &mut Sound,
             // make a "move pos" instead of x, y directly
             pos_offset: Option<&mut dvec2>,
-            mut anim_pos: Option<&mut AnimPointPos>,
             can_change_pos_anim: bool,
             can_change_sound_anim: bool,
             animations_panel_open: bool,
-            animations: &EditorAnimations,
+            animations: &mut EditorAnimations,
             pointer_is_used: &mut bool,
         ) -> InnerResponse<bool> {
+            let anim_pos = can_change_pos_anim
+                .then_some(animations.user.active_anim_points.pos.as_mut())
+                .flatten();
+            let anim_sound = can_change_sound_anim
+                .then_some(animations.user.active_anim_points.sound.as_mut())
+                .flatten();
+
             let mut delete = false;
             egui::Grid::new("design group attr grid")
                 .num_columns(2)
                 .spacing([20.0, 4.0])
                 .show(ui, |ui| {
                     if sounds_count > 1 {
-                        ui.label(format!("selected {sounds_count} sounds"));
+                        ui.label(format!("Selected {sounds_count} sounds"));
                         ui.end_row();
                     }
-                    if !animations_panel_open || (can_change_pos_anim && sound.pos_anim.is_some()) {
-                        if let Some(pos_offset) = pos_offset {
+
+                    if animations_panel_open
+                        && ((can_change_pos_anim && sound.pos_anim.is_some())
+                            || (can_change_sound_anim && sound.sound_anim.is_some()))
+                    {
+                        ui.colored_label(
+                            Color32::RED,
+                            "The animation panel is open,\n\
+                            there are animation properties and sound properites now!",
+                        )
+                        .on_hover_ui(animations_panel_open_warning);
+                        ui.end_row();
+
+                        ui.heading("Animation propterties");
+                        ui.end_row();
+
+                        if let Some(pos) = anim_pos {
                             // x
-                            ui.label("move x by");
-                            ui.horizontal(|ui| {
-                                ui.add(
-                                    egui::DragValue::new(&mut pos_offset.x)
-                                        .update_while_editing(false),
-                                );
-                                if ui.button("move").clicked() {
-                                    if let Some(pos_anim) = anim_pos.as_deref_mut() {
-                                        pos_anim.value.x = ffixed::from_num(pos_offset.x);
-                                    } else {
-                                        sound.pos.x = ffixed::from_num(
-                                            sound.pos.x.to_num::<f64>() + pos_offset.x,
-                                        );
-                                    }
-                                }
-                            });
-                            ui.end_row();
-                            // y
-                            ui.label("move y by");
-                            ui.horizontal(|ui| {
-                                ui.add(
-                                    egui::DragValue::new(&mut pos_offset.y)
-                                        .update_while_editing(false),
-                                );
-                                if ui.button("move").clicked() {
-                                    if let Some(pos_anim) = anim_pos {
-                                        pos_anim.value.y = ffixed::from_num(pos_offset.y);
-                                    } else {
-                                        sound.pos.y = ffixed::from_num(
-                                            sound.pos.y.to_num::<f64>() + pos_offset.y,
-                                        );
-                                    }
-                                }
-                            });
-                            ui.end_row();
-                        } else {
-                            // x
-                            ui.label("x");
-                            let mut x = sound.pos.x.to_num::<f64>();
+                            ui.label("X");
+                            let mut x = pos.value.x.to_num::<f64>();
                             ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
-                            sound.pos.x = ffixed::from_num(x);
+                            pos.value.x = ffixed::from_num(x);
                             ui.end_row();
                             // y
-                            ui.label("y");
-                            let mut y = sound.pos.y.to_num::<f64>();
+                            ui.label("Y");
+                            let mut y = pos.value.y.to_num::<f64>();
                             ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
-                            sound.pos.y = ffixed::from_num(y);
+                            pos.value.y = ffixed::from_num(y);
                             ui.end_row();
                         }
+                        if let Some(snd) = anim_sound {
+                            // Volume
+                            ui.label("Volume");
+                            let mut v = snd.value.x.to_num::<f64>();
+                            ui.add(
+                                egui::DragValue::new(&mut v)
+                                    .range(0.0..=1.0)
+                                    .speed(0.1)
+                                    .update_while_editing(false),
+                            );
+                            snd.value.x = nffixed::from_num(v);
+                            ui.end_row();
+                        }
+
+                        ui.separator();
+                        ui.separator();
+                        ui.end_row();
+
+                        ui.heading("Properties");
+                        ui.end_row();
                     }
 
-                    if matches!(point, SoundPointerDownPoint::Center) && !animations_panel_open {
+                    if let Some(pos_offset) = pos_offset {
+                        // x
+                        ui.label("Move x by");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut pos_offset.x).update_while_editing(false),
+                            );
+                            if ui.button("Move").clicked() {
+                                sound.pos.x =
+                                    ffixed::from_num(sound.pos.x.to_num::<f64>() + pos_offset.x);
+                            }
+                        });
+                        ui.end_row();
+                        // y
+                        ui.label("Move y by");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut pos_offset.y).update_while_editing(false),
+                            );
+                            if ui.button("Move").clicked() {
+                                sound.pos.y =
+                                    ffixed::from_num(sound.pos.y.to_num::<f64>() + pos_offset.y);
+                            }
+                        });
+                        ui.end_row();
+                    } else {
+                        // x
+                        ui.label("X");
+                        let mut x = sound.pos.x.to_num::<f64>();
+                        ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
+                        sound.pos.x = ffixed::from_num(x);
+                        ui.end_row();
+                        // y
+                        ui.label("Y");
+                        let mut y = sound.pos.y.to_num::<f64>();
+                        ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
+                        sound.pos.y = ffixed::from_num(y);
+                        ui.end_row();
+                    }
+
+                    if matches!(point, SoundPointerDownPoint::Center) {
                         fn combobox_name(ty: &str, index: usize, name: &str) -> String {
                             name.is_empty()
                                 .then_some(format!("{ty} #{}", index))
@@ -204,7 +241,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         if can_change_pos_anim {
                             // pos anim
-                            ui.label("pos anim");
+                            ui.label("Pos anim");
                             let res = egui::ComboBox::new("sound-select-pos-anim".to_string(), "")
                                 .selected_text(
                                     animations
@@ -254,7 +291,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             };
 
                             // pos time offset
-                            ui.label("pos anim time offset");
+                            ui.label("Pos anim time offset");
                             let mut millis = sound.pos_anim_offset.whole_milliseconds() as i64;
                             if ui
                                 .add(egui::DragValue::new(&mut millis).update_while_editing(false))
@@ -266,7 +303,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         if can_change_sound_anim {
                             // sound anim
-                            ui.label("sound anim");
+                            ui.label("Sound anim");
                             let res =
                                 egui::ComboBox::new("sound-select-sound-anim".to_string(), "")
                                     .selected_text(
@@ -317,7 +354,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             };
 
                             // sound time offset
-                            ui.label("sound anim time offset");
+                            ui.label("Sound anim time offset");
                             let mut millis = sound.sound_anim_offset.whole_milliseconds() as i64;
                             if ui
                                 .add(egui::DragValue::new(&mut millis).update_while_editing(false))
@@ -331,7 +368,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.end_row();
 
                         // sound shape
-                        ui.label("shape");
+                        ui.label("Shape");
                         let res = egui::ComboBox::new("sound-select-shape".to_string(), "")
                             .selected_text(if matches!(sound.shape, SoundShape::Circle { .. }) {
                                 "circle"
@@ -388,17 +425,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         };
 
                         // loop
-                        ui.label("loop");
+                        ui.label("Loop");
                         toggle_ui(ui, &mut sound.looped);
                         ui.end_row();
 
                         // panning
-                        ui.label("panning");
+                        ui.label("Panning");
                         toggle_ui(ui, &mut sound.panning);
                         ui.end_row();
 
                         // starting delay
-                        ui.label("start delay (ms)");
+                        ui.label("Start delay (ms)");
                         let mut millis = sound.time_delay.as_millis() as u64;
                         if ui
                             .add(egui::DragValue::new(&mut millis).update_while_editing(false))
@@ -409,7 +446,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.end_row();
 
                         // sound falloff
-                        ui.label("falloff");
+                        ui.label("Falloff");
                         let mut falloff = sound.falloff.to_num::<f64>();
                         if ui
                             .add(
@@ -426,7 +463,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         // sound size
                         match &mut sound.shape {
                             SoundShape::Rect { size } => {
-                                ui.label("width");
+                                ui.label("Width");
                                 let mut x = size.x.to_num::<f64>();
                                 if ui
                                     .add(egui::DragValue::new(&mut x).update_while_editing(false))
@@ -435,7 +472,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     size.x = uffixed::from_num(x.clamp(0.0, f64::MAX));
                                 }
                                 ui.end_row();
-                                ui.label("height");
+                                ui.label("Height");
                                 let mut y = size.y.to_num::<f64>();
                                 if ui
                                     .add(egui::DragValue::new(&mut y).update_while_editing(false))
@@ -446,7 +483,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 ui.end_row();
                             }
                             SoundShape::Circle { radius } => {
-                                ui.label("radius");
+                                ui.label("Radius");
                                 let mut r = radius.to_num::<f64>();
                                 if ui
                                     .add(egui::DragValue::new(&mut r).update_while_editing(false))
@@ -482,16 +519,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         delete = true;
                     }
 
-                    if animations_panel_open {
-                        ui.colored_label(
-                            Color32::RED,
-                            "The animation panel is open,\n\
-                                changing attributes will not apply them\n\
-                                to the sound permanently!",
-                        )
-                        .on_hover_ui(animations_panel_open_warning);
-                        ui.end_row();
-                    }
                     delete
                 })
         }
@@ -514,11 +541,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         point,
                         sound,
                         None,
-                        None,
                         true,
                         true,
                         animations_panel_open,
-                        &map.animations,
+                        &mut map.animations,
                         pipe.user_data.pointer_is_used,
                     )
                 });
@@ -527,7 +553,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     .as_ref()
                     .is_some_and(|r| r.inner.as_ref().is_some_and(|r| r.inner));
 
-                if *sound != sound_cmp && !animations_panel_open {
+                if *sound != sound_cmp {
                     let layer_sound = &layer.layer.sounds[index];
                     pipe.user_data.editor_tab.client.execute(
                         EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
@@ -592,11 +618,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         point,
                         &mut sound,
                         pos_offset,
-                        can_change_pos_anim.then_some(pos_anim).flatten(),
                         can_change_pos_anim,
                         can_change_sound_anim,
                         animations_panel_open,
-                        &map.animations,
+                        &mut map.animations,
                         pipe.user_data.pointer_is_used,
                     )
                 });
@@ -638,8 +663,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             sound.sound_anim_offset += diff;
                         }
 
-                        // generate events for all selected sounds
-                        if !animations_panel_open {
+                        // generate events for all selected sounds                        
                             pipe.user_data.editor_tab.client.execute(
                                 EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
                                     is_background,
@@ -654,7 +678,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     "change-sound-attr-{is_background}-{group_index}-{layer_index}-{index}"
                                 )),
                             );
-                        }
                     });
                 } else if delete {
                     // rewrite the sound indices, since they get invalid every time a sound is deleted.

@@ -249,7 +249,7 @@ impl QuadSelection {
                 let quads = range.indices_checked(layer);
                 let pos_anim = quads.values().next().and_then(|q| q.pos_anim);
 
-                let alter_anim_point = map.user.ui_values.animations_panel_open
+                let alter_anim_point = map.user.change_animations()
                     && pos_anim.is_some_and(|a| quads.values().all(|q| q.pos_anim == Some(a)));
                 if alter_anim_point {
                     if latest_modifiers.ctrl {

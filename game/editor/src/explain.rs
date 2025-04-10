@@ -92,11 +92,8 @@ pub const TEXT_ADD_SOUND: &str = "\
 Adds a new sound to the active sound layer.\
 ";
 
-pub const TEXT_LAYER_PROPS_COLOR: &str = "\
-# Layer's color\n\
-This controls the base color of the tile layer.\n\
-\n\
-### Animations\n\
+pub const TEXT_LAYER_PROPS_ANIM_COLOR: &str = "\
+# Layer's animation color\n\
 \n\
 If the `Animations`-panel is open and this layer has a color \
 animation active, then you can change this property and \
@@ -105,35 +102,28 @@ time value (move the time dragger) instead of changing the animation points insi
 the `Animations`-panel.\n\
 > Keep in mind that moving the `Animations`-panel's time dragger resets the color to the \
 evaluated color of the animation.  \n\
-The color-property's value is the interpreted as `color = base-color * animation-point-color` \
-to calculate the values of the animation points.
+The rendered color value is the result of `color = base-color * animation-point-color`.\
 ";
 
 pub const TEXT_ANIM_PANEL_OPEN: &str =
 "\
 # Animations panel + properties\n\n\
-To make animating easier to use properties that are effected by animations like position, color & sound volume \
+To make animating easier to use, properties that are affected by animations like position, color & sound volume \
 are entering a different mode when the `Animations`-panel is open.  \n\
-Instead of changing the properties directly it will leave the base properties as is and modifies a temporary \
-property.  \n\
-This temporary property is the sum/product of the base property with animations applied:\n\
-- position: `temp_pos = base_pos + anim_pos`\n\
-- color: `temp_color = base_color * anim_color`\n\
-- volume: `temp_volume = base_volume * anim_volume`\n\n\
+The final product of animation values are applied like following:\n\
+- position: `pos = base_pos + anim_pos`\n\
+- color: `color = base_color * anim_color`\n\
+- volume: `volume = base_volume * anim_volume`\n\n\
 The conclusion of this is that if you insert a new animation key point, then this key point can automatically \
 calculate the animation point values using the above equasion.\n\n\
 > - You can opt-out of this animations handling in the global settings.\n\
-> - Closing the animation panel will allow you to modify the base values again.\n\
 > - Color values are always in the range [0-1] (or [0-255]), so e.g. if the base color for the red channel is 0 \
-    the animation point will be simply 1 (because the animation point cannot magically make the final color higher than 0).  \n\
-    In other words that means that the base color reduces the color range (0.5 => anim point is 0.5 at most).\
+    the animation point cannot magically make the final color higher than 0.  \n\
+    In other words that means that the base color reduces the color range (0.5 => final point is 0.5 at most, since anim point cannot go above 1.0).\
 ";
 
 pub const TEXT_QUAD_PROP_COLOR: &str = "\
-# Quad's color\n\
-This controls the base color of the selected quads.\n\
-\n\
-### Animations\n\
+# Quad's animation color\n\
 \n\
 If the `Animations`-panel is open and this quad has a color \
 animation active, then you can change this property and \
@@ -142,8 +132,7 @@ time value (move the time dragger) instead of changing the animation points insi
 the `Animations`-panel.\n\
 > Keep in mind that moving the `Animations`-panel's time dragger resets the color to the \
 evaluated color of the animation.  \n\
-The color-property's value is the interpreted as `color = base-color * animation-point-color` \
-to calculate the values of the animation points.
+The final rendered color value is the the product of `color = base-color * animation-point-color`.\
 ";
 
 pub const TEXT_LAYERS_AND_GROUPS_OVERVIEW: &str =

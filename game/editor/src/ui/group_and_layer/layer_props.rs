@@ -19,7 +19,7 @@ use crate::{
         ActRemSoundLayer, ActRemTileLayer, EditorAction,
     },
     event::EditorEventAutoMap,
-    explain::TEXT_LAYER_PROPS_COLOR,
+    explain::TEXT_LAYER_PROPS_ANIM_COLOR,
     hotkeys::{EditorHotkeyEvent, EditorHotkeyEventMap},
     map::{
         EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorLayerUnionRef, EditorMap,
@@ -199,8 +199,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
     // check which layers are `selected`
     let tab = &mut *pipe.user_data.editor_tab;
     let map = &mut tab.map;
-    let animations_panel_open =
-        map.user.ui_values.animations_panel_open && !map.user.options.no_animations_with_properties;
+    let animations = &mut map.animations;
+    let animations_panel_open = map.user.change_animations();
     let bg_selection = map
         .groups
         .background
@@ -454,6 +454,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 None
             };
 
+            // true because single layer
+            let can_change_color_anim = true;
+
             let mut delete_layer = false;
             let mut auto_mapper = None;
             let mut auto_mapper_live = None;
@@ -464,6 +467,56 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     .num_columns(2)
                     .spacing([20.0, 4.0])
                     .show(ui, |ui| {
+                        let anim_color = animations.user.active_anim_points.color.as_mut();
+                        if let Some(anim_color) = (animations_panel_open
+                            && can_change_color_anim
+                            && layer.layer.attr.color_anim.is_some())
+                        .then_some(anim_color)
+                        .flatten()
+                        {
+                            ui.colored_label(
+                                Color32::RED,
+                                "The animation panel is open,\n\
+                                there are animation properties and layer properites now!",
+                            )
+                            .on_hover_ui(animations_panel_open_warning);
+                            ui.end_row();
+
+                            ui.heading("Animation properties");
+                            ui.end_row();
+
+                            ui.label("Color \u{f05a}").on_hover_ui(|ui| {
+                                let mut cache = egui_commonmark::CommonMarkCache::default();
+                                egui_commonmark::CommonMarkViewer::new().show(
+                                    ui,
+                                    &mut cache,
+                                    TEXT_LAYER_PROPS_ANIM_COLOR,
+                                );
+                            });
+
+                            let mut color = [
+                                (anim_color.value.r().to_num::<f32>() * 255.0) as u8,
+                                (anim_color.value.g().to_num::<f32>() * 255.0) as u8,
+                                (anim_color.value.b().to_num::<f32>() * 255.0) as u8,
+                                (anim_color.value.a().to_num::<f32>() * 255.0) as u8,
+                            ];
+                            ui.color_edit_button_srgba_unmultiplied(&mut color);
+                            anim_color.value = nfvec4::new(
+                                nffixed::from_num(color[0] as f32 / 255.0),
+                                nffixed::from_num(color[1] as f32 / 255.0),
+                                nffixed::from_num(color[2] as f32 / 255.0),
+                                nffixed::from_num(color[3] as f32 / 255.0),
+                            );
+                            ui.end_row();
+
+                            ui.separator();
+                            ui.separator();
+                            ui.end_row();
+
+                            ui.heading("Properties");
+                            ui.end_row();
+                        }
+
                         let attr = &mut layer_editor.attr;
                         // detail
                         ui.label("High detail");
@@ -506,14 +559,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         ui.end_row();
                         // color
-                        ui.label("Color \u{f05a}").on_hover_ui(|ui| {
-                            let mut cache = egui_commonmark::CommonMarkCache::default();
-                            egui_commonmark::CommonMarkViewer::new().show(
-                                ui,
-                                &mut cache,
-                                TEXT_LAYER_PROPS_COLOR,
-                            );
-                        });
+                        ui.label("Color");
                         let mut color = [
                             (attr.color.r().to_num::<f32>() * 255.0) as u8,
                             (attr.color.g().to_num::<f32>() * 255.0) as u8,
@@ -534,10 +580,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 .then_some(format!("{ty} #{}", index))
                                 .unwrap_or_else(|| name.to_owned())
                         }
-                        ui.label("color anim");
+                        ui.label("Color anim");
                         egui::ComboBox::new("tile-layer-select-color-anim".to_string(), "")
                             .selected_text(
-                                map.animations
+                                animations
                                     .color
                                     .get(attr.color_anim.unwrap_or(usize::MAX))
                                     .map(|anim| {
@@ -553,7 +599,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 if ui.button("None").clicked() {
                                     attr.color_anim = None;
                                 }
-                                for (a, anim) in map.animations.color.iter().enumerate() {
+                                for (a, anim) in animations.color.iter().enumerate() {
                                     if ui
                                         .button(combobox_name("color", a, &anim.def.name))
                                         .clicked()
@@ -564,7 +610,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             });
                         ui.end_row();
                         // color time offset
-                        ui.label("color anim time offset");
+                        ui.label("Color anim time offset");
                         let mut millis = attr.color_anim_offset.whole_milliseconds() as i64;
                         if ui
                             .add(egui::DragValue::new(&mut millis).update_while_editing(false))
@@ -578,16 +624,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         ui.text_edit_singleline(&mut layer_editor.name);
                         ui.end_row();
 
-                        if animations_panel_open {
-                            ui.colored_label(
-                                Color32::RED,
-                                "The animation panel is open,\n\
-                                    changing attributes will not apply\n\
-                                    them to the quad permanently!",
-                            )
-                            .on_hover_ui(animations_panel_open_warning);
-                        }
-                        ui.end_row();
                         // delete
                         if ui
                             .add(Button::new("Delete layer"))
@@ -701,7 +737,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 }
             }
 
-            if layer_editor.attr != layer_attr_cmp && !animations_panel_open {
+            if layer_editor.attr != layer_attr_cmp {
                 tab.client.execute(
                     EditorAction::ChangeTileLayerDesignAttr(ActChangeTileLayerDesignAttr {
                         is_background,

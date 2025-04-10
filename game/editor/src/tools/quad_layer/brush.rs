@@ -357,8 +357,7 @@ impl QuadBrush {
                     let quad = &mut last_active.quad;
 
                     let pos_anim = edit_quad.pos_anim;
-                    let alter_anim_point =
-                        map.user.ui_values.animations_panel_open && pos_anim.is_some();
+                    let alter_anim_point = map.user.change_animations() && pos_anim.is_some();
 
                     if matches!(last_active.point, QuadPointerDownPoint::Center)
                         && latest_modifiers.ctrl
@@ -606,7 +605,7 @@ impl QuadBrush {
         state.canvas_tl.y += center.y;
         if let Some(buffer_object_index) = &brush.render.buffer_object_index {
             let quads = &brush.quads;
-            let cur_time = &map.get_time();
+            let cur_time = &map.user.render_time();
             let cur_anim_time = &map.animation_time();
             let cur_quad_offset_cell = Cell::new(0);
             let cur_quad_offset = &cur_quad_offset_cell;

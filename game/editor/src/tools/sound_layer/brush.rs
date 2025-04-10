@@ -290,8 +290,7 @@ impl SoundBrush {
                     let sound = &mut last_active.sound;
 
                     let pos_anim = edit_sound.pos_anim;
-                    let alter_anim_point =
-                        map.user.ui_values.animations_panel_open && pos_anim.is_some();
+                    let alter_anim_point = map.user.change_animations() && pos_anim.is_some();
 
                     let cursor_pos = last_active.cursor_in_world_pos;
 

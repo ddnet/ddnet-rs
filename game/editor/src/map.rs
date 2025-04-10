@@ -70,6 +70,10 @@ pub trait EditorDesignLayerInterface {
     fn is_selected(&self) -> bool;
 }
 
+pub trait EditorPhysicsLayerInterface {
+    fn is_selected(&self) -> bool;
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct EditorCommonGroupOrLayerAttr {
     pub hidden: bool,
@@ -425,6 +429,12 @@ impl EditorCommonLayerOrGroupAttrInterface for EditorPhysicsLayer {
     }
 }
 
+impl EditorPhysicsLayerInterface for EditorPhysicsLayer {
+    fn is_selected(&self) -> bool {
+        self.user().selected.is_some()
+    }
+}
+
 pub enum EditorLayerUnionRef<'a> {
     Physics {
         layer: &'a EditorPhysicsLayer,
@@ -519,6 +529,16 @@ impl EditorLayerUnionRef<'_> {
             }
         }
     }
+
+    pub fn color_anim(&self) -> &Option<usize> {
+        match self {
+            EditorLayerUnionRef::Design {
+                layer: EditorLayer::Tile(layer),
+                ..
+            } => &layer.layer.attr.color_anim,
+            EditorLayerUnionRef::Physics { .. } | EditorLayerUnionRef::Design { .. } => &None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -545,7 +565,6 @@ pub trait EditorMapInterface {
     fn toggle_selected_layer(&mut self, layer: EditorMapSetLayer, try_multiselect: bool);
     fn toggle_selected_group(&mut self, group: EditorMapSetGroup, try_multiselect: bool);
 
-    fn get_time(&self) -> Duration;
     fn game_time_info(&self) -> GameTimeInfo;
     fn game_camera(&self) -> Camera;
     fn animation_tick(&self) -> GameTickType;
@@ -555,6 +574,8 @@ pub trait EditorMapInterface {
 pub trait EditorMapGroupsInterface {
     fn active_layer(&self) -> Option<EditorLayerUnionRef>;
     fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
+
+    fn selected_layers(&self) -> Vec<EditorLayerUnionRef>;
 
     fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex>;
 }
@@ -657,6 +678,12 @@ impl EditorMapProps {
         } else {
             self.time
         }
+    }
+
+    /// If animation panel is open and the user wants easier animation handling in the layer/quad/sound attributes,
+    /// then this returns `true`.
+    pub fn change_animations(&self) -> bool {
+        self.ui_values.animations_panel_open && !self.options.no_animations_with_properties
     }
 }
 
@@ -796,6 +823,51 @@ impl EditorMapGroupsInterface for EditorGroups {
             return layer;
         }
         None
+    }
+
+    fn selected_layers(&self) -> Vec<EditorLayerUnionRef> {
+        fn collect_group(
+            group: &[EditorGroup],
+            is_background: bool,
+        ) -> Vec<EditorLayerUnionRef<'_>> {
+            group
+                .iter()
+                .enumerate()
+                .flat_map(|(group_index, g)| {
+                    g.layers
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(layer_index, l)| {
+                            l.is_selected().then_some(EditorLayerUnionRef::Design {
+                                layer: l,
+                                group: g,
+                                group_index,
+                                layer_index,
+                                is_background,
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        }
+        collect_group(&self.background, true)
+            .into_iter()
+            .chain(collect_group(&self.foreground, false))
+            .chain(
+                self.physics
+                    .layers
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(layer_index, l)| {
+                        l.is_selected().then_some(EditorLayerUnionRef::Physics {
+                            layer: l,
+                            group_attr: &self.physics.attr,
+                            layer_index,
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .collect()
     }
 
     fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex> {
@@ -1010,16 +1082,8 @@ impl EditorMapInterface for EditorMap {
         }
     }
 
-    fn get_time(&self) -> Duration {
-        if self.user.ui_values.animations_panel_open {
-            self.user.ui_values.timeline.time()
-        } else {
-            self.user.time
-        }
-    }
-
     fn game_time_info(&self) -> GameTimeInfo {
-        let time = self.get_time();
+        let time = self.user.render_time();
         GameTimeInfo {
             ticks_per_second: 50.try_into().unwrap(),
             intra_tick_time: Duration::from_nanos(
@@ -1038,7 +1102,7 @@ impl EditorMapInterface for EditorMap {
     }
 
     fn animation_tick(&self) -> GameTickType {
-        let time = self.get_time();
+        let time = self.user.render_time();
         (time.as_millis() / (1000 / 50)).max(1) as GameTickType
     }
 
