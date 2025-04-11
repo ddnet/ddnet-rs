@@ -2,8 +2,16 @@ use std::ops::RangeInclusive;
 
 use base::hash::fmt_hash;
 use egui::{Button, Checkbox, Color32, ComboBox, DragValue, InnerResponse};
-use map::types::NonZeroU16MinusOne;
-use math::math::vector::{nffixed, nfvec4};
+use game_base::mapdef_06::DdraceTileNum;
+use map::{
+    map::groups::layers::{
+        design::MapLayerTile,
+        physics::{MapLayerPhysics, MapLayerTilePhysicsBase, MapLayerTilePhysicsTele},
+        tiles::{MapTileLayerPhysicsTiles, TileBase},
+    },
+    types::NonZeroU16MinusOne,
+};
+use math::math::vector::{ffixed, nffixed, nfvec4, vec2_base};
 use rand::RngCore;
 use time::Duration;
 use ui_base::{
@@ -13,18 +21,22 @@ use ui_base::{
 
 use crate::{
     actions::actions::{
-        ActAddRemPhysicsTileLayer, ActAddRemQuadLayer, ActAddRemSoundLayer, ActAddRemTileLayer,
-        ActChangeDesignLayerName, ActChangeQuadLayerAttr, ActChangeSoundLayerAttr,
-        ActChangeTileLayerDesignAttr, ActMoveLayer, ActRemPhysicsTileLayer, ActRemQuadLayer,
-        ActRemSoundLayer, ActRemTileLayer, EditorAction,
+        ActAddPhysicsTileLayer, ActAddRemPhysicsTileLayer, ActAddRemQuadLayer, ActAddRemSoundLayer,
+        ActAddRemTileLayer, ActChangeDesignLayerName, ActChangeQuadLayerAttr,
+        ActChangeSoundLayerAttr, ActChangeTileLayerDesignAttr, ActMoveLayer,
+        ActRemPhysicsTileLayer, ActRemQuadLayer, ActRemSoundLayer, ActRemTileLayer,
+        ActTilePhysicsLayerReplTilesBase, ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
+    client::EditorClient,
     event::EditorEventAutoMap,
     explain::TEXT_LAYER_PROPS_ANIM_COLOR,
     hotkeys::{EditorHotkeyEvent, EditorHotkeyEventMap},
     map::{
-        EditorDesignLayerInterface, EditorGroups, EditorLayer, EditorLayerUnionRef, EditorMap,
-        EditorMapInterface, EditorPhysicsLayer, ResourceSelection,
+        EditorDesignLayerInterface, EditorGroup, EditorGroupPhysics, EditorGroups, EditorLayer,
+        EditorLayerUnionRef, EditorMap, EditorMapInterface, EditorPhysicsLayer,
+        EditorResourceTexture2dArray, ResourceSelection,
     },
+    tools::tile_layer::auto_mapper::TileLayerAutoMapper,
     ui::{
         group_and_layer::{
             resource_selector::ResourceSelectionMode,
@@ -396,12 +408,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         )
     }
 
-    fn layer_mut(
-        groups: &mut EditorGroups,
-        is_background: bool,
-        g: usize,
-        l: usize,
-    ) -> &mut EditorLayer {
+    fn group_mut(groups: &mut EditorGroups, is_background: bool, g: usize) -> &mut EditorGroup {
         let groups = if is_background {
             &mut groups.background
         } else {
@@ -411,19 +418,25 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         groups
             .get_mut(g)
             .expect("group index out of bounds, logic error.")
+    }
+
+    fn layer_mut(group: &mut EditorGroup, l: usize) -> &mut EditorLayer {
+        group
             .layers
             .get_mut(l)
             .expect("layer index out of bounds, logic error.")
     }
 
-    let mut resource_selector_was_outside = true;
+    let mut pointer_was_outside = true;
     let window_res = match attr_mode {
         LayerAttrMode::DesignTile => {
             let (is_background, g, l) = bg_selection
                 .next()
                 .unwrap_or_else(|| fg_selection.next().unwrap());
             let (bg_move_limit, g_limit, l_limit) = move_limits(&map.groups, is_background, g);
-            let EditorLayer::Tile(layer) = layer_mut(&mut map.groups, is_background, g, l) else {
+            let group = group_mut(&mut map.groups, is_background, g);
+            let group_attr = group.attr;
+            let EditorLayer::Tile(layer) = layer_mut(group, l) else {
                 panic!("not a tile layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
@@ -461,6 +474,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             let mut auto_mapper = None;
             let mut auto_mapper_live = None;
             let mut move_layer = None;
+            let mut auto_tile = None;
 
             let res = window.show(ui.ctx(), |ui| {
                 egui::Grid::new("design group attr grid")
@@ -649,6 +663,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         }
                         ui.end_row();
 
+                        ui.separator();
+                        ui.separator();
+                        ui.end_row();
+
                         // auto mapper
                         if let Some(rule) = resource_name
                             .as_ref()
@@ -697,6 +715,95 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             ui.end_row();
                         }
 
+                        // layer to physics tiles
+                        if group_attr.offset == Default::default()
+                            && group_attr.parallax
+                                == vec2_base::new(ffixed::from_num(100), ffixed::from_num(100))
+                        {
+                            ui.label("Auto physics tiles");
+                            ui.menu_button("Map to", |ui| {
+                                pointer_was_outside = false;
+                                if attr.image_array.is_some() {
+                                    ui.label("% of non fully tansparent pixels in tile texture:")
+                                        .on_hover_text(
+                                            "How much % of pixels must be not fully transparent, \
+                                            to consider a tile for auto mapping.\n\
+                                            Otherwise this tile is considered 'air' and ignored.\n\
+                                            0 means all tiles will count, 100 means there must \
+                                            be no fully transparent pixels in the texture at all.",
+                                        );
+                                    ui.add(
+                                        DragValue::new(
+                                            &mut pipe
+                                                .user_data
+                                                .auto_mapper
+                                                .tile_non_fully_transparent_percentage,
+                                        )
+                                        .range(0..=100),
+                                    );
+
+                                    ui.separator();
+                                }
+                                ui.label("Replace existing:").on_hover_text(
+                                    "Replace existing tiles in the physics \
+                                    layer of the selected type.\n\
+                                    For example if 'Hookable' is selected, \
+                                    then all hookable tiles are removed, \
+                                    before placing the new ones.",
+                                );
+                                ui.checkbox(
+                                    &mut pipe.user_data.auto_mapper.tile_replace_existing,
+                                    "",
+                                );
+                                ui.separator();
+
+                                if ui.button("Air").clicked() {
+                                    auto_tile = Some(DdraceTileNum::Air);
+                                }
+                                if ui.button("Hookable").clicked() {
+                                    auto_tile = Some(DdraceTileNum::Solid);
+                                }
+                                if ui.button("Death").clicked() {
+                                    auto_tile = Some(DdraceTileNum::Death);
+                                }
+                                if ui.button("Unhookable").clicked() {
+                                    auto_tile = Some(DdraceTileNum::NoHook);
+                                }
+                                if ui.button("Hookthrough").clicked() {
+                                    auto_tile = Some(DdraceTileNum::Through);
+                                }
+                                if ui.button("Freeze").clicked() {
+                                    auto_tile = Some(DdraceTileNum::Freeze);
+                                }
+                                if ui.button("Unfreeze").clicked() {
+                                    auto_tile = Some(DdraceTileNum::Unfreeze);
+                                }
+                                if ui.button("Deep freeze").clicked() {
+                                    auto_tile = Some(DdraceTileNum::DFreeze);
+                                }
+                                if ui.button("Deep unfreeze").clicked() {
+                                    auto_tile = Some(DdraceTileNum::DUnfreeze);
+                                }
+                                if ui.button("Blue check-tele").clicked() {
+                                    auto_tile = Some(DdraceTileNum::TeleCheckIn);
+                                }
+                                if ui.button("Red check-tele").clicked() {
+                                    auto_tile = Some(DdraceTileNum::TeleCheckInEvil);
+                                }
+                                if ui.button("Live freeze").clicked() {
+                                    auto_tile = Some(DdraceTileNum::LFreeze);
+                                }
+                                if ui.button("Live unfreeze").clicked() {
+                                    auto_tile = Some(DdraceTileNum::LUnfreeze);
+                                }
+                            });
+                            ui.end_row();
+                        }
+
+                        ui.separator();
+                        ui.separator();
+                        ui.end_row();
+
                         ui.label("Move layer");
                         ui.end_row();
 
@@ -721,7 +828,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     pipe.user_data.pointer_is_used,
                     &map.resources.image_arrays,
                 );
-                resource_selector_was_outside = res.pointer_was_outside;
+                pointer_was_outside = res.pointer_was_outside;
                 if let Some(resource) = res.mode {
                     match resource {
                         ResourceSelectionMode::Hovered(index) => {
@@ -850,6 +957,250 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         seed.is_some(),
                     );
                 }
+            } else if let Some(auto_tile) = auto_tile {
+                let layer = layer.layer.clone();
+                let img = layer
+                    .attr
+                    .image_array
+                    .and_then(|i| map.resources.image_arrays.get(i));
+                let auto_mapper = &*pipe.user_data.auto_mapper;
+                fn repl_tiles<T: Default + Clone + Copy + AsMut<TileBase>>(
+                    client: &EditorClient,
+                    auto_mapper: &TileLayerAutoMapper,
+                    img_props: Option<&EditorResourceTexture2dArray>,
+                    layer: &MapLayerTile,
+                    phy_group: &EditorGroupPhysics,
+                    phy_layer_index: usize,
+                    phy_tiles: &[T],
+                    auto_tile: DdraceTileNum,
+                    to_phy_tiles: impl Fn(Vec<T>) -> MapTileLayerPhysicsTiles,
+                ) {
+                    client.execute(
+                        EditorAction::TilePhysicsLayerReplaceTiles(
+                            ActTilePhysicsLayerReplaceTiles {
+                                base: ActTilePhysicsLayerReplTilesBase {
+                                    layer_index: phy_layer_index,
+                                    old_tiles: to_phy_tiles(phy_tiles.to_vec()),
+                                    new_tiles: to_phy_tiles({
+                                        let mut tiles = phy_tiles.to_vec();
+                                        for y in 0..phy_group
+                                            .attr
+                                            .height
+                                            .get()
+                                            .min(layer.attr.height.get())
+                                        {
+                                            for x in 0..phy_group
+                                                .attr
+                                                .width
+                                                .get()
+                                                .min(layer.attr.width.get())
+                                            {
+                                                let game_tile_index =
+                                                    y * phy_group.attr.width.get() + x;
+                                                let tile_index = y * layer.attr.width.get() + x;
+
+                                                let tile = layer.tiles[tile_index as usize].index;
+                                                let game_tile =
+                                                    &mut tiles[game_tile_index as usize];
+                                                let should_apply = if let Some(img) = img_props {
+                                                    tile > 0
+                                                && img
+                                                    .tile_non_fully_transparent_percentage
+                                                    [tile as usize]
+                                                    >= auto_mapper
+                                                        .tile_non_fully_transparent_percentage
+                                                } else {
+                                                    tile > 0
+                                                };
+                                                if auto_mapper.tile_replace_existing
+                                                    && game_tile.as_mut().index == auto_tile as u8
+                                                {
+                                                    *game_tile = Default::default();
+                                                }
+                                                if should_apply {
+                                                    game_tile.as_mut().index = auto_tile as u8;
+                                                    game_tile.as_mut().flags = Default::default();
+                                                }
+                                            }
+                                        }
+
+                                        tiles
+                                    }),
+                                    x: 0,
+                                    y: 0,
+                                    w: phy_group.attr.width,
+                                    h: phy_group.attr.height,
+                                },
+                            },
+                        ),
+                        None,
+                    );
+                }
+                match auto_tile {
+                    DdraceTileNum::Air
+                    | DdraceTileNum::Solid
+                    | DdraceTileNum::Death
+                    | DdraceTileNum::NoHook
+                    | DdraceTileNum::Freeze
+                    | DdraceTileNum::Unfreeze
+                    | DdraceTileNum::DFreeze
+                    | DdraceTileNum::DUnfreeze
+                    | DdraceTileNum::LFreeze
+                    | DdraceTileNum::LUnfreeze => {
+                        let (game_layer_index, game_layer) = map
+                            .groups
+                            .physics
+                            .layers
+                            .iter()
+                            .enumerate()
+                            .find_map(|(i, l)| {
+                                if let EditorPhysicsLayer::Game(l) = l {
+                                    Some((i, l))
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap();
+                        repl_tiles(
+                            &tab.client,
+                            auto_mapper,
+                            img.map(|i| &i.user.props),
+                            &layer,
+                            &map.groups.physics,
+                            game_layer_index,
+                            &game_layer.layer.tiles,
+                            auto_tile,
+                            MapTileLayerPhysicsTiles::Game,
+                        );
+                    }
+                    DdraceTileNum::TeleCheckIn | DdraceTileNum::TeleCheckInEvil => {
+                        let tele_layer =
+                            map.groups
+                                .physics
+                                .layers
+                                .iter()
+                                .enumerate()
+                                .find_map(|(i, l)| {
+                                    if let EditorPhysicsLayer::Tele(l) = l {
+                                        Some((i, l))
+                                    } else {
+                                        None
+                                    }
+                                });
+                        let (tele_layer_index, tele_layer_tiles) = if let Some((i, l)) = tele_layer
+                        {
+                            (i, l.layer.base.tiles.clone())
+                        } else {
+                            // add new tele layer
+                            let index = map.groups.physics.layers.len();
+                            let attr = &map.groups.physics.attr;
+                            let phy_size = attr.width.get() as usize * attr.height.get() as usize;
+                            let tiles = vec![Default::default(); phy_size];
+                            tab.client.execute(
+                                EditorAction::AddPhysicsTileLayer(ActAddPhysicsTileLayer {
+                                    base: ActAddRemPhysicsTileLayer {
+                                        index,
+                                        layer: MapLayerPhysics::Tele(MapLayerTilePhysicsTele {
+                                            base: MapLayerTilePhysicsBase {
+                                                tiles: tiles.clone(),
+                                            },
+                                            tele_names: Default::default(),
+                                        }),
+                                    },
+                                }),
+                                None,
+                            );
+                            (index, tiles)
+                        };
+                        repl_tiles(
+                            &tab.client,
+                            auto_mapper,
+                            img.map(|i| &i.user.props),
+                            &layer,
+                            &map.groups.physics,
+                            tele_layer_index,
+                            &tele_layer_tiles,
+                            auto_tile,
+                            MapTileLayerPhysicsTiles::Tele,
+                        );
+                    }
+                    DdraceTileNum::Through => {
+                        let (game_layer_index, game_layer) = map
+                            .groups
+                            .physics
+                            .layers
+                            .iter()
+                            .enumerate()
+                            .find_map(|(i, l)| {
+                                if let EditorPhysicsLayer::Game(l) = l {
+                                    Some((i, l))
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap();
+                        repl_tiles(
+                            &tab.client,
+                            auto_mapper,
+                            img.map(|i| &i.user.props),
+                            &layer,
+                            &map.groups.physics,
+                            game_layer_index,
+                            &game_layer.layer.tiles,
+                            DdraceTileNum::NoHook,
+                            MapTileLayerPhysicsTiles::Game,
+                        );
+
+                        let front_layer =
+                            map.groups
+                                .physics
+                                .layers
+                                .iter()
+                                .enumerate()
+                                .find_map(|(i, l)| {
+                                    if let EditorPhysicsLayer::Front(l) = l {
+                                        Some((i, l))
+                                    } else {
+                                        None
+                                    }
+                                });
+                        let (front_layer_index, front_layer_tiles) = if let Some((i, l)) =
+                            front_layer
+                        {
+                            (i, l.layer.tiles.clone())
+                        } else {
+                            // add new front layer
+                            let index = map.groups.physics.layers.len();
+                            let attr = &map.groups.physics.attr;
+                            let phy_size = attr.width.get() as usize * attr.height.get() as usize;
+                            let tiles = vec![Default::default(); phy_size];
+                            tab.client.execute(
+                                EditorAction::AddPhysicsTileLayer(ActAddPhysicsTileLayer {
+                                    base: ActAddRemPhysicsTileLayer {
+                                        index,
+                                        layer: MapLayerPhysics::Front(MapLayerTilePhysicsBase {
+                                            tiles: tiles.clone(),
+                                        }),
+                                    },
+                                }),
+                                None,
+                            );
+                            (index, tiles)
+                        };
+                        repl_tiles(
+                            &tab.client,
+                            auto_mapper,
+                            img.map(|i| &i.user.props),
+                            &layer,
+                            &map.groups.physics,
+                            front_layer_index,
+                            &front_layer_tiles,
+                            auto_tile,
+                            MapTileLayerPhysicsTiles::Front,
+                        );
+                    }
+                    t => panic!("auto mapping for {t:?} not implemented. code bug."),
+                }
             } else if let Some(move_act) =
                 move_layer.and_then(|mv| layer_move_to_act(mv, is_background, g, l, map))
             {
@@ -863,7 +1214,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .next()
                 .unwrap_or_else(|| fg_selection.next().unwrap());
             let (bg_move_limit, g_limit, l_limit) = move_limits(&map.groups, is_background, g);
-            let EditorLayer::Quad(layer) = layer_mut(&mut map.groups, is_background, g, l) else {
+            let group = group_mut(&mut map.groups, is_background, g);
+            let EditorLayer::Quad(layer) = layer_mut(group, l) else {
                 panic!("not a quad layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
@@ -956,7 +1308,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     pipe.user_data.pointer_is_used,
                     &map.resources.images,
                 );
-                resource_selector_was_outside = res.pointer_was_outside;
+                pointer_was_outside = res.pointer_was_outside;
                 if let Some(resource) = res.mode {
                     match resource {
                         ResourceSelectionMode::Hovered(index) => {
@@ -1021,7 +1373,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 .next()
                 .unwrap_or_else(|| fg_selection.next().unwrap());
             let (bg_move_limit, g_limit, l_limit) = move_limits(&map.groups, is_background, g);
-            let EditorLayer::Sound(layer) = layer_mut(&mut map.groups, is_background, g, l) else {
+            let group = group_mut(&mut map.groups, is_background, g);
+            let EditorLayer::Sound(layer) = layer_mut(group, l) else {
                 panic!("not a sound layer, bug in above calculations")
             };
             let layer_editor = layer.user.selected.as_mut().unwrap();
@@ -1114,7 +1467,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     pipe.user_data.pointer_is_used,
                     &map.resources.sounds,
                 );
-                resource_selector_was_outside = res.pointer_was_outside;
+                pointer_was_outside = res.pointer_was_outside;
                 if let Some(resource) = res.mode {
                     match resource {
                         ResourceSelectionMode::Hovered(index) => {
@@ -1263,8 +1616,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 None
             }
         });
-        if intersected
-            .is_some_and(|(outside, clicked)| outside && clicked && resource_selector_was_outside)
+        if intersected.is_some_and(|(outside, clicked)| outside && clicked && pointer_was_outside)
             && !ui.memory(|i| i.any_popup_open())
         {
             map.unselect_all(true, true);

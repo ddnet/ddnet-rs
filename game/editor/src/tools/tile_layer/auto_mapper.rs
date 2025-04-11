@@ -594,6 +594,11 @@ pub struct TileLayerAutoMapper {
     pub tp: Arc<rayon::ThreadPool>,
     pub graphics_mt: GraphicsMultiThreaded,
     pub texture_handle: GraphicsTextureHandle,
+
+    // this is for tile -> physics tile auto mapping
+    pub tile_non_fully_transparent_percentage: u8,
+    /// Replace existing tiles of the selected auto mapping kind
+    pub tile_replace_existing: bool,
 }
 
 impl TileLayerAutoMapper {
@@ -624,6 +629,9 @@ impl TileLayerAutoMapper {
             tp,
             graphics_mt: graphics.get_graphics_mt(),
             texture_handle: graphics.texture_handle.clone(),
+
+            tile_non_fully_transparent_percentage: 45,
+            tile_replace_existing: false,
         }
     }
 

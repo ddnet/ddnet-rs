@@ -103,9 +103,10 @@ use crate::{
         EditorLayer, EditorLayerArbitrary, EditorLayerQuad, EditorLayerSound, EditorLayerTile,
         EditorLayerUnionRef, EditorMap, EditorMapInterface, EditorMapProps, EditorMetadata,
         EditorPhysicsGroupProps, EditorPhysicsLayer, EditorPhysicsLayerProps, EditorPosAnimation,
-        EditorQuadLayerProps, EditorQuadLayerPropsPropsSelection, EditorResource, EditorResources,
-        EditorSound, EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
-        EditorTileLayerPropsSelection, ResourceSelection,
+        EditorQuadLayerProps, EditorQuadLayerPropsPropsSelection, EditorResource,
+        EditorResourceTexture2dArray, EditorResources, EditorSound, EditorSoundAnimation,
+        EditorSoundLayerProps, EditorTileLayerProps, EditorTileLayerPropsSelection,
+        ResourceSelection,
     },
     map_tools::{
         finish_design_quad_layer_buffer, finish_design_tile_layer_buffer,
@@ -723,7 +724,7 @@ impl Editor {
                                         .iter_mut()
                                         .for_each(|byte| *byte = 0);
 
-                                    (mem, file.clone())
+                                    (mem, image_3d_width, image_3d_height, file.clone())
                                 };
                                 (read_file(&i.meta), i.hq_meta.as_ref().map(read_file), i)
                             })
@@ -922,6 +923,7 @@ impl Editor {
                             user: texture_handle
                                 .load_texture_rgba_u8(mem, i.name.as_str())
                                 .unwrap(),
+                            props: Default::default(),
                             file: file.into(),
                             hq: hq_mem_file.map(|(mem, file)| {
                                 (
@@ -937,23 +939,32 @@ impl Editor {
                     .collect(),
                 image_arrays: image_array_mems
                     .into_iter()
-                    .map(|((mem, file), hq_mem_file, i)| EditorImage2dArray {
-                        user: EditorResource {
-                            user: texture_handle
-                                .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
-                                .unwrap(),
-                            file: file.into(),
-                            hq: hq_mem_file.map(|(mem, file)| {
-                                (
-                                    file.into(),
-                                    texture_handle
+                    .map(
+                        |((mem, image_3d_width, image_3d_height, file), hq_mem_file, i)| {
+                            EditorImage2dArray {
+                                user: EditorResource {
+                                    props: EditorResourceTexture2dArray::new(
+                                        mem.as_slice(),
+                                        image_3d_width,
+                                        image_3d_height,
+                                    ),
+                                    user: texture_handle
                                         .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
                                         .unwrap(),
-                                )
-                            }),
+                                    file: file.into(),
+                                    hq: hq_mem_file.map(|(mem, _, _, file)| {
+                                        (
+                                            file.into(),
+                                            texture_handle
+                                                .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
+                                                .unwrap(),
+                                        )
+                                    }),
+                                },
+                                def: i,
+                            }
                         },
-                        def: i,
-                    })
+                    )
                     .collect(),
                 sounds: sound_objects
                     .into_iter()
@@ -961,6 +972,7 @@ impl Editor {
                         def: i,
                         user: EditorResource {
                             user: s,
+                            props: Default::default(),
                             file: file.into(),
                             hq: hq_s_file.map(|(s, file)| (file.into(), s)),
                         },

@@ -299,7 +299,7 @@ pub struct MapInfo {
 
 pub const TILE_SWITCHTIMEDOPEN: u8 = 22;
 
-#[derive(Debug, Hiarc, FromPrimitive, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Hiarc, Clone, Copy, FromPrimitive, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DdraceTileNum {
     Air = 0,
     Solid,

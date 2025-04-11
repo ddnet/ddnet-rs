@@ -59,8 +59,8 @@ use crate::{
         EditorAnimationProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr, EditorGroup,
         EditorGroupProps, EditorImage, EditorImage2dArray, EditorLayer, EditorLayerQuad,
         EditorLayerSound, EditorLayerTile, EditorMap, EditorPhysicsLayer, EditorPhysicsLayerProps,
-        EditorPosAnimation, EditorQuadLayerProps, EditorResource, EditorSound,
-        EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
+        EditorPosAnimation, EditorQuadLayerProps, EditorResource, EditorResourceTexture2dArray,
+        EditorSound, EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
     },
     map_tools::{
         finish_design_quad_layer_buffer, finish_design_tile_layer_buffer,
@@ -846,6 +846,7 @@ pub fn do_action(
                     user: EditorResource {
                         user: texture_handle
                             .load_texture_rgba_u8(img_mem.unwrap(), act.base.res.name.as_str())?,
+                        props: Default::default(),
                         file: Rc::new(act.base.file.clone()),
                         hq: None,
                     },
@@ -909,6 +910,11 @@ pub fn do_action(
                 act.base.index,
                 EditorImage2dArray {
                     user: EditorResource {
+                        props: EditorResourceTexture2dArray::new(
+                            mem.as_slice(),
+                            image_3d_width,
+                            image_3d_height,
+                        ),
                         user: texture_handle
                             .load_texture_2d_array_rgba_u8(mem, act.base.res.name.as_str())?,
                         file: Rc::new(act.base.file.clone()),
@@ -946,6 +952,7 @@ pub fn do_action(
                             mem.as_mut_slice().copy_from_slice(&act.base.file);
                             map.user.sound_scene.sound_object_handle.create(mem)
                         },
+                        props: Default::default(),
                         file: Rc::new(act.base.file.clone()),
                         hq: None,
                     },

@@ -266,28 +266,68 @@ pub struct EditorGroupsProps {
     pub parallax_aware_zoom: bool,
 }
 
-#[derive(Debug, Hiarc, Default, Clone)]
-pub struct EditorResource<U> {
+#[derive(Debug, Hiarc, Clone)]
+pub struct EditorResource<U, P> {
     pub file: Rc<Vec<u8>>,
     pub user: U,
+    pub props: P,
     pub hq: Option<(Rc<Vec<u8>>, U)>,
 }
 
-impl<U> Borrow<U> for EditorResource<U> {
+impl<U, P> Borrow<U> for EditorResource<U, P> {
     fn borrow(&self) -> &U {
         &self.user
     }
 }
 
-pub type EditorImage = MapResourceRefSkeleton<EditorResource<TextureContainer>>;
-pub type EditorImage2dArray = MapResourceRefSkeleton<EditorResource<TextureContainer2dArray>>;
-pub type EditorSound = MapResourceRefSkeleton<EditorResource<SoundObject>>;
+#[derive(Debug, Hiarc, Clone)]
+pub struct EditorResourceTexture2dArray {
+    pub tile_non_fully_transparent_percentage: [u8; 256],
+}
+
+impl EditorResourceTexture2dArray {
+    pub fn new(img: &[u8], single_width: usize, single_height: usize) -> Self {
+        let mut tile_non_fully_transparent_percentage = vec![0u8; 256];
+        let single_pitch = single_width * 4;
+        let single_size = single_pitch * single_height;
+        for y in 0..16 {
+            for x in 0..16 {
+                let i = y * 16 + x;
+                let x_off = x * single_size;
+                let y_off = y * single_size * 16;
+                let mut non_transparent_counter = 0;
+                for y in 0..single_height {
+                    for x in 0..single_width {
+                        let index = y_off + (y * single_pitch) + x_off + x * 4;
+                        let alpha = img[index + 3];
+                        if alpha > 0 {
+                            non_transparent_counter += 1;
+                        }
+                    }
+                }
+
+                tile_non_fully_transparent_percentage[i] =
+                    ((non_transparent_counter * 100) / (single_width * single_height)) as u8;
+            }
+        }
+        Self {
+            tile_non_fully_transparent_percentage: tile_non_fully_transparent_percentage
+                .try_into()
+                .unwrap(),
+        }
+    }
+}
+
+pub type EditorImage = MapResourceRefSkeleton<EditorResource<TextureContainer, ()>>;
+pub type EditorImage2dArray =
+    MapResourceRefSkeleton<EditorResource<TextureContainer2dArray, EditorResourceTexture2dArray>>;
+pub type EditorSound = MapResourceRefSkeleton<EditorResource<SoundObject, ()>>;
 
 pub type EditorResources = MapResourcesSkeleton<
     (),
-    EditorResource<TextureContainer>,
-    EditorResource<TextureContainer2dArray>,
-    EditorResource<SoundObject>,
+    EditorResource<TextureContainer, ()>,
+    EditorResource<TextureContainer2dArray, EditorResourceTexture2dArray>,
+    EditorResource<SoundObject, ()>,
 >;
 
 #[derive(Debug, Hiarc, Default, Clone)]
@@ -690,9 +730,9 @@ impl EditorMapProps {
 pub type EditorMap = MapSkeleton<
     EditorMapProps,
     (),
-    EditorResource<TextureContainer>,
-    EditorResource<TextureContainer2dArray>,
-    EditorResource<SoundObject>,
+    EditorResource<TextureContainer, ()>,
+    EditorResource<TextureContainer2dArray, EditorResourceTexture2dArray>,
+    EditorResource<SoundObject, ()>,
     EditorGroupsProps,
     EditorPhysicsGroupProps,
     EditorPhysicsLayerProps,
