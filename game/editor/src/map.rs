@@ -10,13 +10,11 @@ use std::{
 use base::{hash::Hash, linked_hash_map_view::FxLinkedHashMap};
 use base_io::runtime::IoRuntimeTask;
 use client_render_base::map::{
-    map::RenderMap,
     map_buffered::{PhysicsTileLayerVisuals, QuadLayerVisuals, SoundLayerSounds, TileLayerVisuals},
     render_pipe::{Camera, GameTimeInfo},
 };
 use egui_file_dialog::FileDialog;
 use egui_timeline::timeline::Timeline;
-use game_interface::types::game::GameTickType;
 use graphics::handles::texture::texture::{TextureContainer, TextureContainer2dArray};
 use hiarc::Hiarc;
 use map::{
@@ -362,10 +360,6 @@ pub struct EditorAnimationsProps {
     pub selected_color_anim: Option<usize>,
     pub selected_sound_anim: Option<usize>,
 
-    /// these animations are for if the animations panel is open and
-    /// fake anim points have to be inserted
-    pub animations: AnimationsSkeleton<(), ()>,
-
     // current selected anim points to fake
     pub active_anims: EditorActiveAnim,
     pub active_anim_points: EditorActiveAnimPoint,
@@ -607,8 +601,8 @@ pub trait EditorMapInterface {
 
     fn game_time_info(&self) -> GameTimeInfo;
     fn game_camera(&self) -> Camera;
-    fn animation_tick(&self) -> GameTickType;
-    fn animation_time(&self) -> Duration;
+
+    fn active_animations(&self) -> &EditorAnimations;
 }
 
 pub trait EditorMapGroupsInterface {
@@ -708,6 +702,10 @@ pub struct EditorMapProps {
     pub time: Duration,
     // the scale how much the time should be progress, 0 = paused, 1 = normal speed etc.
     pub time_scale: u32,
+
+    /// these animations are for if the animations panel is open and
+    /// fake anim points have to be inserted
+    pub animations: EditorAnimations,
 }
 
 impl EditorMapProps {
@@ -718,6 +716,12 @@ impl EditorMapProps {
         } else {
             self.time
         }
+    }
+
+    /// If animations are paused and animation pannel is open,
+    /// then it's nice for the animator to see the last animation point too.
+    pub fn include_last_anim_point(&self) -> bool {
+        self.ui_values.animations_panel_open && self.ui_values.timeline.is_paused()
     }
 
     /// If animation panel is open and the user wants easier animation handling in the layer/quad/sound attributes,
@@ -1141,16 +1145,11 @@ impl EditorMapInterface for EditorMap {
         }
     }
 
-    fn animation_tick(&self) -> GameTickType {
-        let time = self.user.render_time();
-        (time.as_millis() / (1000 / 50)).max(1) as GameTickType
-    }
-
-    fn animation_time(&self) -> Duration {
-        RenderMap::calc_anim_time(
-            self.game_time_info().ticks_per_second,
-            self.animation_tick(),
-            &self.game_time_info().intra_tick_time,
-        )
+    fn active_animations(&self) -> &EditorAnimations {
+        if self.user.ui_values.animations_panel_open {
+            &self.user.animations
+        } else {
+            &self.animations
+        }
     }
 }

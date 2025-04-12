@@ -30,6 +30,7 @@ pub struct RenderPipelineBase<'a> {
     pub config: &'a ConfigMap,
     pub cur_time: &'a Duration,
     pub cur_anim_time: &'a Duration,
+    pub include_last_anim_point: bool,
     pub camera: &'a Camera,
 
     pub entities_container: &'a mut EntitiesContainer,
@@ -51,6 +52,7 @@ impl<'a> RenderPipeline<'a> {
         config: &'a ConfigMap,
         cur_time: &'a Duration,
         cur_anim_time: &'a Duration,
+        include_last_anim_point: bool,
         camera: &'a Camera,
         entities_container: &'a mut EntitiesContainer,
         entities_key: Option<&'a ContainerKey>,
@@ -63,6 +65,7 @@ impl<'a> RenderPipeline<'a> {
                 config,
                 cur_time,
                 cur_anim_time,
+                include_last_anim_point,
                 camera,
                 entities_container,
                 entities_key,

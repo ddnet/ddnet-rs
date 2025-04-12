@@ -17,11 +17,11 @@ use crate::{
         shared::{align_pos, in_radius, rotate},
         utils::render_rect,
     },
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{ui_pos_to_world_pos, ui_pos_to_world_pos_and_world_height, UiCanvasSize},
 };
 
 use super::shared::{
-    render_quad_points, QuadPointerDownPoint, QuadSelectionQuads, QUAD_POINT_RADIUS,
+    render_quad_points, QuadPointerDownPoint, QuadSelectionQuads, QUAD_POINT_RADIUS_FACTOR,
 };
 
 #[derive(Debug, Hiarc)]
@@ -320,7 +320,7 @@ impl QuadSelection {
 
                     let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                    let pointer_cur = ui_pos_to_world_pos(
+                    let (pointer_cur, h) = ui_pos_to_world_pos_and_world_height(
                         canvas_handle,
                         ui_canvas,
                         map.groups.user.zoom,
@@ -334,7 +334,8 @@ impl QuadSelection {
                         map.groups.user.parallax_aware_zoom,
                     );
 
-                    let radius = QUAD_POINT_RADIUS;
+                    let h = h / canvas_handle.canvas_height() as f32;
+                    let radius = QUAD_POINT_RADIUS_FACTOR * h;
                     let mut p = [false; 5];
                     p.iter_mut().enumerate().for_each(|(index, p)| {
                         *p = in_radius(&points[index], &pointer_cur, radius)

@@ -29,11 +29,11 @@ use crate::{
     map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
     map_tools::{finish_design_quad_layer_buffer, upload_design_quad_layer_buffer},
     tools::{
-        quad_layer::shared::QUAD_POINT_RADIUS,
+        quad_layer::shared::QUAD_POINT_RADIUS_FACTOR,
         shared::{align_pos, in_radius, rotate},
         utils::render_rect,
     },
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{ui_pos_to_world_pos, ui_pos_to_world_pos_and_world_height, UiCanvasSize},
 };
 
 use super::shared::{render_quad_points, QuadPointerDownPoint, QuadSelectionQuads};
@@ -248,7 +248,7 @@ impl QuadBrush {
 
                     let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                    let pointer_cur = ui_pos_to_world_pos(
+                    let (pointer_cur, h) = ui_pos_to_world_pos_and_world_height(
                         canvas_handle,
                         ui_canvas,
                         map.groups.user.zoom,
@@ -261,8 +261,8 @@ impl QuadBrush {
                         parallax.y,
                         parallax_aware_zoom,
                     );
-
-                    let radius = QUAD_POINT_RADIUS;
+                    let h = h / canvas_handle.canvas_height() as f32;
+                    let radius = QUAD_POINT_RADIUS_FACTOR * h;
                     let mut p = [false; 5];
                     p.iter_mut().enumerate().for_each(|(index, p)| {
                         *p = in_radius(&points[index], &pointer_cur, radius)
@@ -606,16 +606,18 @@ impl QuadBrush {
         if let Some(buffer_object_index) = &brush.render.buffer_object_index {
             let quads = &brush.quads;
             let cur_time = &map.user.render_time();
-            let cur_anim_time = &map.animation_time();
+            let cur_anim_time = cur_time;
             let cur_quad_offset_cell = Cell::new(0);
             let cur_quad_offset = &cur_quad_offset_cell;
-            let animations = &map.animations;
+            let animations = map.active_animations();
+            let include_last_anim_point = map.user.include_last_anim_point();
             stream_handle.fill_uniform_instance(
                 hi_closure!(
                     <AN, AS>,
                     [
                     cur_time: &Duration,
                     cur_anim_time: &Duration,
+                    include_last_anim_point: bool,
                     cur_quad_offset: &Cell<usize>,
                     animations: &AnimationsSkeleton<AN, AS>,
                     quads: &Vec<Quad>,
@@ -628,6 +630,7 @@ impl QuadBrush {
                         stream_handle,
                         cur_time,
                         cur_anim_time,
+                        include_last_anim_point,
                         cur_quad_offset,
                         animations,
                         quads

@@ -20,10 +20,10 @@ use crate::{
         shared::{align_pos, in_radius},
         utils::render_rect,
     },
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{ui_pos_to_world_pos, ui_pos_to_world_pos_and_world_height, UiCanvasSize},
 };
 
-use super::shared::{render_sound_points, SoundPointerDownPoint, SOUND_POINT_RADIUS};
+use super::shared::{render_sound_points, SoundPointerDownPoint, SOUND_POINT_RADIUS_FACTOR};
 
 #[derive(Debug, Hiarc)]
 pub struct SoundBrushSounds {
@@ -199,7 +199,7 @@ impl SoundBrush {
                 for (s, sound) in layer.layer.sounds.iter().enumerate() {
                     let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                    let pointer_cur = ui_pos_to_world_pos(
+                    let (pointer_cur, h) = ui_pos_to_world_pos_and_world_height(
                         canvas_handle,
                         ui_canvas,
                         map.groups.user.zoom,
@@ -213,7 +213,8 @@ impl SoundBrush {
                         map.groups.user.parallax_aware_zoom,
                     );
 
-                    let radius = SOUND_POINT_RADIUS;
+                    let h = h / canvas_handle.canvas_height() as f32;
+                    let radius = SOUND_POINT_RADIUS_FACTOR * h;
                     if in_radius(&sound.pos, &pointer_cur, radius) {
                         // pointer is in a drag mode
                         clicked_sound_point = true;
@@ -524,11 +525,13 @@ impl SoundBrush {
             map.groups.user.zoom,
             map.groups.user.parallax_aware_zoom,
         );
+        let time = map.user.render_time();
         RenderMap::render_sounds(
             stream_handle,
-            &map.animations,
-            &map.user.render_time(),
-            &map.animation_time(),
+            map.active_animations(),
+            &time,
+            &time,
+            map.user.include_last_anim_point(),
             brush.sounds.iter(),
             state,
         );

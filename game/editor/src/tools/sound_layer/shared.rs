@@ -11,7 +11,7 @@ use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
 use std::time::Duration;
 
 use crate::{
-    map::{EditorLayer, EditorLayerUnionRef, EditorMap},
+    map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
     tools::shared::in_radius,
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
@@ -24,10 +24,11 @@ pub enum SoundPointerDownPoint {
 pub fn get_sound_point_animated(snd: &Sound, map: &EditorMap, time: Duration) -> fvec2 {
     let mut point = snd.pos;
     if let Some(pos_anim) = snd.pos_anim {
-        let anim = &map.animations.pos[pos_anim];
+        let anim = &map.active_animations().pos[pos_anim];
         let anim_pos = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
+            map.user.include_last_anim_point(),
         );
 
         point += fvec2::new(ffixed::from_num(anim_pos.x), ffixed::from_num(anim_pos.y));
@@ -35,7 +36,7 @@ pub fn get_sound_point_animated(snd: &Sound, map: &EditorMap, time: Duration) ->
     point
 }
 
-pub const SOUND_POINT_RADIUS: f32 = 0.75;
+pub const SOUND_POINT_RADIUS_FACTOR: f32 = 10.0;
 
 pub fn render_sound_points(
     ui_canvas: &UiCanvasSize,
@@ -85,10 +86,12 @@ pub fn render_sound_points(
                 map.groups.user.zoom,
                 map.groups.user.parallax_aware_zoom,
             );
+            let h = state.get_canvas_height() / canvas_handle.canvas_height() as f32;
             stream_handle.render_quads(
-                hi_closure!([point: fvec2, x: f32, y: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                    let point_size = SOUND_POINT_RADIUS * 0.7;
-                    let color = if in_radius(&point, &vec2::new(x, y), SOUND_POINT_RADIUS) {
+                hi_closure!([point: fvec2, x: f32, y: f32, h: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {
+                    let hit_size = SOUND_POINT_RADIUS_FACTOR * h;
+                    let point_size = SOUND_POINT_RADIUS_FACTOR * 0.7 * h;
+                    let color = if in_radius(&point, &vec2::new(x, y), hit_size) {
                         ubvec4::new(150, 255, 150, 255)
                     }
                     else {

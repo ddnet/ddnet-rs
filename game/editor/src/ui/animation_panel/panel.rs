@@ -467,6 +467,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         let value = RenderTools::render_eval_anim(
                             anim.points.as_slice(),
                             time::Duration::try_from(*time).unwrap(),
+                            false,
                         );
                         *anim_point = Some(AnimPoint {
                             time: Duration::ZERO,

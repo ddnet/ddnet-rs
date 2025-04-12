@@ -133,6 +133,7 @@ impl RenderMap {
         cur_time: &Duration,
         cur_anim_time: &Duration,
         anim_time_offset: &time::Duration,
+        include_last_anim_point: bool,
     ) -> T
     where
         F: Copy + FromFixed + ToFixed,
@@ -144,7 +145,7 @@ impl RenderMap {
         };
         let anim_time = total_time + *anim_time_offset;
 
-        RenderTools::render_eval_anim(&anim.points, anim_time)
+        RenderTools::render_eval_anim(&anim.points, anim_time, include_last_anim_point)
     }
 
     fn render_tile_layer<AN, AS>(
@@ -153,6 +154,7 @@ impl RenderMap {
         texture: TextureType2dArray,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         visuals: &TileLayerVisualsBase,
         buffer_object_index: &Option<BufferObject>,
         color_anim: &Option<usize>,
@@ -170,7 +172,13 @@ impl RenderMap {
                     None
                 }
             } {
-                Self::animation_eval(&anim.def, cur_time, cur_anim_time, color_anim_offset)
+                Self::animation_eval(
+                    &anim.def,
+                    cur_time,
+                    cur_anim_time,
+                    color_anim_offset,
+                    include_last_anim_point,
+                )
             } else {
                 nfvec4::new(
                     nffixed::from_num(1),
@@ -659,6 +667,7 @@ impl RenderMap {
         mut stream_handle: StreamedUniforms<'_, QuadRenderInfo>,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         cur_quad_offset: &Cell<usize>,
         animations: &AnimationsSkeleton<AN, AS>,
         quads: &[Quad],
@@ -676,6 +685,7 @@ impl RenderMap {
                     cur_time,
                     cur_anim_time,
                     &quad.color_anim_offset,
+                    include_last_anim_point,
                 )
             } else {
                 nfvec4::new(
@@ -702,6 +712,7 @@ impl RenderMap {
                     cur_time,
                     cur_anim_time,
                     &quad.pos_anim_offset,
+                    include_last_anim_point,
                 );
                 offset_x = pos_channels.x.to_num();
                 offset_y = pos_channels.y.to_num();
@@ -742,6 +753,7 @@ impl RenderMap {
         texture: TextureType,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         visuals: &QuadLayerVisuals,
         animations: &AnimationsSkeleton<AN, AS>,
         quads: &Vec<Quad>,
@@ -757,6 +769,7 @@ impl RenderMap {
                         [
                             cur_time: &Duration,
                             cur_anim_time: &Duration,
+                            include_last_anim_point: bool,
                             cur_quad_offset: &Cell<usize>,
                             animations: &AnimationsSkeleton<AN, AS>,
                             quads: &Vec<Quad>,
@@ -770,6 +783,7 @@ impl RenderMap {
                             stream_handle,
                             cur_time,
                             cur_anim_time,
+                            include_last_anim_point,
                             cur_quad_offset,
                             animations,
                             quads
@@ -858,6 +872,7 @@ impl RenderMap {
         animations: &AnimationsSkeleton<AN, AS>,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         sounds: impl Iterator<Item = &'a Sound>,
         state: State,
     ) {
@@ -876,6 +891,7 @@ impl RenderMap {
                     cur_time,
                     cur_anim_time,
                     &sound.pos_anim_offset,
+                    include_last_anim_point,
                 );
                 pos.x += pos_channels.x;
                 pos.y += pos_channels.y;
@@ -943,6 +959,7 @@ impl RenderMap {
         camera: &Camera,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         group_attr: &MapGroupAttr,
         layer: &MapVisualLayerBase<T, Q, S, A>,
         // this can be used to overwrite the layer's texture. only useful for the editor
@@ -1031,6 +1048,7 @@ impl RenderMap {
                     texture.into(),
                     cur_time,
                     cur_anim_time,
+                    include_last_anim_point,
                     &visual.base.base,
                     buffer_object,
                     &layer.attr.color_anim,
@@ -1059,6 +1077,7 @@ impl RenderMap {
                         texture.into(),
                         cur_time,
                         cur_anim_time,
+                        include_last_anim_point,
                         visual,
                         animations,
                         &layer.quads,
@@ -1073,6 +1092,7 @@ impl RenderMap {
                     animations,
                     cur_time,
                     cur_anim_time,
+                    include_last_anim_point,
                     layer.layer.sounds.iter(),
                     state,
                 );
@@ -1093,6 +1113,7 @@ impl RenderMap {
         camera: &Camera,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         physics_layer_opacity: u8,
         // force a texture over the one that will be rendered
         // this is usually only useful for the editor
@@ -1168,6 +1189,7 @@ impl RenderMap {
             .into(),
             cur_time,
             cur_anim_time,
+            include_last_anim_point,
             &layer.user().borrow().base.base.base,
             if matches!(forced_texture, Some(ForcedTexture::TileLayerTileIndex(_))) {
                 &layer.user().borrow().base.tile_index_buffer_object
@@ -1192,6 +1214,7 @@ impl RenderMap {
                 texture.into(),
                 cur_time,
                 cur_anim_time,
+                include_last_anim_point,
                 &overlay.visuals.base,
                 &overlay.visuals.buffer_object,
                 &None,
@@ -1238,6 +1261,7 @@ impl RenderMap {
                 pipe.camera,
                 pipe.cur_time,
                 pipe.cur_anim_time,
+                pipe.include_last_anim_point,
                 &group.attr,
                 &group.layers[render_info.layer_index],
                 None,
@@ -1260,6 +1284,7 @@ impl RenderMap {
                 pipe.camera,
                 pipe.cur_time,
                 pipe.cur_anim_time,
+                pipe.include_last_anim_point,
                 pipe.config.physics_layer_opacity,
                 None,
             );
@@ -1276,6 +1301,7 @@ impl RenderMap {
         self.sound.handle_background(
             pipe.base.cur_time,
             pipe.base.cur_anim_time,
+            pipe.base.include_last_anim_point,
             pipe.base.map,
             pipe.buffered_map,
             pipe.base.camera,
@@ -1293,6 +1319,7 @@ impl RenderMap {
         self.sound.handle_foreground(
             pipe.base.cur_time,
             pipe.base.cur_anim_time,
+            pipe.base.include_last_anim_point,
             pipe.base.map,
             pipe.buffered_map,
             pipe.base.camera,
