@@ -20,15 +20,15 @@ use graphics::{
     },
     utils::{render_blur, render_swapped_frame, DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS},
 };
-use graphics_types::rendering::{ColorRgba, State};
+use graphics_types::rendering::State;
 use hiarc::Hiarc;
 use map::{
     map::groups::{
         layers::{
             physics::{MapLayerPhysics, MapLayerTilePhysicsBase},
             tiles::{
-                MapTileLayerPhysicsTiles, MapTileLayerTiles, SpeedupTile, SwitchTile, TeleTile,
-                Tile, TileBase, TileFlags, TuneTile,
+                MapTileLayerAttr, MapTileLayerPhysicsTiles, MapTileLayerTiles, SpeedupTile,
+                SwitchTile, TeleTile, Tile, TileBase, TileFlags, TuneTile,
             },
         },
         MapGroupAttr, MapGroupPhysicsAttr,
@@ -59,7 +59,7 @@ use crate::{
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
 
-use super::shared::TILE_VISUAL_SIZE;
+use super::shared::{get_animated_color, TILE_VISUAL_SIZE};
 
 // 20 ui pixels
 const TILE_PICKER_VISUAL_SIZE: f32 = 30.0;
@@ -1807,6 +1807,7 @@ impl TileBrush {
         &self,
         brush: &TileBrushTiles,
         map: &EditorMap,
+        design_attr: Option<&MapTileLayerAttr>,
         canvas_handle: &GraphicsCanvasHandle,
         center: vec2,
         group_attr: Option<MapGroupAttr>,
@@ -1874,7 +1875,7 @@ impl TileBrush {
                             &state,
                             (&brush.texture).into(),
                             buffer_object,
-                            &ColorRgba::new(1.0, 1.0, 1.0, 1.0),
+                            &get_animated_color(map, design_attr),
                             PoolVec::from_without_pool(vec![TileLayerDrawInfo {
                                 quad_offset,
                                 quad_count: draw_count,
@@ -1898,6 +1899,7 @@ impl TileBrush {
         &self,
         brush: &TileBrushTiles,
         map: &EditorMap,
+        design_attr: Option<&MapTileLayerAttr>,
         canvas_handle: &GraphicsCanvasHandle,
         center: vec2,
         group_attr: Option<MapGroupAttr>,
@@ -1941,7 +1943,7 @@ impl TileBrush {
                 &state,
                 (&brush.texture).into(),
                 buffer_object_index,
-                &ColorRgba::new(1.0, 1.0, 1.0, 1.0),
+                &get_animated_color(map, design_attr),
                 PoolVec::from_without_pool(vec![TileLayerDrawInfo {
                     quad_offset: 0,
                     quad_count: brush.w.get() as usize * brush.h.get() as usize,
@@ -2009,6 +2011,15 @@ impl TileBrush {
         } else {
             Default::default()
         };
+        let design_attr = if let Some(EditorLayerUnionRef::Design {
+            layer: EditorLayer::Tile(layer),
+            ..
+        }) = layer
+        {
+            Some(&layer.layer.attr)
+        } else {
+            None
+        };
 
         let brush = self.brush.as_ref().unwrap();
 
@@ -2074,6 +2085,7 @@ impl TileBrush {
             self.render_brush_repeating_internal(
                 brush,
                 map,
+                design_attr,
                 canvas_handle,
                 -vec2::new(pos_min.x, pos_min.y),
                 layer.map(|layer| layer.get_or_fake_group_attr()),
@@ -2130,6 +2142,7 @@ impl TileBrush {
             self.render_brush_internal(
                 brush,
                 map,
+                design_attr,
                 canvas_handle,
                 -vec2::new(pos.x, pos.y),
                 layer.map(|layer| layer.get_or_fake_group_attr()),
@@ -2219,9 +2232,17 @@ impl TileBrush {
         available_rect: &egui::Rect,
     ) {
         let layer = map.active_layer();
-        if !layer.as_ref().is_some_and(|layer| layer.is_tile_layer()) {
+        let design_attr = if let Some(EditorLayerUnionRef::Design {
+            layer: EditorLayer::Tile(layer),
+            ..
+        }) = layer
+        {
+            Some(&layer.layer.attr)
+        } else if let Some(EditorLayerUnionRef::Physics { .. }) = layer {
+            None
+        } else {
             return;
-        }
+        };
 
         // render tile picker if needed
         if latest_keys_down.contains(&egui::Key::Space) {
@@ -2266,7 +2287,7 @@ impl TileBrush {
                     _ => panic!("this should have been prevented in logic before"),
                 },
             };
-            let color = ColorRgba::new(1.0, 1.0, 1.0, 1.0);
+            let color = get_animated_color(map, design_attr);
             let buffer_object = self.tile_picker.render.base.buffer_object.as_ref().unwrap();
             self.tile_picker.map_render.render_tile_layer(
                 &state,
