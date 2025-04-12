@@ -495,7 +495,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     .as_ref()
                     .is_some_and(|r| r.inner.as_ref().is_some_and(|r| r.inner));
 
-                if *quad != quad_cmp && !animations_panel_open {
+                if *quad != quad_cmp {
                     let layer_quad = &layer.layer.quads[index];
                     pipe.user_data.editor_tab.client.execute(
                         EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
