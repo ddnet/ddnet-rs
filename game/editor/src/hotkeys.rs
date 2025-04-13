@@ -32,6 +32,7 @@ pub enum EditorHotkeyEventTileBrush {
     RotMinus90,
     RotIndividualTilePlus90,
     Destructive,
+    AllowUnused,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
@@ -249,6 +250,12 @@ impl EditorBindsFile {
                 EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::Destructive),
             )),
             KeyboardShortcut::new(Modifiers::CTRL, Key::D),
+        );
+        hotkey(
+            EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::AllowUnused),
+            )),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::U),
         );
         hotkey(
             EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Shared(

@@ -51,7 +51,8 @@ use crate::{
         finish_design_tile_layer_buffer, finish_physics_layer_buffer,
         upload_design_tile_layer_buffer, upload_physics_layer_buffer,
     },
-    physics_layers::PhysicsLayerOverlaysDdnet,
+    notifications::EditorNotification,
+    physics_layers::{PhysicsLayerOverlayTexture, PhysicsLayerOverlaysDdnet},
     tools::utils::{
         render_checkerboard_background, render_filled_rect, render_filled_rect_from_state,
         render_rect, render_rect_from_state,
@@ -160,6 +161,9 @@ pub struct TileBrush {
 
     /// Can the brush destroy existing tiles
     pub destructive: bool,
+    /// Can place unused tiles
+    pub allow_unused: bool,
+    showed_unused_id: Option<u128>,
 
     /// Random id counted up, used for action identifiers
     pub brush_id_counter: u128,
@@ -186,6 +190,8 @@ impl TileBrush {
             shift_pointer_down_world_pos: None,
 
             destructive: true,
+            allow_unused: false,
+            showed_unused_id: None,
 
             brush_id_counter: ((rand::rng().next_u64() as u128) << 64)
                 + rand::rng().next_u64() as u128,
@@ -854,6 +860,85 @@ impl TileBrush {
         available_rect: &egui::Rect,
         client: &mut EditorClient,
     ) {
+        fn has_unused_tiles(
+            tile_picker: &TileBrushTilePicker,
+            map: &EditorMap,
+            tiles: &MapTileLayerTiles,
+            layer: &EditorLayerUnionRef<'_>,
+        ) -> bool {
+            match &tiles {
+                MapTileLayerTiles::Design(tiles) => {
+                    // only if the design layer has a texture
+                    let EditorLayerUnionRef::Design {
+                        layer: EditorLayer::Tile(layer),
+                        ..
+                    } = layer
+                    else {
+                        panic!(
+                            "this cannot happen, \
+                    it was previously checked if tile layer"
+                        );
+                    };
+                    if let Some(img) = layer
+                        .layer
+                        .attr
+                        .image_array
+                        .and_then(|i| map.resources.image_arrays.get(i))
+                    {
+                        let mut has_unused = false;
+                        for tile in tiles.iter() {
+                            let index = tile.index as usize;
+                            if index != 0
+                                && img.user.props.tile_non_fully_transparent_percentage[index] == 0
+                            {
+                                has_unused = true;
+                                break;
+                            }
+                        }
+                        has_unused
+                    } else {
+                        false
+                    }
+                }
+                MapTileLayerTiles::Physics(tiles) => {
+                    fn has_unused<T: AsRef<TileBase>>(
+                        tiles: &[T],
+                        tex: &PhysicsLayerOverlayTexture,
+                    ) -> bool {
+                        for tile in tiles.iter() {
+                            let index = tile.as_ref().index as usize;
+                            if index != 0 && !tex.non_fully_transparent[index] {
+                                return true;
+                            }
+                        }
+                        false
+                    }
+                    //
+                    match tiles {
+                        MapTileLayerPhysicsTiles::Arbitrary(_) => false,
+                        MapTileLayerPhysicsTiles::Game(tiles) => {
+                            has_unused(tiles, &tile_picker.physics_overlay.game)
+                        }
+                        MapTileLayerPhysicsTiles::Front(tiles) => {
+                            has_unused(tiles, &tile_picker.physics_overlay.front)
+                        }
+                        MapTileLayerPhysicsTiles::Tele(tiles) => {
+                            has_unused(tiles, &tile_picker.physics_overlay.tele)
+                        }
+                        MapTileLayerPhysicsTiles::Speedup(tiles) => {
+                            has_unused(tiles, &tile_picker.physics_overlay.speedup)
+                        }
+                        MapTileLayerPhysicsTiles::Switch(tiles) => {
+                            has_unused(tiles, &tile_picker.physics_overlay.switch)
+                        }
+                        MapTileLayerPhysicsTiles::Tune(tiles) => {
+                            has_unused(tiles, &tile_picker.physics_overlay.tune)
+                        }
+                    }
+                }
+            }
+        }
+
         let layer = map.active_layer();
         let (offset, parallax) = if let Some(layer) = &layer {
             layer.get_offset_and_parallax()
@@ -1008,51 +1093,72 @@ impl TileBrush {
                             }
                         };
 
-                        let w = NonZeroU16MinusOne::new(brush_width as u16).unwrap();
-                        let h = NonZeroU16MinusOne::new(brush_height as u16).unwrap();
-                        let render = match &tiles {
-                            MapTileLayerTiles::Design(tiles) => BrushVisual::Design({
-                                let has_texture = true;
-                                let buffer = tp.install(|| {
-                                    upload_design_tile_layer_buffer(
-                                        graphics_mt,
-                                        tiles,
-                                        w,
-                                        h,
-                                        has_texture,
+                        // check for unused tiles
+                        let has_unused = !self.allow_unused
+                            && has_unused_tiles(&self.tile_picker, map, &tiles, &layer);
+                        if has_unused {
+                            self.brush = None;
+                            if self
+                                .showed_unused_id
+                                .is_none_or(|id| id != self.brush_id_counter)
+                            {
+                                client.notifications.push(EditorNotification::Error(
+                                    "Cannot use unused tiles".to_string(),
+                                ));
+                                self.showed_unused_id = Some(self.brush_id_counter);
+                            }
+                        } else {
+                            let w = NonZeroU16MinusOne::new(brush_width as u16).unwrap();
+                            let h = NonZeroU16MinusOne::new(brush_height as u16).unwrap();
+                            let render = match &tiles {
+                                MapTileLayerTiles::Design(tiles) => BrushVisual::Design({
+                                    let has_texture = true;
+                                    let buffer = tp.install(|| {
+                                        upload_design_tile_layer_buffer(
+                                            graphics_mt,
+                                            tiles,
+                                            w,
+                                            h,
+                                            has_texture,
+                                        )
+                                    });
+                                    finish_design_tile_layer_buffer(
+                                        buffer_object_handle,
+                                        backend_handle,
+                                        buffer,
                                     )
-                                });
-                                finish_design_tile_layer_buffer(
-                                    buffer_object_handle,
-                                    backend_handle,
-                                    buffer,
-                                )
-                            }),
-                            MapTileLayerTiles::Physics(tiles) => BrushVisual::Physics({
-                                let buffer = tp.install(|| {
-                                    upload_physics_layer_buffer(graphics_mt, w, h, tiles.as_ref())
-                                });
-                                finish_physics_layer_buffer(
-                                    buffer_object_handle,
-                                    backend_handle,
-                                    buffer,
-                                )
-                            }),
-                        };
+                                }),
+                                MapTileLayerTiles::Physics(tiles) => BrushVisual::Physics({
+                                    let buffer = tp.install(|| {
+                                        upload_physics_layer_buffer(
+                                            graphics_mt,
+                                            w,
+                                            h,
+                                            tiles.as_ref(),
+                                        )
+                                    });
+                                    finish_physics_layer_buffer(
+                                        buffer_object_handle,
+                                        backend_handle,
+                                        buffer,
+                                    )
+                                }),
+                            };
 
-                        self.brush_id_counter += 1;
-                        self.brush = Some(TileBrushTiles {
-                            tiles,
-                            w,
-                            h,
-                            negative_offset: usvec2::new(0, 0),
-                            negative_offsetf: dvec2::new(0.0, 0.0),
-                            render,
-                            map_render: MapGraphics::new(backend_handle),
-                            texture,
+                            self.brush_id_counter += 1;
+                            self.brush = Some(TileBrushTiles {
+                                tiles,
+                                w,
+                                h,
+                                negative_offset: usvec2::new(0, 0),
+                                negative_offsetf: dvec2::new(0.0, 0.0),
+                                render,
+                                map_render: MapGraphics::new(backend_handle),
+                                texture,
 
-                            last_apply: Default::default(),
-                        });
+                                last_apply: Default::default(),
+                            });
+                        }
                     }
                 }
                 // else select from existing tiles
@@ -1226,37 +1332,53 @@ impl TileBrush {
                             y0,
                         );
 
-                        let w = NonZeroU16MinusOne::new(count_x).unwrap();
-                        let h = NonZeroU16MinusOne::new(count_y).unwrap();
-                        let render = Self::create_brush_visual(
-                            tp,
-                            graphics_mt,
-                            buffer_object_handle,
-                            backend_handle,
-                            w,
-                            h,
-                            &tiles,
-                        );
+                        let has_unused = !self.allow_unused
+                            && has_unused_tiles(&self.tile_picker, map, &tiles, &layer);
 
-                        self.brush_id_counter += 1;
-                        self.brush = Some(TileBrushTiles {
-                            tiles,
-                            w,
-                            h,
-                            negative_offset: usvec2::new(
-                                x_needs_offset.then_some(count_x - 1).unwrap_or_default(),
-                                y_needs_offset.then_some(count_y - 1).unwrap_or_default(),
-                            ),
-                            negative_offsetf: dvec2::new(
-                                x_needs_offset.then_some(count_x as f64).unwrap_or_default(),
-                                y_needs_offset.then_some(count_y as f64).unwrap_or_default(),
-                            ),
-                            render,
-                            map_render: MapGraphics::new(backend_handle),
-                            texture,
+                        if has_unused {
+                            self.brush = None;
+                            if self
+                                .showed_unused_id
+                                .is_none_or(|id| id != self.brush_id_counter)
+                            {
+                                client.notifications.push(EditorNotification::Error(
+                                    "Cannot use unused tiles".to_string(),
+                                ));
+                                self.showed_unused_id = Some(self.brush_id_counter);
+                            }
+                        } else {
+                            let w = NonZeroU16MinusOne::new(count_x).unwrap();
+                            let h = NonZeroU16MinusOne::new(count_y).unwrap();
+                            let render = Self::create_brush_visual(
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                w,
+                                h,
+                                &tiles,
+                            );
 
-                            last_apply: Default::default(),
-                        });
+                            self.brush_id_counter += 1;
+                            self.brush = Some(TileBrushTiles {
+                                tiles,
+                                w,
+                                h,
+                                negative_offset: usvec2::new(
+                                    x_needs_offset.then_some(count_x - 1).unwrap_or_default(),
+                                    y_needs_offset.then_some(count_y - 1).unwrap_or_default(),
+                                ),
+                                negative_offsetf: dvec2::new(
+                                    x_needs_offset.then_some(count_x as f64).unwrap_or_default(),
+                                    y_needs_offset.then_some(count_y as f64).unwrap_or_default(),
+                                ),
+                                render,
+                                map_render: MapGraphics::new(backend_handle),
+                                texture,
+
+                                last_apply: Default::default(),
+                            });
+                        }
                     } else {
                         self.brush = None;
                     }
@@ -2399,13 +2521,17 @@ impl TileBrush {
             let texture = match layer.as_ref().unwrap() {
                 EditorLayerUnionRef::Physics { layer, .. } => match layer {
                     EditorPhysicsLayer::Arbitrary(_) | EditorPhysicsLayer::Game(_) => {
-                        &self.tile_picker.physics_overlay.game
+                        &self.tile_picker.physics_overlay.game.texture
                     }
-                    EditorPhysicsLayer::Front(_) => &self.tile_picker.physics_overlay.front,
-                    EditorPhysicsLayer::Tele(_) => &self.tile_picker.physics_overlay.tele,
-                    EditorPhysicsLayer::Speedup(_) => &self.tile_picker.physics_overlay.speedup,
-                    EditorPhysicsLayer::Switch(_) => &self.tile_picker.physics_overlay.switch,
-                    EditorPhysicsLayer::Tune(_) => &self.tile_picker.physics_overlay.tune,
+                    EditorPhysicsLayer::Front(_) => &self.tile_picker.physics_overlay.front.texture,
+                    EditorPhysicsLayer::Tele(_) => &self.tile_picker.physics_overlay.tele.texture,
+                    EditorPhysicsLayer::Speedup(_) => {
+                        &self.tile_picker.physics_overlay.speedup.texture
+                    }
+                    EditorPhysicsLayer::Switch(_) => {
+                        &self.tile_picker.physics_overlay.switch.texture
+                    }
+                    EditorPhysicsLayer::Tune(_) => &self.tile_picker.physics_overlay.tune.texture,
                 },
                 EditorLayerUnionRef::Design { layer, .. } => match layer {
                     EditorLayer::Tile(layer) => layer

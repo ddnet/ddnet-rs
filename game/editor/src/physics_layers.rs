@@ -14,23 +14,74 @@ use hiarc::Hiarc;
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 
 #[derive(Debug)]
+struct PhysicsLayerOverlayTextureLoading {
+    mem: GraphicsBackendMemory,
+    single_width: usize,
+    single_height: usize,
+}
+
+#[derive(Debug)]
 struct PhysicsLayerTexturesDdnetLoading {
-    game: GraphicsBackendMemory,
-    front: GraphicsBackendMemory,
-    tele: GraphicsBackendMemory,
-    speedup: GraphicsBackendMemory,
-    switch: GraphicsBackendMemory,
-    tune: GraphicsBackendMemory,
+    game: PhysicsLayerOverlayTextureLoading,
+    front: PhysicsLayerOverlayTextureLoading,
+    tele: PhysicsLayerOverlayTextureLoading,
+    speedup: PhysicsLayerOverlayTextureLoading,
+    switch: PhysicsLayerOverlayTextureLoading,
+    tune: PhysicsLayerOverlayTextureLoading,
+}
+
+#[derive(Debug, Hiarc)]
+pub struct PhysicsLayerOverlayTexture {
+    pub texture: TextureContainer2dArray,
+    pub non_fully_transparent: [bool; 256],
+}
+
+impl PhysicsLayerOverlayTexture {
+    fn new(
+        loading: PhysicsLayerOverlayTextureLoading,
+        name: &str,
+        graphics: &Graphics,
+    ) -> anyhow::Result<Self> {
+        let mut non_fully_transparent = vec![false; 256];
+
+        let pitch = loading.single_width * 4;
+        let single_size = pitch * loading.single_height;
+        let full_pitch = single_size * 16;
+        let mem = loading.mem.as_slice();
+        for y in 0..16 {
+            for x in 0..16 {
+                let index = y * 16 + x;
+                let off = y * full_pitch + x * single_size;
+                'cur_tile: for y in 0..loading.single_height {
+                    for x in 0..loading.single_width {
+                        let pixel_off = y * pitch + x * 4;
+                        if mem[off + pixel_off + 3] > 0 {
+                            non_fully_transparent[index] = true;
+                            break 'cur_tile;
+                        }
+                    }
+                }
+            }
+        }
+
+        let texture = graphics
+            .texture_handle
+            .load_texture_2d_array_rgba_u8(loading.mem, name)?;
+        Ok(Self {
+            texture,
+            non_fully_transparent: non_fully_transparent.try_into().unwrap(),
+        })
+    }
 }
 
 #[derive(Debug, Hiarc)]
 pub struct PhysicsLayerOverlaysDdnet {
-    pub game: TextureContainer2dArray,
-    pub front: TextureContainer2dArray,
-    pub tele: TextureContainer2dArray,
-    pub speedup: TextureContainer2dArray,
-    pub switch: TextureContainer2dArray,
-    pub tune: TextureContainer2dArray,
+    pub game: PhysicsLayerOverlayTexture,
+    pub front: PhysicsLayerOverlayTexture,
+    pub tele: PhysicsLayerOverlayTexture,
+    pub speedup: PhysicsLayerOverlayTexture,
+    pub switch: PhysicsLayerOverlayTexture,
+    pub tune: PhysicsLayerOverlayTexture,
 }
 
 impl PhysicsLayerOverlaysDdnet {
@@ -51,7 +102,7 @@ impl PhysicsLayerOverlaysDdnet {
                     file: Vec<u8>,
                     thread_pool: &rayon::ThreadPool,
                     graphics_mt: &GraphicsMultiThreaded,
-                ) -> anyhow::Result<GraphicsBackendMemory> {
+                ) -> anyhow::Result<PhysicsLayerOverlayTextureLoading> {
                     let mut img = Vec::new();
                     let img = load_png_image_as_rgba(&file, |w, h, _| {
                         img = vec![0; w * h * 4];
@@ -99,7 +150,11 @@ impl PhysicsLayerOverlaysDdnet {
 
                     let _ = graphics_mt.try_flush_mem(&mut mem, true);
 
-                    Ok(mem)
+                    Ok(PhysicsLayerOverlayTextureLoading {
+                        mem,
+                        single_width: dst_w,
+                        single_height: dst_h,
+                    })
                 }
 
                 Ok(PhysicsLayerTexturesDdnetLoading {
@@ -138,24 +193,12 @@ impl PhysicsLayerOverlaysDdnet {
             .get_storage()?;
 
         Ok(Rc::new(Self {
-            game: graphics
-                .texture_handle
-                .load_texture_2d_array_rgba_u8(loading.game, "game")?,
-            front: graphics
-                .texture_handle
-                .load_texture_2d_array_rgba_u8(loading.front, "front")?,
-            tele: graphics
-                .texture_handle
-                .load_texture_2d_array_rgba_u8(loading.tele, "tele")?,
-            speedup: graphics
-                .texture_handle
-                .load_texture_2d_array_rgba_u8(loading.speedup, "speedup")?,
-            switch: graphics
-                .texture_handle
-                .load_texture_2d_array_rgba_u8(loading.switch, "switch")?,
-            tune: graphics
-                .texture_handle
-                .load_texture_2d_array_rgba_u8(loading.tune, "tune")?,
+            game: PhysicsLayerOverlayTexture::new(loading.game, "game", graphics)?,
+            front: PhysicsLayerOverlayTexture::new(loading.front, "front", graphics)?,
+            tele: PhysicsLayerOverlayTexture::new(loading.tele, "tele", graphics)?,
+            speedup: PhysicsLayerOverlayTexture::new(loading.speedup, "speedup", graphics)?,
+            switch: PhysicsLayerOverlayTexture::new(loading.switch, "switch", graphics)?,
+            tune: PhysicsLayerOverlayTexture::new(loading.tune, "tune", graphics)?,
         }))
     }
 }

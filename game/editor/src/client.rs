@@ -40,7 +40,7 @@ pub struct EditorClient {
     has_events: Arc<AtomicBool>,
     event_generator: Arc<EditorEventGenerator>,
 
-    notifications: EditorNotifications,
+    pub(crate) notifications: EditorNotifications,
     local_client: bool,
 
     pub(crate) clients: Vec<ClientProps>,

@@ -194,6 +194,12 @@ pub const TEXT_TILE_DESTRUCTIVE: &str = "\
 If active, then tiles that are non-air will be overwritten by the brush.\
 ";
 
+pub const TEXT_TILE_ALLOW_UNUSED: &str = "\
+# Allow unused tiles\n\
+\n\
+Allows to select and draw unused tiles, so those tiles that are not known to the game.\
+";
+
 pub const AUTO_MAPPER_CREATOR_EXPLAIN: &str = "\
 # Auto mapper creator overview\
 \n\

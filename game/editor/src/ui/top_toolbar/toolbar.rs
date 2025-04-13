@@ -10,7 +10,8 @@ use crate::{
     },
     explain::{
         TEXT_ADD_QUAD, TEXT_ADD_SOUND, TEXT_QUAD_BRUSH, TEXT_QUAD_SELECTION, TEXT_SOUND_BRUSH,
-        TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR, TEXT_TILE_DESTRUCTIVE, TEXT_TILE_SELECT,
+        TEXT_TILE_ALLOW_UNUSED, TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR, TEXT_TILE_DESTRUCTIVE,
+        TEXT_TILE_SELECT,
     },
     hotkeys::{
         EditorHotkeyEvent, EditorHotkeyEventSharedTool, EditorHotkeyEventTileBrush,
@@ -364,6 +365,41 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
         || by_hotkey
     {
         tools.tiles.brush.destructive = !tools.tiles.brush.destructive
+    }
+
+    // allow unused tiles
+    let btn = Button::new("\u{e678}").selected(tools.tiles.brush.allow_unused);
+    let by_hotkey = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+            EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::AllowUnused),
+        )));
+    if ui
+        .add(btn)
+        .on_hover_ui(|ui| {
+            let mut cache = egui_commonmark::CommonMarkCache::default();
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut cache,
+                &format!(
+                    "{}\n\nHotkey: `{}`",
+                    TEXT_TILE_ALLOW_UNUSED,
+                    binds.fmt_ev_bind(
+                        per_ev,
+                        &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                            EditorHotkeyEventTileTool::Brush(
+                                EditorHotkeyEventTileBrush::AllowUnused
+                            )
+                        )),
+                    )
+                ),
+            );
+        })
+        .clicked()
+        || by_hotkey
+    {
+        tools.tiles.brush.allow_unused = !tools.tiles.brush.allow_unused
     }
 }
 
