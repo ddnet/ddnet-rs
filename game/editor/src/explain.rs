@@ -188,6 +188,12 @@ pub const TEXT_TILE_BRUSH_MIRROR: &str = "\
 Mirrors the tile brush horizontal or vertically.\
 ";
 
+pub const TEXT_TILE_DESTRUCTIVE: &str = "\
+# Destructive tiles\n\
+\n\
+If active, then tiles that are non-air will be overwritten by the brush.\
+";
+
 pub const AUTO_MAPPER_CREATOR_EXPLAIN: &str = "\
 # Auto mapper creator overview\
 \n\

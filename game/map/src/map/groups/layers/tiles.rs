@@ -57,6 +57,12 @@ pub struct TileBase {
     pub flags: TileFlags,
 }
 
+impl AsRef<TileBase> for TileBase {
+    fn as_ref(&self) -> &TileBase {
+        self
+    }
+}
+
 impl AsMut<TileBase> for TileBase {
     fn as_mut(&mut self) -> &mut TileBase {
         self
@@ -70,6 +76,12 @@ pub type Tile = TileBase;
 pub struct TeleTile {
     pub base: TileBase,
     pub number: u8,
+}
+
+impl AsRef<TileBase> for TeleTile {
+    fn as_ref(&self) -> &TileBase {
+        &self.base
+    }
 }
 
 impl AsMut<TileBase> for TeleTile {
@@ -86,6 +98,12 @@ pub struct SpeedupTile {
     pub angle: i16,
 }
 
+impl AsRef<TileBase> for SpeedupTile {
+    fn as_ref(&self) -> &TileBase {
+        &self.base
+    }
+}
+
 impl AsMut<TileBase> for SpeedupTile {
     fn as_mut(&mut self) -> &mut TileBase {
         &mut self.base
@@ -99,6 +117,12 @@ pub struct SwitchTile {
     pub delay: u8,
 }
 
+impl AsRef<TileBase> for SwitchTile {
+    fn as_ref(&self) -> &TileBase {
+        &self.base
+    }
+}
+
 impl AsMut<TileBase> for SwitchTile {
     fn as_mut(&mut self) -> &mut TileBase {
         &mut self.base
@@ -109,6 +133,12 @@ impl AsMut<TileBase> for SwitchTile {
 pub struct TuneTile {
     pub base: TileBase,
     pub number: u8,
+}
+
+impl AsRef<TileBase> for TuneTile {
+    fn as_ref(&self) -> &TileBase {
+        &self.base
+    }
 }
 
 impl AsMut<TileBase> for TuneTile {

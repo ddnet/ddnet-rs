@@ -10,7 +10,7 @@ use crate::{
     },
     explain::{
         TEXT_ADD_QUAD, TEXT_ADD_SOUND, TEXT_QUAD_BRUSH, TEXT_QUAD_SELECTION, TEXT_SOUND_BRUSH,
-        TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR, TEXT_TILE_SELECT,
+        TEXT_TILE_BRUSH, TEXT_TILE_BRUSH_MIRROR, TEXT_TILE_DESTRUCTIVE, TEXT_TILE_SELECT,
     },
     hotkeys::{
         EditorHotkeyEvent, EditorHotkeyEventSharedTool, EditorHotkeyEventTileBrush,
@@ -32,289 +32,62 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
     let ActiveTool::Tiles(tool) = tools.active_tool else {
         return;
     };
+    let is_active = (matches!(tool, ActiveToolTiles::Brush) && tools.tiles.brush.brush.is_some())
+        || (matches!(tool, ActiveToolTiles::Selection) && tools.tiles.selection.range.is_some());
 
     let binds = &*pipe.user_data.hotkeys;
     let per_ev = &mut *pipe.user_data.cached_binds_per_event;
-    // mirror y
-    let btn = Button::new("\u{f07d}");
-    let by_hotkey = pipe
-        .user_data
-        .cur_hotkey_events
-        .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-            EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipY),
-        )));
-    if ui
-        .add(btn)
-        .on_hover_ui(|ui| {
-            let mut cache = egui_commonmark::CommonMarkCache::default();
-            egui_commonmark::CommonMarkViewer::new().show(
-                ui,
-                &mut cache,
-                &format!(
-                    "{}\n\nHotkey: `{}`",
-                    TEXT_TILE_BRUSH_MIRROR,
-                    binds.fmt_ev_bind(
-                        per_ev,
-                        &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                            EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipY)
-                        )),
-                    )
-                ),
-            );
-        })
-        .clicked()
-        || by_hotkey
-    {
-        match tool {
-            ActiveToolTiles::Brush => {
-                if let Some(brush) = &mut tools.tiles.brush.brush {
-                    mirror_tiles_y(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        true,
-                    );
-                }
-            }
-            ActiveToolTiles::Selection => {
-                if let (Some(layer), Some(range)) = (
-                    pipe.user_data.editor_tab.map.active_layer(),
-                    &tools.tiles.selection.range,
-                ) {
-                    mirror_layer_tiles_y(
-                        pipe.user_data.tp,
-                        layer,
-                        range,
-                        &mut pipe.user_data.editor_tab.client,
-                    );
-                }
-            }
-        }
-    }
-    // mirror x
-    let btn = Button::new("\u{f07e}");
-    let by_hotkey = pipe
-        .user_data
-        .cur_hotkey_events
-        .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-            EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipX),
-        )));
-    if ui
-        .add(btn)
-        .on_hover_ui(|ui| {
-            let mut cache = egui_commonmark::CommonMarkCache::default();
-            egui_commonmark::CommonMarkViewer::new().show(
-                ui,
-                &mut cache,
-                &format!(
-                    "{}\n\nHotkey: `{}`",
-                    TEXT_TILE_BRUSH_MIRROR,
-                    binds.fmt_ev_bind(
-                        per_ev,
-                        &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                            EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipX)
-                        )),
-                    )
-                ),
-            );
-        })
-        .clicked()
-        || by_hotkey
-    {
-        match tool {
-            ActiveToolTiles::Brush => {
-                if let Some(brush) = &mut tools.tiles.brush.brush {
-                    mirror_tiles_x(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        true,
-                    );
-                }
-            }
-            ActiveToolTiles::Selection => {
-                if let (Some(layer), Some(range)) = (
-                    pipe.user_data.editor_tab.map.active_layer(),
-                    &tools.tiles.selection.range,
-                ) {
-                    mirror_layer_tiles_x(
-                        pipe.user_data.tp,
-                        layer,
-                        range,
-                        &mut pipe.user_data.editor_tab.client,
-                    );
-                }
-            }
-        }
-    }
-    match tool {
-        ActiveToolTiles::Brush => {
-            // rotate -90°
-            let btn = Button::new("\u{f2ea}");
-            let by_hotkey = pipe
-                .user_data
-                .cur_hotkey_events
-                .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                    EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::RotMinus90),
-                )));
-            if ui
-                .add(btn)
-                .on_hover_ui(|ui| {
-                    let mut cache = egui_commonmark::CommonMarkCache::default();
-                    egui_commonmark::CommonMarkViewer::new().show(
-                        ui,
-                        &mut cache,
-                        &format!(
-                            "Hotkey: `{}`",
-                            binds.fmt_ev_bind(
-                                per_ev,
-                                &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                                    EditorHotkeyEventTileTool::Brush(
-                                        EditorHotkeyEventTileBrush::RotMinus90
-                                    )
-                                )),
-                            )
-                        ),
-                    );
-                })
-                .clicked()
-                || by_hotkey
-            {
-                if let Some(brush) = &mut tools.tiles.brush.brush {
-                    // use 3 times 90° here, bcs the 90° logic also "fixes" the cursor
-                    // x,y mirror does not
-                    rotate_tiles_plus_90(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        false,
-                    );
-                    rotate_tiles_plus_90(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        false,
-                    );
-                    rotate_tiles_plus_90(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        true,
-                    );
-                }
-            }
-            // rotate +90°
-            let btn = Button::new("\u{f2f9}");
-            let by_hotkey = pipe
-                .user_data
-                .cur_hotkey_events
-                .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                    EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::RotPlus90),
-                )));
-            if ui
-                .add(btn)
-                .on_hover_ui(|ui| {
-                    let mut cache = egui_commonmark::CommonMarkCache::default();
-                    egui_commonmark::CommonMarkViewer::new().show(
-                        ui,
-                        &mut cache,
-                        &format!(
-                            "Hotkey: `{}`",
-                            binds.fmt_ev_bind(
-                                per_ev,
-                                &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                                    EditorHotkeyEventTileTool::Brush(
-                                        EditorHotkeyEventTileBrush::RotPlus90
-                                    )
-                                )),
-                            )
-                        ),
-                    );
-                })
-                .clicked()
-                || by_hotkey
-            {
-                if let Some(brush) = &mut tools.tiles.brush.brush {
-                    rotate_tiles_plus_90(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        true,
-                    );
-                }
-            }
-            // rotate tiles (only by flags) +90°
-            let btn = Button::new("\u{e4f6}");
-            let by_hotkey = pipe
-                .user_data
-                .cur_hotkey_events
-                .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                    EditorHotkeyEventTileTool::Brush(
-                        EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
+
+    ui.add_enabled_ui(is_active, |ui| {
+        // mirror y
+        let btn = Button::new("\u{f07d}");
+        let by_hotkey = pipe
+            .user_data
+            .cur_hotkey_events
+            .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipY),
+            )));
+        if ui
+            .add(btn)
+            .on_hover_ui(|ui| {
+                let mut cache = egui_commonmark::CommonMarkCache::default();
+                egui_commonmark::CommonMarkViewer::new().show(
+                    ui,
+                    &mut cache,
+                    &format!(
+                        "{}\n\nHotkey: `{}`",
+                        TEXT_TILE_BRUSH_MIRROR,
+                        binds.fmt_ev_bind(
+                            per_ev,
+                            &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipY)
+                            )),
+                        )
                     ),
-                )));
-            if ui
-                .add(btn)
-                .on_hover_ui(|ui| {
-                    let mut cache = egui_commonmark::CommonMarkCache::default();
-                    egui_commonmark::CommonMarkViewer::new().show(
-                        ui,
-                        &mut cache,
-                        &format!(
-                            "Hotkey: `{}`",
-                            binds.fmt_ev_bind(
-                                per_ev,
-                                &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                                    EditorHotkeyEventTileTool::Brush(
-                                        EditorHotkeyEventTileBrush::RotIndividualTilePlus90
-                                    )
-                                )),
-                            )
-                        ),
-                    );
-                })
-                .clicked()
-                || by_hotkey
-            {
-                if let Some(brush) = &mut tools.tiles.brush.brush {
-                    rotate_tile_flags_plus_90(
-                        pipe.user_data.tp,
-                        pipe.user_data.graphics_mt,
-                        pipe.user_data.buffer_object_handle,
-                        pipe.user_data.backend_handle,
-                        brush,
-                        true,
-                    );
+                );
+            })
+            .clicked()
+            || by_hotkey
+        {
+            match tool {
+                ActiveToolTiles::Brush => {
+                    if let Some(brush) = &mut tools.tiles.brush.brush {
+                        mirror_tiles_y(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            true,
+                        );
+                    }
                 }
-            }
-        }
-        ActiveToolTiles::Selection => {
-            if let Some(layer) = pipe.user_data.editor_tab.map.active_layer() {
-                // rotate inner tiles (flags) by 90°
-                let btn = Button::new("\u{e4f6}");
-                let by_hotkey = pipe
-                    .user_data
-                    .cur_hotkey_events
-                    .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
-                        EditorHotkeyEventTileTool::Brush(
-                            EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
-                        ),
-                    )));
-                if ui.add(btn).clicked() || by_hotkey {
-                    if let Some(range) = &tools.tiles.selection.range {
-                        rotate_layer_tiles_plus_90(
+                ActiveToolTiles::Selection => {
+                    if let (Some(layer), Some(range)) = (
+                        pipe.user_data.editor_tab.map.active_layer(),
+                        &tools.tiles.selection.range,
+                    ) {
+                        mirror_layer_tiles_y(
                             pipe.user_data.tp,
                             layer,
                             range,
@@ -324,6 +97,273 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                 }
             }
         }
+        // mirror x
+        let btn = Button::new("\u{f07e}");
+        let by_hotkey = pipe
+            .user_data
+            .cur_hotkey_events
+            .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipX),
+            )));
+        if ui
+            .add(btn)
+            .on_hover_ui(|ui| {
+                let mut cache = egui_commonmark::CommonMarkCache::default();
+                egui_commonmark::CommonMarkViewer::new().show(
+                    ui,
+                    &mut cache,
+                    &format!(
+                        "{}\n\nHotkey: `{}`",
+                        TEXT_TILE_BRUSH_MIRROR,
+                        binds.fmt_ev_bind(
+                            per_ev,
+                            &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::FlipX)
+                            )),
+                        )
+                    ),
+                );
+            })
+            .clicked()
+            || by_hotkey
+        {
+            match tool {
+                ActiveToolTiles::Brush => {
+                    if let Some(brush) = &mut tools.tiles.brush.brush {
+                        mirror_tiles_x(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            true,
+                        );
+                    }
+                }
+                ActiveToolTiles::Selection => {
+                    if let (Some(layer), Some(range)) = (
+                        pipe.user_data.editor_tab.map.active_layer(),
+                        &tools.tiles.selection.range,
+                    ) {
+                        mirror_layer_tiles_x(
+                            pipe.user_data.tp,
+                            layer,
+                            range,
+                            &mut pipe.user_data.editor_tab.client,
+                        );
+                    }
+                }
+            }
+        }
+        match tool {
+            ActiveToolTiles::Brush => {
+                // rotate -90°
+                let btn = Button::new("\u{f2ea}");
+                let by_hotkey = pipe
+                    .user_data
+                    .cur_hotkey_events
+                    .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                        EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::RotMinus90),
+                    )));
+                if ui
+                    .add(btn)
+                    .on_hover_ui(|ui| {
+                        let mut cache = egui_commonmark::CommonMarkCache::default();
+                        egui_commonmark::CommonMarkViewer::new().show(
+                            ui,
+                            &mut cache,
+                            &format!(
+                                "Hotkey: `{}`",
+                                binds.fmt_ev_bind(
+                                    per_ev,
+                                    &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                        EditorHotkeyEventTileTool::Brush(
+                                            EditorHotkeyEventTileBrush::RotMinus90
+                                        )
+                                    )),
+                                )
+                            ),
+                        );
+                    })
+                    .clicked()
+                    || by_hotkey
+                {
+                    if let Some(brush) = &mut tools.tiles.brush.brush {
+                        // use 3 times 90° here, bcs the 90° logic also "fixes" the cursor
+                        // x,y mirror does not
+                        rotate_tiles_plus_90(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            false,
+                        );
+                        rotate_tiles_plus_90(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            false,
+                        );
+                        rotate_tiles_plus_90(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            true,
+                        );
+                    }
+                }
+                // rotate +90°
+                let btn = Button::new("\u{f2f9}");
+                let by_hotkey = pipe
+                    .user_data
+                    .cur_hotkey_events
+                    .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                        EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::RotPlus90),
+                    )));
+                if ui
+                    .add(btn)
+                    .on_hover_ui(|ui| {
+                        let mut cache = egui_commonmark::CommonMarkCache::default();
+                        egui_commonmark::CommonMarkViewer::new().show(
+                            ui,
+                            &mut cache,
+                            &format!(
+                                "Hotkey: `{}`",
+                                binds.fmt_ev_bind(
+                                    per_ev,
+                                    &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                        EditorHotkeyEventTileTool::Brush(
+                                            EditorHotkeyEventTileBrush::RotPlus90
+                                        )
+                                    )),
+                                )
+                            ),
+                        );
+                    })
+                    .clicked()
+                    || by_hotkey
+                {
+                    if let Some(brush) = &mut tools.tiles.brush.brush {
+                        rotate_tiles_plus_90(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            true,
+                        );
+                    }
+                }
+                // rotate tiles (only by flags) +90°
+                let btn = Button::new("\u{e4f6}");
+                let by_hotkey = pipe
+                    .user_data
+                    .cur_hotkey_events
+                    .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                        EditorHotkeyEventTileTool::Brush(
+                            EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
+                        ),
+                    )));
+                if ui
+                    .add(btn)
+                    .on_hover_ui(|ui| {
+                        let mut cache = egui_commonmark::CommonMarkCache::default();
+                        egui_commonmark::CommonMarkViewer::new().show(
+                            ui,
+                            &mut cache,
+                            &format!(
+                                "Hotkey: `{}`",
+                                binds.fmt_ev_bind(
+                                    per_ev,
+                                    &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                        EditorHotkeyEventTileTool::Brush(
+                                            EditorHotkeyEventTileBrush::RotIndividualTilePlus90
+                                        )
+                                    )),
+                                )
+                            ),
+                        );
+                    })
+                    .clicked()
+                    || by_hotkey
+                {
+                    if let Some(brush) = &mut tools.tiles.brush.brush {
+                        rotate_tile_flags_plus_90(
+                            pipe.user_data.tp,
+                            pipe.user_data.graphics_mt,
+                            pipe.user_data.buffer_object_handle,
+                            pipe.user_data.backend_handle,
+                            brush,
+                            true,
+                        );
+                    }
+                }
+            }
+            ActiveToolTiles::Selection => {
+                if let Some(layer) = pipe.user_data.editor_tab.map.active_layer() {
+                    // rotate inner tiles (flags) by 90°
+                    let btn = Button::new("\u{e4f6}");
+                    let by_hotkey =
+                        pipe.user_data
+                            .cur_hotkey_events
+                            .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                                EditorHotkeyEventTileTool::Brush(
+                                    EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
+                                ),
+                            )));
+                    if ui.add(btn).clicked() || by_hotkey {
+                        if let Some(range) = &tools.tiles.selection.range {
+                            rotate_layer_tiles_plus_90(
+                                pipe.user_data.tp,
+                                layer,
+                                range,
+                                &mut pipe.user_data.editor_tab.client,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // destructive mode
+    let btn = Button::new("\u{f1e2}").selected(tools.tiles.brush.destructive);
+    let by_hotkey = pipe
+        .user_data
+        .cur_hotkey_events
+        .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+            EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::Destructive),
+        )));
+    if ui
+        .add(btn)
+        .on_hover_ui(|ui| {
+            let mut cache = egui_commonmark::CommonMarkCache::default();
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut cache,
+                &format!(
+                    "{}\n\nHotkey: `{}`",
+                    TEXT_TILE_DESTRUCTIVE,
+                    binds.fmt_ev_bind(
+                        per_ev,
+                        &EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                            EditorHotkeyEventTileTool::Brush(
+                                EditorHotkeyEventTileBrush::Destructive
+                            )
+                        )),
+                    )
+                ),
+            );
+        })
+        .clicked()
+        || by_hotkey
+    {
+        tools.tiles.brush.destructive = !tools.tiles.brush.destructive
     }
 }
 
@@ -452,25 +492,17 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
     let tools = &mut pipe.user_data.tools;
     let res =
         match &tools.active_tool {
-            ActiveTool::Tiles(tool) => {
-                let is_active = (matches!(tool, ActiveToolTiles::Brush)
-                    && tools.tiles.brush.brush.is_some())
-                    || (matches!(tool, ActiveToolTiles::Selection)
-                        && tools.tiles.selection.range.is_some());
-                egui::TopBottomPanel::top("top_toolbar_tiles_extra")
-                    .resizable(false)
-                    .default_height(height)
-                    .height_range(height..=height)
-                    .show_inside(ui, |ui| {
-                        egui::ScrollArea::horizontal().show(ui, |ui| {
-                            ui.add_enabled_ui(is_active, |ui| {
-                                ui.horizontal(|ui| {
-                                    render_toolbar_tiles(ui, pipe);
-                                });
-                            });
+            ActiveTool::Tiles(_) => egui::TopBottomPanel::top("top_toolbar_tiles_extra")
+                .resizable(false)
+                .default_height(height)
+                .height_range(height..=height)
+                .show_inside(ui, |ui| {
+                    egui::ScrollArea::horizontal().show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            render_toolbar_tiles(ui, pipe);
                         });
-                    })
-            }
+                    });
+                }),
             ActiveTool::Quads(_) => {
                 egui::TopBottomPanel::top("top_toolbar_quads_extra")
                     .resizable(false)
