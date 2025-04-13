@@ -573,6 +573,13 @@ impl EditorLayerUnionRef<'_> {
             EditorLayerUnionRef::Physics { .. } | EditorLayerUnionRef::Design { .. } => &None,
         }
     }
+
+    pub fn is_active(&self) -> bool {
+        match self {
+            EditorLayerUnionRef::Physics { layer, .. } => layer.editor_attr().active,
+            EditorLayerUnionRef::Design { layer, .. } => layer.editor_attr().active,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
