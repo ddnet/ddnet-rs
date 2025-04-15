@@ -211,7 +211,7 @@ impl MapTileLayerPhysicsTiles {
 
 /// a datatype that is mostly useful for editor, that represents
 /// all possible tiles
-#[derive(Debug, Hiarc, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MapTileLayerTiles {
     Design(Vec<Tile>),
     Physics(MapTileLayerPhysicsTiles),

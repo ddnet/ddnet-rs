@@ -110,6 +110,20 @@ pub struct TileBrushTiles {
 }
 
 #[derive(Debug, Hiarc)]
+pub struct TileBrushLastFill {
+    pub x: u16,
+    pub y: u16,
+
+    // the pointer pos used for the fill
+    pub pointer_pos: usvec2,
+
+    // the brush tiles used to create the fill
+    pub brush_tiles: MapTileLayerTiles,
+
+    pub render: TileBrushTiles,
+}
+
+#[derive(Debug, Hiarc)]
 pub struct TileBrushTilePicker {
     pub render: TileLayerVisuals,
     pub map_render: MapGraphics,
@@ -159,6 +173,8 @@ pub struct TileBrush {
     pub pointer_down_world_pos: Option<TileBrushDown>,
     pub shift_pointer_down_world_pos: Option<TileBrushDownPos>,
 
+    pub fill: Option<TileBrushLastFill>,
+
     /// Can the brush destroy existing tiles
     pub destructive: bool,
     /// Can place unused tiles
@@ -188,6 +204,8 @@ impl TileBrush {
 
             pointer_down_world_pos: None,
             shift_pointer_down_world_pos: None,
+
+            fill: Default::default(),
 
             destructive: true,
             allow_unused: false,
@@ -1572,6 +1590,209 @@ impl TileBrush {
         }
     }
 
+    fn fill<T: AsRef<TileBase>>(
+        tiles: &[T],
+        w: NonZeroU16MinusOne,
+        h: NonZeroU16MinusOne,
+        x: u16,
+        y: u16,
+    ) -> (Vec<bool>, usvec2, usvec2) {
+        let mut filled = vec![false; tiles.len()];
+        let get_index = |x: u16, y: u16| y as usize * w.get() as usize + x as usize;
+        // can only fill starting from a non filled position.
+        let index = get_index(x, y);
+        let search_tile = tiles[index].as_ref().index;
+        filled[index] = true;
+        let mut check_stack = vec![(x, y)];
+        let mut min_x = x;
+        let mut min_y = y;
+        let mut max_x = x;
+        let mut max_y = y;
+        while let Some((x, y)) = check_stack.pop() {
+            // check all neighbours of this tile
+            let x = [
+                x.checked_sub(1),
+                Some(x),
+                x.checked_add(1).and_then(|x| (x < w.get()).then_some(x)),
+            ];
+            let y = [
+                y.checked_sub(1),
+                Some(y),
+                y.checked_add(1).and_then(|y| (y < h.get()).then_some(y)),
+            ];
+            for y in y {
+                for x in x {
+                    if let Some((x, y)) = x.zip(y) {
+                        let index = get_index(x, y);
+                        if tiles[index].as_ref().index == search_tile && !filled[index] {
+                            filled[index] = true;
+                            check_stack.push((x, y));
+
+                            min_x = min_x.min(x);
+                            min_y = min_y.min(y);
+                            max_x = max_x.max(x);
+                            max_y = max_y.max(y);
+                        }
+                    }
+                }
+            }
+        }
+
+        (filled, usvec2::new(min_x, min_y), usvec2::new(max_x, max_y))
+    }
+
+    fn fill_tiles<T: AsRef<TileBase> + Copy + Default + Eq>(
+        tiles: &[T],
+        brush_tiles: &[T],
+        w: NonZeroU16MinusOne,
+        h: NonZeroU16MinusOne,
+        pos: &usvec2,
+        // if false, then it's filled with the layer's tile at that pos
+        fill_with_empty_tile: bool,
+        to_tiles: impl Fn(Vec<T>) -> MapTileLayerTiles,
+    ) -> (
+        MapTileLayerTiles,
+        MapTileLayerTiles,
+        usvec2,
+        NonZeroU16MinusOne,
+        NonZeroU16MinusOne,
+    ) {
+        let (filled, min, max) = Self::fill(tiles, w, h, pos.x, pos.y);
+        let width = NonZeroU16MinusOne::new((max.x - min.x) + 1).unwrap();
+        let height = NonZeroU16MinusOne::new((max.y - min.y) + 1).unwrap();
+        let mut old_tiles = vec![Default::default(); width.get() as usize * height.get() as usize];
+        let mut new_tiles = vec![brush_tiles[0]; width.get() as usize * height.get() as usize];
+        for y in 0..height.get() {
+            for x in 0..width.get() {
+                let index = (min.y + y) as usize * w.get() as usize + (min.x + x) as usize;
+                let index_tile = y as usize * width.get() as usize + x as usize;
+                if !filled[index] {
+                    if fill_with_empty_tile {
+                        new_tiles[index_tile] = Default::default();
+                    } else {
+                        new_tiles[index_tile] = tiles[index];
+                    }
+                }
+                old_tiles[index_tile] = tiles[index];
+            }
+        }
+        (to_tiles(old_tiles), to_tiles(new_tiles), min, width, height)
+    }
+
+    fn brush_tiles_match_layer(
+        brush_tiles: &MapTileLayerTiles,
+        layer: &EditorLayerUnionRef<'_>,
+    ) -> bool {
+        match layer {
+            EditorLayerUnionRef::Physics { layer, .. } => match layer {
+                EditorPhysicsLayer::Arbitrary(_) => matches!(
+                    brush_tiles,
+                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Arbitrary(_))
+                ),
+                EditorPhysicsLayer::Game(_) => {
+                    matches!(
+                        brush_tiles,
+                        MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(_))
+                    )
+                }
+                EditorPhysicsLayer::Front(_) => matches!(
+                    brush_tiles,
+                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(_))
+                ),
+                EditorPhysicsLayer::Tele(_) => matches!(
+                    brush_tiles,
+                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(_))
+                ),
+                EditorPhysicsLayer::Speedup(_) => matches!(
+                    brush_tiles,
+                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(_))
+                ),
+                EditorPhysicsLayer::Switch(_) => matches!(
+                    brush_tiles,
+                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(_))
+                ),
+                EditorPhysicsLayer::Tune(_) => matches!(
+                    brush_tiles,
+                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(_))
+                ),
+            },
+            EditorLayerUnionRef::Design { .. } => {
+                matches!(brush_tiles, MapTileLayerTiles::Design(_))
+            }
+        }
+    }
+
+    fn phy_brush_actions(
+        map: &EditorMap,
+        group_attr: &MapGroupPhysicsAttr,
+        old_tiles: MapTileLayerPhysicsTiles,
+        mut new_tiles: MapTileLayerPhysicsTiles,
+        x: u16,
+        brush_w: u16,
+        y: u16,
+        brush_h: u16,
+        layer_index: usize,
+        repeating_assume_front_layer_created: Option<&mut bool>,
+    ) -> Vec<EditorAction> {
+        let mut actions: Vec<EditorAction> = Default::default();
+
+        Self::hookthrough_cut(
+            map,
+            group_attr,
+            &old_tiles,
+            &mut new_tiles,
+            x,
+            brush_w,
+            y,
+            brush_h,
+            &mut actions,
+            repeating_assume_front_layer_created,
+        );
+
+        actions.push(EditorAction::TilePhysicsLayerReplaceTiles(
+            ActTilePhysicsLayerReplaceTiles {
+                base: ActTilePhysicsLayerReplTilesBase {
+                    layer_index,
+                    old_tiles,
+                    new_tiles,
+                    x,
+                    y,
+                    w: NonZeroU16MinusOne::new(brush_w).unwrap(),
+                    h: NonZeroU16MinusOne::new(brush_h).unwrap(),
+                },
+            },
+        ));
+        actions
+    }
+
+    fn design_brush_actions(
+        old_tiles: Vec<Tile>,
+        new_tiles: Vec<Tile>,
+        is_background: bool,
+        group_index: usize,
+        layer_index: usize,
+        x: u16,
+        y: u16,
+        brush_w: u16,
+        brush_h: u16,
+    ) -> Vec<EditorAction> {
+        vec![EditorAction::TileLayerReplaceTiles(
+            ActTileLayerReplaceTiles {
+                base: ActTileLayerReplTilesBase {
+                    is_background,
+                    group_index,
+                    layer_index,
+                    old_tiles,
+                    new_tiles,
+                    x,
+                    y,
+                    w: NonZeroU16MinusOne::new(brush_w).unwrap(),
+                    h: NonZeroU16MinusOne::new(brush_h).unwrap(),
+                },
+            },
+        )]
+    }
+
     fn apply_brush_internal(
         brush_id_counter: u128,
         map: &EditorMap,
@@ -1614,43 +1835,7 @@ impl TileBrush {
             brush_h -= ((y as i32 + brush_h as i32) - layer_height.get() as i32) as u16;
         }
 
-        let brush_matches_layer = match layer {
-            EditorLayerUnionRef::Physics { layer, .. } => match layer {
-                EditorPhysicsLayer::Arbitrary(_) => matches!(
-                    brush.tiles,
-                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Arbitrary(_))
-                ),
-                EditorPhysicsLayer::Game(_) => {
-                    matches!(
-                        brush.tiles,
-                        MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(_))
-                    )
-                }
-                EditorPhysicsLayer::Front(_) => matches!(
-                    brush.tiles,
-                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(_))
-                ),
-                EditorPhysicsLayer::Tele(_) => matches!(
-                    brush.tiles,
-                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(_))
-                ),
-                EditorPhysicsLayer::Speedup(_) => matches!(
-                    brush.tiles,
-                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(_))
-                ),
-                EditorPhysicsLayer::Switch(_) => matches!(
-                    brush.tiles,
-                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(_))
-                ),
-                EditorPhysicsLayer::Tune(_) => matches!(
-                    brush.tiles,
-                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(_))
-                ),
-            },
-            EditorLayerUnionRef::Design { .. } => {
-                matches!(brush.tiles, MapTileLayerTiles::Design(_))
-            }
-        };
+        let brush_matches_layer = Self::brush_tiles_match_layer(&brush.tiles, layer);
 
         if brush_w > 0 && brush_h > 0 && brush_matches_layer {
             let (actions, group_indentifier, apply_layer) = match layer {
@@ -1667,7 +1852,7 @@ impl TileBrush {
                         y as usize,
                         brush_h as usize,
                     );
-                    let mut new_tiles = Self::collect_phy_brush_tiles(
+                    let new_tiles = Self::collect_phy_brush_tiles(
                         brush,
                         brush_x as usize,
                         brush_w as usize,
@@ -1681,38 +1866,22 @@ impl TileBrush {
                         destructive,
                     );
 
-                    let mut actions: Vec<EditorAction> = Default::default();
-
-                    Self::hookthrough_cut(
+                    let actions = Self::phy_brush_actions(
                         map,
                         group_attr,
-                        &old_tiles,
-                        &mut new_tiles,
+                        old_tiles,
+                        new_tiles,
                         x,
                         brush_w,
                         y,
                         brush_h,
-                        &mut actions,
+                        *layer_index,
                         repeating_assume_front_layer_created,
                     );
 
-                    actions.push(EditorAction::TilePhysicsLayerReplaceTiles(
-                        ActTilePhysicsLayerReplaceTiles {
-                            base: ActTilePhysicsLayerReplTilesBase {
-                                layer_index: *layer_index,
-                                old_tiles,
-                                new_tiles,
-                                x,
-                                y,
-                                w: NonZeroU16MinusOne::new(brush_w).unwrap(),
-                                h: NonZeroU16MinusOne::new(brush_h).unwrap(),
-                            },
-                        },
-                    ));
-
                     (
                         actions,
-                        format!("tile-brush phy {}", layer_index,),
+                        format!("tile-brush phy {}", layer_index),
                         TileBrushLastApplyLayer::Physics {
                             layer_index: *layer_index,
                         },
@@ -1771,27 +1940,26 @@ impl TileBrush {
                             MapTileLayerPhysicsTiles::Tune(_) => todo!(),
                         },
                     };
+
                     // if non-destructive:
                     // for all tiles where the old tiles are non air, set new tiles to old
                     if !destructive {
                         Self::non_destructive_copy(&old_tiles, &mut new_tiles);
                     }
+                    let actions = Self::design_brush_actions(
+                        old_tiles,
+                        new_tiles,
+                        *is_background,
+                        *group_index,
+                        *layer_index,
+                        x,
+                        y,
+                        brush_w,
+                        brush_h,
+                    );
+
                     (
-                        vec![EditorAction::TileLayerReplaceTiles(
-                            ActTileLayerReplaceTiles {
-                                base: ActTileLayerReplTilesBase {
-                                    is_background: *is_background,
-                                    group_index: *group_index,
-                                    layer_index: *layer_index,
-                                    old_tiles,
-                                    new_tiles,
-                                    x,
-                                    y,
-                                    w: NonZeroU16MinusOne::new(brush_w).unwrap(),
-                                    h: NonZeroU16MinusOne::new(brush_h).unwrap(),
-                                },
-                            },
-                        )],
+                        actions,
                         format!(
                             "tile-brush {}-{}-{}",
                             group_index, layer_index, is_background
@@ -1898,6 +2066,8 @@ impl TileBrush {
         let layer = map.active_layer().unwrap();
         let (offset, parallax) = layer.get_offset_and_parallax();
 
+        let brush = self.brush.as_ref().unwrap();
+
         // reset brush
         if latest_pointer.secondary_pressed() {
             self.brush = None;
@@ -1906,8 +2076,6 @@ impl TileBrush {
             && (!latest_pointer.primary_down() || latest_pointer.primary_pressed()))
             || self.shift_pointer_down_world_pos.is_some()
         {
-            let brush = self.brush.as_ref().unwrap();
-
             if let Some(TileBrushDownPos { world, .. }) = &self.shift_pointer_down_world_pos {
                 let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
@@ -1980,63 +2148,309 @@ impl TileBrush {
                 });
             }
         }
+        // fill tool
+        else if latest_modifiers.ctrl
+            && Self::brush_tiles_match_layer(&brush.tiles, &layer)
+            && latest_pointer.primary_pressed()
+        {
+            let (w, h) = layer.get_width_and_height();
+            let pos = current_pointer_pos;
+
+            let pos = vec2::new(pos.x, pos.y);
+
+            let pos_on_map = ui_pos_to_world_pos(
+                canvas_handle,
+                ui_canvas,
+                map.groups.user.zoom,
+                vec2::new(pos.x, pos.y),
+                map.groups.user.pos.x,
+                map.groups.user.pos.y,
+                offset.x,
+                offset.y,
+                parallax.x,
+                parallax.y,
+                map.groups.user.parallax_aware_zoom,
+            );
+            let pos = usvec2::new(
+                pos_on_map
+                    .x
+                    .clamp(0.0, (w.get() - brush.w.get()) as f32 * TILE_VISUAL_SIZE)
+                    as u16,
+                pos_on_map
+                    .y
+                    .clamp(0.0, (h.get() - brush.h.get()) as f32 * TILE_VISUAL_SIZE)
+                    as u16,
+            );
+            let (fill_tiles, is_background, group_index, layer_index) = match layer {
+                EditorLayerUnionRef::Physics {
+                    layer, layer_index, ..
+                } => (
+                    match layer {
+                        EditorPhysicsLayer::Arbitrary(_) => {
+                            panic!("not supported.")
+                        }
+                        EditorPhysicsLayer::Game(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            Self::fill_tiles(
+                                &layer.layer.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                false,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(
+                                        tiles,
+                                    ))
+                                },
+                            )
+                        }
+                        EditorPhysicsLayer::Front(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            Self::fill_tiles(
+                                &layer.layer.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                false,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(
+                                        tiles,
+                                    ))
+                                },
+                            )
+                        }
+                        EditorPhysicsLayer::Tele(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            Self::fill_tiles(
+                                &layer.layer.base.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                false,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(
+                                        tiles,
+                                    ))
+                                },
+                            )
+                        }
+                        EditorPhysicsLayer::Speedup(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            Self::fill_tiles(
+                                &layer.layer.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                false,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(
+                                        tiles,
+                                    ))
+                                },
+                            )
+                        }
+                        EditorPhysicsLayer::Switch(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            Self::fill_tiles(
+                                &layer.layer.base.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                false,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(
+                                        tiles,
+                                    ))
+                                },
+                            )
+                        }
+                        EditorPhysicsLayer::Tune(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            Self::fill_tiles(
+                                &layer.layer.base.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                false,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(
+                                        tiles,
+                                    ))
+                                },
+                            )
+                        }
+                    },
+                    false,
+                    0,
+                    layer_index,
+                ),
+                EditorLayerUnionRef::Design {
+                    layer: EditorLayer::Tile(layer),
+                    is_background,
+                    group_index,
+                    layer_index,
+                    ..
+                } => {
+                    let MapTileLayerTiles::Design(brush_tiles) = &brush.tiles else {
+                        panic!("Was checked beforehand, else code bug.")
+                    };
+                    (
+                        Self::fill_tiles(
+                            &layer.layer.tiles,
+                            brush_tiles,
+                            w,
+                            h,
+                            &pos,
+                            false,
+                            MapTileLayerTiles::Design,
+                        ),
+                        is_background,
+                        group_index,
+                        layer_index,
+                    )
+                }
+                _ => {
+                    panic!("Not a tile layer. code bug.");
+                }
+            };
+
+            let (old_tiles, tiles, pos, w, h) = fill_tiles;
+            let actions = match tiles {
+                MapTileLayerTiles::Design(tiles) => {
+                    let MapTileLayerTiles::Design(old_tiles) = old_tiles else {
+                        panic!("Expected phy tiles. Code bug.")
+                    };
+                    Self::design_brush_actions(
+                        old_tiles,
+                        tiles,
+                        is_background,
+                        group_index,
+                        layer_index,
+                        pos.x,
+                        pos.y,
+                        w.get(),
+                        h.get(),
+                    )
+                }
+                MapTileLayerTiles::Physics(tiles) => {
+                    let MapTileLayerTiles::Physics(old_tiles) = old_tiles else {
+                        panic!("Expected phy tiles. Code bug.")
+                    };
+                    Self::phy_brush_actions(
+                        map,
+                        &map.groups.physics.attr,
+                        old_tiles,
+                        tiles,
+                        pos.x,
+                        w.get(),
+                        pos.y,
+                        h.get(),
+                        layer_index,
+                        None,
+                    )
+                }
+            };
+
+            client.execute_group(EditorActionGroup {
+                actions,
+                identifier: None,
+            });
+        }
         // apply brush
-        else {
-            let brush = self.brush.as_ref().unwrap();
+        else if !latest_modifiers.ctrl && latest_pointer.primary_down() {
+            let pos = current_pointer_pos;
 
-            if latest_pointer.primary_down() {
-                let pos = current_pointer_pos;
+            let pos = vec2::new(pos.x, pos.y);
 
-                let pos = vec2::new(pos.x, pos.y);
+            let vec2 { x, y } = ui_pos_to_world_pos(
+                canvas_handle,
+                ui_canvas,
+                map.groups.user.zoom,
+                vec2::new(pos.x, pos.y),
+                map.groups.user.pos.x,
+                map.groups.user.pos.y,
+                offset.x,
+                offset.y,
+                parallax.x,
+                parallax.y,
+                map.groups.user.parallax_aware_zoom,
+            );
 
-                let vec2 { x, y } = ui_pos_to_world_pos(
-                    canvas_handle,
-                    ui_canvas,
-                    map.groups.user.zoom,
-                    vec2::new(pos.x, pos.y),
-                    map.groups.user.pos.x,
-                    map.groups.user.pos.y,
-                    offset.x,
-                    offset.y,
-                    parallax.x,
-                    parallax.y,
-                    map.groups.user.parallax_aware_zoom,
-                );
+            let x = (x / TILE_VISUAL_SIZE).floor() as i32;
+            let y = (y / TILE_VISUAL_SIZE).floor() as i32;
 
-                let x = (x / TILE_VISUAL_SIZE).floor() as i32;
-                let y = (y / TILE_VISUAL_SIZE).floor() as i32;
+            let x = x - brush.negative_offset.x as i32;
+            let y = y - brush.negative_offset.y as i32;
 
-                let x = x - brush.negative_offset.x as i32;
-                let y = y - brush.negative_offset.y as i32;
-
-                Self::apply_brush_internal(
-                    self.brush_id_counter,
-                    map,
-                    &layer,
-                    brush,
-                    client,
-                    x,
-                    y,
-                    0,
-                    0,
-                    brush.w.get(),
-                    brush.h.get(),
-                    None,
-                    self.destructive,
-                );
-            }
+            Self::apply_brush_internal(
+                self.brush_id_counter,
+                map,
+                &layer,
+                brush,
+                client,
+                x,
+                y,
+                0,
+                0,
+                brush.w.get(),
+                brush.h.get(),
+                None,
+                self.destructive,
+            );
         }
     }
 
     fn render_selection(
-        &self,
+        &mut self,
         ui_canvas: &UiCanvasSize,
+        tp: &Arc<rayon::ThreadPool>,
+        graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        buffer_object_handle: &GraphicsBufferObjectHandle,
         canvas_handle: &GraphicsCanvasHandle,
         stream_handle: &GraphicsStreamHandle,
         map: &EditorMap,
+        latest_modifiers: &egui::Modifiers,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        entities_container: &mut EntitiesContainer,
+        fake_texture_2d_array: &TextureContainer2dArray,
     ) {
         // if pointer was already down
         if self.pointer_down_world_pos.is_some()
@@ -2045,11 +2459,17 @@ impl TileBrush {
         {
             self.render_brush(
                 ui_canvas,
+                tp,
+                graphics_mt,
                 backend_handle,
+                buffer_object_handle,
                 canvas_handle,
                 stream_handle,
                 map,
+                latest_modifiers,
                 current_pointer_pos,
+                entities_container,
+                fake_texture_2d_array,
                 true,
             );
         }
@@ -2248,25 +2668,27 @@ impl TileBrush {
     }
 
     fn render_brush(
-        &self,
+        &mut self,
         ui_canvas: &UiCanvasSize,
+        tp: &Arc<rayon::ThreadPool>,
+        graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        buffer_object_handle: &GraphicsBufferObjectHandle,
         canvas_handle: &GraphicsCanvasHandle,
         stream_handle: &GraphicsStreamHandle,
         map: &EditorMap,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
+        entities_container: &mut EntitiesContainer,
+        fake_texture_2d_array: &TextureContainer2dArray,
         clamp_pos: bool,
     ) {
-        let layer = map.active_layer();
-        let (offset, parallax) = if let Some(layer) = &layer {
-            layer.get_offset_and_parallax()
-        } else {
-            Default::default()
-        };
-        let design_attr = if let Some(EditorLayerUnionRef::Design {
+        let layer = map.active_layer().unwrap();
+        let (offset, parallax) = layer.get_offset_and_parallax();
+        let design_attr = if let EditorLayerUnionRef::Design {
             layer: EditorLayer::Tile(layer),
             ..
-        }) = layer
+        } = layer
         {
             Some(&layer.layer.attr)
         } else {
@@ -2284,15 +2706,13 @@ impl TileBrush {
             pos.y - brush.negative_offset.y as f32 * TILE_VISUAL_SIZE,
         );
         if clamp_pos {
-            if let Some(layer) = &layer {
-                let (w, h) = layer.get_width_and_height();
-                pos = vec2::new(
-                    pos.x
-                        .clamp(0.0, (w.get() - brush.w.get()) as f32 * TILE_VISUAL_SIZE),
-                    pos.y
-                        .clamp(0.0, (h.get() - brush.h.get()) as f32 * TILE_VISUAL_SIZE),
-                );
-            }
+            let (w, h) = layer.get_width_and_height();
+            pos = vec2::new(
+                pos.x
+                    .clamp(0.0, (w.get() - brush.w.get()) as f32 * TILE_VISUAL_SIZE),
+                pos.y
+                    .clamp(0.0, (h.get() - brush.h.get()) as f32 * TILE_VISUAL_SIZE),
+            );
         }
         let pos = egui::pos2(pos.x, pos.y);
 
@@ -2340,7 +2760,7 @@ impl TileBrush {
                 design_attr,
                 canvas_handle,
                 -vec2::new(pos_min.x, pos_min.y),
-                layer.map(|layer| layer.get_or_fake_group_attr()),
+                Some(layer.get_or_fake_group_attr()),
                 usvec2::new(
                     (pos_cur.x - pos_old.x)
                         .clamp(f32::MIN, 0.0)
@@ -2361,6 +2781,281 @@ impl TileBrush {
                 &parallax,
                 &offset,
             );
+        } else if latest_modifiers.ctrl
+            && brush.w.get() == 1
+            && brush.h.get() == 1
+            && Self::brush_tiles_match_layer(&brush.tiles, &layer)
+        {
+            // render fill of given tile
+            let (w, h) = layer.get_width_and_height();
+            let pos = usvec2::new(
+                pos_on_map
+                    .x
+                    .clamp(0.0, (w.get() - brush.w.get()) as f32 * TILE_VISUAL_SIZE)
+                    as u16,
+                pos_on_map
+                    .y
+                    .clamp(0.0, (h.get() - brush.h.get()) as f32 * TILE_VISUAL_SIZE)
+                    as u16,
+            );
+
+            fn last_fill_tiles<T: AsRef<TileBase> + Copy + Default + Eq>(
+                tiles: &[T],
+                brush_tiles: &[T],
+                w: NonZeroU16MinusOne,
+                h: NonZeroU16MinusOne,
+                pos: &usvec2,
+                tp: &Arc<rayon::ThreadPool>,
+                graphics_mt: &GraphicsMultiThreaded,
+                buffer_object_handle: &GraphicsBufferObjectHandle,
+                backend_handle: &GraphicsBackendHandle,
+                last_fill: &mut Option<TileBrushLastFill>,
+                texture: &TextureContainer2dArray,
+                to_tiles: impl Fn(Vec<T>) -> MapTileLayerTiles,
+            ) {
+                let brush_tiles_layer = to_tiles(brush_tiles.to_vec());
+                if last_fill.as_ref().is_some_and(|last_fill| {
+                    last_fill.pointer_pos == *pos && last_fill.brush_tiles == brush_tiles_layer
+                }) {
+                    return;
+                }
+                let (_, tiles, min, width, height) =
+                    TileBrush::fill_tiles(tiles, brush_tiles, w, h, pos, true, to_tiles);
+                *last_fill = Some(TileBrushLastFill {
+                    x: min.x,
+                    y: min.y,
+                    brush_tiles: brush_tiles_layer,
+                    pointer_pos: *pos,
+                    render: TileBrushTiles {
+                        tiles: tiles.clone(),
+                        w: width,
+                        h: height,
+                        negative_offset: Default::default(),
+                        negative_offsetf: Default::default(),
+                        render: TileBrush::create_brush_visual(
+                            tp,
+                            graphics_mt,
+                            buffer_object_handle,
+                            backend_handle,
+                            width,
+                            height,
+                            &tiles,
+                        ),
+                        map_render: MapGraphics::new(backend_handle),
+                        texture: texture.clone(),
+                        last_apply: Default::default(),
+                    },
+                });
+            }
+            match layer {
+                EditorLayerUnionRef::Physics { layer, .. } => {
+                    let ent = entities_container.get_or_default(&ContainerKey::default());
+                    let ent = ent.get_or_default("ddnet");
+                    match layer {
+                        EditorPhysicsLayer::Arbitrary(_) => {
+                            panic!("not supported.")
+                        }
+                        EditorPhysicsLayer::Game(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            last_fill_tiles(
+                                &layer.layer.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                &mut self.fill,
+                                ent,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Game(
+                                        tiles,
+                                    ))
+                                },
+                            );
+                        }
+                        EditorPhysicsLayer::Front(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            last_fill_tiles(
+                                &layer.layer.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                &mut self.fill,
+                                ent,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Front(
+                                        tiles,
+                                    ))
+                                },
+                            );
+                        }
+                        EditorPhysicsLayer::Tele(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            last_fill_tiles(
+                                &layer.layer.base.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                &mut self.fill,
+                                ent,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tele(
+                                        tiles,
+                                    ))
+                                },
+                            );
+                        }
+                        EditorPhysicsLayer::Speedup(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            last_fill_tiles(
+                                &layer.layer.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                &mut self.fill,
+                                ent,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Speedup(
+                                        tiles,
+                                    ))
+                                },
+                            );
+                        }
+                        EditorPhysicsLayer::Switch(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            last_fill_tiles(
+                                &layer.layer.base.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                &mut self.fill,
+                                ent,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Switch(
+                                        tiles,
+                                    ))
+                                },
+                            );
+                        }
+                        EditorPhysicsLayer::Tune(layer) => {
+                            let MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(
+                                brush_tiles,
+                            )) = &brush.tiles
+                            else {
+                                panic!("Was checked beforehand, else code bug.")
+                            };
+                            last_fill_tiles(
+                                &layer.layer.base.tiles,
+                                brush_tiles,
+                                w,
+                                h,
+                                &pos,
+                                tp,
+                                graphics_mt,
+                                buffer_object_handle,
+                                backend_handle,
+                                &mut self.fill,
+                                ent,
+                                |tiles| {
+                                    MapTileLayerTiles::Physics(MapTileLayerPhysicsTiles::Tune(
+                                        tiles,
+                                    ))
+                                },
+                            );
+                        }
+                    }
+                }
+                EditorLayerUnionRef::Design {
+                    layer: EditorLayer::Tile(layer),
+                    ..
+                } => {
+                    let MapTileLayerTiles::Design(brush_tiles) = &brush.tiles else {
+                        panic!("Was checked beforehand, else code bug.")
+                    };
+                    let tex = layer
+                        .layer
+                        .attr
+                        .image_array
+                        .and_then(|i| map.resources.image_arrays.get(i).map(|i| &i.user.user))
+                        .unwrap_or(fake_texture_2d_array);
+                    last_fill_tiles(
+                        &layer.layer.tiles,
+                        brush_tiles,
+                        w,
+                        h,
+                        &pos,
+                        tp,
+                        graphics_mt,
+                        buffer_object_handle,
+                        backend_handle,
+                        &mut self.fill,
+                        tex,
+                        MapTileLayerTiles::Design,
+                    );
+                }
+                _ => {
+                    panic!("Not a tile layer. code bug.");
+                }
+            }
+
+            if let Some(fill) = self.fill.as_ref() {
+                self.render_brush_internal(
+                    &fill.render,
+                    map,
+                    design_attr,
+                    canvas_handle,
+                    -vec2::new(fill.x as f32, fill.y as f32),
+                    Some(layer.get_or_fake_group_attr()),
+                );
+            }
         } else {
             backend_handle.next_switch_pass();
             render_filled_rect(
@@ -2397,7 +3092,7 @@ impl TileBrush {
                 design_attr,
                 canvas_handle,
                 -vec2::new(pos.x, pos.y),
-                layer.map(|layer| layer.get_or_fake_group_attr()),
+                Some(layer.get_or_fake_group_attr()),
             );
 
             render_rect(
@@ -2472,7 +3167,10 @@ impl TileBrush {
     pub fn render(
         &mut self,
         ui_canvas: &UiCanvasSize,
+        tp: &Arc<rayon::ThreadPool>,
+        graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        buffer_object_handle: &GraphicsBufferObjectHandle,
         stream_handle: &GraphicsStreamHandle,
         canvas_handle: &GraphicsCanvasHandle,
         entities_container: &mut EntitiesContainer,
@@ -2480,6 +3178,7 @@ impl TileBrush {
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
         latest_keys_down: &HashSet<egui::Key>,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
         available_rect: &egui::Rect,
     ) {
@@ -2631,21 +3330,33 @@ impl TileBrush {
         } else if self.brush.is_none() || self.pointer_down_world_pos.is_some() {
             self.render_selection(
                 ui_canvas,
+                tp,
+                graphics_mt,
                 backend_handle,
+                buffer_object_handle,
                 canvas_handle,
                 stream_handle,
                 map,
+                latest_modifiers,
                 latest_pointer,
                 current_pointer_pos,
+                entities_container,
+                fake_texture_2d_array,
             );
         } else {
             self.render_brush(
                 ui_canvas,
+                tp,
+                graphics_mt,
                 backend_handle,
+                buffer_object_handle,
                 canvas_handle,
                 stream_handle,
                 map,
+                latest_modifiers,
                 current_pointer_pos,
+                entities_container,
+                fake_texture_2d_array,
                 false,
             );
         }

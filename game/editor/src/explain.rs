@@ -54,6 +54,8 @@ pub const TEXT_TILE_BRUSH: &str =
 The tile brush allows to select a range of tiles (`left click`) and apply different actions on this selection:\n\
 - `Left click` -> Draws this selection anywhere within a tile layer.\n\
 - `Shift + left click selection` -> Creates a repeated pattern of the selected tiles.\n\n\
+- `Ctrl + left click` (single tile only) -> Fills the empty area with the given tile.\
+  (The fill tool is always destructive!)\n\n\
 ---\n\n\
 Press `right click` to unset the selection.  \n\
 Hold `space` to open the tile picker, which is basically an overview of all tiles within a tile layer image.\
