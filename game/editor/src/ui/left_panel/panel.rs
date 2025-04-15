@@ -108,7 +108,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 EditorGroupPanelTab::Images(panel_data) => {
                     super::images::render(
                         ui,
-                        &mut pipe.user_data.editor_tab.client,
+                        &pipe.user_data.editor_tab.client,
                         &map.groups,
                         &mut map.resources,
                         panel_data,
@@ -118,7 +118,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 EditorGroupPanelTab::ArrayImages(panel_data) => {
                     super::image_arrays::render(
                         ui,
-                        &mut pipe.user_data.editor_tab.client,
+                        &pipe.user_data.editor_tab.client,
                         &map.groups,
                         &mut map.resources,
                         panel_data,
@@ -128,7 +128,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 EditorGroupPanelTab::Sounds(panel_data) => {
                     super::sounds::render(
                         ui,
-                        &mut pipe.user_data.editor_tab.client,
+                        &pipe.user_data.editor_tab.client,
                         &map.groups,
                         &mut map.resources,
                         panel_data,

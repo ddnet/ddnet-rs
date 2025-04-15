@@ -1,11 +1,14 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
-use base::hash::generate_hash_for;
+use base::hash::{generate_hash_for, Hash};
 use client_containers::container::ContainerItemIndexType;
 use client_ui::{main_menu::settings::list::list, utils::render_texture_for_ui};
 use egui::{Button, Rect, UiBuilder};
 use game_interface::types::resource_key::ResourceKey;
-use map::map::resources::{MapResourceMetaData, MapResourceRef};
+use map::{
+    map::resources::{MapResourceMetaData, MapResourceRef},
+    skeleton::resources::MapResourceRefSkeleton,
+};
 use math::math::vector::vec2;
 use sound::types::SoundPlayProps;
 use ui_base::types::{UiRenderPipe, UiState};
@@ -14,6 +17,8 @@ use crate::{
     actions::actions::{
         ActAddImage, ActAddImage2dArray, ActAddRemImage, ActAddRemSound, ActAddSound, EditorAction,
     },
+    client::EditorClient,
+    notifications::EditorNotification,
     tab::AssetsStoreTab,
     ui::user_data::UserDataWithTab,
 };
@@ -282,36 +287,79 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         .quad_tile_images_container
                         .get_or_default(&key);
 
+                    let res = MapResourceRef {
+                        name: img.name.as_str().try_into().unwrap_or_default(),
+                        meta: MapResourceMetaData {
+                            blake3_hash: generate_hash_for(&img.file),
+                            ty: "png".try_into().unwrap(),
+                        },
+                        hq_meta: None,
+                    };
+                    let imgs: HashSet<_> = tab
+                        .map
+                        .resources
+                        .images
+                        .iter()
+                        .map(|i| i.def.meta.blake3_hash)
+                        .chain(
+                            tab.map
+                                .resources
+                                .image_arrays
+                                .iter()
+                                .map(|i| i.def.meta.blake3_hash),
+                        )
+                        .collect();
+                    // ddnet limitation
+                    if imgs.len() >= 64 {
+                        tab.client.notifications.push(EditorNotification::Warning(
+                            "Adding more than 64 images makes \
+                            this map incompatible to (old) ddnet"
+                                .to_string(),
+                        ));
+                    }
+                    // true if no duplicate was found
+                    fn check_res_duplicate<U>(
+                        client: &EditorClient,
+                        hash: &Hash,
+                        resources: &[MapResourceRefSkeleton<U>],
+                    ) -> bool {
+                        if resources.iter().any(|r| r.def.meta.blake3_hash == *hash) {
+                            client.notifications.push(EditorNotification::Warning(
+                                "A resource with identical file \
+                            hash already exists."
+                                    .to_string(),
+                            ));
+                            false
+                        } else {
+                            true
+                        }
+                    }
                     if matches!(tab.assets_store.tab, AssetsStoreTab::Tileset) {
-                        tab.client.execute(
-                            EditorAction::AddImage2dArray(ActAddImage2dArray {
-                                base: ActAddRemImage {
-                                    res: MapResourceRef {
-                                        name: img.name.as_str().try_into().unwrap_or_default(),
-                                        meta: MapResourceMetaData {
-                                            blake3_hash: generate_hash_for(&img.file),
-                                            ty: "png".try_into().unwrap(),
-                                        },
-                                        hq_meta: None,
+                        if check_res_duplicate(
+                            &tab.client,
+                            &res.meta.blake3_hash,
+                            &tab.map.resources.image_arrays,
+                        ) {
+                            tab.client.execute(
+                                EditorAction::AddImage2dArray(ActAddImage2dArray {
+                                    base: ActAddRemImage {
+                                        res,
+                                        file: img.file.clone(),
+                                        index: tab.map.resources.image_arrays.len(),
                                     },
-                                    file: img.file.clone(),
-                                    index: tab.map.resources.image_arrays.len(),
-                                },
-                            }),
-                            None,
-                        );
-                    } else {
+                                }),
+                                None,
+                            );
+                        }
+                    } else if check_res_duplicate(
+                        &tab.client,
+                        &res.meta.blake3_hash,
+                        &tab.map.resources.images,
+                    ) {
                         tab.client.execute(
                             EditorAction::AddImage(ActAddImage {
                                 base: ActAddRemImage {
-                                    res: MapResourceRef {
-                                        name: img.name.as_str().try_into().unwrap_or_default(),
-                                        meta: MapResourceMetaData {
-                                            blake3_hash: generate_hash_for(&img.file),
-                                            ty: "png".try_into().unwrap(),
-                                        },
-                                        hq_meta: None,
-                                    },
+                                    res,
                                     file: img.file.clone(),
                                     index: tab.map.resources.images.len(),
                                 },

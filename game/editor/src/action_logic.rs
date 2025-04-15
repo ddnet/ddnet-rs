@@ -829,6 +829,13 @@ pub fn do_action(
                 act.base.res.hq_meta.is_none(),
                 "hq assets are currently not supported",
             );
+            anyhow::ensure!(
+                map.resources
+                    .images
+                    .iter()
+                    .all(|r| r.def.meta.blake3_hash != act.base.res.meta.blake3_hash),
+                "resource with that file hash already existed for images."
+            );
             let mut img_mem = None;
             let _ = load_png_image_as_rgba(&act.base.file, |width, height, _| {
                 img_mem = Some(backend_handle.mem_alloc(
@@ -871,6 +878,13 @@ pub fn do_action(
             anyhow::ensure!(
                 act.base.res.hq_meta.is_none(),
                 "hq assets are currently not supported",
+            );
+            anyhow::ensure!(
+                map.resources
+                    .image_arrays
+                    .iter()
+                    .all(|r| r.def.meta.blake3_hash != act.base.res.meta.blake3_hash),
+                "resource with that file hash already existed for image arrays."
             );
             let mut png = Vec::new();
             let img = load_png_image_as_rgba(&act.base.file, |width, height, _| {
@@ -941,6 +955,13 @@ pub fn do_action(
             anyhow::ensure!(
                 act.base.res.hq_meta.is_none(),
                 "hq assets are currently not supported",
+            );
+            anyhow::ensure!(
+                map.resources
+                    .sounds
+                    .iter()
+                    .all(|r| r.def.meta.blake3_hash != act.base.res.meta.blake3_hash),
+                "resource with that file hash already existed for sounds."
             );
             map.resources.sounds.insert(
                 act.base.index,

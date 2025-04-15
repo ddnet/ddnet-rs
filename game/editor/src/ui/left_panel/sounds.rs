@@ -16,7 +16,7 @@ use crate::{
 
 pub fn render(
     ui: &mut egui::Ui,
-    client: &mut EditorClient,
+    client: &EditorClient,
     groups: &EditorGroups,
     resources: &mut EditorResources,
     panel_data: &mut EditorGroupPanelResources,
