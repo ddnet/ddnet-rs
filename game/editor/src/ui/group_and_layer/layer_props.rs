@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use base::hash::fmt_hash;
 use egui::{Button, Checkbox, Color32, ComboBox, DragValue, InnerResponse};
@@ -36,7 +36,7 @@ use crate::{
         EditorLayerUnionRef, EditorMap, EditorMapInterface, EditorPhysicsLayer,
         EditorResourceTexture2dArray, ResourceSelection,
     },
-    tools::tile_layer::auto_mapper::TileLayerAutoMapper,
+    tools::tile_layer::auto_mapper::{ResourceHashTy, TileLayerAutoMapper},
     ui::{
         group_and_layer::{
             resource_selector::ResourceSelectionMode,
@@ -672,24 +672,35 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             .as_ref()
                             .and_then(|r| pipe.user_data.auto_mapper.resources.get(r))
                         {
+                            let mut seed = layer
+                                .user
+                                .auto_mapper_seed
+                                .unwrap_or_else(|| rand::rng().next_u64());
                             ui.label("Select auto mapper rule");
                             ComboBox::new("auto-mapper-rule-selector-tile-layer", "")
                                 .selected_text(
                                     layer.user.auto_mapper_rule.as_deref().unwrap_or("None"),
                                 )
                                 .show_ui(ui, |ui| {
-                                    for rule in rule.rules.keys() {
-                                        if ui.button(rule).clicked() {
+                                    let values: BTreeMap<_, _> =
+                                        rule.rules.iter().map(|(k, (_, v))| (k, v)).collect();
+                                    for (rule, ty) in values {
+                                        let text = match ty {
+                                            ResourceHashTy::Hashed => format!("\u{23}{rule}"),
+                                            ResourceHashTy::NoHash => rule.to_string(),
+                                        };
+                                        if ui.button(text).clicked() {
                                             layer.user.auto_mapper_rule = Some(rule.clone());
+
+                                            if layer.user.live_edit.is_some() {
+                                                // and switch live mapping
+                                                auto_mapper_live = Some(Some(seed));
+                                            }
                                         }
                                     }
                                 });
                             ui.end_row();
                             ui.label("Auto mapper seed");
-                            let mut seed = layer
-                                .user
-                                .auto_mapper_seed
-                                .unwrap_or_else(|| rand::rng().next_u64());
                             ui.add(DragValue::new(&mut seed));
                             layer.user.auto_mapper_seed = Some(seed);
                             ui.end_row();
@@ -906,7 +917,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 );
             } else if let Some(seed) = auto_mapper {
                 let rule = layer.user.auto_mapper_rule.clone();
-                if let Some((resource, rule_name, rule)) = resource_name
+                if let Some((resource, rule_name, (rule, _))) = resource_name
                     .as_ref()
                     .and_then(|r| {
                         pipe.user_data
@@ -931,7 +942,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 }
             } else if let Some(seed) = auto_mapper_live {
                 let rule = layer.user.auto_mapper_rule.clone();
-                if let Some((resource, rule_name, rule)) = resource_name
+                if let Some((resource, rule_name, (rule, _))) = resource_name
                     .as_ref()
                     .and_then(|r| {
                         pipe.user_data

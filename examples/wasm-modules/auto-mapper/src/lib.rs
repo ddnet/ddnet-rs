@@ -37,13 +37,8 @@ impl AutoMapperInterface for AutoMapperGrassMain {
             height,
             off_x,
             off_y,
+            ..
         } = input;
-
-        let mut hasher = rustc_hash::FxHasher::default();
-        hasher.write_u64(seed);
-        hasher.write_u16(off_x);
-        hasher.write_u16(off_y);
-        let seed = hasher.finish();
 
         // skip, layers of such sizes are not supported.
         if width.get() < 2 || height.get() < 2 {
@@ -55,11 +50,16 @@ impl AutoMapperInterface for AutoMapperGrassMain {
             return Ok(AutoMapperOutputModes::DesignTileLayer { tiles });
         }
 
-        let mut rng = Rng::new(seed);
-
         let mut changed_tiles = 0;
         for y in 1..height.get().saturating_sub(1) as usize {
             for x in 1..width.get().saturating_sub(1) as usize {
+                let mut hasher = rustc_hash::FxHasher::default();
+                hasher.write_u64(seed);
+                hasher.write_u16(off_x + x as u16);
+                hasher.write_u16(off_y + y as u16);
+                let seed = hasher.finish();
+                let mut rng = Rng::new(seed);
+
                 let y_off = y * width.get() as usize;
                 let y_off_minus_one = (y - 1) * width.get() as usize;
                 let y_off_plus_one = (y + 1) * width.get() as usize;

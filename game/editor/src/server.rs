@@ -45,8 +45,11 @@ use crate::{
     network::EditorNetwork,
     tools::{
         auto_saver::AutoSaver,
-        tile_layer::auto_mapper::{
-            EditorAutoMapperInterface, TileLayerAutoMapperRuleType, TileLayerAutoMapperWasm,
+        tile_layer::{
+            auto_mapper::{
+                EditorAutoMapperInterface, TileLayerAutoMapperRuleType, TileLayerAutoMapperWasm,
+            },
+            legacy_rules::{LegacyRule, LegacyRulesLoading},
         },
     },
 };
@@ -795,15 +798,17 @@ impl EditorServer {
                         hash,
                         rule,
                     } => {
-                        if let Some(rule) = match rule {
+                        let rules: Vec<_> = match rule {
                             EditorEventRuleTy::EditorRuleJson(rule) => (generate_hash_for(&rule)
                                 == hash)
                                 .then(|| {
                                     serde_json::from_slice(&rule)
                                         .ok()
-                                        .map(TileLayerAutoMapperRuleType::EditorRule)
+                                        .map(|r| (name, TileLayerAutoMapperRuleType::EditorRule(r)))
                                 })
-                                .flatten(),
+                                .flatten()
+                                .into_iter()
+                                .collect(),
                             EditorEventRuleTy::Wasm(wasm_file) => (generate_hash_for(&wasm_file)
                                 == hash)
                                 .then(|| {
@@ -825,12 +830,45 @@ impl EditorServer {
                                             )
                                             .ok()
                                         })
-                                        .map(TileLayerAutoMapperRuleType::Wasm)
+                                        .map(|r| (name, TileLayerAutoMapperRuleType::Wasm(r)))
                                 })
-                                .flatten(),
-                        } {
-                            self.auto_mapper_rules
-                                .insert((resource_and_hash, name, hash), rule);
+                                .flatten()
+                                .into_iter()
+                                .collect(),
+                            EditorEventRuleTy::LegacyRules(rules) => (generate_hash_for(&rules)
+                                == hash)
+                                .then(|| {
+                                    LegacyRulesLoading::new(&rules)
+                                        .ok()
+                                        .map(|rules| {
+                                            let loading_data = Arc::new(rules.file);
+                                            rules
+                                                .configs
+                                                .into_iter()
+                                                .map(|(config_name, rule)| {
+                                                    let base_name = name
+                                                        .split_once('/')
+                                                        .map(|(b, _)| b.to_string())
+                                                        .unwrap_or_default();
+                                                    (
+                                                        format!("{base_name}/{config_name}"),
+                                                        TileLayerAutoMapperRuleType::LegacyRules {
+                                                            rule: LegacyRule { config: rule },
+                                                            loading_data: loading_data.clone(),
+                                                        },
+                                                    )
+                                                })
+                                                .collect()
+                                        })
+                                        .unwrap_or_default()
+                                })
+                                .unwrap_or_default(),
+                        };
+                        if !rules.is_empty() {
+                            for (name, rule) in rules {
+                                self.auto_mapper_rules
+                                    .insert((resource_and_hash.clone(), name, hash), rule);
+                            }
                         } else {
                             // else send error
                             self.network.send_to(
@@ -898,8 +936,8 @@ impl EditorServer {
                             auto_map.name.clone(),
                             auto_map.hash,
                         )) {
-                            Some(_) => {
-                                match Self::live_edit(auto_map, live_edit, map) {
+                            Some(rule) => {
+                                match Self::live_edit(auto_map.clone(), live_edit, map) {
                                     Ok(layer_index) => {
                                         // if rule & layer was found, tell all clients that this layer is now live edited
                                         for (id, _) in
@@ -913,6 +951,32 @@ impl EditorServer {
                                                         live_edit,
                                                     },
                                                 ),
+                                            );
+                                        }
+                                        // if live edited was succesful, then try to auto map full layer once
+                                        if let Ok(action) = Self::auto_map(rule, auto_map, map) {
+                                            self.handle_client_ev(
+                                                id,
+                                                EditorEventClientToServer::Action(
+                                                    EditorActionGroup {
+                                                        actions: vec![
+                                                            EditorAction::TileLayerReplaceTiles(
+                                                                action,
+                                                            ),
+                                                        ],
+                                                        identifier: Some("auto-mapper".to_string()),
+                                                    },
+                                                ),
+                                                tp,
+                                                sound_mt,
+                                                graphics_mt,
+                                                buffer_object_handle,
+                                                backend_handle,
+                                                texture_handle,
+                                                map,
+                                                auto_saver,
+                                                notifications,
+                                                should_save,
                                             );
                                         }
                                     }

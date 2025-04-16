@@ -24,7 +24,7 @@ use crate::{
     explain::{AUTO_MAPPER_CREATOR_EXPLAIN, AUTO_MAPPER_CREATOR_EXPRESSION_LIST_EXPLAIN},
     tools::{
         tile_layer::auto_mapper::{
-            FileDialogTy, TileLayerAutoMapper, TileLayerAutoMapperCheckGroup,
+            FileDialogTy, ResourceHashTy, TileLayerAutoMapper, TileLayerAutoMapperCheckGroup,
             TileLayerAutoMapperEditorRule, TileLayerAutoMapperOperator,
             TileLayerAutoMapperRuleType, TileLayerAutoMapperRun, TileLayerAutoMapperTile,
             TileLayerAutoMapperTileExpr, TileLayerAutoMapperTileType, TileLayerAutoMapperVisuals,
@@ -503,8 +503,11 @@ pub fn render(pipe: &mut UiRenderPipe<UserData>, ui: &mut egui::Ui, ui_state: &m
                 if ui.button("\u{f055} Add new rule").clicked() {
                     resource.rules.insert(
                         auto_mapper.new_rule_name.clone(),
-                        TileLayerAutoMapperRuleType::EditorRule(
-                            TileLayerAutoMapperEditorRule::default(),
+                        (
+                            TileLayerAutoMapperRuleType::EditorRule(
+                                TileLayerAutoMapperEditorRule::default(),
+                            ),
+                            ResourceHashTy::Hashed,
                         ),
                     );
                 }
@@ -531,7 +534,7 @@ pub fn render(pipe: &mut UiRenderPipe<UserData>, ui: &mut egui::Ui, ui_state: &m
                         let rules: BTreeSet<_> = resource
                             .rules
                             .iter()
-                            .filter_map(|(name, rule)| {
+                            .filter_map(|(name, (rule, _))| {
                                 matches!(rule, TileLayerAutoMapperRuleType::EditorRule(_))
                                     .then_some(name)
                             })
@@ -547,7 +550,7 @@ pub fn render(pipe: &mut UiRenderPipe<UserData>, ui: &mut egui::Ui, ui_state: &m
             let Some((rule_name, TileLayerAutoMapperRuleType::EditorRule(rule))) = auto_mapper
                 .active_rule
                 .as_ref()
-                .and_then(|r| resource.rules.get_mut(r).map(|rule| (r, rule)))
+                .and_then(|r| resource.rules.get_mut(r).map(|(rule, _)| (r, rule)))
             else {
                 ui.label("Select a rule to continue..");
                 return;

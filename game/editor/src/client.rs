@@ -124,7 +124,7 @@ impl EditorClient {
         auto_map: &EditorEventAutoMap,
         auto_mapper: &TileLayerAutoMapper,
     ) -> bool {
-        if let Some(rule) = auto_mapper
+        if let Some((rule, _)) = auto_mapper
             .resources
             .get(&auto_map.resource_and_hash)
             .and_then(|rules| rules.rules.get(&auto_map.name))
@@ -140,6 +140,9 @@ impl EditorClient {
                         }
                         TileLayerAutoMapperRuleType::Wasm(rule) => {
                             EditorEventRuleTy::Wasm(rule.wasm_file.clone())
+                        }
+                        TileLayerAutoMapperRuleType::LegacyRules { loading_data, .. } => {
+                            EditorEventRuleTy::LegacyRules(loading_data.to_vec())
                         }
                     },
                 },
