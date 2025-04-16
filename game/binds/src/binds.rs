@@ -17,6 +17,7 @@ pub enum BindActionsCharacter {
     NextWeapon,
     PrevWeapon,
     Weapon(WeaponType),
+    ResetInput,
 }
 
 #[derive(Debug, Hiarc, Clone, Copy, Hash, PartialEq, Eq)]
@@ -46,7 +47,7 @@ pub enum BindActionsLocalPlayer {
     ZoomReset,
 }
 
-const LOCAL_PLAYER_ACTIONS: [(&str, BindActionsLocalPlayer); 44] = [
+const LOCAL_PLAYER_ACTIONS: [(&str, BindActionsLocalPlayer); 46] = [
     (
         "+left",
         BindActionsLocalPlayer::Character(BindActionsCharacter::MoveLeft),
@@ -74,6 +75,10 @@ const LOCAL_PLAYER_ACTIONS: [(&str, BindActionsLocalPlayer); 44] = [
     (
         "+prevweapon",
         BindActionsLocalPlayer::Character(BindActionsCharacter::PrevWeapon),
+    ),
+    (
+        "+reset_input",
+        BindActionsLocalPlayer::Character(BindActionsCharacter::ResetInput),
     ),
     // weapons
     (
@@ -123,6 +128,10 @@ const LOCAL_PLAYER_ACTIONS: [(&str, BindActionsLocalPlayer); 44] = [
     (
         "+dummy.prevweapon",
         BindActionsLocalPlayer::Dummy(BindActionsCharacter::PrevWeapon),
+    ),
+    (
+        "+dummy.reset_input",
+        BindActionsLocalPlayer::Dummy(BindActionsCharacter::ResetInput),
     ),
     // weapons
     (
