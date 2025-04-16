@@ -598,6 +598,7 @@ impl ClientNativeImpl {
                             (self.sys.time_get().as_millis() / (1000 / 50)).max(1) as GameTickType,
                             &intra_tick_time,
                         ),
+                        include_last_anim_point: false,
                         camera: &Camera {
                             pos: vec2::new(21.0, 15.0),
                             zoom: 1.0,

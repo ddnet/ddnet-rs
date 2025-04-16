@@ -26,12 +26,18 @@ pub enum AutoMapperInputModes {
         tiles: Vec<Tile>,
         width: NonZeroU16MinusOne,
         height: NonZeroU16MinusOne,
-        /// X offset within the layer
-        /// should not be used for accessing the tiles.
+        /// X offset within the layer.
+        /// __Should not be used for accessing the tiles.__
         off_x: u16,
-        /// Y offset within the layer
-        /// should not be used for accessing the tiles.
+        /// Y offset within the layer.
+        /// __Should not be used for accessing the tiles.__
         off_y: u16,
+        /// Full layer width.
+        /// __Should not be used for accessing tiles or calculating indices.__
+        full_width: NonZeroU16MinusOne,
+        /// Full layer height.
+        /// __Should not be used for accessing tiles or calculating indices.__
+        full_height: NonZeroU16MinusOne,
     },
 }
 

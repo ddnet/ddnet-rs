@@ -206,6 +206,7 @@ log = "0.4.26"
 x509-cert = { version = "0.2.5" }
 crossbeam = "0.8.4"
 chrono = { version = "0.4.40", features = ["serde"] }
+native-dialog = "0.7.0"
 
 alloc-track = { version = "0.3.1", optional = true }
 stats_alloc = { version = "0.1.10", optional = true }

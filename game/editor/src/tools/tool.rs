@@ -79,13 +79,17 @@ impl ToolTileLayer {
         &mut self,
         ui_canvas: &UiCanvasSize,
         active_tool: &ActiveToolTiles,
+        tp: &Arc<rayon::ThreadPool>,
+        graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        buffer_object_handle: &GraphicsBufferObjectHandle,
         stream_handle: &GraphicsStreamHandle,
         canvas_handle: &GraphicsCanvasHandle,
         entities_container: &mut EntitiesContainer,
         fake_texture_2d_array: &TextureContainer2dArray,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         latest_keys_down: &HashSet<egui::Key>,
         current_pointer_pos: &egui::Pos2,
         available_rect: &egui::Rect,
@@ -93,7 +97,10 @@ impl ToolTileLayer {
         match active_tool {
             ActiveToolTiles::Brush => self.brush.render(
                 ui_canvas,
+                tp,
+                graphics_mt,
                 backend_handle,
+                buffer_object_handle,
                 stream_handle,
                 canvas_handle,
                 entities_container,
@@ -101,6 +108,7 @@ impl ToolTileLayer {
                 map,
                 latest_pointer,
                 latest_keys_down,
+                latest_modifiers,
                 current_pointer_pos,
                 available_rect,
             ),
@@ -158,6 +166,7 @@ impl ToolQuadLayer {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                latest_modifiers,
                 client,
             ),
         }
@@ -208,6 +217,7 @@ impl ToolSoundLayer {
         map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        latest_modifiers: &egui::Modifiers,
         client: &mut EditorClient,
     ) {
         match active_tool {
@@ -217,6 +227,7 @@ impl ToolSoundLayer {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                latest_modifiers,
                 client,
             ),
         }

@@ -24,12 +24,12 @@ use client_render_base::map::{
         ClientMapBufferQuadLayer, MapBufferPhysicsTileLayer, MapBufferTileLayer, SoundLayerSounds,
     },
     render_pipe::Camera,
+    render_tools::{CanvasType, RenderTools},
 };
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
 use egui::{pos2, vec2, FontDefinitions, InputState, OutputCommand, Pos2, Rect};
 use game_config::config::ConfigMap;
-use game_interface::types::game::GameTickType;
 use graphics::{
     graphics::graphics::Graphics,
     graphics_mt::GraphicsMultiThreaded,
@@ -37,12 +37,13 @@ use graphics::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         canvas::canvas::GraphicsCanvasHandle,
-        stream::stream::GraphicsStreamHandle,
+        stream::stream::{GraphicsStreamHandle, LinesStreamHandle},
+        stream_types::StreamedLine,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
 };
-use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use hiarc::HiarcTrait;
+use graphics_types::{commands::TexFlags, rendering::State, types::GraphicsMemoryAllocationType};
+use hiarc::{hi_closure, HiarcTrait};
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::{
@@ -94,16 +95,17 @@ use crate::{
     hotkeys::{BindsPerEvent, EditorBindsFile, EditorHotkeyEvent},
     image_store_container::{load_image_store_container, ImageStoreContainer},
     map::{
-        EditorActiveAnimationProps, EditorAnimations, EditorAnimationsProps,
+        EditorActiveAnimationProps, EditorAnimationProps, EditorAnimations, EditorAnimationsProps,
         EditorArbitraryLayerProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr,
         EditorCommonLayerOrGroupAttrInterface, EditorConfig, EditorGroup, EditorGroupPhysics,
         EditorGroupProps, EditorGroups, EditorGroupsProps, EditorImage, EditorImage2dArray,
         EditorLayer, EditorLayerArbitrary, EditorLayerQuad, EditorLayerSound, EditorLayerTile,
         EditorLayerUnionRef, EditorMap, EditorMapInterface, EditorMapProps, EditorMetadata,
         EditorPhysicsGroupProps, EditorPhysicsLayer, EditorPhysicsLayerProps, EditorPosAnimation,
-        EditorQuadLayerProps, EditorQuadLayerPropsPropsSelection, EditorResource, EditorResources,
-        EditorSound, EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
-        EditorTileLayerPropsSelection, ResourceSelection,
+        EditorQuadLayerProps, EditorQuadLayerPropsPropsSelection, EditorResource,
+        EditorResourceTexture2dArray, EditorResources, EditorSound, EditorSoundAnimation,
+        EditorSoundLayerProps, EditorTileLayerProps, EditorTileLayerPropsSelection,
+        ResourceSelection,
     },
     map_tools::{
         finish_design_quad_layer_buffer, finish_design_tile_layer_buffer,
@@ -536,6 +538,7 @@ impl Editor {
                         global_sound_listener,
                         time: Duration::ZERO,
                         time_scale: 0,
+                        animations: Default::default(),
                     },
                     resources: EditorResources {
                         images: Default::default(),
@@ -721,7 +724,7 @@ impl Editor {
                                         .iter_mut()
                                         .for_each(|byte| *byte = 0);
 
-                                    (mem, file.clone())
+                                    (mem, image_3d_width, image_3d_height, file.clone())
                                 };
                                 (read_file(&i.meta), i.hq_meta.as_ref().map(read_file), i)
                             })
@@ -911,6 +914,7 @@ impl Editor {
                 global_sound_listener,
                 time: Duration::ZERO,
                 time_scale: 0,
+                animations: Default::default(),
             },
             resources: EditorResources {
                 images: image_mems
@@ -920,6 +924,7 @@ impl Editor {
                             user: texture_handle
                                 .load_texture_rgba_u8(mem, i.name.as_str())
                                 .unwrap(),
+                            props: Default::default(),
                             file: file.into(),
                             hq: hq_mem_file.map(|(mem, file)| {
                                 (
@@ -935,23 +940,32 @@ impl Editor {
                     .collect(),
                 image_arrays: image_array_mems
                     .into_iter()
-                    .map(|((mem, file), hq_mem_file, i)| EditorImage2dArray {
-                        user: EditorResource {
-                            user: texture_handle
-                                .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
-                                .unwrap(),
-                            file: file.into(),
-                            hq: hq_mem_file.map(|(mem, file)| {
-                                (
-                                    file.into(),
-                                    texture_handle
+                    .map(
+                        |((mem, image_3d_width, image_3d_height, file), hq_mem_file, i)| {
+                            EditorImage2dArray {
+                                user: EditorResource {
+                                    props: EditorResourceTexture2dArray::new(
+                                        mem.as_slice(),
+                                        image_3d_width,
+                                        image_3d_height,
+                                    ),
+                                    user: texture_handle
                                         .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
                                         .unwrap(),
-                                )
-                            }),
+                                    file: file.into(),
+                                    hq: hq_mem_file.map(|(mem, _, _, file)| {
+                                        (
+                                            file.into(),
+                                            texture_handle
+                                                .load_texture_2d_array_rgba_u8(mem, i.name.as_str())
+                                                .unwrap(),
+                                        )
+                                    }),
+                                },
+                                def: i,
+                            }
                         },
-                        def: i,
-                    })
+                    )
                     .collect(),
                 sounds: sound_objects
                     .into_iter()
@@ -959,6 +973,7 @@ impl Editor {
                         def: i,
                         user: EditorResource {
                             user: s,
+                            props: Default::default(),
                             file: file.into(),
                             hq: hq_s_file.map(|(s, file)| (file.into(), s)),
                         },
@@ -1790,12 +1805,9 @@ impl Editor {
             &map.resources,
             &ConfigMap::default(),
             &map.game_camera(),
-            &RenderMap::calc_anim_time(
-                map.game_time_info().ticks_per_second,
-                map.animation_tick(),
-                &map.game_time_info().intra_tick_time,
-            ),
             &time,
+            &time,
+            map.user.include_last_anim_point(),
             &group.attr,
             layer,
             match layer {
@@ -1907,29 +1919,16 @@ impl Editor {
         for group in groups.iter().filter(|group| !group.editor_attr().hidden) {
             for layer in group.layers.iter() {
                 if !layer.editor_attr().hidden {
-                    if map.user.ui_values.animations_panel_open {
-                        self.render_design_layer(
-                            map_render,
-                            map,
-                            &map.animations.user.animations,
-                            group,
-                            layer,
-                            None,
-                            None,
-                            layer_rect,
-                        );
-                    } else {
-                        self.render_design_layer(
-                            map_render,
-                            map,
-                            &map.animations,
-                            group,
-                            layer,
-                            None,
-                            None,
-                            layer_rect,
-                        );
-                    }
+                    self.render_design_layer(
+                        map_render,
+                        map,
+                        map.active_animations(),
+                        group,
+                        layer,
+                        None,
+                        None,
+                        layer_rect,
+                    );
                     if layer.editor_attr().active && map.user.options.show_tile_numbers {
                         self.render_design_layer(
                             map_render,
@@ -1955,13 +1954,10 @@ impl Editor {
                     if let MapLayerSkeleton::Sound(layer) = layer {
                         let time = map.user.render_time();
                         map_render.sound.handle_sound_layer(
-                            &map.animations,
+                            map.active_animations(),
                             &time,
-                            &RenderMap::calc_anim_time(
-                                50.try_into().unwrap(),
-                                (time.as_millis() / (1000 / 50)).max(1) as GameTickType,
-                                &time,
-                            ),
+                            &time,
+                            map.user.include_last_anim_point(),
                             &map.resources.sounds,
                             &group.attr,
                             layer,
@@ -2010,11 +2006,8 @@ impl Editor {
                 forced_aspect_ratio: None,
             },
             &time,
-            &RenderMap::calc_anim_time(
-                map.game_time_info().ticks_per_second,
-                (time.as_millis() / (1000 / 50)).max(1) as GameTickType,
-                &map.game_time_info().intra_tick_time,
-            ),
+            &time,
+            map.user.include_last_anim_point(),
             100,
             as_tile_index
                 .map(ForcedTexture::TileLayerTileIndex)
@@ -2222,6 +2215,7 @@ impl Editor {
                     &mut tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
+                    &self.latest_modifiers,
                     &mut tab.client,
                 ),
             }
@@ -2271,13 +2265,17 @@ impl Editor {
                 ActiveTool::Tiles(tool) => self.tools.tiles.render(
                     ui_canvas,
                     tool,
+                    &self.thread_pool,
+                    &self.graphics_mt,
                     &self.backend_handle,
+                    &self.buffer_object_handle,
                     &self.stream_handle,
                     &self.canvas_handle,
                     &mut self.entities_container,
                     &self.fake_texture_array,
                     &tab.map,
                     &self.latest_pointer,
+                    &self.latest_modifiers,
                     &self.latest_keys_down,
                     &self.current_pointer_pos,
                     &self.latest_unused_rect,
@@ -2305,7 +2303,7 @@ impl Editor {
     }
 
     fn clone_anim_from_map<A, AP: DeserializeOwned + PartialOrd + Clone>(
-        animations: &mut Vec<AnimBaseSkeleton<(), AP>>,
+        animations: &mut Vec<AnimBaseSkeleton<EditorAnimationProps, AP>>,
         from: &[AnimBaseSkeleton<A, AP>],
     ) where
         AnimBaseSkeleton<A, AP>: Into<AnimBase<AP>>,
@@ -2313,20 +2311,14 @@ impl Editor {
         animations.clear();
         animations.extend(from.iter().map(|anim| AnimBaseSkeleton {
             def: anim.def.clone(),
-            user: (),
+            user: Default::default(),
         }));
     }
 
     fn add_fake_anim_point(map: &mut EditorMap) {
-        Self::clone_anim_from_map(
-            &mut map.animations.user.animations.color,
-            &map.animations.color,
-        );
-        Self::clone_anim_from_map(&mut map.animations.user.animations.pos, &map.animations.pos);
-        Self::clone_anim_from_map(
-            &mut map.animations.user.animations.sound,
-            &map.animations.sound,
-        );
+        Self::clone_anim_from_map(&mut map.user.animations.color, &map.animations.color);
+        Self::clone_anim_from_map(&mut map.user.animations.pos, &map.animations.pos);
+        Self::clone_anim_from_map(&mut map.user.animations.sound, &map.animations.sound);
 
         let anims = &map.animations.user.active_anims;
         let anim_points = &map.animations.user.active_anim_points;
@@ -2349,13 +2341,16 @@ impl Editor {
                 if let Some((mode, point)) = animations
                     .get(*anim_index)
                     .and_then(|anim| {
-                        anim.def.points.iter().enumerate().find_map(|(p, point)| {
-                            match point.time.cmp(&t) {
+                        anim.def
+                            .points
+                            .iter()
+                            .enumerate()
+                            .find_map(|(p, point)| match point.time.cmp(&t) {
                                 std::cmp::Ordering::Less => None,
                                 std::cmp::Ordering::Equal => Some(ReplOrInsert::Repl(p)),
                                 std::cmp::Ordering::Greater => Some(ReplOrInsert::Insert(p)),
-                            }
-                        })
+                            })
+                            .or(Some(ReplOrInsert::Insert(anim.def.points.len())))
                     })
                     .zip(anim_point.as_ref())
                 {
@@ -2382,19 +2377,19 @@ impl Editor {
             }
         }
         repl_or_insert(
-            &mut map.animations.user.animations.pos,
+            &mut map.user.animations.pos,
             &anims.pos,
             &anim_points.pos,
             map.user.ui_values.timeline.time(),
         );
         repl_or_insert(
-            &mut map.animations.user.animations.color,
+            &mut map.user.animations.color,
             &anims.color,
             &anim_points.color,
             map.user.ui_values.timeline.time(),
         );
         repl_or_insert(
-            &mut map.animations.user.animations.sound,
+            &mut map.user.animations.sound,
             &anims.sound,
             &anim_points.sound,
             map.user.ui_values.timeline.time(),
@@ -2466,6 +2461,73 @@ impl Editor {
                 .global_sound_listener
                 .update(tab.map.groups.user.pos);
         }
+    }
+
+    fn render_grid(&mut self) {
+        let Some(tab) = self.tabs.get(&self.active_tab) else {
+            return;
+        };
+
+        let Some(grid_size) = tab.map.user.options.render_grid else {
+            return;
+        };
+
+        let Some(layer) = tab.map.active_layer() else {
+            return;
+        };
+
+        let attr = layer.get_or_fake_group_attr();
+
+        let grid_size = grid_size as f32;
+
+        let mut state = State::new();
+        RenderTools::map_canvas_of_group(
+            CanvasType::Handle(&self.canvas_handle),
+            &mut state,
+            tab.map.groups.user.pos.x,
+            tab.map.groups.user.pos.y,
+            Some(&attr),
+            tab.map.groups.user.zoom,
+            tab.map.groups.user.parallax_aware_zoom,
+        );
+        let (width, height) = (state.get_canvas_width(), state.get_canvas_height());
+
+        let offset = state.canvas_tl;
+
+        let mut lines: Vec<StreamedLine> = vec![];
+        let color = ubvec4::new(255, 100, 100, 128);
+
+        let mut x = 1.0 - offset.x.rem_euclid(grid_size) - 1.0;
+
+        while x < width {
+            lines.push(StreamedLine::new().with_color(color).from_pos([
+                vec2::new(offset.x + x, offset.y),
+                vec2::new(offset.x + x, offset.y + height),
+            ]));
+            x += grid_size;
+        }
+
+        let mut y = 1.0 - offset.y.rem_euclid(grid_size) - 1.0;
+
+        while y < height {
+            lines.push(StreamedLine::new().with_color(color).from_pos([
+                vec2::new(offset.x, offset.y + y),
+                vec2::new(offset.x + width, offset.y + y),
+            ]));
+            y += grid_size;
+        }
+
+        self.stream_handle.render_lines(
+            hi_closure!(
+                [lines: Vec<StreamedLine>],
+                |mut stream_handle: LinesStreamHandle<'_>| -> () {
+                    for line in lines {
+                        stream_handle.add_vertices(line.into());
+                    }
+                }
+            ),
+            state,
+        );
     }
 
     fn render_ui(
@@ -2699,6 +2761,9 @@ impl EditorInterface for Editor {
 
         // if msaa is enabled, consume them now
         self.backend_handle.consumble_multi_samples();
+
+        // render the grid, if active
+        self.render_grid();
 
         // render the tools directly after the world
         // the handling/update of the tools & world happens after the UI tho

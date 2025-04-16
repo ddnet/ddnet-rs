@@ -16,11 +16,14 @@ use crate::{
     },
     client::EditorClient,
     map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
-    tools::{shared::in_radius, utils::render_rect},
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    tools::{
+        shared::{align_pos, in_radius},
+        utils::render_rect,
+    },
+    utils::{ui_pos_to_world_pos, ui_pos_to_world_pos_and_world_height, UiCanvasSize},
 };
 
-use super::shared::{render_sound_points, SoundPointerDownPoint, SOUND_POINT_RADIUS};
+use super::shared::{render_sound_points, SoundPointerDownPoint, SOUND_POINT_RADIUS_FACTOR};
 
 #[derive(Debug, Hiarc)]
 pub struct SoundBrushSounds {
@@ -38,6 +41,7 @@ pub struct SoundSelection {
     pub sound: Sound,
     pub point: SoundPointerDownPoint,
     pub cursor_in_world_pos: vec2,
+    pub cursor_corner_offset: vec2,
 }
 
 #[derive(Debug, Hiarc)]
@@ -99,6 +103,7 @@ impl SoundBrush {
         map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        latest_modifiers: &egui::Modifiers,
         client: &mut EditorClient,
     ) {
         let layer = map.active_layer();
@@ -186,13 +191,15 @@ impl SoundBrush {
                 self.pointer_down_state = SoundPointerDownState::None;
             }
         } else {
+            let align_pos = |pos: vec2| align_pos(map, latest_modifiers, pos);
+
             // check if the pointer clicked on one of the sound corner/center points
             let mut clicked_sound_point = false;
             if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
                 for (s, sound) in layer.layer.sounds.iter().enumerate() {
                     let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                    let pointer_cur = ui_pos_to_world_pos(
+                    let (pointer_cur, h) = ui_pos_to_world_pos_and_world_height(
                         canvas_handle,
                         ui_canvas,
                         map.groups.user.zoom,
@@ -206,11 +213,16 @@ impl SoundBrush {
                         map.groups.user.parallax_aware_zoom,
                     );
 
-                    let radius = SOUND_POINT_RADIUS;
+                    let h = h / canvas_handle.canvas_height() as f32;
+                    let radius = SOUND_POINT_RADIUS_FACTOR * h;
                     if in_radius(&sound.pos, &pointer_cur, radius) {
                         // pointer is in a drag mode
                         clicked_sound_point = true;
                         let down_point = SoundPointerDownPoint::Center;
+
+                        let sound_pos = vec2::new(sound.pos.x.to_num(), sound.pos.y.to_num());
+                        let cursor = vec2::new(x1, y1);
+
                         self.pointer_down_state = SoundPointerDownState::Point(down_point);
                         *if latest_pointer.primary_pressed() {
                             &mut self.last_translation
@@ -223,7 +235,8 @@ impl SoundBrush {
                             sound_index: s,
                             sound: *sound,
                             point: down_point,
-                            cursor_in_world_pos: vec2::new(x1, y1),
+                            cursor_in_world_pos: cursor,
+                            cursor_corner_offset: cursor - sound_pos,
                         });
                         self.last_selection = Some(SoundSelection {
                             is_background,
@@ -232,7 +245,8 @@ impl SoundBrush {
                             sound_index: s,
                             sound: *sound,
                             point: down_point,
-                            cursor_in_world_pos: vec2::new(x1, y1),
+                            cursor_in_world_pos: cursor,
+                            cursor_corner_offset: cursor - sound_pos,
                         });
 
                         break;
@@ -266,17 +280,24 @@ impl SoundBrush {
             }
             if latest_pointer.primary_down() && self.last_translation.is_some() {
                 let last_active = self.last_translation.as_mut().unwrap();
+                let new_pos = vec2::new(x1, y1);
+                let aligned_pos = align_pos(new_pos);
+                let new_pos = if let Some(aligned_pos) = aligned_pos {
+                    aligned_pos + last_active.cursor_corner_offset
+                } else {
+                    new_pos
+                };
                 if let Some(edit_sound) = layer.layer.sounds.get(last_active.sound_index).copied() {
                     let sound = &mut last_active.sound;
 
                     let pos_anim = edit_sound.pos_anim;
-                    let alter_anim_point =
-                        map.user.ui_values.animations_panel_open && pos_anim.is_some();
+                    let alter_anim_point = map.user.change_animations() && pos_anim.is_some();
 
                     let cursor_pos = last_active.cursor_in_world_pos;
+
                     // handle position
-                    let diff_x = ffixed::from_num(x1 - cursor_pos.x);
-                    let diff_y = ffixed::from_num(y1 - cursor_pos.y);
+                    let diff_x = ffixed::from_num(new_pos.x - cursor_pos.x);
+                    let diff_y = ffixed::from_num(new_pos.y - cursor_pos.y);
 
                     if alter_anim_point {
                         if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
@@ -284,8 +305,8 @@ impl SoundBrush {
                             pos.value.y += diff_y;
                         }
                     } else {
-                        sound.pos.x = diff_x;
-                        sound.pos.y = diff_y;
+                        sound.pos.x += diff_x;
+                        sound.pos.y += diff_y;
                     }
 
                     if *sound != edit_sound {
@@ -306,7 +327,7 @@ impl SoundBrush {
                     }
                 }
 
-                last_active.cursor_in_world_pos = vec2::new(x1, y1);
+                last_active.cursor_in_world_pos = new_pos;
             }
         }
     }
@@ -504,11 +525,13 @@ impl SoundBrush {
             map.groups.user.zoom,
             map.groups.user.parallax_aware_zoom,
         );
+        let time = map.user.render_time();
         RenderMap::render_sounds(
             stream_handle,
-            &map.animations,
-            &map.user.render_time(),
-            &map.animation_time(),
+            map.active_animations(),
+            &time,
+            &time,
+            map.user.include_last_anim_point(),
             brush.sounds.iter(),
             state,
         );
@@ -535,6 +558,7 @@ impl SoundBrush {
         map: &mut EditorMap,
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
+        latest_modifiers: &egui::Modifiers,
         client: &mut EditorClient,
     ) {
         let layer = map.active_layer();
@@ -549,6 +573,7 @@ impl SoundBrush {
                 map,
                 latest_pointer,
                 current_pointer_pos,
+                latest_modifiers,
                 client,
             );
         } else {

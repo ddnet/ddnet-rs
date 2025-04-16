@@ -12,7 +12,7 @@ use map::map::groups::layers::design::Quad;
 use math::math::vector::{ffixed, fvec2, nffixed, nfvec4, ubvec4, vec2};
 
 use crate::{
-    map::{EditorLayer, EditorLayerQuad, EditorLayerUnionRef, EditorMap},
+    map::{EditorLayer, EditorLayerQuad, EditorLayerUnionRef, EditorMap, EditorMapInterface},
     tools::shared::{in_radius, rotate},
     utils::{ui_pos_to_world_pos, UiCanvasSize},
 };
@@ -66,10 +66,11 @@ pub fn in_box(pos: &fvec2, x0: f32, y0: f32, x1: f32, y1: f32) -> bool {
 pub fn get_quad_points_animated(quad: &Quad, map: &EditorMap, time: Duration) -> [fvec2; 5] {
     let mut points = quad.points;
     if let Some(pos_anim) = quad.pos_anim {
-        let anim = &map.animations.pos[pos_anim];
+        let anim = &map.active_animations().pos[pos_anim];
         let anim_pos = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
+            map.user.include_last_anim_point(),
         );
         let rot = anim_pos.z / ffixed::from_num(360.0) * ffixed::PI * ffixed::from_num(2.0);
         let center = points[4];
@@ -86,10 +87,11 @@ pub fn get_quad_points_animated(quad: &Quad, map: &EditorMap, time: Duration) ->
 pub fn get_quad_points_color_animated(quad: &Quad, map: &EditorMap, time: Duration) -> [nfvec4; 4] {
     let mut color = quad.colors;
     if let Some(color_anim) = quad.color_anim {
-        let anim = &map.animations.color[color_anim];
+        let anim = &map.active_animations().color[color_anim];
         let anim_color = RenderTools::render_eval_anim(
             anim.def.points.as_slice(),
             time::Duration::try_from(time).unwrap(),
+            map.user.include_last_anim_point(),
         );
 
         for color in color.iter_mut() {
@@ -102,7 +104,7 @@ pub fn get_quad_points_color_animated(quad: &Quad, map: &EditorMap, time: Durati
     color
 }
 
-pub const QUAD_POINT_RADIUS: f32 = 0.75;
+pub const QUAD_POINT_RADIUS_FACTOR: f32 = 10.0;
 
 pub fn render_quad_points(
     ui_canvas: &UiCanvasSize,
@@ -153,12 +155,14 @@ pub fn render_quad_points(
                 map.groups.user.zoom,
                 map.groups.user.parallax_aware_zoom,
             );
+            let h = state.get_canvas_height() / canvas_handle.canvas_height() as f32;
             stream_handle.render_quads(
-                hi_closure!([points: [fvec2; 5], x: f32, y: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                    let point_size = QUAD_POINT_RADIUS * 0.7;
+                hi_closure!([points: [fvec2; 5], x: f32, y: f32, h: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {
+                    let hit_size = QUAD_POINT_RADIUS_FACTOR * h;
+                    let point_size = QUAD_POINT_RADIUS_FACTOR * 0.7 * h;
                     if render_corner_points {
                         for point in &points[0..4] {
-                            let color = if in_radius(point, &vec2::new(x, y), QUAD_POINT_RADIUS) {
+                            let color = if in_radius(point, &vec2::new(x, y), hit_size) {
                                 ubvec4::new(150, 150, 255, 255)
                             }
                             else {
@@ -174,7 +178,7 @@ pub fn render_quad_points(
                             );
                         }
                     }
-                    let color = if in_radius(&points[4], &vec2::new(x, y), QUAD_POINT_RADIUS) {
+                    let color = if in_radius(&points[4], &vec2::new(x, y), hit_size) {
                         ubvec4::new(150, 255, 150, 255)
                     }
                     else {

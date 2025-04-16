@@ -123,6 +123,7 @@ impl MapSoundProcess {
         animations: &AnimationsSkeleton<AN, AS>,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         sounds: &[MapResourceRefSkeleton<impl Borrow<SoundObject>>],
         group_attr: &MapGroupAttr,
         layer: &MapLayerSoundSkeleton<S>,
@@ -148,6 +149,7 @@ impl MapSoundProcess {
                         cur_time,
                         cur_anim_time,
                         &sound.pos_anim_offset,
+                        include_last_anim_point,
                     );
                     pos.x += pos_channels.x;
                     pos.y += pos_channels.y;
@@ -166,6 +168,7 @@ impl MapSoundProcess {
                         cur_time,
                         cur_anim_time,
                         &sound.sound_anim_offset,
+                        include_last_anim_point,
                     );
                     volume *= sound_volume.x.to_num::<f64>();
                 }
@@ -221,6 +224,7 @@ impl MapSoundProcess {
         &self,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         map: &MapVisual,
         sound_layers: impl Iterator<Item = &'a MapSoundProcessInfo>,
         layer_ty: SoundLayerType,
@@ -240,6 +244,7 @@ impl MapSoundProcess {
                 &map.animations,
                 cur_time,
                 cur_anim_time,
+                include_last_anim_point,
                 &map.resources.sounds,
                 &group.attr,
                 layer,
@@ -253,6 +258,7 @@ impl MapSoundProcess {
         &self,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         map: &MapVisual,
         buffered_map: &ClientMapBuffered,
         camera: &Camera,
@@ -262,6 +268,7 @@ impl MapSoundProcess {
         self.handle_impl(
             cur_time,
             cur_anim_time,
+            include_last_anim_point,
             map,
             buffered_map.sound.background_sound_layers.iter(),
             SoundLayerType::Background,
@@ -273,6 +280,7 @@ impl MapSoundProcess {
         &self,
         cur_time: &Duration,
         cur_anim_time: &Duration,
+        include_last_anim_point: bool,
         map: &MapVisual,
         buffered_map: &ClientMapBuffered,
         camera: &Camera,
@@ -282,6 +290,7 @@ impl MapSoundProcess {
         self.handle_impl(
             cur_time,
             cur_anim_time,
+            include_last_anim_point,
             map,
             buffered_map.sound.foreground_sound_layers.iter(),
             SoundLayerType::Foreground,

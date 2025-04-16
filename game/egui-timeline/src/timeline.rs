@@ -371,6 +371,12 @@ impl Timeline {
                         let frac = time.rem_euclid(snap_to);
                         time -= frac;
                     }
+                    // if neither shift nor control, then snap to 10ms intervals
+                    if !i.modifiers.ctrl && !i.modifiers.shift {
+                        let snap_to = 10.0 / 1000.0;
+                        let frac = time.rem_euclid(snap_to);
+                        time -= frac;
+                    }
 
                     self.time.time = Duration::from_secs_f32(time);
                     self.time.down_time_smooth = Duration::from_secs_f32(smooth_time);
@@ -1521,5 +1527,9 @@ impl Timeline {
 
     pub fn time(&self) -> Duration {
         self.time.time
+    }
+
+    pub fn is_paused(&self) -> bool {
+        matches!(self.play_dir, PlayDir::Paused)
     }
 }

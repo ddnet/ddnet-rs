@@ -204,12 +204,14 @@ impl RenderTools {
         const CHANNELS: usize,
     >(
         points: &[AnimPoint<T, CHANNELS>],
-        time_nanos_param: time::Duration,
+        mut time_param: time::Duration,
+        // include last point in the evaluation
+        // usually only good during animating
+        include_last_point: bool,
     ) -> T
     where
         F: Copy + FromFixed + ToFixed,
     {
-        let mut time_nanos = time_nanos_param;
         if points.is_empty() {
             return T::default();
         }
@@ -220,22 +222,32 @@ impl RenderTools {
 
         let max_point_time = &points[points.len() - 1].time;
         let min_point_time = &points[0].time;
+
         if !max_point_time.is_zero() {
             let time_diff = max_point_time.saturating_sub(*min_point_time);
-            time_nanos = time::Duration::nanoseconds(
-                (time_nanos.whole_nanoseconds().abs() % time_diff.as_nanos() as i128) as i64,
+            if include_last_point {
+                let time = time::Duration::nanoseconds(
+                    (time_param.whole_nanoseconds().abs() % (time_diff.as_nanos() as i128 + 1))
+                        as i64,
+                ) + *min_point_time;
+                if time == *max_point_time {
+                    return points[points.len() - 1].value;
+                }
+            }
+            time_param = time::Duration::nanoseconds(
+                (time_param.whole_nanoseconds().abs() % time_diff.as_nanos() as i128) as i64,
             ) + *min_point_time;
         } else {
-            time_nanos = time::Duration::nanoseconds(0);
+            time_param = time::Duration::nanoseconds(0);
         }
 
-        let idx = points.partition_point(|p| time_nanos >= p.time);
+        let idx = points.partition_point(|p| time_param >= p.time);
         let idx_prev = idx.saturating_sub(1);
         let idx = idx.clamp(0, points.len() - 1);
         let point1 = &points[idx_prev];
         let point2 = &points[idx];
 
-        AnimPoint::eval_curve(point1, point2, time_nanos)
+        AnimPoint::eval_curve(point1, point2, time_param)
     }
 
     pub fn render_circle(

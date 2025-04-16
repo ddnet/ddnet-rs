@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
+    hash::Hasher,
     num::{NonZeroU16, NonZeroU32},
     path::{Path, PathBuf},
     sync::Arc,
@@ -28,8 +29,7 @@ use map::{
     map::groups::layers::tiles::{MapTileLayerAttr, Tile, TileFlags},
     types::NonZeroU16MinusOne,
 };
-use math::math::vector::ivec2;
-use rand::SeedableRng;
+use math::math::{vector::ivec2, Rng};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -37,6 +37,8 @@ use crate::{
     fs::read_file_editor,
     notifications::{EditorNotification, EditorNotifications},
 };
+
+use super::legacy_rules::{LegacyRule, LegacyRulesLoading};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum TileLayerAutoMapperTileType {
@@ -266,6 +268,8 @@ impl<T: AutoMapperInterface> EditorAutoMapperInterface for T {
                 height,
                 off_x: sub_x,
                 off_y: sub_y,
+                full_width: attr.width,
+                full_height: attr.height,
             },
         ) else {
             anyhow::bail!("wanted design tile layer auto mapper, got different output instead.");
@@ -354,6 +358,8 @@ impl AutoMapperInterface for TileLayerAutoMapperEditorRule {
             mut tiles,
             width,
             height,
+            off_x,
+            off_y,
             ..
         } = input;
 
@@ -428,10 +434,17 @@ impl AutoMapperInterface for TileLayerAutoMapperEditorRule {
                                 || (must_spawn && new_tile.index == 0)
                                 || (!must_spawn && new_tile.index != 0))
                         {
-                            let mut r = rand::rngs::StdRng::seed_from_u64(seed);
-                            let rand_val: u32 = rand::Rng::random_range(&mut r, 1..=u32::MAX);
+                            let mut hasher = rustc_hash::FxHasher::default();
+                            hasher.write_u64(seed);
+                            hasher.write_u16(off_x + x as u16);
+                            hasher.write_u16(off_y + y as u16);
+                            let seed = hasher.finish();
+                            let mut rng = Rng::new(seed);
+                            let rand_val = rng.random_int();
                             if run_tile.randomness.is_none()
-                                || run_tile.randomness.is_some_and(|val| rand_val <= val.get())
+                                || run_tile
+                                    .randomness
+                                    .is_some_and(|val| rand_val <= val.get() as u64)
                             {
                                 new_tile.index = run_tile.tile_index;
                                 new_tile.flags = run_tile.tile_flags;
@@ -469,6 +482,10 @@ impl TileLayerAutoMapperWasm {
 pub enum TileLayerAutoMapperRuleType {
     EditorRule(TileLayerAutoMapperEditorRule),
     Wasm(TileLayerAutoMapperWasm),
+    LegacyRules {
+        rule: LegacyRule,
+        loading_data: Arc<Vec<u8>>,
+    },
 }
 
 impl EditorAutoMapperInterface for TileLayerAutoMapperRuleType {
@@ -488,6 +505,7 @@ impl EditorAutoMapperInterface for TileLayerAutoMapperRuleType {
         let rule: &mut dyn EditorAutoMapperInterface = match self {
             Self::EditorRule(rule) => rule,
             Self::Wasm(rule) => &mut rule.manager,
+            Self::LegacyRules { rule, .. } => rule,
         };
         rule.run_layer(
             seed,
@@ -509,6 +527,7 @@ impl TileLayerAutoMapperRuleType {
         match self {
             Self::EditorRule(rule) => generate_hash_for(&serde_json::to_vec(rule).unwrap()),
             Self::Wasm(rule) => rule.wasm_file_hash,
+            Self::LegacyRules { loading_data, .. } => generate_hash_for(loading_data),
         }
     }
 }
@@ -547,15 +566,22 @@ enum LoadTy {
         wasm_file_hash: Hash,
         compiled_wasm: Vec<u8>,
     },
+    LegacyRules(LegacyRulesLoading),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ResourceHashTy {
+    Hashed,
+    NoHash,
 }
 
 struct LoadTask {
-    rules: HashMap<String, LoadTy>,
+    rules: HashMap<String, (LoadTy, ResourceHashTy)>,
     texture_mems: Vec<GraphicsBackendMemory>,
 }
 
 pub struct TileLayerAutoMapperRules {
-    pub rules: HashMap<String, TileLayerAutoMapperRuleType>,
+    pub rules: HashMap<String, (TileLayerAutoMapperRuleType, ResourceHashTy)>,
     pub visuals: TileLayerAutoMapperVisuals,
 }
 
@@ -594,6 +620,11 @@ pub struct TileLayerAutoMapper {
     pub tp: Arc<rayon::ThreadPool>,
     pub graphics_mt: GraphicsMultiThreaded,
     pub texture_handle: GraphicsTextureHandle,
+
+    // this is for tile -> physics tile auto mapping
+    pub tile_non_fully_transparent_percentage: u8,
+    /// Replace existing tiles of the selected auto mapping kind
+    pub tile_replace_existing: bool,
 }
 
 impl TileLayerAutoMapper {
@@ -624,6 +655,9 @@ impl TileLayerAutoMapper {
             tp,
             graphics_mt: graphics.get_graphics_mt(),
             texture_handle: graphics.texture_handle.clone(),
+
+            tile_non_fully_transparent_percentage: 45,
+            tile_replace_existing: false,
         }
     }
 
@@ -695,6 +729,23 @@ impl TileLayerAutoMapper {
                     .await
                     .unwrap_or_default();
 
+                let editor_path_no_hash: PathBuf = format!("editor/rules/{name}").into();
+
+                let files_no_hash = fs
+                    .files_in_dir_recursive(&editor_path_no_hash)
+                    .await
+                    .unwrap_or_default();
+
+                let files: HashMap<_, _> = files_no_hash
+                    .into_iter()
+                    .map(|(n, v)| (n, (v, ResourceHashTy::NoHash)))
+                    .chain(
+                        files
+                            .into_iter()
+                            .map(|(n, v)| (n, (v, ResourceHashTy::Hashed))),
+                    )
+                    .collect();
+
                 let mut img_mem = Vec::new();
                 let img = image_utils::png::load_png_image_as_rgba(
                     &image,
@@ -740,7 +791,7 @@ impl TileLayerAutoMapper {
                         .collect::<Vec<_>>();
 
                     let mut rules: HashMap<_, _> = Default::default();
-                    for (file, s, e) in files.iter().filter_map(|(f, file)| {
+                    for ((file, hash_ty), s, e) in files.iter().filter_map(|(f, file)| {
                         f.file_stem().and_then(|s| s.to_str()).and_then(|s| {
                             f.extension().and_then(|e| e.to_str()).map(|e| (file, s, e))
                         })
@@ -764,9 +815,12 @@ impl TileLayerAutoMapper {
                                         },
                                     )
                                 }),
+                            "rules" => LegacyRulesLoading::new(file)
+                                .ok()
+                                .map(|rules| (s.to_string(), LoadTy::LegacyRules(rules))),
                             _ => None,
                         } {
-                            rules.insert(name, ty);
+                            rules.insert(name, (ty, *hash_ty));
                         }
                     }
 
@@ -818,6 +872,22 @@ impl TileLayerAutoMapper {
             }
 
             fs.write_file(&editor_path, wasm_file).await?;
+
+            Ok(())
+        });
+    }
+
+    pub fn save_rules(io: &IoFileSys, name: String, resource_name_and_hash: String, file: Vec<u8>) {
+        let fs = io.fs.clone();
+        io.rt.spawn_without_lifetime(async move {
+            let editor_path: PathBuf =
+                format!("editor/rules/{resource_name_and_hash}/{name}.rules").into();
+
+            if let Some(parent) = editor_path.parent() {
+                fs.create_dir(parent).await?;
+            }
+
+            fs.write_file(&editor_path, file).await?;
 
             Ok(())
         });
@@ -880,8 +950,11 @@ impl TileLayerAutoMapper {
                                                     );
                                                     resource.rules.insert(
                                                         task.name,
-                                                        TileLayerAutoMapperRuleType::EditorRule(
-                                                            rule,
+                                                        (
+                                                            TileLayerAutoMapperRuleType::EditorRule(
+                                                                rule,
+                                                            ),
+                                                            ResourceHashTy::Hashed,
                                                         ),
                                                     );
                                                 }
@@ -912,6 +985,32 @@ impl TileLayerAutoMapper {
                                                 },
                                             ));
                                         }
+                                        "rules" => match LegacyRulesLoading::new(&task.rule) {
+                                            Ok(rules) => {
+                                                Self::save_rules(
+                                                    &self.io,
+                                                    task.name.clone(),
+                                                    task.resource_name_and_hash,
+                                                    task.rule,
+                                                );
+                                                let loading_data = Arc::new(rules.file);
+                                                for (name, rule) in rules.configs {
+                                                    let v = (
+                                                        TileLayerAutoMapperRuleType::LegacyRules {
+                                                            rule: LegacyRule { config: rule },
+                                                            loading_data: loading_data.clone(),
+                                                        },
+                                                        ResourceHashTy::Hashed,
+                                                    );
+                                                    resource
+                                                        .rules
+                                                        .insert(format!("{}/{name}", task.name), v);
+                                                }
+                                            }
+                                            Err(err) => {
+                                                self.errors.push(err);
+                                            }
+                                        },
                                         _ => {
                                             self.errors.push(anyhow!(
                                                 "Rule with file extension {} not supported",
@@ -962,7 +1061,10 @@ impl TileLayerAutoMapper {
                                         );
                                         resource.rules.insert(
                                             task.name,
-                                            TileLayerAutoMapperRuleType::Wasm(manager),
+                                            (
+                                                TileLayerAutoMapperRuleType::Wasm(manager),
+                                                ResourceHashTy::Hashed,
+                                            ),
                                         );
                                     }
                                     Err(err) => {
@@ -1013,16 +1115,19 @@ impl TileLayerAutoMapper {
                                             },
                                         }
                                     });
-                                    for (rule_name, rule) in load_task.rules {
+                                    for (rule_name, (rule, hash_ty)) in load_task.rules {
                                         match rule {
                                             LoadTy::EditorRule(rule) => {
                                                 entry.rules.insert(
                                                     rule_name,
-                                                    TileLayerAutoMapperRuleType::EditorRule(
-                                                        TileLayerAutoMapperEditorRule {
-                                                            runs: rule.runs,
-                                                            active_run: rule.active_run,
-                                                        },
+                                                    (
+                                                        TileLayerAutoMapperRuleType::EditorRule(
+                                                            TileLayerAutoMapperEditorRule {
+                                                                runs: rule.runs,
+                                                                active_run: rule.active_run,
+                                                            },
+                                                        ),
+                                                        hash_ty,
                                                     ),
                                                 );
                                             }
@@ -1037,16 +1142,29 @@ impl TileLayerAutoMapper {
                                                     wasm_file_hash,
                                                 ) {
                                                     Ok(manager) => {
-                                                        entry.rules.insert(
-                                                            rule_name,
+                                                        let v = (
                                                             TileLayerAutoMapperRuleType::Wasm(
                                                                 manager,
                                                             ),
+                                                            hash_ty,
                                                         );
+                                                        entry.rules.insert(rule_name, v);
                                                     }
                                                     Err(err) => {
                                                         self.errors.push(err);
                                                     }
+                                                }
+                                            }
+                                            LoadTy::LegacyRules(rules) => {
+                                                let loading_data = Arc::new(rules.file);
+                                                for (name, rule) in rules.configs {
+                                                    entry.rules.insert(
+                                                        format!("{rule_name}/{name}"),
+                                                        (TileLayerAutoMapperRuleType::LegacyRules {
+                                                            rule: LegacyRule { config: rule },
+                                                            loading_data: loading_data.clone(),
+                                                        }, hash_ty),
+                                                    );
                                                 }
                                             }
                                         }

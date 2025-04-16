@@ -54,6 +54,11 @@ log = "0.4.26"
 enum_dispatch = "0.3.13"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 fixed = "1.29.0"
+scan_fmt = "0.2.6"
+rustc-hash = "2.1.1"
+
+[dev-dependencies]
+base-fs = { path = "../../lib/base-fs" }
 
 [features]
 legacy = ["map-convert-lib"]

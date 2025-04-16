@@ -176,6 +176,32 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                         binds_per_event,
                         pipe.user_data.hotkeys,
                     );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Destructive mode",
+                        "",
+                        EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                            EditorHotkeyEventTileTool::Brush(
+                                EditorHotkeyEventTileBrush::Destructive,
+                            ),
+                        )),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Allow unused",
+                        "",
+                        EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                            EditorHotkeyEventTileTool::Brush(
+                                EditorHotkeyEventTileBrush::AllowUnused,
+                            ),
+                        )),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
                     ui.separator();
                     ui.separator();
                     ui.end_row();
@@ -315,6 +341,37 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                         "",
                         EditorHotkeyEvent::Preferences(
                             EditorHotkeyEventPreferences::DecreaseMapTimeSpeed,
+                        ),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Toggle grid",
+                        "",
+                        EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::ToggleGrid),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Increase grid size",
+                        "",
+                        EditorHotkeyEvent::Preferences(
+                            EditorHotkeyEventPreferences::IncreaseGridSize,
+                        ),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Decrease grid size",
+                        "",
+                        EditorHotkeyEvent::Preferences(
+                            EditorHotkeyEventPreferences::DecreaseGridSize,
                         ),
                         options,
                         binds_per_event,

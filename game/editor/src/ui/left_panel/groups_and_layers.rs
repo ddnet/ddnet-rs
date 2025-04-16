@@ -4,8 +4,9 @@ use crate::actions::actions::{
     ActAddSoundLayer, ActAddTileLayer, EditorAction,
 };
 use crate::client::EditorClient;
-use crate::map::EditorPhysicsLayer;
+use crate::map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorPhysicsLayer};
 use crate::ui::user_data::UserDataWithTab;
+use crate::utils::ui_pos_to_world_pos;
 use crate::{
     map::{
         EditorCommonLayerOrGroupAttrInterface, EditorDesignLayerInterface, EditorGroup,
@@ -26,11 +27,173 @@ use map::map::groups::layers::physics::{
 use map::map::groups::layers::tiles::MapTileLayerAttr;
 use map::map::groups::MapGroup;
 use map::types::NonZeroU16MinusOne;
-use math::math::vector::{nffixed, nfvec4};
+use math::math::vector::{ivec2, nffixed, nfvec4, vec2};
 use ui_base::types::UiRenderPipe;
 
 fn button_selected_style() -> egui::Stroke {
     egui::Stroke::new(2.0, Color32::LIGHT_GREEN)
+}
+
+fn check_layer_clicked_tile(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
+    if ui.input(|i| i.modifiers.ctrl && i.pointer.secondary_pressed()) {
+        let pointer_pos = ui.input(|i| {
+            i.pointer
+                .latest_pos()
+                .or(i.pointer.hover_pos())
+                .or(i.pointer.interact_pos())
+                .unwrap_or_default()
+        });
+        // search for the next layer for whos tile is potentially clicked
+        let map = &mut pipe.user_data.editor_tab.map;
+        fn group_iter(
+            groups: &[EditorGroup],
+            is_background: bool,
+        ) -> impl Iterator<Item = (EditorLayerUnionRef<'_>, EditorMapSetLayer)> {
+            groups
+                .iter()
+                .enumerate()
+                .flat_map(move |(group_index, group)| {
+                    group
+                        .layers
+                        .iter()
+                        .enumerate()
+                        .map(move |(layer_index, layer)| {
+                            (
+                                EditorLayerUnionRef::Design {
+                                    layer,
+                                    group,
+                                    group_index,
+                                    layer_index,
+                                    is_background,
+                                },
+                                if is_background {
+                                    EditorMapSetLayer::Background {
+                                        group: group_index,
+                                        layer: layer_index,
+                                    }
+                                } else {
+                                    EditorMapSetLayer::Foreground {
+                                        group: group_index,
+                                        layer: layer_index,
+                                    }
+                                },
+                            )
+                        })
+                })
+        }
+        fn phy_group_iter(
+            map: &EditorMap,
+        ) -> impl Iterator<Item = (EditorLayerUnionRef<'_>, EditorMapSetLayer)> {
+            map.groups
+                .physics
+                .layers
+                .iter()
+                .enumerate()
+                .map(move |(layer_index, layer)| {
+                    (
+                        EditorLayerUnionRef::Physics {
+                            layer_index,
+                            layer,
+                            group_attr: &map.groups.physics.attr,
+                        },
+                        EditorMapSetLayer::Physics { layer: layer_index },
+                    )
+                })
+        }
+        let bg1 = group_iter(&map.groups.background, true);
+        let fg1 = group_iter(&map.groups.foreground, false);
+        let bg2 = group_iter(&map.groups.background, true);
+        let fg2 = group_iter(&map.groups.foreground, false);
+        let phy1 = phy_group_iter(map);
+        let phy2 = phy_group_iter(map);
+
+        let layers: Vec<_> = bg1
+            .chain(phy1)
+            .chain(fg1)
+            .chain(bg2.chain(phy2).chain(fg2))
+            .collect();
+
+        let mut first_found = None;
+        let mut first_after_active_found = None;
+        let mut active_found = false;
+        for (layer, set_layer) in layers.iter() {
+            let (offset, parallax) = layer.get_offset_and_parallax();
+            let pos = ui_pos_to_world_pos(
+                pipe.user_data.canvas_handle,
+                &ui.ctx().screen_rect(),
+                map.groups.user.zoom,
+                vec2::new(pointer_pos.x, pointer_pos.y),
+                map.groups.user.pos.x,
+                map.groups.user.pos.y,
+                offset.x,
+                offset.y,
+                parallax.x,
+                parallax.y,
+                map.groups.user.parallax_aware_zoom,
+            );
+
+            if layer.is_tile_layer() {
+                let (w, h) = match layer {
+                    EditorLayerUnionRef::Physics { group_attr, .. } => {
+                        (group_attr.width, group_attr.height)
+                    }
+                    EditorLayerUnionRef::Design {
+                        layer: EditorLayer::Tile(layer),
+                        ..
+                    } => (layer.layer.attr.width, layer.layer.attr.height),
+                    _ => panic!("not a tile layer, code bug."),
+                };
+
+                let posi = ivec2::new(pos.x.floor() as i32, pos.y.floor() as i32);
+                if posi.x >= 0 && posi.y >= 0 && posi.x < w.get() as i32 && posi.y < h.get() as i32
+                {
+                    let tile_index = posi.y as usize * w.get() as usize + posi.x as usize;
+                    let is_non_air_tile = match layer {
+                        EditorLayerUnionRef::Physics { layer, .. } => match layer {
+                            EditorPhysicsLayer::Arbitrary(_) => false,
+                            EditorPhysicsLayer::Game(layer) | EditorPhysicsLayer::Front(layer) => {
+                                layer.layer.tiles[tile_index].index != 0
+                            }
+                            EditorPhysicsLayer::Tele(layer) => {
+                                layer.layer.base.tiles[tile_index].base.index != 0
+                            }
+                            EditorPhysicsLayer::Speedup(layer) => {
+                                layer.layer.tiles[tile_index].base.index != 0
+                            }
+                            EditorPhysicsLayer::Switch(layer) => {
+                                layer.layer.base.tiles[tile_index].base.index != 0
+                            }
+                            EditorPhysicsLayer::Tune(layer) => {
+                                layer.layer.base.tiles[tile_index].base.index != 0
+                            }
+                        },
+                        EditorLayerUnionRef::Design {
+                            layer: EditorLayer::Tile(layer),
+                            ..
+                        } => layer.layer.tiles[tile_index].index != 0,
+                        _ => panic!("not a tile layer, code bug."),
+                    };
+
+                    if is_non_air_tile {
+                        if first_found.is_none() {
+                            first_found = Some(set_layer);
+                        }
+                        if active_found && first_after_active_found.is_none() {
+                            first_after_active_found = Some(set_layer);
+                        }
+                    }
+                }
+            }
+
+            if layer.is_active() {
+                active_found = true;
+            }
+        }
+
+        if let Some(set_layer) = first_after_active_found.or(first_found) {
+            map.set_active_layer(*set_layer);
+        }
+    }
 }
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
@@ -602,4 +765,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 });
             });
         });
+
+    check_layer_clicked_tile(ui, pipe);
 }

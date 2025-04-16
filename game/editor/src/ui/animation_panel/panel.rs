@@ -48,6 +48,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
     }
 
     let active_layer = map.groups.active_layer();
+    let selected_layers = map.groups.selected_layers();
+    let selected_layers = (!selected_layers.is_empty()).then_some(selected_layers);
     let tools = &mut *pipe.user_data.tools;
 
     let res = {
@@ -63,100 +65,119 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         let mut selected_sound_anim_selection;
         //let mut selected_sound_anim_selection;
         let (selected_color_anim, selected_pos_anim, selected_sound_anim) = {
-            let (can_change_pos_anim, can_change_color_anim, can_change_sound_anim) = if let (
-                Some(EditorLayerUnionRef::Design {
-                    layer: EditorLayer::Quad(layer),
-                    ..
-                }),
-                ActiveTool::Quads(ActiveToolQuads::Selection | ActiveToolQuads::Brush),
-                Some(range),
-                None,
-            ) = (
-                &active_layer,
-                &tools.active_tool,
-                if matches!(
-                    tools.active_tool,
-                    ActiveTool::Quads(ActiveToolQuads::Selection)
+            let (can_change_pos_anim, can_change_color_anim, can_change_sound_anim) =
+                if let (Some(selected_layers), None) = (
+                    &selected_layers,
+                    map.user.options.no_animations_with_properties.then_some(()),
                 ) {
-                    tools.quads.selection.range.as_mut()
-                } else if matches!(tools.active_tool, ActiveTool::Quads(ActiveToolQuads::Brush)) {
-                    tools.quads.brush.last_selection.as_mut()
-                } else {
-                    None
-                },
-                map.user.options.no_animations_with_properties.then_some(()),
-            ) {
-                let range = range.indices_checked(layer);
-                let range: Vec<_> = range.into_iter().collect();
-
-                (
-                    if range
-                        .windows(2)
-                        .all(|window| window[0].1.pos_anim == window[1].1.pos_anim)
-                        && !range.is_empty()
-                    {
-                        range[0].1.pos_anim
-                    } else {
-                        None
-                    },
-                    if range
-                        .windows(2)
-                        .all(|window| window[0].1.color_anim == window[1].1.color_anim)
-                        && !range.is_empty()
-                    {
-                        range[0].1.color_anim
-                    } else {
-                        None
-                    },
+                    (
+                        None,
+                        if selected_layers
+                            .windows(2)
+                            .all(|window| window[0].color_anim() == window[1].color_anim())
+                            && !selected_layers.is_empty()
+                        {
+                            *selected_layers[0].color_anim()
+                        } else {
+                            None
+                        },
+                        None,
+                    )
+                } else if let (
+                    Some(EditorLayerUnionRef::Design {
+                        layer: EditorLayer::Quad(layer),
+                        ..
+                    }),
+                    ActiveTool::Quads(ActiveToolQuads::Selection | ActiveToolQuads::Brush),
+                    Some(range),
                     None,
-                )
-            } else if let (
-                Some(EditorLayerUnionRef::Design {
-                    layer: EditorLayer::Sound(_),
-                    ..
-                }),
-                ActiveTool::Sounds(ActiveToolSounds::Brush),
-                Some(range),
-                None,
-            ) = (
-                &active_layer,
-                &tools.active_tool,
-                if matches!(
-                    tools.active_tool,
-                    ActiveTool::Sounds(ActiveToolSounds::Brush)
+                ) = (
+                    &active_layer,
+                    &tools.active_tool,
+                    if matches!(
+                        tools.active_tool,
+                        ActiveTool::Quads(ActiveToolQuads::Selection)
+                    ) {
+                        tools.quads.selection.range.as_mut()
+                    } else if matches!(tools.active_tool, ActiveTool::Quads(ActiveToolQuads::Brush))
+                    {
+                        tools.quads.brush.last_selection.as_mut()
+                    } else {
+                        None
+                    },
+                    map.user.options.no_animations_with_properties.then_some(()),
                 ) {
-                    tools.sounds.brush.last_selection.as_mut()
-                } else {
-                    None
-                },
-                map.user.options.no_animations_with_properties.then_some(()),
-            ) {
-                let range: Vec<_> = vec![(range.sound_index, &mut range.sound)];
+                    let range = range.indices_checked(layer);
+                    let range: Vec<_> = range.into_iter().collect();
 
-                (
-                    if range
-                        .windows(2)
-                        .all(|window| window[0].1.pos_anim == window[1].1.pos_anim)
-                        && !range.is_empty()
-                    {
-                        range[0].1.pos_anim
-                    } else {
-                        None
-                    },
+                    (
+                        if range
+                            .windows(2)
+                            .all(|window| window[0].1.pos_anim == window[1].1.pos_anim)
+                            && !range.is_empty()
+                        {
+                            range[0].1.pos_anim
+                        } else {
+                            None
+                        },
+                        if range
+                            .windows(2)
+                            .all(|window| window[0].1.color_anim == window[1].1.color_anim)
+                            && !range.is_empty()
+                        {
+                            range[0].1.color_anim
+                        } else {
+                            None
+                        },
+                        None,
+                    )
+                } else if let (
+                    Some(EditorLayerUnionRef::Design {
+                        layer: EditorLayer::Sound(_),
+                        ..
+                    }),
+                    ActiveTool::Sounds(ActiveToolSounds::Brush),
+                    Some(range),
                     None,
-                    if range
-                        .windows(2)
-                        .all(|window| window[0].1.sound_anim == window[1].1.sound_anim)
-                        && !range.is_empty()
-                    {
-                        range[0].1.sound_anim
+                ) = (
+                    &active_layer,
+                    &tools.active_tool,
+                    if matches!(
+                        tools.active_tool,
+                        ActiveTool::Sounds(ActiveToolSounds::Brush)
+                    ) {
+                        tools.sounds.brush.last_selection.as_mut()
                     } else {
                         None
                     },
-                )
-            } else {
-                (None, None, None)
-            };
+                    map.user.options.no_animations_with_properties.then_some(()),
+                ) {
+                    let range: Vec<_> = vec![(range.sound_index, &mut range.sound)];
+
+                    (
+                        if range
+                            .windows(2)
+                            .all(|window| window[0].1.pos_anim == window[1].1.pos_anim)
+                            && !range.is_empty()
+                        {
+                            range[0].1.pos_anim
+                        } else {
+                            None
+                        },
+                        None,
+                        if range
+                            .windows(2)
+                            .all(|window| window[0].1.sound_anim == window[1].1.sound_anim)
+                            && !range.is_empty()
+                        {
+                            range[0].1.sound_anim
+                        } else {
+                            None
+                        },
+                    )
+                } else {
+                    (None, None, None)
+                };
             (
                 if let Some(anim) = can_change_color_anim {
                     selected_color_anim_selection = Some(anim);
@@ -446,6 +467,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         let value = RenderTools::render_eval_anim(
                             anim.points.as_slice(),
                             time::Duration::try_from(*time).unwrap(),
+                            false,
                         );
                         *anim_point = Some(AnimPoint {
                             time: Duration::ZERO,

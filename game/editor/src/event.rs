@@ -99,6 +99,7 @@ pub struct EditorEventAutoMap {
 pub enum EditorEventRuleTy {
     EditorRuleJson(Vec<u8>),
     Wasm(Vec<u8>),
+    LegacyRules(Vec<u8>),
 }
 
 /// editor events are a collection of either actions or commands

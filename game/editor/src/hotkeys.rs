@@ -31,6 +31,8 @@ pub enum EditorHotkeyEventTileBrush {
     RotPlus90,
     RotMinus90,
     RotIndividualTilePlus90,
+    Destructive,
+    AllowUnused,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
@@ -85,6 +87,9 @@ pub enum EditorHotkeyEventPreferences {
     ToggleParallaxZoom,
     IncreaseMapTimeSpeed,
     DecreaseMapTimeSpeed,
+    ToggleGrid,
+    IncreaseGridSize,
+    DecreaseGridSize,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
@@ -241,6 +246,18 @@ impl EditorBindsFile {
             KeyboardShortcut::new(Default::default(), Key::G),
         );
         hotkey(
+            EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::Destructive),
+            )),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::D),
+        );
+        hotkey(
+            EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
+                EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::AllowUnused),
+            )),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::U),
+        );
+        hotkey(
             EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Shared(
                 EditorHotkeyEventSharedTool::AddQuadOrSound,
             )),
@@ -291,6 +308,18 @@ impl EditorBindsFile {
         hotkey(
             EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::DecreaseMapTimeSpeed),
             KeyboardShortcut::new(Modifiers::CTRL, Key::Minus),
+        );
+        hotkey(
+            EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::ToggleGrid),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::G),
+        );
+        hotkey(
+            EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::IncreaseGridSize),
+            KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Plus),
+        );
+        hotkey(
+            EditorHotkeyEvent::Preferences(EditorHotkeyEventPreferences::DecreaseGridSize),
+            KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Minus),
         );
         hotkey(
             EditorHotkeyEvent::Panels(EditorHotkeyEventPanels::ToggleAnimation),

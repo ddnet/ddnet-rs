@@ -14,14 +14,17 @@ use crate::{
     map::{EditorGroup, EditorGroupPanelResources, EditorGroups, EditorLayer, EditorResources},
 };
 
+use super::resource_limit::check_legacy_resource_limit_images;
+
 pub fn render(
     ui: &mut egui::Ui,
-    client: &mut EditorClient,
+    client: &EditorClient,
     groups: &EditorGroups,
     resources: &mut EditorResources,
     panel_data: &mut EditorGroupPanelResources,
     io: &Io,
 ) {
+    check_legacy_resource_limit_images(client, resources);
     super::resource_panel::render(
         ui,
         client,

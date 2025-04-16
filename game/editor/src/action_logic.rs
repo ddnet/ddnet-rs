@@ -59,8 +59,8 @@ use crate::{
         EditorAnimationProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr, EditorGroup,
         EditorGroupProps, EditorImage, EditorImage2dArray, EditorLayer, EditorLayerQuad,
         EditorLayerSound, EditorLayerTile, EditorMap, EditorPhysicsLayer, EditorPhysicsLayerProps,
-        EditorPosAnimation, EditorQuadLayerProps, EditorResource, EditorSound,
-        EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
+        EditorPosAnimation, EditorQuadLayerProps, EditorResource, EditorResourceTexture2dArray,
+        EditorSound, EditorSoundAnimation, EditorSoundLayerProps, EditorTileLayerProps,
     },
     map_tools::{
         finish_design_quad_layer_buffer, finish_design_tile_layer_buffer,
@@ -829,6 +829,13 @@ pub fn do_action(
                 act.base.res.hq_meta.is_none(),
                 "hq assets are currently not supported",
             );
+            anyhow::ensure!(
+                map.resources
+                    .images
+                    .iter()
+                    .all(|r| r.def.meta.blake3_hash != act.base.res.meta.blake3_hash),
+                "resource with that file hash already existed for images."
+            );
             let mut img_mem = None;
             let _ = load_png_image_as_rgba(&act.base.file, |width, height, _| {
                 img_mem = Some(backend_handle.mem_alloc(
@@ -846,6 +853,7 @@ pub fn do_action(
                     user: EditorResource {
                         user: texture_handle
                             .load_texture_rgba_u8(img_mem.unwrap(), act.base.res.name.as_str())?,
+                        props: Default::default(),
                         file: Rc::new(act.base.file.clone()),
                         hq: None,
                     },
@@ -870,6 +878,13 @@ pub fn do_action(
             anyhow::ensure!(
                 act.base.res.hq_meta.is_none(),
                 "hq assets are currently not supported",
+            );
+            anyhow::ensure!(
+                map.resources
+                    .image_arrays
+                    .iter()
+                    .all(|r| r.def.meta.blake3_hash != act.base.res.meta.blake3_hash),
+                "resource with that file hash already existed for image arrays."
             );
             let mut png = Vec::new();
             let img = load_png_image_as_rgba(&act.base.file, |width, height, _| {
@@ -909,6 +924,11 @@ pub fn do_action(
                 act.base.index,
                 EditorImage2dArray {
                     user: EditorResource {
+                        props: EditorResourceTexture2dArray::new(
+                            mem.as_slice(),
+                            image_3d_width,
+                            image_3d_height,
+                        ),
                         user: texture_handle
                             .load_texture_2d_array_rgba_u8(mem, act.base.res.name.as_str())?,
                         file: Rc::new(act.base.file.clone()),
@@ -936,6 +956,13 @@ pub fn do_action(
                 act.base.res.hq_meta.is_none(),
                 "hq assets are currently not supported",
             );
+            anyhow::ensure!(
+                map.resources
+                    .sounds
+                    .iter()
+                    .all(|r| r.def.meta.blake3_hash != act.base.res.meta.blake3_hash),
+                "resource with that file hash already existed for sounds."
+            );
             map.resources.sounds.insert(
                 act.base.index,
                 EditorSound {
@@ -946,6 +973,7 @@ pub fn do_action(
                             mem.as_mut_slice().copy_from_slice(&act.base.file);
                             map.user.sound_scene.sound_object_handle.create(mem)
                         },
+                        props: Default::default(),
                         file: Rc::new(act.base.file.clone()),
                         hq: None,
                     },

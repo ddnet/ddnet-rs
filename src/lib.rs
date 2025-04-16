@@ -28,11 +28,47 @@ static GLOBAL_ALLOC: alloc_track::AllocTrack<std::alloc::System> =
 #[global_allocator]
 static GLOBAL: &stats_alloc::StatsAlloc<std::alloc::System> = &stats_alloc::INSTRUMENTED_SYSTEM;
 
+fn show_message_box(title: &str, message: &str) {
+    use native_dialog::{MessageDialog, MessageType};
+    let _ = MessageDialog::new()
+        .set_type(MessageType::Error)
+        .set_title(title)
+        .set_text(message)
+        .show_alert();
+}
+
 fn main_impl(app: NativeApp) {
     let _ = thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max);
     let sys = System::new();
 
     let shared_info: Arc<LocalServerInfo> = Arc::new(LocalServerInfo::new(true));
+
+    let thread_id = std::thread::current().id();
+    std::panic::set_hook(Box::new(move |info| {
+        if thread_id != std::thread::current().id() {
+            return;
+        }
+        // Try to extract the panic message
+        let payload = info.payload();
+        let message = if let Some(s) = payload.downcast_ref::<&str>() {
+            *s
+        } else if let Some(s) = payload.downcast_ref::<String>() {
+            s.as_str()
+        } else {
+            "Unknown panic message"
+        };
+
+        let loc = if let Some(loc) = info.location() {
+            format!("In: {loc}")
+        } else {
+            "".to_string()
+        };
+
+        show_message_box(
+            "The game crashed",
+            &format!("Fatal error:\n{message}\n{loc}"),
+        );
+    }));
 
     let mut args: Vec<_> = std::env::args().collect();
     // TODO: don't rely on first arg being executable

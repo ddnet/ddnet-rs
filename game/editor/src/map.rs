@@ -10,13 +10,11 @@ use std::{
 use base::{hash::Hash, linked_hash_map_view::FxLinkedHashMap};
 use base_io::runtime::IoRuntimeTask;
 use client_render_base::map::{
-    map::RenderMap,
     map_buffered::{PhysicsTileLayerVisuals, QuadLayerVisuals, SoundLayerSounds, TileLayerVisuals},
     render_pipe::{Camera, GameTimeInfo},
 };
 use egui_file_dialog::FileDialog;
 use egui_timeline::timeline::Timeline;
-use game_interface::types::game::GameTickType;
 use graphics::handles::texture::texture::{TextureContainer, TextureContainer2dArray};
 use hiarc::Hiarc;
 use map::{
@@ -67,6 +65,10 @@ pub trait EditorCommonLayerOrGroupAttrInterface {
 }
 
 pub trait EditorDesignLayerInterface {
+    fn is_selected(&self) -> bool;
+}
+
+pub trait EditorPhysicsLayerInterface {
     fn is_selected(&self) -> bool;
 }
 
@@ -262,28 +264,68 @@ pub struct EditorGroupsProps {
     pub parallax_aware_zoom: bool,
 }
 
-#[derive(Debug, Hiarc, Default, Clone)]
-pub struct EditorResource<U> {
+#[derive(Debug, Hiarc, Clone)]
+pub struct EditorResource<U, P> {
     pub file: Rc<Vec<u8>>,
     pub user: U,
+    pub props: P,
     pub hq: Option<(Rc<Vec<u8>>, U)>,
 }
 
-impl<U> Borrow<U> for EditorResource<U> {
+impl<U, P> Borrow<U> for EditorResource<U, P> {
     fn borrow(&self) -> &U {
         &self.user
     }
 }
 
-pub type EditorImage = MapResourceRefSkeleton<EditorResource<TextureContainer>>;
-pub type EditorImage2dArray = MapResourceRefSkeleton<EditorResource<TextureContainer2dArray>>;
-pub type EditorSound = MapResourceRefSkeleton<EditorResource<SoundObject>>;
+#[derive(Debug, Hiarc, Clone)]
+pub struct EditorResourceTexture2dArray {
+    pub tile_non_fully_transparent_percentage: [u8; 256],
+}
+
+impl EditorResourceTexture2dArray {
+    pub fn new(img: &[u8], single_width: usize, single_height: usize) -> Self {
+        let mut tile_non_fully_transparent_percentage = vec![0u8; 256];
+        let single_pitch = single_width * 4;
+        let single_size = single_pitch * single_height;
+        for y in 0..16 {
+            for x in 0..16 {
+                let i = y * 16 + x;
+                let x_off = x * single_size;
+                let y_off = y * single_size * 16;
+                let mut non_transparent_counter = 0;
+                for y in 0..single_height {
+                    for x in 0..single_width {
+                        let index = y_off + (y * single_pitch) + x_off + x * 4;
+                        let alpha = img[index + 3];
+                        if alpha > 0 {
+                            non_transparent_counter += 1;
+                        }
+                    }
+                }
+
+                tile_non_fully_transparent_percentage[i] =
+                    ((non_transparent_counter * 100) / (single_width * single_height)) as u8;
+            }
+        }
+        Self {
+            tile_non_fully_transparent_percentage: tile_non_fully_transparent_percentage
+                .try_into()
+                .unwrap(),
+        }
+    }
+}
+
+pub type EditorImage = MapResourceRefSkeleton<EditorResource<TextureContainer, ()>>;
+pub type EditorImage2dArray =
+    MapResourceRefSkeleton<EditorResource<TextureContainer2dArray, EditorResourceTexture2dArray>>;
+pub type EditorSound = MapResourceRefSkeleton<EditorResource<SoundObject, ()>>;
 
 pub type EditorResources = MapResourcesSkeleton<
     (),
-    EditorResource<TextureContainer>,
-    EditorResource<TextureContainer2dArray>,
-    EditorResource<SoundObject>,
+    EditorResource<TextureContainer, ()>,
+    EditorResource<TextureContainer2dArray, EditorResourceTexture2dArray>,
+    EditorResource<SoundObject, ()>,
 >;
 
 #[derive(Debug, Hiarc, Default, Clone)]
@@ -317,10 +359,6 @@ pub struct EditorAnimationsProps {
     pub selected_pos_anim: Option<usize>,
     pub selected_color_anim: Option<usize>,
     pub selected_sound_anim: Option<usize>,
-
-    /// these animations are for if the animations panel is open and
-    /// fake anim points have to be inserted
-    pub animations: AnimationsSkeleton<(), ()>,
 
     // current selected anim points to fake
     pub active_anims: EditorActiveAnim,
@@ -425,6 +463,12 @@ impl EditorCommonLayerOrGroupAttrInterface for EditorPhysicsLayer {
     }
 }
 
+impl EditorPhysicsLayerInterface for EditorPhysicsLayer {
+    fn is_selected(&self) -> bool {
+        self.user().selected.is_some()
+    }
+}
+
 pub enum EditorLayerUnionRef<'a> {
     Physics {
         layer: &'a EditorPhysicsLayer,
@@ -519,6 +563,23 @@ impl EditorLayerUnionRef<'_> {
             }
         }
     }
+
+    pub fn color_anim(&self) -> &Option<usize> {
+        match self {
+            EditorLayerUnionRef::Design {
+                layer: EditorLayer::Tile(layer),
+                ..
+            } => &layer.layer.attr.color_anim,
+            EditorLayerUnionRef::Physics { .. } | EditorLayerUnionRef::Design { .. } => &None,
+        }
+    }
+
+    pub fn is_active(&self) -> bool {
+        match self {
+            EditorLayerUnionRef::Physics { layer, .. } => layer.editor_attr().active,
+            EditorLayerUnionRef::Design { layer, .. } => layer.editor_attr().active,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -545,16 +606,17 @@ pub trait EditorMapInterface {
     fn toggle_selected_layer(&mut self, layer: EditorMapSetLayer, try_multiselect: bool);
     fn toggle_selected_group(&mut self, group: EditorMapSetGroup, try_multiselect: bool);
 
-    fn get_time(&self) -> Duration;
     fn game_time_info(&self) -> GameTimeInfo;
     fn game_camera(&self) -> Camera;
-    fn animation_tick(&self) -> GameTickType;
-    fn animation_time(&self) -> Duration;
+
+    fn active_animations(&self) -> &EditorAnimations;
 }
 
 pub trait EditorMapGroupsInterface {
     fn active_layer(&self) -> Option<EditorLayerUnionRef>;
     fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
+
+    fn selected_layers(&self) -> Vec<EditorLayerUnionRef>;
 
     fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex>;
 }
@@ -631,6 +693,8 @@ pub struct EditorGlobalOptions {
     pub no_animations_with_properties: bool,
     /// show tile numbers for the current active tile layer
     pub show_tile_numbers: bool,
+    /// Whether to render a grid for aligning quads & sounds.
+    pub render_grid: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -645,6 +709,10 @@ pub struct EditorMapProps {
     pub time: Duration,
     // the scale how much the time should be progress, 0 = paused, 1 = normal speed etc.
     pub time_scale: u32,
+
+    /// these animations are for if the animations panel is open and
+    /// fake anim points have to be inserted
+    pub animations: EditorAnimations,
 }
 
 impl EditorMapProps {
@@ -656,14 +724,26 @@ impl EditorMapProps {
             self.time
         }
     }
+
+    /// If animations are paused and animation pannel is open,
+    /// then it's nice for the animator to see the last animation point too.
+    pub fn include_last_anim_point(&self) -> bool {
+        self.ui_values.animations_panel_open && self.ui_values.timeline.is_paused()
+    }
+
+    /// If animation panel is open and the user wants easier animation handling in the layer/quad/sound attributes,
+    /// then this returns `true`.
+    pub fn change_animations(&self) -> bool {
+        self.ui_values.animations_panel_open && !self.options.no_animations_with_properties
+    }
 }
 
 pub type EditorMap = MapSkeleton<
     EditorMapProps,
     (),
-    EditorResource<TextureContainer>,
-    EditorResource<TextureContainer2dArray>,
-    EditorResource<SoundObject>,
+    EditorResource<TextureContainer, ()>,
+    EditorResource<TextureContainer2dArray, EditorResourceTexture2dArray>,
+    EditorResource<SoundObject, ()>,
     EditorGroupsProps,
     EditorPhysicsGroupProps,
     EditorPhysicsLayerProps,
@@ -794,6 +874,51 @@ impl EditorMapGroupsInterface for EditorGroups {
             return layer;
         }
         None
+    }
+
+    fn selected_layers(&self) -> Vec<EditorLayerUnionRef> {
+        fn collect_group(
+            group: &[EditorGroup],
+            is_background: bool,
+        ) -> Vec<EditorLayerUnionRef<'_>> {
+            group
+                .iter()
+                .enumerate()
+                .flat_map(|(group_index, g)| {
+                    g.layers
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(layer_index, l)| {
+                            l.is_selected().then_some(EditorLayerUnionRef::Design {
+                                layer: l,
+                                group: g,
+                                group_index,
+                                layer_index,
+                                is_background,
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        }
+        collect_group(&self.background, true)
+            .into_iter()
+            .chain(collect_group(&self.foreground, false))
+            .chain(
+                self.physics
+                    .layers
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(layer_index, l)| {
+                        l.is_selected().then_some(EditorLayerUnionRef::Physics {
+                            layer: l,
+                            group_attr: &self.physics.attr,
+                            layer_index,
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .collect()
     }
 
     fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex> {
@@ -1008,16 +1133,8 @@ impl EditorMapInterface for EditorMap {
         }
     }
 
-    fn get_time(&self) -> Duration {
-        if self.user.ui_values.animations_panel_open {
-            self.user.ui_values.timeline.time()
-        } else {
-            self.user.time
-        }
-    }
-
     fn game_time_info(&self) -> GameTimeInfo {
-        let time = self.get_time();
+        let time = self.user.render_time();
         GameTimeInfo {
             ticks_per_second: 50.try_into().unwrap(),
             intra_tick_time: Duration::from_nanos(
@@ -1035,16 +1152,11 @@ impl EditorMapInterface for EditorMap {
         }
     }
 
-    fn animation_tick(&self) -> GameTickType {
-        let time = self.get_time();
-        (time.as_millis() / (1000 / 50)).max(1) as GameTickType
-    }
-
-    fn animation_time(&self) -> Duration {
-        RenderMap::calc_anim_time(
-            self.game_time_info().ticks_per_second,
-            self.animation_tick(),
-            &self.game_time_info().intra_tick_time,
-        )
+    fn active_animations(&self) -> &EditorAnimations {
+        if self.user.ui_values.animations_panel_open {
+            &self.user.animations
+        } else {
+            &self.animations
+        }
     }
 }

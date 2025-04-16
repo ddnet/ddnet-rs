@@ -195,43 +195,63 @@ pub(crate) const VALID_PNG: [u8; 528] = [
     0xe1, 0xe8, 0x2a, 0x57, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ];
 fn add_img_valid(map: &EditorMap) -> Vec<EditorAction> {
-    vec![EditorAction::AddImage(ActAddImage {
-        base: ActAddRemImage {
-            res: MapResourceRef {
-                name: format!("dbg{}", rand::rng().next_u64())
-                    .as_str()
-                    .try_into()
-                    .unwrap(),
-                meta: MapResourceMetaData {
-                    blake3_hash: generate_hash_for(&VALID_PNG),
-                    ty: "png".try_into().unwrap(),
+    let blake3_hash = generate_hash_for(&VALID_PNG);
+    if map
+        .resources
+        .images
+        .iter()
+        .all(|r| r.def.meta.blake3_hash != blake3_hash)
+    {
+        vec![EditorAction::AddImage(ActAddImage {
+            base: ActAddRemImage {
+                res: MapResourceRef {
+                    name: format!("dbg{}", rand::rng().next_u64())
+                        .as_str()
+                        .try_into()
+                        .unwrap(),
+                    meta: MapResourceMetaData {
+                        blake3_hash,
+                        ty: "png".try_into().unwrap(),
+                    },
+                    hq_meta: None,
                 },
-                hq_meta: None,
+                file: VALID_PNG.to_vec(),
+                index: rand::rng().next_u64() as usize % (map.resources.images.len() + 1),
             },
-            file: VALID_PNG.to_vec(),
-            index: rand::rng().next_u64() as usize % (map.resources.images.len() + 1),
-        },
-    })]
+        })]
+    } else {
+        Default::default()
+    }
 }
 
 fn add_img_2d_array_valid(map: &EditorMap) -> Vec<EditorAction> {
-    vec![EditorAction::AddImage2dArray(ActAddImage2dArray {
-        base: ActAddRemImage {
-            res: MapResourceRef {
-                name: format!("dbg{}", rand::rng().next_u64())
-                    .as_str()
-                    .try_into()
-                    .unwrap(),
-                meta: MapResourceMetaData {
-                    blake3_hash: generate_hash_for(&VALID_PNG),
-                    ty: "png".try_into().unwrap(),
+    let blake3_hash = generate_hash_for(&VALID_PNG);
+    if map
+        .resources
+        .image_arrays
+        .iter()
+        .all(|r| r.def.meta.blake3_hash != blake3_hash)
+    {
+        vec![EditorAction::AddImage2dArray(ActAddImage2dArray {
+            base: ActAddRemImage {
+                res: MapResourceRef {
+                    name: format!("dbg{}", rand::rng().next_u64())
+                        .as_str()
+                        .try_into()
+                        .unwrap(),
+                    meta: MapResourceMetaData {
+                        blake3_hash: generate_hash_for(&VALID_PNG),
+                        ty: "png".try_into().unwrap(),
+                    },
+                    hq_meta: None,
                 },
-                hq_meta: None,
+                file: VALID_PNG.to_vec(),
+                index: rand::rng().next_u64() as usize % (map.resources.image_arrays.len() + 1),
             },
-            file: VALID_PNG.to_vec(),
-            index: rand::rng().next_u64() as usize % (map.resources.image_arrays.len() + 1),
-        },
-    })]
+        })]
+    } else {
+        Default::default()
+    }
 }
 
 fn rem_img_valid(map: &EditorMap) -> Vec<EditorAction> {
