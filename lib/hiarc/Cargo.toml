@@ -9,7 +9,7 @@ thiserror = "2.0.12"
 hiarc-macro = { path = "../hiarc-macro", optional = true }
 
 parking_lot = { version = "0.12.3", default-features = false, optional = true }
-spin = { version = "0.9.8", default-features = false, features = ["spin_mutex", "rwlock"], optional = true }
+spin = { version = "0.10.0", default-features = false, features = ["spin_mutex", "rwlock"], optional = true }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", default-features = false, features = ["serde", "serde_impl"], optional = true }
 tokio = { version = "1.44.2", default-features = false, features = ["sync"], optional = true }
 anyhow = { version = "1.0.98", default-features = false, optional = true }

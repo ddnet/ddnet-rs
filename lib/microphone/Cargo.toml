@@ -23,7 +23,7 @@ audiopus_sys = { version = "0.2.2", features = ["static"], optional = true }
 rubato = { version = "0.16.2", optional = true }
 
 [package.metadata.cargo-machete]
-ignored = ["deep_filter"]
+ignored = ["deep_filter", "audiopus_sys"]
 
 [features]
 cpal_opus = ["dep:cpal", "dep:deep_filter", "dep:ndarray", "dep:atomic_enum", "dep:audiopus_sys", "dep:opus", "dep:rubato"]

@@ -19,7 +19,7 @@ pub fn render(ui: &mut egui::Ui, history: &mut VecDeque<PredictionTiming>) {
 
         ui.label(format!("min {:?}, max {:?}", min, max));
 
-        let line = Line::new(sin);
+        let line = Line::new("", sin);
         Plot::new(name)
             .height(150.0)
             .show(ui, |plot_ui| plot_ui.line(line));

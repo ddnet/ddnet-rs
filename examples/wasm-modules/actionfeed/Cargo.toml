@@ -5,11 +5,8 @@ edition = "2021"
 
 [dependencies]
 math = { path = "../../../lib/math" }
-base-io = { path = "../../../lib/base-io" }
-base-io-traits = { path = "../../../lib/base-io-traits" }
 api = { path = "../../../lib/api" }
 api-ui = { path = "../../../lib/api-ui" }
-graphics-types = { path = "../../../lib/graphics-types" }
 graphics = { path = "../../../lib/graphics" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
@@ -20,10 +17,7 @@ client-render-base = { path = "../../../game/client-render-base" }
 client-types = { path = "../../../game/client-types" }
 client-containers = { path = "../../../game/client-containers" }
 game-interface = { path = "../../../game/game-interface" }
-
-bincode = { version = "2.0.1", features = ["serde"] }
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.31.1" }
 num-traits = "0.2.19"
 
 [lib]

@@ -11,5 +11,4 @@ graphics-base-traits = { path = "../graphics-base-traits" }
 image-utils = { path = "../image-utils" }
 pool = { path = "../pool", features = ["enable_hiarc"] }
 hiarc = { path = "../hiarc", features = ["derive"] }
-rayon = "1.10.0"
 anyhow = { version = "1.0.98", features = ["backtrace"] }

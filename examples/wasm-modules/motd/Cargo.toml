@@ -4,24 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-base-io = { path = "../../../lib/base-io" }
-base-io-traits = { path = "../../../lib/base-io-traits" }
-api = { path = "../../../lib/api" }
 api-ui = { path = "../../../lib/api-ui" }
-graphics-types = { path = "../../../lib/graphics-types" }
-graphics = { path = "../../../lib/graphics" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
 api-ui-game = { path = "../../../game/api-ui-game" }
 client-ui = { path = "../../../game/client-ui" }
-client-types = { path = "../../../game/client-types" }
-client-containers = { path = "../../../game/client-containers" }
-game-base = { path = "../../../game/game-base" }
-game-config = { path = "../../../game/game-config" }
-
-bincode = { version = "2.0.1", features = ["serde"] }
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.31.1" }
 
 [lib]
 crate-type = ["cdylib"]

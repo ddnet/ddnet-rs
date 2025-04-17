@@ -8,14 +8,12 @@ edition = "2021"
 [dependencies]
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
-image-utils = { path = "../../lib/image-utils" }
 game-base = { path = "../../game/game-base" }
 map = { path = "../../game/map" }
 rayon = "1.10.0"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 oxipng = { version = "9.1", features = ["parallel"], default-features = false }
 ogg-opus = "0.1.2"
-audiopus_sys = { version = "0.2.2", features = ["static"] }
 vorbis_rs = { version = "0.5.5", default-features = false }
 
 [dev-dependencies]

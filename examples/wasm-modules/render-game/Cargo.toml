@@ -4,14 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ui-base = { path = "../../../lib/ui-base" }
 config = { path = "../../../lib/config" }
 api = { path = "../../../lib/api" }
-api-macros = { path = "../../../lib/api-macros" }
 
 api-render-game = { path = "../../../game/api-render-game" }
 client-render-game = { path = "../../../game/client-render-game" }
-url = { version = "2.5.4", features = ["serde"] }
 
 [lib]
 crate-type = ["cdylib"]

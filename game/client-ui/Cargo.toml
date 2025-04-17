@@ -49,7 +49,7 @@ gcd = "2.3.0"
 num-rational = "0.4.2"
 num-traits = "0.2.19"
 serde_with = "3.12.0"
-geo = "0.29.3"
+geo = "0.30.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 chrono = { version = "0.4.40", default-features = false, features = ["serde", "alloc"] }
