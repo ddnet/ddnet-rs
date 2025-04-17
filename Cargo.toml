@@ -50,7 +50,7 @@ members = [
     "examples/wasm-modules/console",
     "examples/wasm-modules/connecting",
     "examples/wasm-modules/motd",
-    "examples/wasm-modules/graphics",
+    "examples/wasm-modules/graphics-mod",
     "examples/wasm-modules/mainmenu",
     "examples/wasm-modules/ingame_menu",
     "src/server",
@@ -106,7 +106,8 @@ members = [
     "lib/steam",
     "game/game-state-wasm", "lib/native-display", "src/assets-server", "game/assets-base", "src/community-server",
     "src/community-register-server",
-    "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm", "game/client-notifications", "src/editor-server", "src/extra-convert", "game/editor-interface", "game/editor-auto-mapper-wasm",
+    "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm", 
+    "game/client-notifications", "src/editor-server", "src/extra-convert", "game/editor-interface", "game/editor-auto-mapper-wasm",
     "game/api-auto-mapper",
     "examples/wasm-modules/auto-mapper",
 ]
@@ -180,7 +181,7 @@ game-state-wasm = { path = "game/game-state-wasm" }
 editor = { path = "game/editor", default-features = false }
 
 egui-winit = { version = "0.31.1", default-features = false, features = ["x11", "arboard", "links"] }
-tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 num = "0.4.3"
 arrayvec = "0.7.6"
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
@@ -194,15 +195,15 @@ serde = "1.0.219"
 serde-value = "0.7.0"
 serde_json = "1.0.140"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 parking_lot = "0.12.3"
 thread-priority = "1.2.0"
 hiarc = { path = "lib/hiarc", features = ["derive"] }
 trybuild = "1.0"
-env_logger = "0.11.7"
+env_logger = "0.11.8"
 rand = { version = "0.9.0", features = ["std_rng"], default-features = false }
 url = "2.5.4"
-log = "0.4.26"
+log = "0.4.27"
 x509-cert = { version = "0.2.5" }
 crossbeam = "0.8.4"
 chrono = { version = "0.4.40", features = ["serde"] }

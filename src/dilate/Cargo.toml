@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 image-utils = { path = "../../lib/image-utils" }
 
-tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
-clap = { version = "4.5.32", features = ["derive"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+clap = { version = "4.5.36", features = ["derive"] }
 rayon = "1.10.0"
 oxipng = { version = "9.1", features = ["parallel"], default-features = false }

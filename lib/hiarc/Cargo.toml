@@ -9,14 +9,14 @@ thiserror = "2.0.12"
 hiarc-macro = { path = "../hiarc-macro", optional = true }
 
 parking_lot = { version = "0.12.3", default-features = false, optional = true }
-spin = { version = "0.9.8", default-features = false, features = ["spin_mutex", "rwlock"], optional = true }
+spin = { version = "0.10.0", default-features = false, features = ["spin_mutex", "rwlock"], optional = true }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", default-features = false, features = ["serde", "serde_impl"], optional = true }
-tokio = { version = "1.44.0", default-features = false, features = ["sync"], optional = true }
-anyhow = { version = "1.0.97", default-features = false, optional = true }
+tokio = { version = "1.44.2", default-features = false, features = ["sync"], optional = true }
+anyhow = { version = "1.0.98", default-features = false, optional = true }
 egui = { version = "0.31.1", default-features = false, optional = true }
 fixed = { version = "1.29.0", default-features = false, optional = true }
 rayon = { version = "1.10.0", default-features = false, optional = true }
-time = { version = "0.3.39", default-features = false, optional = true }
+time = { version = "0.3.41", default-features = false, optional = true }
 arc-swap = { version = "1.7.1", default-features = false, optional = true }
 kira = { version = "0.9.6", default-features = false, optional = true }
 mint = { version = "0.5.9", default-features = false, optional = true }

@@ -6,26 +6,18 @@ edition = "2021"
 [dependencies]
 base = { path = "../../../lib/base" }
 math = { path = "../../../lib/math" }
-base-io = { path = "../../../lib/base-io" }
-base-io-traits = { path = "../../../lib/base-io-traits" }
 api = { path = "../../../lib/api" }
 api-ui = { path = "../../../lib/api-ui" }
 pool = { path = "../../../lib/pool" }
-graphics-types = { path = "../../../lib/graphics-types" }
 graphics = { path = "../../../lib/graphics" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
 api-ui-game = { path = "../../../game/api-ui-game" }
 client-ui = { path = "../../../game/client-ui" }
 client-render-base = { path = "../../../game/client-render-base" }
-client-types = { path = "../../../game/client-types" }
 client-containers = { path = "../../../game/client-containers" }
-vanilla = { path = "../../../game/vanilla" }
 game-interface = { path = "../../../game/game-interface" }
-bincode = { version = "2.0.1", features = ["serde"] }
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.31.1" }
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 
 [lib]
 crate-type = ["cdylib"]

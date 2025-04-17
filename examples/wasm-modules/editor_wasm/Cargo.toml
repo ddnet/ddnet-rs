@@ -1,13 +1,11 @@
 [package]
-name = "editor-wasm-mod"
+name = "editor_wasm"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-config = { path = "../../../lib/config" }
 ui-base = { path = "../../../lib/ui-base" }
 api = { path = "../../../lib/api" }
-api-macros = { path = "../../../lib/api-macros" }
 api-editor = { path = "../../../game/api-editor" }
 editor = { path = "../../../game/editor" }
 

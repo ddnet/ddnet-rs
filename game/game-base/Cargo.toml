@@ -20,12 +20,12 @@ game-config = { path = "../game-config" }
 rayon = "1.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-flate2 = "1.1.0"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+flate2 = "1.1.1"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 serde = { version = "1.0.219", features = ["derive"] }
-indexmap = "2.8.0"
-time = { version = "0.3.39", features = ["serde"] }
+indexmap = "2.9.0"
+time = { version = "0.3.41", features = ["serde"] }
 serde_with = "3.12.0"
 thiserror = "2.0.12"
 itertools = "0.14.0"

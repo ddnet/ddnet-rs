@@ -14,4 +14,4 @@ math = { path = "../../lib/math" }
 pool = { path = "../../lib/pool" }
 game-database = { path = "../../lib/game-database" }
 
-once_cell = "1.21.0"
+once_cell = "1.21.3"

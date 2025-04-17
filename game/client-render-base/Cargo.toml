@@ -31,9 +31,9 @@ rayon = "1.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 bincode = { version = "2.0.1", features = ["serde"] }
-anyhow = { version = "1.0.97", features = ["backtrace"] }
-time = { version = "0.3.39", features = ["serde"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+time = { version = "0.3.41", features = ["serde"] }
 fixed = "1.29.0"
-log = "0.4.26"
+log = "0.4.27"
 url = { version = "2.5.4", features = ["serde"] }
 futures = "0.3.31"

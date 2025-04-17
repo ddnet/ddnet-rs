@@ -14,12 +14,12 @@ graphics-types = { path = "../graphics-types" }
 graphics-base-traits = { path = "../graphics-base-traits" }
 pool = { path = "../pool" }
 sound = { path = "../sound" }
-once_cell = "1.21.0"
+once_cell = "1.21.3"
 bincode = "2.0.1"
-async-trait = "0.1.87"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+async-trait = "0.1.88"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 rayon = "1.10.0"
 bytes = { version = "1.10.1", features = ["serde"] }
 serde = "1.0.219"
 url = { version = "2.5.4", features = ["serde"] }
-log = { version = "0.4.26", features = ["std"] }
+log = { version = "0.4.27", features = ["std"] }

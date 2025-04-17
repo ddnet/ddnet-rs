@@ -7,4 +7,4 @@ edition = "2021"
 base-io = { path = "../base-io" }
 config = { path = "../config" }
 
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }

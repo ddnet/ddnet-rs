@@ -7,4 +7,3 @@ edition = "2021"
 map = { path = "../map" }
 
 serde = { version = "1.0.219", features = ["derive"] }
-anyhow = { version = "1.0.97", features = ["backtrace"] }

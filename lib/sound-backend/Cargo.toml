@@ -11,5 +11,5 @@ sound = { path = "../sound" }
 config = { path = "../config" }
 kira = "0.9.6"
 mint = "0.5.9"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
-log = "0.4.26"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+log = "0.4.27"

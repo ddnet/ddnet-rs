@@ -6,12 +6,11 @@ edition = "2021"
 [dependencies]
 math = { path = "../../../lib/math" }
 api = { path = "../../../lib/api" }
-api-macros = { path = "../../../lib/api-macros" }
 
 api-auto-mapper = { path = "../../../game/api-auto-mapper" }
 editor-interface = { path = "../../../game/editor-interface" }
 
-log = "0.4.26"
+log = "0.4.27"
 rustc-hash = "2.1.1"
 
 [lib]

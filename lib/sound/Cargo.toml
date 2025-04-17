@@ -8,6 +8,6 @@ base = { path = "../base" }
 math = { path = "../math" }
 hiarc = { path = "../hiarc", features = ["derive"] }
 
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 serde = { version = "1.0.219", features = ["derive"] }
 thiserror = "2.0.12"
