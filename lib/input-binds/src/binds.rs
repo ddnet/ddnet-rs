@@ -224,4 +224,8 @@ impl<T: Debug + Clone + Hash + PartialEq + Eq> Binds<T> {
             bind_keys.iter().copied().collect::<BTreeSet<BindKey>>();
         insert_into_keys(keys_in_order.iter().peekable(), keys, actions);
     }
+
+    pub fn reset_cur_keys(&mut self) {
+        self.cur_keys_pressed_is_order.clear();
+    }
 }

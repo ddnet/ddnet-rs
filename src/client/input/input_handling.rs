@@ -224,6 +224,19 @@ impl InputHandling {
             hook_change: bool,
             next_weapon: Option<WeaponType>,
             weapon_diff: i64,
+            reset: bool,
+        }
+        impl CharacterActions {
+            fn changes_by_reset(&mut self) {
+                self.dir = 0;
+                self.dir_change = true;
+                self.jump = false;
+                self.jump_change = true;
+                self.fire = false;
+                self.fire_change = true;
+                self.hook = false;
+                self.hook_change = true;
+            }
         }
         let mut flags = CharacterInputFlags::default();
 
@@ -248,8 +261,9 @@ impl InputHandling {
                         BindActionsCharacter::Hook => character.hook = true,
                         BindActionsCharacter::NextWeapon
                         | BindActionsCharacter::PrevWeapon
+                        | BindActionsCharacter::ResetInput
                         | BindActionsCharacter::Weapon(_) => {
-                            // only listen for press
+                            // only listen for press or unpress
                         }
                     }
                 }
@@ -349,6 +363,9 @@ impl InputHandling {
                     BindActionsCharacter::PrevWeapon => {
                         character.weapon_diff -= 1;
                     }
+                    BindActionsCharacter::ResetInput => {
+                        // only on unpress
+                    }
                 }
             }
             for action in actions {
@@ -420,6 +437,9 @@ impl InputHandling {
                     | BindActionsCharacter::NextWeapon
                     | BindActionsCharacter::PrevWeapon => {
                         // ignore
+                    }
+                    BindActionsCharacter::ResetInput => {
+                        character.reset = true;
                     }
                 }
             }
@@ -531,6 +551,10 @@ impl InputHandling {
             }
             input.consumable.set_weapon_req(character.next_weapon);
         }
+        if character.reset {
+            character.changes_by_reset();
+            local_player.binds.reset_cur_keys();
+        }
         set(input, character);
 
         local_player.show_scoreboard = next_show_scoreboard;
@@ -586,6 +610,10 @@ impl InputHandling {
                 local_dummy.cursor_pos = local_dummy.cursor_pos_dummy;
                 let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
                 local_dummy.input.inp.cursor.set(cursor);
+            }
+            if dummy.reset {
+                dummy.changes_by_reset();
+                local_dummy.binds.reset_cur_keys();
             }
             set(&mut local_dummy.input.inp, dummy);
 
