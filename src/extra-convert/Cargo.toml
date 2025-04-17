@@ -7,5 +7,5 @@ edition = "2021"
 client-extra = { path = "../../game/client-extra" }
 image-utils = { path = "../../lib/image-utils" }
 
-clap = { version = "4.5.32", features = ["derive"] }
+clap = { version = "4.5.36", features = ["derive"] }
 tar = "0.4.44"

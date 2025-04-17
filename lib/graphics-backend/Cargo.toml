@@ -29,12 +29,12 @@ graphics-backend-traits = { path = "../graphics-backend-traits" }
 pool = { path = "../pool" }
 math = { path = "../math" }
 
-libc = "0.2.170"
+libc = "0.2.172"
 ash-window = "0.13.0"
 naga = { version = "24.0.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
 naga_oil = "0.17.0"
 raw-window-handle = "0.6.2"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 rayon = "1.10.0"
 ash = "0.38.0"
 num-derive = "0.4.2"
@@ -47,7 +47,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 arc-swap = "1.7.1"
 thread-priority = "1.2.0"
 bincode = { features = ["serde"], version = "2.0.1" }
-log = "0.4.26"
+log = "0.4.27"
 either = "1.15.0"
 replace_with = "0.1.7"
 crossbeam = "0.8.4"

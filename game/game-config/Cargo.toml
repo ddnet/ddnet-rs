@@ -10,4 +10,4 @@ game-interface = { path = "../game-interface" }
 
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }

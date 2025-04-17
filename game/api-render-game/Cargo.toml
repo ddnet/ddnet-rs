@@ -12,4 +12,4 @@ api = { path = "../../lib/api" }
 graphics-types = { path = "../../lib/graphics-types" }
 config = { path = "../../lib/config" }
 
-once_cell = "1.21.0"
+once_cell = "1.21.3"

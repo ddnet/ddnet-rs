@@ -30,10 +30,10 @@ client-render-base = { path = "../client-render-base" }
 game-config = { path = "../game-config" }
 
 serde = { version = "1.0.219", features = ["derive"] }
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 rayon = "1.10.0"
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-log = "0.4.26"
+log = "0.4.27"
 
 [features]
 ffmpeg = ["av-encoder/ffmpeg"]

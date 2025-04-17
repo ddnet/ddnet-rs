@@ -17,9 +17,9 @@ hiarc = { path = "../hiarc", features = ["derive", "enable_tokio"] }
 #av-data = "0.4.2"
 #av-format = "0.7"
 
-log = "0.4.26"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
-tokio = { version = "1.44.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+log = "0.4.27"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 rayon = "1.10.0"
 sendable = "0.6.1"
 

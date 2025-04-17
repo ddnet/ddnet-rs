@@ -9,4 +9,4 @@ editor-interface = { path = "../editor-interface" }
 api = { path = "../../lib/api" }
 api-wasm-macros = { path = "../../lib/api-wasm-macros" }
 
-once_cell = "1.21.0"
+once_cell = "1.21.3"

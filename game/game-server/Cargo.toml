@@ -40,7 +40,7 @@ ddnet-accounts-shared = { version = "0.2.0" }
 ddnet-account-client-http-fs = { version = "0.3.0" }
 
 rayon = "1.10.0"
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 difference = "2.0"
 rand = { version = "0.9.0", features = ["thread_rng"], default-features = false }
 x509-cert = { version = "0.2.5" }
@@ -48,10 +48,10 @@ ed25519-dalek = { version = "2.1.1" }
 bincode = { version = "2.0.1", features = ["serde"] }
 serde_json = "1.0.140"
 serde = { version = "1.0.219", features = ["derive"] }
-log = "0.4.26"
+log = "0.4.27"
 thread-priority = "1.2.0"
 chrono = { version = "0.4.40", features = ["serde"] }
-async-trait = "0.1.87"
+async-trait = "0.1.88"
 rustc-hash = "2.1.1"
 futures = "0.3.31"
 either = "1.15.0"
