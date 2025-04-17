@@ -35,6 +35,5 @@ Android
 
 ```
 # using https://github.com/rust-mobile/xbuild
-# IMPORTANT: currently needs hack, remove line `default = ["legacy"]` in Cargo.toml
 x build --release --arch arm64 --platform android --format apk -p ddnet-rs --features bundled_data_dir
 ```

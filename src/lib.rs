@@ -28,6 +28,7 @@ static GLOBAL_ALLOC: alloc_track::AllocTrack<std::alloc::System> =
 #[global_allocator]
 static GLOBAL: &stats_alloc::StatsAlloc<std::alloc::System> = &stats_alloc::INSTRUMENTED_SYSTEM;
 
+#[cfg(not(target_os = "android"))]
 fn show_message_box(title: &str, message: &str) {
     use native_dialog::{MessageDialog, MessageType};
     let _ = MessageDialog::new()
@@ -35,6 +36,11 @@ fn show_message_box(title: &str, message: &str) {
         .set_title(title)
         .set_text(message)
         .show_alert();
+}
+
+#[cfg(target_os = "android")]
+fn show_message_box(title: &str, message: &str) {
+    log::info!("[UNSUPPORTED] msg box: {title} {message}");
 }
 
 fn main_impl(app: NativeApp) {
