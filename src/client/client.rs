@@ -180,7 +180,7 @@ pub fn ddnet_main(
     let io = IoFileSys::new(|rt| {
         Arc::new(
             FileSystem::new(rt, "org", "", "DDNet-Rs-Alpha", "DDNet-Accounts")
-                .expect("most like you are missing a data directory"),
+                .expect("most likely you are missing a data directory"),
         )
     });
 
