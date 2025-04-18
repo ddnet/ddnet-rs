@@ -2591,11 +2591,13 @@ impl RenderGameInterface for RenderGame {
         self.world_sound_scene.stay_active();
 
         // set the ui zoom
-        self.hud
-            .ui
+        let zoom_level = Some(input.settings.pixels_per_point.clamp(0.1, 5.0));
+        self.hud.ui.ui.zoom_level.set(zoom_level);
+        self.players
+            .nameplate_renderer
             .ui
             .zoom_level
-            .set(Some(input.settings.pixels_per_point.clamp(0.1, 5.0)));
+            .set(zoom_level);
 
         let mut res = RenderGameResult::default();
         let map = self.map.try_get().unwrap();

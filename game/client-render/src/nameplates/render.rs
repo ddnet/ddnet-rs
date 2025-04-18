@@ -31,7 +31,7 @@ pub struct NameplateRenderPipe<'a> {
 }
 
 pub struct NameplateRender {
-    ui: UiContainer,
+    pub ui: UiContainer,
 
     canvas_handle: GraphicsCanvasHandle,
     backend_handle: GraphicsBackendHandle,
@@ -80,8 +80,6 @@ impl NameplateRender {
                     let size = ui.ctx().screen_rect().size();
                     let (x0, y0, x1, y1) = pipe.state.get_canvas_mapping();
 
-                    let name_scale = self.canvas_handle.canvas_width() as f32 / size.x;
-
                     let w = x1 - x0;
                     let h = y1 - y0;
 
@@ -91,7 +89,7 @@ impl NameplateRender {
                         round_output_to_gui: false,
                         ..Default::default()
                     };
-                    let font_size = (1.0 * name_scale) * height_scale;
+                    let font_size = 1.0 * height_scale;
                     job.append(
                         name,
                         0.0,
