@@ -36,7 +36,7 @@ use math::math::{vector::vec2, PI};
 use ui_base::ui::UiCreator;
 use vanilla::weapons::definitions::weapon_def::{get_weapon_sprite_scale, get_weapon_visual_scale};
 
-const GRID_SIZE: f32 = 36.0;
+const GRID_SIZE: f32 = 24.0;
 
 pub struct RenderHudPipe<'a> {
     pub hud_container: &'a mut HudContainer,

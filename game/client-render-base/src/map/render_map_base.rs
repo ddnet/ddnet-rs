@@ -405,18 +405,31 @@ impl RenderMapLoading {
                             anyhow::Ok(images_loading)
                         },
                         || {
-                            let sounds_loading = sound_files
-                                .into_par_iter()
-                                .map(|(_, file)| {
-                                    let mut mem = sound_mt.mem_alloc(file.len());
-                                    mem.as_mut_slice().copy_from_slice(&file);
-                                    let _ = sound_mt.try_flush_mem(&mut mem); // ignore error on purpose
-                                    anyhow::Ok(ClientMapSoundLoading { mem })
-                                })
-                                .collect::<anyhow::Result<Vec<ClientMapSoundLoading>>>()?;
-
                             benchmark.bench_multi("decompressing all sounds");
-                            anyhow::Ok(sounds_loading)
+                            anyhow::Ok(
+                                resources_clone
+                                    .sounds
+                                    .into_par_iter()
+                                    .map(|img| {
+                                        let meta = if let Some(hq_meta) =
+                                            load_hq_assets.then_some(img.hq_meta.as_ref()).flatten()
+                                        {
+                                            hq_meta
+                                        } else {
+                                            &img.meta
+                                        };
+                                        let file = sound_files
+                                            .get(&meta.blake3_hash)
+                                            .ok_or(anyhow!("sound with that hash not found"))?;
+
+                                        let mut mem = sound_mt.mem_alloc(file.len());
+                                        mem.as_mut_slice().copy_from_slice(file);
+                                        let _ = sound_mt.try_flush_mem(&mut mem); // ignore error on purpose
+
+                                        anyhow::Ok(ClientMapSoundLoading { mem })
+                                    })
+                                    .collect::<anyhow::Result<Vec<_>>>()?,
+                            )
                         },
                         || {
                             let map = Map::read_with_resources(

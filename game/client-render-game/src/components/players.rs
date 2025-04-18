@@ -79,7 +79,7 @@ pub struct Players {
     canvas_mapping: CanvasMappingIngame,
 
     pub tee_renderer: RenderTee,
-    nameplate_renderer: NameplateRender,
+    pub(crate) nameplate_renderer: NameplateRender,
     emoticon_renderer: RenderEmoticon,
     pub toolkit_renderer: ToolkitRender,
 }

@@ -3627,7 +3627,7 @@ pub fn load_config() -> (Io, ConfigEngine, ConfigGame) {
         |rt| {
             Arc::new(
                 FileSystem::new(rt, "org", "", "DDNet-Rs-Alpha", "DDNet-Accounts")
-                    .expect("most like you are missing a data directory"),
+                    .expect("most likely you are missing a data directory"),
             )
         },
         Arc::new(HttpClient::new_with_bind_addr("0.0.0.0".parse().unwrap()).unwrap_or_default()),

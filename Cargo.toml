@@ -207,7 +207,6 @@ log = "0.4.27"
 x509-cert = { version = "0.2.5" }
 crossbeam = "0.8.4"
 chrono = { version = "0.4.40", features = ["serde"] }
-native-dialog = "0.7.0"
 
 alloc-track = { version = "0.3.1", optional = true }
 stats_alloc = { version = "0.1.10", optional = true }
@@ -220,6 +219,9 @@ ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branc
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15.0"
 ndk = { version = "0.9.0", default-features = false }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+native-dialog = "0.7.0"
 
 [dev-dependencies]
 graphics-base-traits = { path = "lib/graphics-base-traits" }

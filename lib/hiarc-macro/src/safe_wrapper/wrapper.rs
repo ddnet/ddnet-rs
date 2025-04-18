@@ -193,7 +193,7 @@ pub(crate) fn hiarc_safer_wrapper(
                                     let ident_str = ident.to_string();
                                     quote! {
                                         {
-                                            fn internal_hi_test<
+                                            const fn internal_hi_test<
                                                 __HiTy: hiarc::HiarcTrait,
                                                 #(#generic_idents_and_bound),*
                                             >() -> u64 {
@@ -205,7 +205,10 @@ pub(crate) fn hiarc_safer_wrapper(
                                                     const __HiVal: u64, __HiTy: hiarc::HiarcTrait
                                                 > hiarc::HiarcTrait for InternalHiarcTest<__HiVal, __HiTy> {
                                                     const HI_VAL: u64 = {
-                                                        assert!(__HiVal >= <__HiTy as hiarc::HiarcTrait>::HI_VAL, concat!("evaluation of the hierarchical values indicate that \"", #ident_str, "\", in the function \"", concat!(#func_ident_str, "\", is a higher level component (hierarchically). So it cannot be passed as parameter to a function in this component")));
+                                                        assert!(__HiVal >= <__HiTy as hiarc::HiarcTrait>::HI_VAL,
+                                                            concat!("evaluation of the hierarchical values indicate that \"", #ident_str, "\", in the function \"",
+                                                            concat!(#func_ident_str, "\", is a higher level component (hierarchically). So it cannot be passed as parameter to a function in this component"))
+                                                        );
                                                         __HiVal - <__HiTy as hiarc::HiarcTrait>::HI_VAL
                                                     };
                                                 }

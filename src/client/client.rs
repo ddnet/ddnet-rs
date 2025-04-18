@@ -180,7 +180,7 @@ pub fn ddnet_main(
     let io = IoFileSys::new(|rt| {
         Arc::new(
             FileSystem::new(rt, "org", "", "DDNet-Rs-Alpha", "DDNet-Accounts")
-                .expect("most like you are missing a data directory"),
+                .expect("most likely you are missing a data directory"),
         )
     });
 
@@ -2394,10 +2394,9 @@ impl ClientNativeImpl {
 
         let events = self.local_console.get_events();
         let max_depth_reached = depth >= 16;
-        if !events.is_empty()
-            && events
-                .iter()
-                .any(|e| matches!(e, LocalConsoleEvent::Exec { .. }))
+        if events
+            .iter()
+            .any(|e| matches!(e, LocalConsoleEvent::Exec { .. }))
             && !max_depth_reached
         {
             self.handle_console_events_impl(native, events, depth + 1);
@@ -2406,6 +2405,11 @@ impl ClientNativeImpl {
                 "Max recursion limit for processing console events reached.",
                 Duration::from_secs(5),
             );
+        } else {
+            // put events back
+            for ev in events {
+                self.local_console.add_event(ev);
+            }
         }
     }
 
