@@ -2247,11 +2247,12 @@ impl CDatafileWrapper {
                                                     SoundShape::Rect {
                                                         size: ufvec2::new(
                                                             uffixed::from_num(
-                                                                sound.shape.props.rect.width as f64
+                                                                fx2f(sound.shape.props.rect.width)
+                                                                    as f64
                                                                     / 32.0,
                                                             ),
                                                             uffixed::from_num(
-                                                                sound.shape.props.rect.height
+                                                                fx2f(sound.shape.props.rect.height)
                                                                     as f64
                                                                     / 32.0,
                                                             ),
@@ -2964,12 +2965,14 @@ impl CDatafileWrapper {
                                             match s.shape {
                                                 SoundShape::Rect { size } => {
                                                     res.ty = SoundShapeTy::ShapeRectangle as i32;
-                                                    res.props.rect.width =
+                                                    res.props.rect.width = f2fx(
                                                         (size.x.to_num::<f64>() * 32.0).round()
-                                                            as i32;
-                                                    res.props.rect.height =
+                                                            as f32,
+                                                    );
+                                                    res.props.rect.height = f2fx(
                                                         (size.y.to_num::<f64>() * 32.0).round()
-                                                            as i32;
+                                                            as f32,
+                                                    );
                                                 }
                                                 SoundShape::Circle { radius } => {
                                                     res.ty = SoundShapeTy::ShapeCircle as i32;
