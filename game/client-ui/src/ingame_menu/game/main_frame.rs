@@ -4,7 +4,7 @@ use config::types::ConfRgb;
 use egui::{Color32, ComboBox, CornerRadius, DragValue, Layout, TextEdit, Window};
 use egui_extras::{Size, StripBuilder};
 use game_config::config::ConfigDummyScreenAnchor;
-use game_interface::types::render::character::PlayerIngameMode;
+use game_interface::types::render::character::{PlayerCameraMode, PlayerIngameMode};
 use math::math::vector::ubvec4;
 use ui_base::{
     style::topbar_secondary_buttons,
@@ -49,11 +49,18 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         if ui.button("Kill").clicked() {
                             pipe.user_data.browser_menu.events.push(UiEvent::Kill);
                         }
-                        if ui.button("Pause").clicked() {
+                        let is_ingame_cam =
+                            matches!(active_client_info.camera_mode, PlayerCameraMode::Default);
+                        if is_ingame_cam && ui.button("Pause").clicked() {
                             pipe.user_data
                                 .browser_menu
                                 .events
                                 .push(UiEvent::SwitchToFreeCam);
+                        } else if !is_ingame_cam && ui.button("Unpause").clicked() {
+                            pipe.user_data
+                                .browser_menu
+                                .events
+                                .push(UiEvent::SwitchToDefaultCam);
                         }
                     } else if (options.allow_stages || !options.use_vanilla_sides)
                         && ui.button("Join game").clicked()

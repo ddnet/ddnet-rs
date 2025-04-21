@@ -13,6 +13,11 @@ use serde::{Deserialize, Serialize};
 pub enum SpectatorSelectionEvent {
     FreeView,
     Selected(Vec<CharacterId>),
+    /// End the current spectate
+    Unspec,
+    /// Toggle between phasing the character and
+    /// normal spectating
+    SwitchPhaseState,
 }
 
 pub struct UserData<'a> {
@@ -22,4 +27,10 @@ pub struct UserData<'a> {
     pub skin_renderer: &'a RenderTee,
     pub character_infos: &'a FxLinkedHashMap<CharacterId, CharacterInfo>,
     pub events: &'a mut VecDeque<SpectatorSelectionEvent>,
+
+    /// Is the list result of a ingame spec (e.g. in ddrace /pause & /spec)
+    pub ingame: bool,
+    /// Whether spectating should lead to phased
+    /// state of the character (/spec in ddnet)
+    pub into_phased: bool,
 }

@@ -1,5 +1,10 @@
 use std::{
-    collections::HashMap, future::Future, net::IpAddr, path::Path, pin::Pin, sync::Arc,
+    collections::HashMap,
+    future::Future,
+    net::IpAddr,
+    path::{Path, PathBuf},
+    pin::Pin,
+    sync::Arc,
     time::Duration,
 };
 
@@ -67,6 +72,9 @@ pub struct ServerMap {
     pub map_file: Vec<u8>,
     pub resource_files: HashMap<String, Vec<u8>>,
 }
+
+#[cfg(feature = "legacy")]
+pub type LegacyToNewResult = (Vec<u8>, HashMap<String, Vec<u8>>);
 
 impl ServerMap {
     pub fn new(
@@ -150,177 +158,7 @@ impl ServerMap {
             Ok((map_file, resource_files)) => anyhow::Ok((map_file, resource_files)),
             #[cfg(feature = "legacy")]
             Err(map_res_err) => {
-                let map_path = format!("legacy/maps/{}.map", map_name.as_str());
-                let fs = io.fs.clone();
-                let cache = Arc::new(Cache::<20250418>::new("legacy-to-new-map-server", io));
-
-                let map_name = map_name.to_string();
-                let tp = runtime_thread_pool.clone();
-                let legacy_to_new = || {
-                    let map_name = map_name.to_string();
-                    let tp = tp.clone();
-                    let fs = fs.clone();
-                    let map_res_err = map_res_err.to_string();
-                    Box::new(move |map_file: Vec<u8>| {
-                        let map_name = map_name.to_string();
-                        let tp = tp.clone();
-                        let fs = fs.clone();
-                        let map_res_err = map_res_err.to_string();
-                        Box::pin(async move {
-                            let map = map_convert_lib::legacy_to_new::legacy_to_new_from_buf_async(
-                                map_file,
-                                &map_name.clone(),
-                                |path| {
-                                    let path = path.to_path_buf();
-                                    let fs = fs.clone();
-                                    Box::pin(async move { Ok(fs.read_file(&path).await?) })
-                                },
-                                &tp,
-                                true,
-                            )
-                            .await
-                            .map_err(|err| {
-                                anyhow!(
-                                    "Loading map failed: {map_res_err}, \
-                                    legacy map loading failed too: {err}"
-                                )
-                            })?;
-                            let mut map_bytes = Vec::new();
-                            map.map.write(&mut map_bytes, &tp)?;
-                            let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
-                            for (blake3_hash, resource) in map.resources.images.into_iter() {
-                                let path = format!(
-                                    "map/resources/images/{}_{}.{}",
-                                    resource.name,
-                                    fmt_hash(&blake3_hash),
-                                    resource.ty
-                                );
-                                resource_files.insert(path, resource.buf);
-                            }
-                            for (blake3_hash, resource) in map.resources.sounds.into_iter() {
-                                let path = format!(
-                                    "map/resources/sounds/{}_{}.{}",
-                                    resource.name,
-                                    fmt_hash(&blake3_hash),
-                                    resource.ty
-                                );
-                                resource_files.insert(path, resource.buf);
-                            }
-                            for (path, resource_file) in resource_files {
-                                let fs = fs.clone();
-                                let path: &Path = path.as_ref();
-                                if let Some(path) = path.parent() {
-                                    fs.create_dir(path).await?;
-                                }
-                                fs.write_file(path, resource_file).await?;
-                            }
-                            Ok(map_bytes)
-                        })
-                    })
-                };
-
-                let cache = cache.clone();
-                let legacy_to_new_task = legacy_to_new();
-                let map_path_task = map_path.clone();
-                let map_file = io
-                    .rt
-                    .spawn(async move {
-                        let path = map_path_task.as_ref();
-                        let map = cache
-                            .load(path, move |map_file| legacy_to_new_task(map_file))
-                            .await?;
-                        Ok(map)
-                    })
-                    .get_storage()?;
-
-                let map = Map::read(&map_file, runtime_thread_pool)?;
-                let load_resources = || {
-                    let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
-                    for path in map
-                        .resources
-                        .image_arrays
-                        .iter()
-                        .chain(map.resources.images.iter())
-                        .flat_map(|resource| {
-                            [format!(
-                                "map/resources/images/{}_{}.{}",
-                                resource.name.as_str(),
-                                fmt_hash(&resource.meta.blake3_hash),
-                                resource.meta.ty.as_str()
-                            )]
-                            .into_iter()
-                            .chain(
-                                resource
-                                    .hq_meta
-                                    .as_ref()
-                                    .map(|hq_meta| {
-                                        format!(
-                                            "map/resources/images/{}_{}.{}",
-                                            resource.name.as_str(),
-                                            fmt_hash(&hq_meta.blake3_hash),
-                                            hq_meta.ty.as_str()
-                                        )
-                                    })
-                                    .into_iter(),
-                            )
-                            .collect::<Vec<_>>()
-                        })
-                        .chain(map.resources.sounds.iter().flat_map(|resource| {
-                            [format!(
-                                "map/resources/sounds/{}_{}.{}",
-                                resource.name.as_str(),
-                                fmt_hash(&resource.meta.blake3_hash),
-                                resource.meta.ty.as_str()
-                            )]
-                            .into_iter()
-                            .chain(
-                                resource
-                                    .hq_meta
-                                    .as_ref()
-                                    .map(|hq_meta| {
-                                        format!(
-                                            "map/resources/sounds/{}_{}.{}",
-                                            resource.name.as_str(),
-                                            fmt_hash(&hq_meta.blake3_hash),
-                                            hq_meta.ty.as_str()
-                                        )
-                                    })
-                                    .into_iter(),
-                            )
-                            .collect::<Vec<_>>()
-                        }))
-                    {
-                        let file_path = path.clone();
-                        let fs = io.fs.clone();
-                        let file = io
-                            .rt
-                            .spawn(async move { Ok(fs.read_file(file_path.as_ref()).await?) })
-                            .get_storage()?;
-                        resource_files.insert(path, file);
-                    }
-
-                    anyhow::Ok(resource_files)
-                };
-                let resource_files = match load_resources() {
-                    Ok(resources) => resources,
-                    Err(_) => {
-                        // try to load the whole map again
-                        let legacy_to_new_task = legacy_to_new();
-                        let map_path_task = map_path.clone();
-                        io.rt
-                            .spawn(async move {
-                                let map_file = fs.read_file(map_path_task.as_ref()).await?;
-
-                                legacy_to_new_task(map_file).await?;
-
-                                Ok(())
-                            })
-                            .get_storage()?;
-                        load_resources()?
-                    }
-                };
-
-                Ok((map_file, resource_files))
+                Self::legacy_to_new(None, runtime_thread_pool, io, map_name, None, map_res_err)
             }
             #[cfg(not(feature = "legacy"))]
             Err(err) => Err(err),
@@ -331,6 +169,197 @@ impl ServerMap {
             map_file,
             resource_files,
         })
+    }
+
+    #[cfg(feature = "legacy")]
+    pub fn legacy_to_new(
+        base_path: Option<&Path>,
+        runtime_thread_pool: &Arc<rayon::ThreadPool>,
+        io: &Io,
+        map_name: &NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
+        hash: Option<&Hash>,
+        map_res_err: anyhow::Error,
+    ) -> anyhow::Result<LegacyToNewResult> {
+        let rest_path = if let Some(hash) = hash {
+            format!("legacy/maps/{}_{}.map", map_name.as_str(), fmt_hash(hash))
+        } else {
+            format!("legacy/maps/{}.map", map_name.as_str())
+        };
+        let map_path = if let Some(base_path) = base_path {
+            base_path.join(rest_path)
+        } else {
+            rest_path.into()
+        };
+        let fs = io.fs.clone();
+        let cache = Arc::new(Cache::<20250418>::new("legacy-to-new-map-server", io));
+
+        let map_name = map_name.to_string();
+        let tp = runtime_thread_pool.clone();
+        let legacy_to_new = || {
+            let map_name = map_name.to_string();
+            let tp = tp.clone();
+            let fs = fs.clone();
+            let map_res_err = map_res_err.to_string();
+            Box::new(move |map_file: Vec<u8>| {
+                let map_name = map_name.to_string();
+                let tp = tp.clone();
+                let fs = fs.clone();
+                let map_res_err = map_res_err.to_string();
+                Box::pin(async move {
+                    let map = map_convert_lib::legacy_to_new::legacy_to_new_from_buf_async(
+                        map_file,
+                        &map_name.clone(),
+                        |path| {
+                            let path = path.to_path_buf();
+                            let fs = fs.clone();
+                            Box::pin(async move { Ok(fs.read_file(&path).await?) })
+                        },
+                        &tp,
+                        true,
+                    )
+                    .await
+                    .map_err(|err| {
+                        anyhow!(
+                            "Loading map failed: {map_res_err}, \
+                                    legacy map loading failed too: {err}"
+                        )
+                    })?;
+                    let mut map_bytes = Vec::new();
+                    map.map.write(&mut map_bytes, &tp)?;
+                    let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
+                    for (blake3_hash, resource) in map.resources.images.into_iter() {
+                        let path = format!(
+                            "map/resources/images/{}_{}.{}",
+                            resource.name,
+                            fmt_hash(&blake3_hash),
+                            resource.ty
+                        );
+                        resource_files.insert(path, resource.buf);
+                    }
+                    for (blake3_hash, resource) in map.resources.sounds.into_iter() {
+                        let path = format!(
+                            "map/resources/sounds/{}_{}.{}",
+                            resource.name,
+                            fmt_hash(&blake3_hash),
+                            resource.ty
+                        );
+                        resource_files.insert(path, resource.buf);
+                    }
+                    for (path, resource_file) in resource_files {
+                        let fs = fs.clone();
+                        let path: &Path = path.as_ref();
+                        if let Some(path) = path.parent() {
+                            fs.create_dir(path).await?;
+                        }
+                        fs.write_file(path, resource_file).await?;
+                    }
+                    Ok(map_bytes)
+                })
+            })
+        };
+
+        let cache = cache.clone();
+        let legacy_to_new_task = legacy_to_new();
+        let map_path_task = map_path.clone();
+        let map_file = io
+            .rt
+            .spawn(async move {
+                let path = map_path_task.as_ref();
+                let map = cache
+                    .load(path, move |map_file| legacy_to_new_task(map_file))
+                    .await?;
+                Ok(map)
+            })
+            .get_storage()?;
+
+        let map = Map::read(&map_file, runtime_thread_pool)?;
+        let load_resources = || {
+            let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
+            for path in map
+                .resources
+                .image_arrays
+                .iter()
+                .chain(map.resources.images.iter())
+                .flat_map(|resource| {
+                    [format!(
+                        "map/resources/images/{}_{}.{}",
+                        resource.name.as_str(),
+                        fmt_hash(&resource.meta.blake3_hash),
+                        resource.meta.ty.as_str()
+                    )]
+                    .into_iter()
+                    .chain(
+                        resource
+                            .hq_meta
+                            .as_ref()
+                            .map(|hq_meta| {
+                                format!(
+                                    "map/resources/images/{}_{}.{}",
+                                    resource.name.as_str(),
+                                    fmt_hash(&hq_meta.blake3_hash),
+                                    hq_meta.ty.as_str()
+                                )
+                            })
+                            .into_iter(),
+                    )
+                    .collect::<Vec<_>>()
+                })
+                .chain(map.resources.sounds.iter().flat_map(|resource| {
+                    [format!(
+                        "map/resources/sounds/{}_{}.{}",
+                        resource.name.as_str(),
+                        fmt_hash(&resource.meta.blake3_hash),
+                        resource.meta.ty.as_str()
+                    )]
+                    .into_iter()
+                    .chain(
+                        resource
+                            .hq_meta
+                            .as_ref()
+                            .map(|hq_meta| {
+                                format!(
+                                    "map/resources/sounds/{}_{}.{}",
+                                    resource.name.as_str(),
+                                    fmt_hash(&hq_meta.blake3_hash),
+                                    hq_meta.ty.as_str()
+                                )
+                            })
+                            .into_iter(),
+                    )
+                    .collect::<Vec<_>>()
+                }))
+            {
+                let file_path = path.clone();
+                let fs = io.fs.clone();
+                let file = io
+                    .rt
+                    .spawn(async move { Ok(fs.read_file(file_path.as_ref()).await?) })
+                    .get_storage()?;
+                resource_files.insert(path, file);
+            }
+
+            anyhow::Ok(resource_files)
+        };
+        let resource_files = match load_resources() {
+            Ok(resources) => resources,
+            Err(_) => {
+                // try to load the whole map again
+                let legacy_to_new_task = legacy_to_new();
+                let map_path_task = map_path.clone();
+                io.rt
+                    .spawn(async move {
+                        let map_file = fs.read_file(map_path_task.as_ref()).await?;
+
+                        legacy_to_new_task(map_file).await?;
+
+                        Ok(())
+                    })
+                    .get_storage()?;
+                load_resources()?
+            }
+        };
+
+        Ok((map_file, resource_files))
     }
 }
 
@@ -521,29 +550,24 @@ impl ServerGame {
 
         Ok(Self {
             http_server: {
-                Some(HttpDownloadServer::new(
-                    vec![(
-                        format!("map/maps/{}_{}.twmap", map_name, fmt_hash(&map_hash)),
-                        map.map_file.clone(),
-                    )]
-                    .into_iter()
-                    .chain(map.resource_files.clone().into_iter())
-                    .chain(
-                        game_mod_blake3_hash
-                            .map(|game_mod_blake3_hash| {
-                                (
-                                    format!(
-                                        "{}/{}_{}.wasm",
-                                        STATE_MODS_PATH,
-                                        game_mod_name,
-                                        fmt_hash(&game_mod_blake3_hash)
-                                    ),
-                                    game_mod_file,
-                                )
-                            })
-                            .into_iter(),
-                    )
-                    .collect(),
+                Some(Self::prepare_download_server(
+                    &map_name,
+                    map_hash,
+                    &map.map_file,
+                    &map.resource_files,
+                    game_mod_blake3_hash
+                        .map(|game_mod_blake3_hash| {
+                            (
+                                format!(
+                                    "{}/{}_{}.wasm",
+                                    STATE_MODS_PATH,
+                                    game_mod_name,
+                                    fmt_hash(&game_mod_blake3_hash)
+                                ),
+                                game_mod_file,
+                            )
+                        })
+                        .into_iter(),
                     served_dirs,
                     download_server_port_v4,
                     download_server_port_v6,
@@ -574,6 +598,31 @@ impl ServerGame {
 
             inps_pool: Pool::with_capacity(2),
         })
+    }
+
+    pub fn prepare_download_server(
+        map_name: &str,
+        map_hash: Hash,
+        map_file: &[u8],
+        resource_files: &HashMap<String, Vec<u8>>,
+        extra_chains: impl Iterator<Item = (String, Vec<u8>)>,
+        served_dirs: HashMap<String, PathBuf>,
+        download_server_port_v4: u16,
+        download_server_port_v6: u16,
+    ) -> anyhow::Result<HttpDownloadServer> {
+        HttpDownloadServer::new(
+            vec![(
+                format!("map/maps/{}_{}.twmap", map_name, fmt_hash(&map_hash)),
+                map_file.to_vec(),
+            )]
+            .into_iter()
+            .chain(resource_files.clone())
+            .chain(extra_chains)
+            .collect(),
+            served_dirs,
+            download_server_port_v4,
+            download_server_port_v6,
+        )
     }
 
     pub fn should_reload(&self) -> bool {

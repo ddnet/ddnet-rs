@@ -264,6 +264,12 @@ pub struct ConfigClient {
     #[conf_valid(length(max = MAX_LANG_NAME_LEN))]
     #[default = "en"]
     pub language: String,
+    /// Whether spectating over the ingame spectator
+    /// list should make the character be phased.
+    pub phased_ingame_spectate: bool,
+    /// Whether the client showed a warning when joining a legacy
+    /// server and should not show it again.
+    pub shown_legacy_server_warning: bool,
 }
 
 #[config_default]

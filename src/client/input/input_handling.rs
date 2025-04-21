@@ -555,7 +555,9 @@ impl InputHandling {
             character.changes_by_reset();
             local_player.binds.reset_cur_keys();
         }
-        set(input, character);
+        if !next_show_spectator_selection {
+            set(input, character);
+        }
 
         local_player.show_scoreboard = next_show_scoreboard;
         local_player.show_chat_all = next_show_chat_all;
@@ -615,7 +617,9 @@ impl InputHandling {
                 dummy.changes_by_reset();
                 local_dummy.binds.reset_cur_keys();
             }
-            set(&mut local_dummy.input.inp, dummy);
+            if !next_show_spectator_selection {
+                set(&mut local_dummy.input.inp, dummy);
+            }
 
             local_dummy
                 .input

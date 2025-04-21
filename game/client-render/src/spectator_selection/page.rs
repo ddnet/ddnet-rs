@@ -28,6 +28,8 @@ pub struct SpectatorSelectionRenderPipe<'a> {
     pub skin_container: &'a mut SkinContainer,
     pub skin_renderer: &'a RenderTee,
     pub character_infos: &'a FxLinkedHashMap<CharacterId, CharacterInfo>,
+    pub ingame: bool,
+    pub into_phased: bool,
 }
 
 pub struct SpectatorSelectionRender {
@@ -68,6 +70,8 @@ impl SpectatorSelectionRender {
             canvas_handle: &self.canvas_handle,
             stream_handle: &self.stream_handle,
             events: &mut events,
+            ingame: pipe.ingame,
+            into_phased: pipe.into_phased,
         };
         let mut inner_pipe = UiRenderPipe::new(*pipe.cur_time, &mut user_data);
         generic_ui_renderer::render(

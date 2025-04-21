@@ -187,19 +187,12 @@ impl GameData {
     pub fn new(
         cur_time: Duration,
         prediction_timer: PredictionTimer,
-        local_player_id_counter: u64,
-        active_local_player_id: u64,
-        expected_local_players: FxLinkedHashMap<u64, ClientConnectedPlayer>,
+        local: LocalPlayerGameData,
     ) -> Self {
         let chat_and_system_msgs_pool = Pool::with_capacity(2);
 
         Self {
-            local: LocalPlayerGameData {
-                local_players: LocalPlayers::default(),
-                expected_local_players,
-                local_player_id_counter,
-                active_local_player_id,
-            },
+            local,
             dummy_control: Default::default(),
 
             snap_acks: Vec::with_capacity(16),
@@ -569,15 +562,16 @@ impl GameData {
         tick_of_inp: GameTickType,
         player_inputs: &mut FxLinkedHashMap<PlayerId, PoolVec<PlayerInputChainable>>,
         player_inputs_chainable_pool: &Pool<Vec<PlayerInputChainable>>,
+        force_send_input_per_tick: bool,
     ) {
         let mut handle_character =
-            |local_player_id: &CharacterId, local_player: &mut ClientPlayer| {
+            |local_player_id: &CharacterId, local_player: &mut ClientPlayer, is_dummy: bool| {
                 let should_send_rates = local_player
                     .sent_input_time
                     .is_none_or(|time| cur_time - time >= time_per_tick);
                 let consumable_input_changed =
                     local_player.sent_input.inp.consumable != local_player.input.inp.consumable;
-                let send_by_input_change = (consumable_input_changed
+                let mut send_by_input_change = (consumable_input_changed
                     && (!local_player
                         .input
                         .inp
@@ -587,6 +581,11 @@ impl GameData {
                     || local_player.sent_input.inp.state != local_player.input.inp.state
                     || (local_player.sent_input.inp.cursor != local_player.input.inp.cursor
                         && should_send_rates);
+                send_by_input_change = if force_send_input_per_tick {
+                    should_send_rates
+                } else {
+                    send_by_input_change
+                };
                 let should_send_old_input =
                     tick_of_inp.saturating_sub(local_player.sent_inp_tick) < ticks_to_send;
                 if send_by_input_change || (should_send_old_input && should_send_rates) {
@@ -597,6 +596,24 @@ impl GameData {
                     }
 
                     let net_inp = &mut local_player.input;
+                    // make sure dummy flag is set or unset
+                    if is_dummy {
+                        net_inp.inp.state.input_method_flags.set(
+                            net_inp
+                                .inp
+                                .state
+                                .input_method_flags
+                                .union(CharacterInputMethodFlags::DUMMY),
+                        );
+                    } else {
+                        net_inp.inp.state.input_method_flags.set(
+                            net_inp
+                                .inp
+                                .state
+                                .input_method_flags
+                                .difference(CharacterInputMethodFlags::DUMMY),
+                        );
+                    }
                     net_inp.inc_version();
                     local_player.sent_input = *net_inp;
 
@@ -647,7 +664,7 @@ impl GameData {
                     local_player.input.inp.viewport,
                 ));
             }
-            handle_character(id, local_player);
+            handle_character(id, local_player, false);
         }
 
         let local_players = &mut self.local.local_players;
@@ -703,7 +720,7 @@ impl GameData {
                     .try_overwrite(&inp, local_player.input.version() + 1, true);
             }
 
-            handle_character(local_player_id, local_player);
+            handle_character(local_player_id, local_player, local_player.is_dummy);
         }
         if let DummyHammerState::Active { last_hammer } = &mut self.dummy_control.dummy_hammer {
             if last_hammer

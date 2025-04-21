@@ -106,6 +106,8 @@ pub struct ActiveGame {
     pub connect: GameConnect,
 
     pub base: GameBase,
+
+    pub send_input_every_tick: bool,
 }
 
 impl ActiveGame {
@@ -114,7 +116,9 @@ impl ActiveGame {
         player_inputs: &FxLinkedHashMap<PlayerId, PoolVec<PlayerInputChainable>>,
         sys: &dyn SystemTimeInterface,
     ) {
-        if !player_inputs.is_empty() || !self.game_data.snap_acks.is_empty() {
+        if !player_inputs.is_empty()
+            || (!self.send_input_every_tick && !self.game_data.snap_acks.is_empty())
+        {
             let mut player_inputs_send = self.player_inputs_chain_pool.new();
             for (player_id, player_inputs) in player_inputs.iter() {
                 let player = self

@@ -24,19 +24,20 @@ use client_map::client_map::{ClientMapFile, ClientMapLoading};
 use client_notifications::overlay::ClientNotifications;
 use client_render_game::render_game::{RenderGameCreateOptions, RenderModTy};
 use client_replay::replay::Replay;
-use client_types::console::ConsoleEntry;
+use client_types::{cert::ServerCertMode, console::ConsoleEntry};
 use client_ui::{
     connect::user_data::ConnectModes,
     ingame_menu::server_info::{GameInfo, GameServerInfo},
     main_menu::page::MainMenuUi,
 };
 use config::config::ConfigEngine;
-use data::{ClientConnectedPlayer, GameData};
+use data::{ClientConnectedPlayer, GameData, LocalPlayerGameData};
 use demo::recorder::{DemoRecorder, DemoRecorderCreateProps, DemoRecorderCreatePropsBase};
 use game_base::{
     assets_url::HTTP_RESOURCE_URL,
     network::messages::{
-        GameModification, MsgClAddLocalPlayer, MsgClReady, RenderModification, RequiredResources,
+        GameModification, MsgClAddLocalPlayer, MsgClReady, MsgSvServerInfo, RenderModification,
+        RequiredResources,
     },
     server_browser::ServerBrowserServer,
 };
@@ -44,7 +45,7 @@ use game_config::config::{
     ConfigClient, ConfigDummyProfile, ConfigGame, ConfigPlayer, ConfigTeeEye,
 };
 use game_interface::{
-    interface::{GameStateCreateOptions, MAX_MAP_NAME_LEN},
+    interface::{GameStateCreateOptions, GameStateServerOptions, MAX_MAP_NAME_LEN},
     types::{
         character_info::NetworkCharacterInfo, render::character::TeeEye,
         resource_key::NetworkResourceKey,
@@ -66,11 +67,11 @@ use network::network::{
 use pool::{mt_pool::Pool as MtPool, pool::Pool};
 use prediction_timer::prediction_timing::PredictionTimer;
 use sound::scene_object::SceneObject;
-use types::{
-    DisconnectAutoCleanup, GameBase, GameConnect, GameMsgPipeline, GameNetwork, ServerCertMode,
-};
+use types::{DisconnectAutoCleanup, GameBase, GameConnect, GameMsgPipeline, GameNetwork};
 use ui_base::ui::UiCreator;
 use url::Url;
+
+use crate::localplayer::LocalPlayers;
 
 use super::spatial_chat::spatial_chat::SpatialChatGameWorldTy;
 
@@ -109,9 +110,10 @@ pub struct LoadingGame {
 
     pub resource_download_server: Option<Url>,
 
-    pub expected_local_players: FxLinkedHashMap<u64, ClientConnectedPlayer>,
-    pub local_player_id_counter: u64,
-    pub active_local_player_id: u64,
+    pub local: LocalPlayerGameData,
+
+    pub send_input_every_tick: bool,
+    pub server_options: GameStateServerOptions,
 }
 
 pub enum Game {
@@ -314,6 +316,8 @@ impl Game {
         expected_local_players: FxLinkedHashMap<u64, ClientConnectedPlayer>,
         local_player_id_counter: u64,
         active_local_player_id: u64,
+        send_input_every_tick: bool,
+        server_options: GameStateServerOptions,
     ) -> Self {
         info!("loading map: {}", map.as_str());
         let ping = timestamp.saturating_sub(network.server_connect_time);
@@ -362,9 +366,14 @@ impl Game {
 
             base,
 
-            expected_local_players,
-            local_player_id_counter,
-            active_local_player_id,
+            local: LocalPlayerGameData {
+                local_players: LocalPlayers::default(),
+                expected_local_players,
+                local_player_id_counter,
+                active_local_player_id,
+            },
+            send_input_every_tick,
+            server_options,
         })
     }
 
@@ -416,7 +425,7 @@ impl Game {
             .collect()
     }
 
-    /// This
+    /// This function respects the copy assets from main player config.
     pub fn network_char_info_from_config_for_dummy(
         conf_client: &ConfigClient,
         player: &ConfigPlayer,
@@ -622,16 +631,16 @@ impl Game {
                 connect,
                 base,
                 resource_download_server,
-                expected_local_players,
-                local_player_id_counter,
-                active_local_player_id,
+                local,
+                send_input_every_tick,
+                server_options,
             }) => {
                 if map.is_fully_loaded() {
                     network.send_unordered_to_server(&ClientToServerMessage::Ready(MsgClReady {
-                        players: Self::player_net_infos(&expected_local_players, config_game),
+                        players: Self::player_net_infos(&local.expected_local_players, config_game),
                         rcon_secret: connect.rcon_secret,
                     }));
-                    let ClientMapLoading::Map(ClientMapFile::Game(map)) = map else {
+                    let ClientMapLoading::Map(ClientMapFile::Game(mut map)) = map else {
                         panic!("remove this in future.")
                     };
 
@@ -649,6 +658,11 @@ impl Game {
                         demo_recorder_props.base.clone(),
                         map.game.game_tick_speed(),
                     );
+
+                    // overwrite the options from the mod with the ones from the server
+                    // in case they don't match
+                    map.game.info.options = server_options.clone();
+                    map.unpredicted_game.state.info.options = server_options;
 
                     let mut remote_console = RemoteConsoleBuilder::build(ui_creator);
                     remote_console.ui.ui_state.is_ui_open = false;
@@ -670,13 +684,7 @@ impl Game {
 
                         replay,
 
-                        game_data: GameData::new(
-                            base.sys.time_get(),
-                            prediction_timer,
-                            local_player_id_counter,
-                            active_local_player_id,
-                            expected_local_players,
-                        ),
+                        game_data: GameData::new(base.sys.time_get(), prediction_timer, local),
 
                         events: events_pool.new(),
                         map_votes_loaded: Default::default(),
@@ -708,6 +716,7 @@ impl Game {
                         base,
 
                         resource_download_server,
+                        send_input_every_tick,
                     }))
                 } else {
                     map.continue_loading();
@@ -729,9 +738,9 @@ impl Game {
 
                         resource_download_server,
 
-                        expected_local_players,
-                        local_player_id_counter,
-                        active_local_player_id,
+                        local,
+                        send_input_every_tick,
+                        server_options,
                     })
                 }
             }
@@ -740,6 +749,103 @@ impl Game {
                 Self::None
             }
         }
+    }
+
+    fn on_load(
+        &mut self,
+        pipe: &mut GameMsgPipeline<'_>,
+        game_server_info: &GameServerInfo,
+        spatial_chat_scene: &SceneObject,
+        timestamp: Duration,
+        info: MsgSvServerInfo,
+        local: LocalPlayerGameData,
+        connect: GameConnect,
+        base: GameBase,
+        mut network: GameNetwork,
+        auto_cleanup: DisconnectAutoCleanup,
+        prediction_timer: PredictionTimer,
+    ) {
+        game_server_info.fill_game_info(GameInfo {
+            map_name: info.map.to_string(),
+        });
+        game_server_info.fill_server_options(info.server_options.clone());
+        pipe.spatial_chat.spatial_chat.support(info.spatial_chat);
+
+        let mut expected_local_players = local.expected_local_players;
+        expected_local_players.values_mut().for_each(|p| {
+            match p {
+                ClientConnectedPlayer::Connecting { .. } => {
+                    // nothing to do
+                }
+                ClientConnectedPlayer::Connected { is_dummy, .. } => {
+                    *p = ClientConnectedPlayer::Connecting {
+                        is_dummy: *is_dummy,
+                    };
+                }
+            }
+        });
+        let local_player_id_counter = local.local_player_id_counter;
+        let active_local_player_id = local.active_local_player_id;
+
+        let render_props = RenderGameCreateOptions {
+            physics_group_name: info.server_options.physics_group_name.clone(),
+            resource_http_download_url: Some(HTTP_RESOURCE_URL.try_into().unwrap()),
+            resource_download_server: info.resource_server_fallback.map(|port| {
+                format!("http://{}", SocketAddr::new(connect.addr.ip(), port))
+                    .as_str()
+                    .try_into()
+                    .unwrap()
+            }),
+            fonts: base.fonts.clone(),
+            sound_props: Default::default(),
+            render_mod: RenderModTy::render_mod(&info.render_mod, pipe.config_game),
+            required_resources: info.required_resources.clone(),
+            client_local_infos: Self::character_net_infos(
+                &expected_local_players,
+                pipe.config_game,
+            ),
+        };
+        network.server_connect_time = timestamp.saturating_sub(prediction_timer.ping_max());
+        pipe.ui.is_ui_open = true;
+        pipe.config.ui.path.route("connect");
+
+        *self = Self::load(
+            base,
+            network,
+            pipe.runtime_thread_pool,
+            pipe.io,
+            &info.map,
+            &info.map_blake3_hash,
+            info.required_resources,
+            info.game_mod,
+            info.render_mod,
+            timestamp,
+            info.hint_start_camera_pos,
+            pipe.config,
+            pipe.config_game,
+            connect,
+            GameStateCreateOptions {
+                hint_max_characters: None, // TODO: get from server
+                config: info.mod_config,
+                account_db: None,
+                initial_rcon_input: Default::default(),
+            },
+            render_props,
+            if info.spatial_chat {
+                {
+                    pipe.spatial_chat
+                        .create_world(spatial_chat_scene, pipe.config_game)
+                }
+            } else {
+                SpatialChatGameWorldTy::None
+            },
+            auto_cleanup,
+            expected_local_players,
+            local_player_id_counter,
+            active_local_player_id,
+            info.send_input_every_tick,
+            info.server_options,
+        );
     }
 
     pub fn on_msg(
@@ -779,7 +885,7 @@ impl Game {
                     local_player_id_counter += 1;
 
                     let render_props = RenderGameCreateOptions {
-                        physics_group_name: info.server_options.physics_group_name,
+                        physics_group_name: info.server_options.physics_group_name.clone(),
                         resource_http_download_url: Some(HTTP_RESOURCE_URL.try_into().unwrap()),
                         resource_download_server: info.resource_server_fallback.map(|port| {
                             Url::try_from(
@@ -835,6 +941,8 @@ impl Game {
                         expected_local_players,
                         local_player_id_counter,
                         active_local_player_id,
+                        info.send_input_every_tick,
+                        info.server_options,
                     );
                 }
                 ServerToClientMessage::QueueInfo(info) => {
@@ -850,89 +958,38 @@ impl Game {
                 }
             },
             Game::Loading(loading) => {
-                *self = Self::Loading(loading);
+                if let ServerToClientMessage::Load(info) = msg {
+                    self.on_load(
+                        pipe,
+                        game_server_info,
+                        spatial_chat_scene,
+                        timestamp,
+                        info,
+                        loading.local,
+                        loading.connect,
+                        loading.base,
+                        loading.network,
+                        loading.auto_cleanup,
+                        loading.prediction_timer,
+                    );
+                } else {
+                    *self = Self::Loading(loading);
+                }
             }
             Game::WaitingForFirstSnapshot(mut game) | Game::Active(mut game) => {
                 if let ServerToClientMessage::Load(info) = msg {
-                    game_server_info.fill_game_info(GameInfo {
-                        map_name: info.map.to_string(),
-                    });
-                    game_server_info.fill_server_options(info.server_options.clone());
-                    pipe.spatial_chat.spatial_chat.support(info.spatial_chat);
-
-                    let mut expected_local_players = game.game_data.local.expected_local_players;
-                    expected_local_players.values_mut().for_each(|p| {
-                        match p {
-                            ClientConnectedPlayer::Connecting { .. } => {
-                                // nothing to do
-                            }
-                            ClientConnectedPlayer::Connected { is_dummy, .. } => {
-                                *p = ClientConnectedPlayer::Connecting {
-                                    is_dummy: *is_dummy,
-                                };
-                            }
-                        }
-                    });
-                    let local_player_id_counter = game.game_data.local.local_player_id_counter;
-                    let active_local_player_id = game.game_data.local.active_local_player_id;
-
-                    let render_props = RenderGameCreateOptions {
-                        physics_group_name: info.server_options.physics_group_name,
-                        resource_http_download_url: Some(HTTP_RESOURCE_URL.try_into().unwrap()),
-                        resource_download_server: info.resource_server_fallback.map(|port| {
-                            format!("http://{}", SocketAddr::new(game.connect.addr.ip(), port))
-                                .as_str()
-                                .try_into()
-                                .unwrap()
-                        }),
-                        fonts: game.base.fonts.clone(),
-                        sound_props: Default::default(),
-                        render_mod: RenderModTy::render_mod(&info.render_mod, pipe.config_game),
-                        required_resources: info.required_resources.clone(),
-                        client_local_infos: Self::character_net_infos(
-                            &expected_local_players,
-                            pipe.config_game,
-                        ),
-                    };
-                    game.network.server_connect_time =
-                        timestamp.saturating_sub(game.game_data.prediction_timer.ping_max());
-                    pipe.ui.is_ui_open = true;
-                    pipe.config.ui.path.route("connect");
-
-                    *self = Self::load(
+                    self.on_load(
+                        pipe,
+                        game_server_info,
+                        spatial_chat_scene,
+                        timestamp,
+                        info,
+                        game.game_data.local,
+                        game.connect,
                         game.base,
                         game.network,
-                        pipe.runtime_thread_pool,
-                        pipe.io,
-                        &info.map,
-                        &info.map_blake3_hash,
-                        info.required_resources,
-                        info.game_mod,
-                        info.render_mod,
-                        timestamp,
-                        info.hint_start_camera_pos,
-                        pipe.config,
-                        pipe.config_game,
-                        game.connect,
-                        GameStateCreateOptions {
-                            hint_max_characters: None, // TODO: get from server
-                            config: info.mod_config,
-                            account_db: None,
-                            initial_rcon_input: Default::default(),
-                        },
-                        render_props,
-                        if info.spatial_chat {
-                            {
-                                pipe.spatial_chat
-                                    .create_world(spatial_chat_scene, pipe.config_game)
-                            }
-                        } else {
-                            SpatialChatGameWorldTy::None
-                        },
                         game.auto_cleanup,
-                        expected_local_players,
-                        local_player_id_counter,
-                        active_local_player_id,
+                        game.game_data.prediction_timer,
                     );
                 } else {
                     if let ServerToClientMessage::Snapshot {

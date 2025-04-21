@@ -47,6 +47,7 @@ pub enum UiEvent {
         is_red_side: bool,
     },
     SwitchToFreeCam,
+    SwitchToDefaultCam,
     /// Window settings changed
     WindowChange,
     VsyncChanged,
@@ -60,6 +61,10 @@ pub enum UiEvent {
         name: NetworkReducedAsciiString<32>,
     },
     RequestAccountInfo,
+    ConnectLegacy {
+        addr: SocketAddr,
+        can_show_warning: bool,
+    },
 }
 
 #[hiarc_safer_rc_refcell]

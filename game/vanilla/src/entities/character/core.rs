@@ -63,38 +63,54 @@ pub mod character_core {
         pub cursor: dvec2,
     }
 
+    #[derive(Debug, Hiarc, Copy, Clone, Serialize, Deserialize)]
+    pub struct CoreJumps {
+        pub flag: i32,
+        // counts the jumps performed in the air
+        pub count: i32,
+        pub max: i32,
+        pub queued: u64,
+    }
+
+    impl Default for CoreJumps {
+        fn default() -> Self {
+            Self {
+                flag: 0,
+                count: 0,
+                max: 2,
+                queued: 0,
+            }
+        }
+    }
+
     #[derive(Debug, Hiarc, Copy, Clone, Default, Serialize, Deserialize)]
     pub struct Core {
         pub vel: vec2,
 
-        new_hook: bool,
+        pub new_hook: bool,
 
-        pub(crate) queued_hooks: QueuedHook,
+        pub queued_hooks: QueuedHook,
 
-        pub(crate) jumped: i32,
-        // counts the jumps performed in the air
-        jumped_total: i32,
-        jumps: i32,
-        pub(crate) queued_jumps: u64,
+        pub jumps: CoreJumps,
 
-        direction: i32,
+        pub direction: i32,
 
         // DDRace
-        colliding: i32,
-        left_wall: bool,
+        pub colliding: i32,
+        pub left_wall: bool,
 
         // DDNet Character
-        solo: bool,
-        collision_disabled: bool,
-        hook_hit_disabled: bool,
-        is_super: bool,
+        pub solo: bool,
+        pub collision_disabled: bool,
+        pub hook_hit_disabled: bool,
+        pub is_super: bool,
 
-        move_restrictions: i32,
+        pub move_restrictions: i32,
     }
 
     pub struct CorePipe<'a> {
-        pub(crate) characters: &'a mut dyn SimulationPipeCharactersGetter,
-        pub(crate) input: &'a CharacterInput,
+        pub characters: &'a mut dyn SimulationPipeCharactersGetter,
+        pub input: &'a CharacterInput,
     }
 
     impl CorePipe<'_> {
@@ -118,8 +134,8 @@ pub mod character_core {
     }
 
     pub struct CoreEvents<'a> {
-        pub(crate) game_pending_events: &'a GameWorldPendingEvents,
-        pub(crate) character_id: &'a CharacterId,
+        pub game_pending_events: &'a GameWorldPendingEvents,
+        pub character_id: &'a CharacterId,
     }
 
     impl CoreEvents<'_> {
@@ -265,45 +281,42 @@ pub mod character_core {
                 self.direction = **dir;
 
                 // Special jump cases:
-                // self.jumped == -1: A tee may only make one ground jump. Second jumped bit is always set
-                // self.jumped == 0: A tee may not make a jump. Second jumped bit is always set
-                // self.jumped == 1: A tee may do either a ground jump or an air jump. Second jumped bit is set after the first jump
-                // The second jumped bit can be overridden by special tiles so that the tee can nevertheless jump.
+                // self.jumps.max == -1: A tee may only make one ground jump. Second jumped flag bit is always set
+                // self.jumps.max == 0: A tee may not make a jump. Second jumped flag bit is always set
+                // self.jumps.max == 1: A tee may do either a ground jump or an air jump. Second jumped flag bit is set after the first jump
+                // The second jumped flag bit can be overridden by special tiles so that the tee can nevertheless jump.
 
                 // handle jump
-                if self.queued_jumps > 0 || **jump {
-                    if (self.jumped & 1) == 0 {
-                        if grounded && ((self.jumped & 2) == 0 || self.jumps != 0) {
+                if self.jumps.queued > 0 || **jump {
+                    if (self.jumps.flag & 1) == 0 {
+                        if grounded && ((self.jumps.flag & 2) == 0 || self.jumps.max != 0) {
                             character_events
                                 .push_sound(*pos.pos(), GameCharacterEventSound::GroundJump);
                             self.vel.y = -tuning.ground_jump_impulse;
-                            if self.jumps > 1 {
-                                self.jumped |= 1;
+                            if self.jumps.max > 1 {
+                                self.jumps.flag |= 1;
                             } else {
-                                self.jumped |= 3;
+                                self.jumps.flag |= 3;
                             }
-                            self.jumped_total = 0;
-                        } else if (self.jumped & 2) == 0 {
+                            self.jumps.count = 0;
+                        } else if (self.jumps.flag & 2) == 0 {
                             character_events
                                 .push_sound(*pos.pos(), GameCharacterEventSound::AirJump);
                             character_events
                                 .push_effect(*pos.pos(), GameCharacterEventEffect::AirJump);
                             self.vel.y = -tuning.air_jump_impulse;
-                            self.jumped |= 3;
-                            self.jumped_total += 1;
+                            self.jumps.flag |= 3;
+                            self.jumps.count += 1;
                         }
                     }
                 } else {
-                    self.jumped &= !1;
+                    self.jumps.flag &= !1;
                 }
-                self.queued_jumps = 0;
+                self.jumps.queued = 0;
 
                 // handle hook
                 if self.queued_hooks.clicked > 0 || **hook {
-                    if let (Hook::None, Some(_)) = (
-                        char_hook.hook(),
-                        (self.queued_hooks.clicked > 0).then_some(()),
-                    ) {
+                    if let Hook::None = char_hook.hook() {
                         let cursor = self.queued_hooks.cursor;
                         let cursor = vec2::new(cursor.x as f32, cursor.y as f32);
                         let target_direction: vec2 = normalize(&cursor);
@@ -330,8 +343,8 @@ pub mod character_core {
             // 1 bit = to keep track if a jump has been made on this input (character is holding space bar)
             // 2 bit = to track if all air-jumps have been used up (tee gets dark feet)
             if grounded {
-                self.jumped &= !2;
-                self.jumped_total = 0;
+                self.jumps.flag &= !2;
+                self.jumps.count = 0;
             }
 
             // add the speed modification according to players wanted direction

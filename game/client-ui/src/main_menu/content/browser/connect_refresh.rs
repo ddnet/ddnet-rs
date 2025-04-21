@@ -39,12 +39,20 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             || enter_clicked
         {
             if let Ok(addr) = server_addr {
-                pipe.user_data.events.push(UiEvent::Connect {
-                    addr,
-                    cert_hash: pipe.user_data.config.storage("server-cert"),
-                    rcon_secret: pipe.user_data.config.storage("rcon-secret"),
-                    can_start_local_server: true,
-                });
+                let is_legacy_server: bool = pipe.user_data.config.storage("server-is-legacy");
+                if is_legacy_server {
+                    pipe.user_data.events.push(UiEvent::ConnectLegacy {
+                        addr,
+                        can_show_warning: true,
+                    });
+                } else {
+                    pipe.user_data.events.push(UiEvent::Connect {
+                        addr,
+                        cert_hash: pipe.user_data.config.storage("server-cert"),
+                        rcon_secret: pipe.user_data.config.storage("rcon-secret"),
+                        can_start_local_server: true,
+                    });
+                }
             }
         }
     });
@@ -59,5 +67,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                 .spawn(async move { profiles.user_interaction().await })
                 .cancelable(),
         );
+    }
+    if pipe.user_data.config.engine.dbg.app && ui.button("legacy").clicked() {
+        pipe.user_data
+            .config
+            .set_storage("server-addr", &"127.0.0.1:8303".to_string());
+        pipe.user_data.events.push(UiEvent::ConnectLegacy {
+            addr: "127.0.0.1:8303".parse().unwrap(),
+            can_show_warning: true,
+        });
     }
 }

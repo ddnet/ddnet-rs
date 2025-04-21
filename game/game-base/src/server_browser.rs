@@ -141,6 +141,8 @@ pub struct ServerBrowserServer {
     pub info: ServerBrowserInfo,
     pub addresses: Vec<SocketAddr>,
     pub location: NetworkString<16>,
+
+    pub legacy_server: bool,
 }
 
 #[serde_as]
@@ -167,6 +169,9 @@ pub struct ServerFilter {
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
     pub unfinished_maps: bool,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnError")]
+    pub hide_legacy_servers: bool,
 }
 
 #[derive(Debug, Hiarc, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -338,6 +343,7 @@ impl ServerBrowserData {
                         .iter()
                         .any(|p| favorites.iter().any(|f| f.name == p.name)))
                 && (!filter.unfinished_maps || finished_maps.contains(&server.info.map.name))
+                && (!filter.hide_legacy_servers || !server.legacy_server)
         })
     }
 

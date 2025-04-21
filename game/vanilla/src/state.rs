@@ -1468,7 +1468,7 @@ pub mod state {
                             prev_character.base.game_element_id,
                         )
                     }),
-                has_air_jump: prev_character.core.core.jumped <= 1,
+                has_air_jump: prev_character.core.core.jumps.flag <= 1,
                 lerped_cursor_pos: lerp(
                     &prev_character.core.input.cursor.to_vec2(),
                     &character.core.input.cursor.to_vec2(),
@@ -1936,10 +1936,22 @@ pub mod state {
             }
 
             for stage in red_or_solo_stage_infos.values_mut() {
-                stage.characters.sort_by_key(|c| std::cmp::Reverse(c.score));
+                stage
+                    .characters
+                    .sort_by(|c1, c2| match c2.score.cmp(&c1.score) {
+                        std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+                        std::cmp::Ordering::Equal => c1.id.cmp(&c2.id),
+                        std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
+                    });
             }
             for stage in blue_stage_infos.values_mut() {
-                stage.characters.sort_by_key(|c| std::cmp::Reverse(c.score));
+                stage
+                    .characters
+                    .sort_by(|c1, c2| match c2.score.cmp(&c1.score) {
+                        std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+                        std::cmp::Ordering::Equal => c1.id.cmp(&c2.id),
+                        std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
+                    });
             }
 
             let ty = self.game_options.ty();

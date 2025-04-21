@@ -128,7 +128,7 @@ pub mod character {
         pub default_eye: TeeEye,
         pub default_eye_reset_in: GameTickCooldown,
 
-        pub(crate) input: CharacterInput,
+        pub input: CharacterInput,
 
         /// is timeout e.g. by a network disconnect.
         /// this is a hint, not a logic variable.
@@ -1072,16 +1072,13 @@ pub mod character {
                             hits += 1;
                         },
                     );
-                    if hits > 0 {
-                        let fire_delay = pipe
-                            .collision
-                            .get_tune_at(&proj_start_pos)
-                            .hammer_fire_delay;
-                        ((fire_delay * TICKS_PER_SECOND as f32 / 1000.0).ceil() as GameTickType)
-                            .into()
+                    let tune = pipe.collision.get_tune_at(&proj_start_pos);
+                    let fire_delay = if hits > 0 {
+                        tune.hammer_hit_fire_delay
                     } else {
-                        1.into()
-                    }
+                        tune.hammer_fire_delay
+                    };
+                    ((fire_delay * TICKS_PER_SECOND as f32 / 1000.0).ceil() as GameTickType).into()
                 }
                 WeaponType::Gun => {
                     let tunings = pipe.collision.get_tune_at(&proj_start_pos);
@@ -1236,7 +1233,7 @@ pub mod character {
                 .unwrap();
 
             // move the offset to where the actual weapon is
-            let mut new_index = (found_weapon_index as i32 - offset) % cur_weapon_count as i32;
+            let mut new_index = (found_weapon_index as i32 + offset) % cur_weapon_count as i32;
             if new_index < 0 {
                 new_index += cur_weapon_count as i32;
             }
@@ -1412,10 +1409,11 @@ pub mod character {
             pipe: &mut SimulationPipeCharacter,
             diff: CharacterInputConsumableDiff,
         ) -> EntityTickResult {
-            self.core.core.queued_jumps = self
+            self.core.core.jumps.queued = self
                 .core
                 .core
-                .queued_jumps
+                .jumps
+                .queued
                 .saturating_add(diff.jump.map(|val| val.get()).unwrap_or_default());
             if let Some((hooks, cursor)) = diff.hook {
                 self.core.core.queued_hooks.clicked = self

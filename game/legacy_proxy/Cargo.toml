@@ -1,0 +1,44 @@
+[package]
+name = "legacy_proxy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+network = { path = "../../lib/network" }
+math = { path = "../../lib/math" }
+base = { path = "../../lib/base" }
+base-io = { path = "../../lib/base-io" }
+base-http = { path = "../../lib/base-http" }
+base-io-traits = { path = "../../lib/base-io-traits" }
+pool = { path = "../../lib/pool" }
+bin-patch = { path = "../../lib/bin-patch" }
+
+game-network = { path = "../game-network" }
+game-server = { path = "../game-server" }
+game-interface = { path = "../game-interface" }
+game-base = { path = "../game-base" }
+vanilla = { path = "../vanilla" }
+map = { path = "../map" }
+
+libtw2-common = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-event-loop = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-gamenet-ddnet = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-packer = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-socket = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-world = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+libtw2-net = { git = "https://github.com/Jupeyy/libtw2.git", rev = "62e12840783d494df83056efafb0cd55d5b3ae09" }
+
+
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+# stuck for compat with libtw2
+arrayvec = "=0.5.2"
+hexdump = "0.1.2"
+bincode = { version = "2.0.1", features = ["serde"] }
+sha2 = "0.10.8"
+rand = { version = "0.9.0", features = ["thread_rng"] }
+
+log = "0.4.27"
+ndarray = "0.16.1"
+warn = "0.2.2"
+rayon = "1.10.0"
