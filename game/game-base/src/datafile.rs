@@ -2356,6 +2356,7 @@ impl CDatafileWrapper {
                 size: ver_data.len() as i32,
                 type_and_id: ((MapItemTypes::Version as i32) << 16),
             };
+            assert!(!ver_data.is_empty());
             ver_item.write_to_vec(&mut data_items);
             data_items.append(&mut ver_data);
 
@@ -2482,32 +2483,34 @@ impl CDatafileWrapper {
 
             // next: write all env points to data
             let item_index = res.data_file.info.item_offsets.len() as i32;
-            res.data_file
-                .info
-                .item_offsets
-                .push(data_items.len() as i32);
-
             let mut data_envs: Vec<u8> = Default::default();
             for env_point in &env_points {
                 env_point.write_to_vec(&mut data_envs, has_bezier);
             }
-            let env_item = CDatafileItem {
-                size: data_envs.len() as i32,
-                type_and_id: ((MapItemTypes::Envpoints as i32) << 16),
-            };
-            env_item.write_to_vec(&mut data_items);
-            data_items.extend(data_envs);
+            if !data_envs.is_empty() {
+                res.data_file
+                    .info
+                    .item_offsets
+                    .push(data_items.len() as i32);
+                let env_item = CDatafileItem {
+                    size: data_envs.len() as i32,
+                    type_and_id: ((MapItemTypes::Envpoints as i32) << 16),
+                };
+                env_item.write_to_vec(&mut data_items);
+                data_items.extend(data_envs);
 
-            res.data_file.info.item_types.push(CDatafileItemType {
-                item_type: MapItemTypes::Envpoints as i32,
-                start: item_index,
-                num: 1,
-            });
+                res.data_file.info.item_types.push(CDatafileItemType {
+                    item_type: MapItemTypes::Envpoints as i32,
+                    start: item_index,
+                    num: 1,
+                });
+            }
 
             // next: write all env definitions to data
             let item_index = res.data_file.info.item_offsets.len() as i32;
             let env_count = envs.len();
             for (index, env) in envs.into_iter().enumerate() {
+                assert!(!data_items.is_empty());
                 res.data_file
                     .info
                     .item_offsets
@@ -2516,6 +2519,7 @@ impl CDatafileWrapper {
                 let mut env_data: Vec<u8> = Vec::new();
                 env.write_to_vec(&mut env_data);
 
+                assert!(!env_data.is_empty());
                 let env_item = CDatafileItem {
                     size: env_data.len() as i32,
                     type_and_id: ((MapItemTypes::Envelope as i32) << 16) | (index as i32),
@@ -2523,11 +2527,13 @@ impl CDatafileWrapper {
                 env_item.write_to_vec(&mut data_items);
                 data_items.append(&mut env_data);
             }
-            res.data_file.info.item_types.push(CDatafileItemType {
-                item_type: MapItemTypes::Envelope as i32,
-                start: item_index,
-                num: env_count as i32,
-            });
+            if env_count > 0 {
+                res.data_file.info.item_types.push(CDatafileItemType {
+                    item_type: MapItemTypes::Envelope as i32,
+                    start: item_index,
+                    num: env_count as i32,
+                });
+            }
         }
 
         let images_len = map.resources.images.len();
@@ -2563,6 +2569,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let name_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 // add image as data
@@ -2572,6 +2579,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let data_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 let item_data = CMapItemImage {
@@ -2586,6 +2594,7 @@ impl CDatafileWrapper {
                 let mut img_data: Vec<u8> = Vec::new();
                 item_data.write_to_vec(&mut img_data);
 
+                assert!(!img_data.is_empty());
                 let data_item = CDatafileItem {
                     size: img_data.len() as i32,
                     type_and_id: ((MapItemTypes::Image as i32) << 16) | (index as i32),
@@ -2621,6 +2630,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let name_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 // add image as data
@@ -2630,6 +2640,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let data_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 let item_data = CMapItemImage {
@@ -2644,6 +2655,7 @@ impl CDatafileWrapper {
                 let mut img_data: Vec<u8> = Vec::new();
                 item_data.write_to_vec(&mut img_data);
 
+                assert!(!img_data.is_empty());
                 let data_item = CDatafileItem {
                     size: img_data.len() as i32,
                     type_and_id: ((MapItemTypes::Image as i32) << 16) | (index as i32),
@@ -2651,11 +2663,13 @@ impl CDatafileWrapper {
                 data_item.write_to_vec(&mut data_items);
                 data_items.append(&mut img_data);
             }
-            res.data_file.info.item_types.push(CDatafileItemType {
-                item_type: MapItemTypes::Image as i32,
-                start: item_index,
-                num: image_count as i32,
-            });
+            if image_count > 0 {
+                res.data_file.info.item_types.push(CDatafileItemType {
+                    item_type: MapItemTypes::Image as i32,
+                    start: item_index,
+                    num: image_count as i32,
+                });
+            }
 
             // sound
             let item_index = res.data_file.info.item_offsets.len() as i32;
@@ -2674,6 +2688,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let name_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 // add image as data
@@ -2684,6 +2699,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let data_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 let item_data = CMapItemSound {
@@ -2694,21 +2710,24 @@ impl CDatafileWrapper {
                     sound_data_size: sound_data_size as i32,
                 };
 
-                let mut img_data: Vec<u8> = Vec::new();
-                item_data.write_to_vec(&mut img_data);
+                let mut snd_data: Vec<u8> = Vec::new();
+                item_data.write_to_vec(&mut snd_data);
 
+                assert!(!snd_data.is_empty());
                 let data_item = CDatafileItem {
-                    size: img_data.len() as i32,
+                    size: snd_data.len() as i32,
                     type_and_id: ((MapItemTypes::Sound as i32) << 16) | (index as i32),
                 };
                 data_item.write_to_vec(&mut data_items);
-                data_items.append(&mut img_data);
+                data_items.append(&mut snd_data);
             }
-            res.data_file.info.item_types.push(CDatafileItemType {
-                item_type: MapItemTypes::Sound as i32,
-                start: item_index,
-                num: sound_count as i32,
-            });
+            if sound_count > 0 {
+                res.data_file.info.item_types.push(CDatafileItemType {
+                    item_type: MapItemTypes::Sound as i32,
+                    start: item_index,
+                    num: sound_count as i32,
+                });
+            }
         }
 
         let mut global_map_settings: Vec<[u8; 256]> = Default::default();
@@ -2793,6 +2812,7 @@ impl CDatafileWrapper {
                                 data_compressed_data.extend(compressed_data);
                                 let data_index = res.data_file.info.data_offsets.len();
                                 res.data_file.info.data_offsets.push(data_offset);
+                                assert!(uncompressed_size > 0);
                                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                                 let mut layer_item = CMapItemLayerTilemap {
@@ -2908,11 +2928,17 @@ impl CDatafileWrapper {
                                 });
                                 let data_offset = data_compressed_data.len() as i32;
                                 let uncompressed_size = quads_data.len();
-                                let compressed_data = Self::compress_data(&quads_data);
-                                data_compressed_data.extend(compressed_data);
-                                let data_index = res.data_file.info.data_offsets.len();
-                                res.data_file.info.data_offsets.push(data_offset);
-                                res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                                let data_index = if uncompressed_size > 0 {
+                                    let compressed_data = Self::compress_data(&quads_data);
+                                    data_compressed_data.extend(compressed_data);
+                                    let data_index = res.data_file.info.data_offsets.len();
+                                    res.data_file.info.data_offsets.push(data_offset);
+                                    assert!(uncompressed_size > 0);
+                                    res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                                    data_index as i32
+                                } else {
+                                    -1
+                                };
 
                                 let mut layer_item = CMapItemLayerQuads {
                                     layer: CMapItemLayer {
@@ -2926,7 +2952,7 @@ impl CDatafileWrapper {
                                     },
                                     version: 2,
                                     num_quads: layer.quads.len() as i32,
-                                    data: data_index as i32,
+                                    data: data_index,
                                     image: layer.attr.image.map(|i| i as i32).unwrap_or(-1),
                                     name: Default::default(),
                                 };
@@ -2991,11 +3017,17 @@ impl CDatafileWrapper {
                                 });
                                 let data_offset = data_compressed_data.len() as i32;
                                 let uncompressed_size = sounds_data.len();
-                                let compressed_data = Self::compress_data(&sounds_data);
-                                data_compressed_data.extend(compressed_data);
-                                let data_index = res.data_file.info.data_offsets.len();
-                                res.data_file.info.data_offsets.push(data_offset);
-                                res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                                let data_index = if uncompressed_size > 0 {
+                                    let compressed_data = Self::compress_data(&sounds_data);
+                                    data_compressed_data.extend(compressed_data);
+                                    let data_index = res.data_file.info.data_offsets.len();
+                                    res.data_file.info.data_offsets.push(data_offset);
+                                    assert!(uncompressed_size > 0);
+                                    res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                                    data_index as i32
+                                } else {
+                                    -1
+                                };
 
                                 let mut layer_item = CMapItemLayerSounds {
                                     layer: CMapItemLayer {
@@ -3009,7 +3041,7 @@ impl CDatafileWrapper {
                                     },
                                     version: CMapItemLayerSoundsVer::CurVersion as i32,
                                     num_sources: layer.sounds.len() as i32,
-                                    data: data_index as i32,
+                                    data: data_index,
                                     sound: layer.attr.sound.map(|i| i as i32).unwrap_or(-1),
                                     name: Default::default(),
                                 };
@@ -3018,6 +3050,7 @@ impl CDatafileWrapper {
                             }
                         }
 
+                        assert!(!data_layer.is_empty());
                         let data_item = CDatafileItem {
                             size: data_layer.len() as i32,
                             type_and_id: ((MapItemTypes::Layer as i32) << 16) | { *layer_count },
@@ -3099,6 +3132,7 @@ impl CDatafileWrapper {
                 data_compressed_data.extend(compressed_data);
                 let data_index = res.data_file.info.data_offsets.len();
                 res.data_file.info.data_offsets.push(data_offset);
+                assert!(uncompressed_size > 0);
                 res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                 // DDrace layers
@@ -3139,6 +3173,7 @@ impl CDatafileWrapper {
                         data_compressed_data.extend(compressed_data);
                         tele = res.data_file.info.data_offsets.len() as i32;
                         res.data_file.info.data_offsets.push(data_offset);
+                        assert!(uncompressed_size > 0);
                         res.data_file.info.data_sizes.push(uncompressed_size as i32);
                     }
                     MapLayerPhysics::Speedup(layer) => {
@@ -3163,6 +3198,7 @@ impl CDatafileWrapper {
                         data_compressed_data.extend(compressed_data);
                         speedup = res.data_file.info.data_offsets.len() as i32;
                         res.data_file.info.data_offsets.push(data_offset);
+                        assert!(uncompressed_size > 0);
                         res.data_file.info.data_sizes.push(uncompressed_size as i32);
                     }
                     MapLayerPhysics::Switch(layer) => {
@@ -3188,6 +3224,7 @@ impl CDatafileWrapper {
                         data_compressed_data.extend(compressed_data);
                         switch = res.data_file.info.data_offsets.len() as i32;
                         res.data_file.info.data_offsets.push(data_offset);
+                        assert!(uncompressed_size > 0);
                         res.data_file.info.data_sizes.push(uncompressed_size as i32);
                     }
                     MapLayerPhysics::Tune(layer) => {
@@ -3211,6 +3248,7 @@ impl CDatafileWrapper {
                         data_compressed_data.extend(compressed_data);
                         tune = res.data_file.info.data_offsets.len() as i32;
                         res.data_file.info.data_offsets.push(data_offset);
+                        assert!(uncompressed_size > 0);
                         res.data_file.info.data_sizes.push(uncompressed_size as i32);
 
                         for (index, args) in &layer.tune_zones {
@@ -3297,6 +3335,7 @@ impl CDatafileWrapper {
                 );
                 layer_item.write_to_vec(&mut data_layer);
 
+                assert!(!data_layer.is_empty());
                 let data_item = CDatafileItem {
                     size: data_layer.len() as i32,
                     type_and_id: ((MapItemTypes::Layer as i32) << 16) | layer_count,
@@ -3315,6 +3354,15 @@ impl CDatafileWrapper {
                 map.groups.foreground,
             );
 
+            // write layers
+            if layer_count > 0 {
+                res.data_file.info.item_types.push(CDatafileItemType {
+                    item_type: MapItemTypes::Layer as i32,
+                    start: layer_item_index,
+                    num: layer_count,
+                });
+            }
+
             // write groups
             let item_index = res.data_file.info.item_offsets.len() as i32;
 
@@ -3326,6 +3374,7 @@ impl CDatafileWrapper {
                     .push(data_items.len() as i32);
                 let mut data_groups: Vec<u8> = Default::default();
                 group.write_to_vec(&mut data_groups);
+                assert!(!data_groups.is_empty());
                 let data_item = CDatafileItem {
                     size: data_groups.len() as i32,
                     type_and_id: ((MapItemTypes::Group as i32) << 16) | (i as i32),
@@ -3334,18 +3383,13 @@ impl CDatafileWrapper {
                 data_items.extend(data_groups);
             }
 
-            res.data_file.info.item_types.push(CDatafileItemType {
-                item_type: MapItemTypes::Group as i32,
-                start: item_index,
-                num: group_count as i32,
-            });
-
-            // write layers
-            res.data_file.info.item_types.push(CDatafileItemType {
-                item_type: MapItemTypes::Layer as i32,
-                start: layer_item_index,
-                num: layer_count,
-            });
+            if group_count > 0 {
+                res.data_file.info.item_types.push(CDatafileItemType {
+                    item_type: MapItemTypes::Group as i32,
+                    start: item_index,
+                    num: group_count as i32,
+                });
+            }
         }
 
         // map settings
@@ -3374,6 +3418,7 @@ impl CDatafileWrapper {
                             data_compressed_data.extend(compressed_data);
                             let data_index = res.data_file.info.data_offsets.len();
                             res.data_file.info.data_offsets.push(data_offset);
+                            assert!(uncompressed_size > 0);
                             res.data_file.info.data_sizes.push(uncompressed_size as i32);
                             data_index as i32
                         } else {
@@ -3393,6 +3438,7 @@ impl CDatafileWrapper {
                             data_compressed_data.extend(compressed_data);
                             let data_index = res.data_file.info.data_offsets.len();
                             res.data_file.info.data_offsets.push(data_offset);
+                            assert!(uncompressed_size > 0);
                             res.data_file.info.data_sizes.push(uncompressed_size as i32);
                             data_index as i32
                         } else {
@@ -3411,6 +3457,7 @@ impl CDatafileWrapper {
                             data_compressed_data.extend(compressed_data);
                             let data_index = res.data_file.info.data_offsets.len();
                             res.data_file.info.data_offsets.push(data_offset);
+                            assert!(uncompressed_size > 0);
                             res.data_file.info.data_sizes.push(uncompressed_size as i32);
                             data_index as i32
                         } else {
@@ -3430,6 +3477,7 @@ impl CDatafileWrapper {
                             data_compressed_data.extend(compressed_data);
                             let data_index = res.data_file.info.data_offsets.len();
                             res.data_file.info.data_offsets.push(data_offset);
+                            assert!(uncompressed_size > 0);
                             res.data_file.info.data_sizes.push(uncompressed_size as i32);
                             data_index as i32
                         } else {
@@ -3484,16 +3532,21 @@ impl CDatafileWrapper {
                         .flat_map(|s| s.as_bytes_with_nul().to_vec())
                         .collect::<Vec<_>>();
                     let uncompressed_size = uncompressed_data.len();
-                    let compressed_data = Self::compress_data(&uncompressed_data);
-                    data_compressed_data.extend(compressed_data);
-                    let data_index = res.data_file.info.data_offsets.len();
-                    res.data_file.info.data_offsets.push(data_offset);
-                    res.data_file.info.data_sizes.push(uncompressed_size as i32);
-                    data_index as i32
+                    if uncompressed_size > 0 {
+                        let compressed_data = Self::compress_data(&uncompressed_data);
+                        data_compressed_data.extend(compressed_data);
+                        let data_index = res.data_file.info.data_offsets.len();
+                        res.data_file.info.data_offsets.push(data_offset);
+                        res.data_file.info.data_sizes.push(uncompressed_size as i32);
+                        data_index as i32
+                    } else {
+                        -1
+                    }
                 },
             };
             info_settings.write_to_vec(&mut info_data);
 
+            assert!(!info_data.is_empty());
             let info_item = CDatafileItem {
                 size: info_data.len() as i32,
                 type_and_id: ((MapItemTypes::Info as i32) << 16),
