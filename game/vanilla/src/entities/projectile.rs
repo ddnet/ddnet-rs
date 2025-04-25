@@ -53,7 +53,6 @@ pub mod projectile {
     pub struct ProjectileCore {
         pub pos: vec2,
         pub vel: vec2,
-        pub direction: vec2,
         pub life_span: i32,
         pub damage: u32,
         pub force: f32,
@@ -99,7 +98,6 @@ pub mod projectile {
             let core = ProjectileCore {
                 pos: *pos,
                 vel: *direction,
-                direction: *direction,
                 life_span,
                 damage,
                 force,

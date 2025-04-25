@@ -324,6 +324,23 @@ impl Default for CDatafileWrapper {
     }
 }
 
+pub fn ints_to_str(int_arr: &[i32], c_str: &mut [u8]) {
+    let mut num_int = 0;
+    let mut index = 0;
+    while num_int < int_arr.len() {
+        let bytes = int_arr[num_int].to_be_bytes();
+        c_str[index] = bytes[0].wrapping_sub(128);
+        c_str[index + 1] = bytes[1].wrapping_sub(128);
+        c_str[index + 2] = bytes[2].wrapping_sub(128);
+        c_str[index + 3] = bytes[3].wrapping_sub(128);
+        index += 4;
+        num_int += 1;
+    }
+
+    // null terminate
+    c_str[index - 1] = 0;
+}
+
 impl CDatafileWrapper {
     pub fn new() -> CDatafileWrapper {
         CDatafileWrapper {
@@ -1364,27 +1381,10 @@ impl CDatafileWrapper {
         int_arr[int_arr.len() - 1] &= -256i32;
     }
 
-    fn ints_to_str(int_arr: &[i32], c_str: &mut [u8]) {
-        let mut num_int = 0;
-        let mut index = 0;
-        while num_int < int_arr.len() {
-            let bytes = int_arr[num_int].to_be_bytes();
-            c_str[index] = bytes[0].wrapping_sub(128);
-            c_str[index + 1] = bytes[1].wrapping_sub(128);
-            c_str[index + 2] = bytes[2].wrapping_sub(128);
-            c_str[index + 3] = bytes[3].wrapping_sub(128);
-            index += 4;
-            num_int += 1;
-        }
-
-        // null terminate
-        c_str[index - 1] = 0;
-    }
-
     fn read_str_from_ints(inp: &[i32]) -> String {
         let mut res: [u8; 32] = Default::default();
 
-        Self::ints_to_str(inp, &mut res);
+        ints_to_str(inp, &mut res);
 
         CStr::from_bytes_until_nul(&res)
             .map_err(|err| anyhow!("reading {inp:?} - {res:?} => err: {err}"))

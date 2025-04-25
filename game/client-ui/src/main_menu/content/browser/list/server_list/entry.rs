@@ -20,6 +20,12 @@ pub fn render(
                 ui.label("")
             }
             .clicked();
+            clicked |= if server.legacy_server {
+                ui.label("\u{4c}").on_hover_text("Legacy server")
+            } else {
+                ui.label("")
+            }
+            .clicked();
         })
         .1
         .clicked();

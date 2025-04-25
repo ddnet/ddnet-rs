@@ -68,6 +68,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         ui.checkbox(&mut filter.fav_players_only, "Favorite players only");
                         ui.checkbox(&mut filter.no_password, "No password");
                         ui.checkbox(&mut filter.unfinished_maps, "Unfinished maps only");
+                        ui.checkbox(&mut filter.hide_legacy_servers, "Hide legacy servers");
                         if filter != prev_filter {
                             config.set_storage("browser_filter", &filter);
                         }

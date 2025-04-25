@@ -1,12 +1,13 @@
 use std::collections::BTreeSet;
 
-use game_interface::types::render::character::PlayerIngameMode;
+use game_interface::types::render::character::{PlayerCameraMode, PlayerIngameMode};
 use hiarc::{hiarc_safer_rc_refcell, Hiarc};
 
 #[derive(Debug, Hiarc, Clone)]
 pub struct ActiveClientInfo {
     pub ingame_mode: PlayerIngameMode,
     pub stage_names: BTreeSet<String>,
+    pub camera_mode: PlayerCameraMode,
 }
 
 impl Default for ActiveClientInfo {
@@ -14,6 +15,7 @@ impl Default for ActiveClientInfo {
         Self {
             ingame_mode: PlayerIngameMode::Spectator,
             stage_names: Default::default(),
+            camera_mode: PlayerCameraMode::Default,
         }
     }
 }

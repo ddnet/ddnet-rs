@@ -128,6 +128,11 @@ pub struct MsgSvServerInfo {
     pub hint_start_camera_pos: vec2,
     /// Whether this server supports spatial chat.
     pub spatial_chat: bool,
+    /// Requires the client to send an input exactly once every tick,
+    /// even if the input did not change and even if the input changed
+    /// multiple time.
+    /// This should be `false` and is only useful for legacy proxies.
+    pub send_input_every_tick: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1041,6 +1041,7 @@ impl Server {
                 hint_start_camera_pos: self.game_server.game.get_client_camera_join_pos(),
                 server_options: self.game_server.game.info.options.clone(),
                 spatial_chat: self.config_game.sv.spatial_chat,
+                send_input_every_tick: false,
             };
             self.network.send_unordered_to(
                 &ServerToClientMessage::ServerInfo {
@@ -3595,6 +3596,7 @@ impl Server {
                     mod_config: self.game_server.game.info.config.clone(),
                     server_options: self.game_server.game.info.options.clone(),
                     spatial_chat: self.config_game.sv.spatial_chat,
+                    send_input_every_tick: false,
                 };
                 self.network
                     .send_unordered_to(&ServerToClientMessage::Load(server_info.clone()), net_id);

@@ -1,6 +1,6 @@
 use std::{
     borrow::Borrow, cell::RefCell, net::SocketAddr, num::NonZeroUsize, path::PathBuf, rc::Rc,
-    sync::Arc, time::Duration,
+    sync::Arc, thread::JoinHandle, time::Duration,
 };
 
 use anyhow::anyhow;
@@ -40,9 +40,12 @@ use client_render_base::{
 use client_render_game::render_game::{
     EmoteWheelInput, ObservedAnchoredSize, ObservedPlayer, PlayerFeedbackEvent, RenderForPlayer,
     RenderGameCreateOptions, RenderGameForPlayer, RenderGameInput, RenderGameInterface,
-    RenderGameSettings, RenderModTy, RenderPlayerCameraMode,
+    RenderGameSettings, RenderModTy, RenderPlayerCameraMode, SpectatorSelectionInput,
 };
-use client_types::console::{entries_to_parser, ConsoleEntry};
+use client_types::{
+    cert::ServerCertMode,
+    console::{entries_to_parser, ConsoleEntry},
+};
 use client_ui::{
     chat::user_data::{ChatEvent, ChatMode},
     connect::{
@@ -122,7 +125,7 @@ use native::{
         NativeWindowOptions, PhysicalKey, PhysicalSize, WindowEvent, WindowMode,
     },
 };
-use network::network::types::NetworkInOrderChannel;
+use network::network::types::{NetworkInOrderChannel, NetworkServerCertModeResult};
 use pool::{
     datatypes::{PoolFxLinkedHashMap, StringPool},
     pool::Pool,
@@ -137,12 +140,14 @@ use ui_base::{
     ui::UiCreator,
 };
 use ui_wasm_manager::{UiManagerBase, UiPageLoadingType, UiWasmManagerErrorPageErr};
+use x509_cert::der::Encode;
 
 use crate::{
     game::Game,
     localplayer::ClientPlayer,
     ui::pages::{
-        editor::tee::TeeEditor, loading::LoadingPage, not_found::Error404Page, test::ColorTest,
+        editor::tee::TeeEditor, legacy_warning::LegacyWarningPage, loading::LoadingPage,
+        not_found::Error404Page, test::ColorTest,
     },
 };
 
@@ -160,7 +165,7 @@ use game_network::messages::{ClientToServerMessage, ClientToServerPlayerMessage}
 use super::{
     game::{
         data::{ClientConnectedPlayer, GameData},
-        types::{DisconnectAutoCleanup, GameBase, GameConnect, GameMsgPipeline, ServerCertMode},
+        types::{DisconnectAutoCleanup, GameBase, GameConnect, GameMsgPipeline},
     },
     game_events::{GameEventPipeline, GameEventsClient},
     input::input_handling::{InputEv, InputHandling, InputHandlingEvent},
@@ -435,6 +440,8 @@ struct ClientNativeImpl {
     menu_map: ClientMapLoading,
 
     global_binds: Binds<BindActionsHotkey>,
+
+    legacy_proxy_thread: Option<JoinHandle<()>>,
 
     // pools & helpers
     string_pool: StringPool,
@@ -731,12 +738,10 @@ impl ClientNativeImpl {
                 );
             }
             if self.client_info.wants_active_client_info() {
-                if let Some(player_info) = game
-                    .game_data
-                    .local
-                    .active_local_player()
+                let active_player = game.game_data.local.active_local_player();
+                if let Some(player_info) = active_player
                     .and_then(|(id, _)| character_infos.get(id))
-                    .and_then(|c: &CharacterInfo| c.player_info.as_ref())
+                    .and_then(|c| c.player_info.as_ref())
                 {
                     let scoreboard_info = main_game.collect_scoreboard_info();
                     self.client_info.set_active_client_info(ActiveClientInfo {
@@ -754,6 +759,9 @@ impl ClientNativeImpl {
                             };
                             it.map(|s| s.name.to_string()).collect()
                         },
+                        camera_mode: active_player
+                            .map(|(_, p)| p.input_cam_mode.clone())
+                            .unwrap_or_else(|| player_info.cam_mode.clone()),
                     });
                 }
             }
@@ -961,7 +969,7 @@ impl ClientNativeImpl {
                     let (cam_mode, force_scoreboard_visible, is_spectator) =
                         match character_info.and_then(|c| c.player_info.as_ref()) {
                             Some(info) => (
-                                match &info.cam_mode {
+                                match &client_player.input_cam_mode {
                                     PlayerCameraMode::Default => RenderPlayerCameraMode::Default,
                                     PlayerCameraMode::Free => RenderPlayerCameraMode::AtPos {
                                         pos: vec2::new(
@@ -1053,7 +1061,11 @@ impl ClientNativeImpl {
                                     && !is_menu_open
                                     && (is_spectator || main_game.info.options.has_ingame_freecam)
                                 {
-                                    Some(self.inp_manager.clone_inp().egui)
+                                    Some(SpectatorSelectionInput {
+                                        inp: self.inp_manager.clone_inp().egui,
+                                        spectate_ingame: !is_spectator,
+                                        into_phased: self.config.game.cl.phased_ingame_spectate,
+                                    })
                                 } else {
                                     None
                                 },
@@ -1269,6 +1281,43 @@ impl ClientNativeImpl {
                         }
                         PlayerFeedbackEvent::SpectatorSelection(ev) => match ev {
                             SpectatorSelectionEvent::FreeView => {
+                                let phased = self.config.game.cl.phased_ingame_spectate;
+                                let mode = if phased {
+                                    ClientCameraMode::PhasedFreeCam(Default::default())
+                                } else {
+                                    ClientCameraMode::FreeCam(Default::default())
+                                };
+                                game.map.game.client_command(
+                                    &player_id,
+                                    ClientCommand::SetCameraMode(mode.clone()),
+                                );
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        player_id,
+                                        ClientToServerPlayerMessage::SwitchToCamera(mode),
+                                    )),
+                                );
+                            }
+                            SpectatorSelectionEvent::Selected(spectated_characters) => {
+                                let phased = self.config.game.cl.phased_ingame_spectate;
+                                let ids = spectated_characters.iter().copied().collect();
+                                let mode = if phased {
+                                    ClientCameraMode::PhasedFreeCam(ids)
+                                } else {
+                                    ClientCameraMode::FreeCam(ids)
+                                };
+                                game.map.game.client_command(
+                                    &player_id,
+                                    ClientCommand::SetCameraMode(mode.clone()),
+                                );
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        player_id,
+                                        ClientToServerPlayerMessage::SwitchToCamera(mode),
+                                    )),
+                                );
+                            }
+                            SpectatorSelectionEvent::Unspec => {
                                 game.map.game.client_command(
                                     &player_id,
                                     ClientCommand::SetCameraMode(ClientCameraMode::None),
@@ -1282,23 +1331,9 @@ impl ClientNativeImpl {
                                     )),
                                 );
                             }
-                            SpectatorSelectionEvent::Selected(spectated_characters) => {
-                                game.map.game.client_command(
-                                    &player_id,
-                                    ClientCommand::SetCameraMode(ClientCameraMode::FreeCam(
-                                        spectated_characters.iter().copied().collect(),
-                                    )),
-                                );
-                                game.network.send_unordered_to_server(
-                                    &ClientToServerMessage::PlayerMsg((
-                                        player_id,
-                                        ClientToServerPlayerMessage::SwitchToCamera(
-                                            ClientCameraMode::FreeCam(
-                                                spectated_characters.iter().copied().collect(),
-                                            ),
-                                        ),
-                                    )),
-                                );
+                            SpectatorSelectionEvent::SwitchPhaseState => {
+                                self.config.game.cl.phased_ingame_spectate =
+                                    !self.config.game.cl.phased_ingame_spectate;
                             }
                         },
                     }
@@ -1727,6 +1762,22 @@ impl ClientNativeImpl {
                                 }
                             }
                         }
+                        UiEvent::SwitchToDefaultCam => {
+                            if let Game::Active(game) = &mut self.game {
+                                if let Some((player_id, _)) =
+                                    game.game_data.local.active_local_player()
+                                {
+                                    game.network.send_unordered_to_server(
+                                        &ClientToServerMessage::PlayerMsg((
+                                            *player_id,
+                                            ClientToServerPlayerMessage::SwitchToCamera(
+                                                ClientCameraMode::None,
+                                            ),
+                                        )),
+                                    );
+                                }
+                            }
+                        }
                         UiEvent::WindowChange => {
                             self.on_window_change(native);
                         }
@@ -1898,6 +1949,32 @@ impl ClientNativeImpl {
                                         &ClientToServerMessage::AccountRequestInfo,
                                     );
                                 }
+                            }
+                        }
+                        UiEvent::ConnectLegacy {
+                            addr,
+                            can_show_warning,
+                        } => {
+                            if can_show_warning && !self.config.game.cl.shown_legacy_server_warning
+                            {
+                                self.config.engine.ui.path.route("legacywarning");
+                            } else if let Ok((thread, mut addrs, cert)) =
+                                legacy_proxy::proxy_run(&self.io, &self.sys, addr.into())
+                            {
+                                self.legacy_proxy_thread = Some(thread);
+                                self.ui_events.push(UiEvent::Connect {
+                                    addr: addrs.remove(0),
+                                    cert_hash: match cert {
+                                        NetworkServerCertModeResult::Cert { cert } => cert
+                                            .tbs_certificate
+                                            .subject_public_key_info
+                                            .fingerprint_bytes()
+                                            .unwrap(),
+                                        NetworkServerCertModeResult::PubKeyHash { hash } => hash,
+                                    },
+                                    rcon_secret: Default::default(),
+                                    can_start_local_server: false,
+                                });
                             }
                         }
                     }
@@ -2179,6 +2256,7 @@ impl ClientNativeImpl {
             match event {
                 LocalConsoleEvent::Connect {
                     addresses,
+                    cert,
                     can_start_local_server,
                 } => {
                     // if localhost, then get the cert, rcon pw & port from the shared info
@@ -2193,6 +2271,7 @@ impl ClientNativeImpl {
                         ConnectLocalServerResult::KeepConnecting { addresses } => {
                             self.local_console.add_event(LocalConsoleEvent::Connect {
                                 addresses,
+                                cert: ServerCertMode::Unknown,
                                 can_start_local_server: false,
                             });
                         }
@@ -2202,11 +2281,43 @@ impl ClientNativeImpl {
                                 .iter()
                                 .find(|addr| addr.is_ipv4())
                                 .or(addresses.first())
-                                .and_then(|addr| (!addr.ip().is_loopback()).then_some(addr))
+                                .and_then(|addr| {
+                                    (!addr.ip().is_loopback()
+                                        || !matches!(cert, ServerCertMode::Unknown))
+                                    .then_some(addr)
+                                })
                             {
-                                self.connect_game(*addr, ServerCertMode::Unknown, None);
+                                self.connect_game(*addr, cert, None);
                             }
                         }
+                    }
+                }
+                LocalConsoleEvent::ConnectLegacy { addresses } => {
+                    // if localhost, then get the cert, rcon pw & port from the shared info
+                    let legacy_addr =
+                        if let Some(addr) = addresses.iter().find(|addr| addr.is_ipv4()) {
+                            *addr
+                        } else if !addresses.is_empty() {
+                            addresses[0]
+                        } else {
+                            "127.0.0.1:8303".parse().unwrap()
+                        };
+                    if let Ok((thread, addrs, cert)) =
+                        legacy_proxy::proxy_run(&self.io, &self.sys, legacy_addr.into())
+                    {
+                        self.legacy_proxy_thread = Some(thread);
+                        self.local_console.add_event(LocalConsoleEvent::Connect {
+                            addresses: addrs,
+                            can_start_local_server: false,
+                            cert: match cert {
+                                NetworkServerCertModeResult::Cert { cert } => {
+                                    ServerCertMode::Cert(cert.to_der().unwrap())
+                                }
+                                NetworkServerCertModeResult::PubKeyHash { hash } => {
+                                    ServerCertMode::Hash(hash)
+                                }
+                            },
+                        });
                     }
                 }
                 LocalConsoleEvent::Bind { was_player_profile }
@@ -2778,11 +2889,13 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         ));
         let tee_editor = Box::new(TeeEditor::new(&mut graphics));
         let color_test = Box::new(ColorTest::default());
+        let page_legacy_warning = Box::new(LegacyWarningPage::new(ui_events.clone()));
         ui_manager.register_path("", "", main_menu);
         ui_manager.register_path("", "connect", connecting_menu);
         ui_manager.register_path("", "ingame", ingame_menu);
         ui_manager.register_path("editor", "tee", tee_editor);
         ui_manager.register_path("", "color", color_test);
+        ui_manager.register_path("", "legacywarning", page_legacy_warning);
         benchmark.bench("registering ui paths");
 
         let cur_time = loading.sys.time_get();
@@ -2881,6 +2994,8 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
 
             global_binds,
             inp_manager,
+
+            legacy_proxy_thread: None,
 
             // pools & helpers
             string_pool: Pool::with_sized(256, || String::with_capacity(256)), // TODO: random values rn
@@ -3201,6 +3316,7 @@ impl FromNativeImpl for ClientNativeImpl {
                 tick_of_inp,
                 &mut player_inputs,
                 &game.player_inputs_chainable_pool,
+                game.send_input_every_tick,
             );
 
             game.send_input(&player_inputs, sys);

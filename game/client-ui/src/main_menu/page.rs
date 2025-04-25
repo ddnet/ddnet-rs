@@ -19,11 +19,17 @@ use demo::{
 };
 use game_base::{
     assets_url::HTTP_RESOURCE_URL,
-    server_browser::{ServerBrowserData, ServerBrowserInfo, ServerBrowserServer},
+    server_browser::{
+        ServerBrowserData, ServerBrowserInfo, ServerBrowserInfoMap, ServerBrowserPlayer,
+        ServerBrowserServer, ServerBrowserSkin,
+    },
 };
 
 use game_base::local_server_info::LocalServerInfo;
 use game_config::config::{Config, ConfigGame};
+use game_interface::types::{
+    character_info::NetworkSkinInfo, render::character::TeeEye, resource_key::NetworkResourceKey,
+};
 use graphics::{
     graphics::graphics::Graphics,
     graphics_mt::GraphicsMultiThreaded,
@@ -35,6 +41,7 @@ use graphics::{
     },
 };
 use master_server_types::{addr::Protocol, servers::BrowserServers};
+use math::colors::legacy_color_to_rgba;
 use sound::{scene_object::SceneObject, sound::SoundManager};
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
@@ -53,6 +60,7 @@ use super::{
     ddnet_info::DdnetInfo,
     demo_list::{DemoList, DemoListEntry},
     features::EnabledFeatures,
+    legacy_server_list::LegacyServerList,
     main_frame,
     monitors::UiMonitors,
     player_settings_ntfy::PlayerSettingsSync,
@@ -191,10 +199,133 @@ impl MainMenuUi {
         )
     }
 
+    pub fn legacy_json_to_server_browser(
+        servers_raw: &str,
+    ) -> anyhow::Result<Vec<ServerBrowserServer>> {
+        let servers: LegacyServerList = match serde_json::from_str(servers_raw) {
+            Ok(servers) => servers,
+            Err(err) => {
+                log::error!("could not parse servers json: {err}");
+                return Err(err.into());
+            }
+        };
+
+        let parsed_servers: Vec<ServerBrowserServer> = servers
+            .servers
+            .into_iter()
+            .filter_map(|server| {
+                if server
+                    .addresses
+                    .iter()
+                    .any(|addr| addr.protocol == Protocol::V6)
+                {
+                    let info = server.info;
+                    Some(ServerBrowserServer {
+                        addresses: server
+                            .addresses
+                            .into_iter()
+                            .filter(|addr| addr.protocol == Protocol::V6)
+                            .map(|addr| SocketAddr::new(addr.ip, addr.port))
+                            .collect(),
+                        info: ServerBrowserInfo {
+                            name: info.name.try_into().unwrap_or_default(),
+                            game_type: info.game_type.try_into().unwrap_or_default(),
+                            version: info.version.try_into().unwrap_or_default(),
+                            map: ServerBrowserInfoMap {
+                                name: info.map.name.as_str().try_into().unwrap_or_default(),
+                                blake3: Default::default(),
+                                size: 0,
+                            },
+                            players: info
+                                .clients
+                                .into_iter()
+                                .map(|c| ServerBrowserPlayer {
+                                    score: c.score.to_string().try_into().unwrap_or_default(),
+                                    skin: c
+                                        .skin
+                                        .map(|s| ServerBrowserSkin {
+                                            name: s
+                                                .name
+                                                .and_then(|n| n.as_str().try_into().ok())
+                                                .unwrap_or_else(|| {
+                                                    NetworkResourceKey::new("").unwrap()
+                                                }),
+                                            info: {
+                                                if let Some((color_body, color_feet)) =
+                                                    s.color_body.zip(s.color_feet)
+                                                {
+                                                    let body_color = legacy_color_to_rgba(
+                                                        color_body, true, true,
+                                                    );
+                                                    let feet_color = legacy_color_to_rgba(
+                                                        color_feet, true, true,
+                                                    );
+                                                    NetworkSkinInfo::Custom {
+                                                        body_color,
+                                                        feet_color,
+                                                    }
+                                                } else {
+                                                    NetworkSkinInfo::Original
+                                                }
+                                            },
+                                            eye: if c.afk { TeeEye::Blink } else { TeeEye::Normal },
+                                        })
+                                        .unwrap_or_default(),
+                                    name: c.name.try_into().unwrap_or_default(),
+                                    clan: c.clan.try_into().unwrap_or_default(),
+                                    account_name: None,
+                                    // TODO
+                                    flag: "".try_into().unwrap(),
+                                })
+                                .collect(),
+                            max_ingame_players: info.max_players,
+                            max_players: info.max_players,
+                            max_players_per_client: 1,
+                            passworded: info.passworded,
+                            tournament_mode: false,
+                            cert_sha256_fingerprint: Default::default(),
+                            requires_account: info.requires_login,
+                        },
+                        location: server.location.try_into().unwrap_or_default(),
+
+                        legacy_server: true,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Ok(parsed_servers)
+    }
+
+    pub async fn download_legacy_server_list(
+        http: &Arc<dyn HttpClientInterface>,
+    ) -> anyhow::Result<Vec<ServerBrowserServer>> {
+        Self::legacy_json_to_server_browser(
+            &http
+                .download_text(
+                    "https://master1.ddnet.org/ddnet/15/servers.json"
+                        .try_into()
+                        .unwrap(),
+                )
+                .await?,
+        )
+    }
+
     pub fn req_server_list(io: &Io) -> IoRuntimeTask<Vec<ServerBrowserServer>> {
         let http = io.http.clone();
         io.rt
-            .spawn(async move { Self::download_server_list(&http).await })
+            .spawn(async move {
+                let res = Self::download_server_list(&http).await;
+
+                let res_legacy = Self::download_legacy_server_list(&http).await;
+
+                match (res, res_legacy) {
+                    (Ok(res), Ok(res_legacy)) => Ok([res, res_legacy].concat()),
+                    (Ok(res), Err(_)) | (Err(_), Ok(res)) => Ok(res),
+                    (Err(err), Err(_)) => Err(err),
+                }
+            })
             .cancelable()
     }
 
@@ -436,6 +567,8 @@ impl MainMenuUi {
                                 .location
                                 .map(|l| l.as_str().try_into().unwrap())
                                 .unwrap_or_default(),
+
+                            legacy_server: false,
                         }),
                         Err(err) => {
                             log::error!("ServerBrowserInfo could not be parsed: {err}");

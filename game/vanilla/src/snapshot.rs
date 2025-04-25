@@ -204,7 +204,7 @@ pub mod snapshot {
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct SnapshotMatchManager {
-        game_match: Match,
+        pub game_match: Match,
     }
 
     impl SnapshotMatchManager {
@@ -807,7 +807,7 @@ pub mod snapshot {
                             proj.game_el_id,
                             proj.owner_game_el_id,
                             &proj.core.pos,
-                            &proj.core.direction,
+                            &proj.core.vel,
                             proj.core.life_span,
                             proj.core.damage,
                             proj.core.force,

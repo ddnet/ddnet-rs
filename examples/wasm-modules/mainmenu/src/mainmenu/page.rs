@@ -155,6 +155,7 @@ impl MainMenu {
                 },
                 addresses: vec![format!("127.0.0.1:{i}").parse().unwrap()],
                 location: "default".try_into().unwrap(),
+                legacy_server: false,
             });
         }
         servers.push(ServerBrowserServer {
@@ -193,6 +194,7 @@ impl MainMenu {
             },
             addresses: vec!["127.0.0.1:1337".parse().unwrap()],
             location: "default".try_into().unwrap(),
+            legacy_server: true,
         });
 
         let servers_task = MainMenuUi::req_server_list(&io);

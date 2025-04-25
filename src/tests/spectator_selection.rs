@@ -36,6 +36,8 @@ pub fn test_spectator_selection(
                     skin_container: &mut containers.skin_container,
                     skin_renderer: render_tee,
                     character_infos,
+                    ingame: false,
+                    into_phased: false,
                 });
             };
             render_helper(

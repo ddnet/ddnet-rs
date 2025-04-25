@@ -165,6 +165,7 @@ impl IngameMenu {
                 },
                 addresses: vec![format!("127.0.0.1:{i}").parse().unwrap()],
                 location: "default".try_into().unwrap(),
+                legacy_server: false,
             });
         }
         client_ui::ingame_menu::main_frame::render(

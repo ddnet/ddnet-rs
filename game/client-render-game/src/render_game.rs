@@ -227,10 +227,18 @@ pub enum RenderPlayerCameraMode {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SpectatorSelectionInput {
+    pub inp: Option<egui::RawInput>,
+    pub spectate_ingame: bool,
+    /// Go into a phased state if spectating
+    pub into_phased: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RenderForPlayer {
     pub chat_info: Option<(ChatMode, String, Option<egui::RawInput>)>,
     pub emote_wheel_input: Option<EmoteWheelInput>,
-    pub spectator_selection_input: Option<Option<egui::RawInput>>,
+    pub spectator_selection_input: Option<SpectatorSelectionInput>,
     pub local_player_info: LocalCharacterRenderInfo,
     pub chat_show_all: bool,
     pub scoreboard_active: bool,
@@ -915,12 +923,12 @@ impl RenderGame {
 
             let mut dummy_input = &mut None;
 
-            let spectator_selection_active =
+            let (spectator_selection_active, spectate_is_ingame, spectate_is_phased) =
                 if let Some(input) = &mut player_render_info.spectator_selection_input {
-                    dummy_input = input;
-                    true
+                    dummy_input = &mut input.inp;
+                    (true, input.spectate_ingame, input.into_phased)
                 } else {
-                    false
+                    (false, false, false)
                 };
 
             // spectator selection list
@@ -933,6 +941,8 @@ impl RenderGame {
                         skin_container: &mut self.containers.skin_container,
                         skin_renderer: &self.players.tee_renderer,
                         character_infos: &render_info.character_infos,
+                        ingame: spectate_is_ingame,
+                        into_phased: spectate_is_phased,
                     });
 
                 res.extend(evs.into_iter().map(PlayerFeedbackEvent::SpectatorSelection));

@@ -70,7 +70,7 @@ impl EditorWasmManager {
         let cache_task = cache.clone();
         let task = io.rt.spawn(async move {
             cache_task
-                .load(&path_str, |wasm_bytes| {
+                .load(path_str.as_ref(), |wasm_bytes| {
                     Box::pin(async move {
                         Ok(WasmManager::compile_module(&wasm_bytes)?
                             .serialize()?

@@ -109,7 +109,7 @@ members = [
     "game/community", "lib/input-binds", "game/ghost", "game/client-ghost", "game/client-replay", "game/editor-wasm", 
     "game/client-notifications", "src/editor-server", "src/extra-convert", "game/editor-interface", "game/editor-auto-mapper-wasm",
     "game/api-auto-mapper",
-    "examples/wasm-modules/auto-mapper",
+    "examples/wasm-modules/auto-mapper", "game/legacy_proxy",
 ]
 
 [package]
@@ -179,6 +179,7 @@ prediction-timer = { path = "game/prediction-timer" }
 editor-wasm = { path = "game/editor-wasm", default-features = false }
 game-state-wasm = { path = "game/game-state-wasm" }
 editor = { path = "game/editor", default-features = false }
+legacy_proxy = { path = "game/legacy_proxy" }
 
 egui-winit = { version = "0.31.1", default-features = false, features = ["x11", "arboard", "links"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }

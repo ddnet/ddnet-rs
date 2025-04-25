@@ -6,10 +6,10 @@ use std::{
     time::Duration,
 };
 
-use base::{hash::Hash, system::System};
+use base::system::System;
 use base_io::io::Io;
 use client_notifications::overlay::ClientNotifications;
-use client_types::console::ConsoleEntry;
+use client_types::{cert::ServerCertMode, console::ConsoleEntry};
 use client_ui::ingame_menu::account_info::AccountInfo;
 use client_ui::{
     connect::user_data::ConnectMode,
@@ -37,14 +37,6 @@ pub struct GameBase {
     pub sys: System,
     pub tp: Arc<rayon::ThreadPool>,
     pub fonts: FontDefinitions,
-}
-
-#[derive(Debug, Clone)]
-pub enum ServerCertMode {
-    Cert(Vec<u8>),
-    Hash(Hash),
-    /// The game will try to get the mode automatically
-    Unknown,
 }
 
 /// Automatically reset some state if the client dropped.

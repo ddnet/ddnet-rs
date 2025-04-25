@@ -135,14 +135,14 @@ impl<const VERSION: usize> Cache<{ VERSION }> {
     /// this function is called.
     pub async fn load<F>(
         &self,
-        original_file_path: &str,
+        original_file_path: &Path,
         compute_func: F,
     ) -> anyhow::Result<Vec<u8>>
     where
         F: FnOnce(Vec<u8>) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<u8>>> + Send>>,
     {
         let cache = &self.cache;
-        let file = cache.disk_fs.read_file(original_file_path.as_ref()).await?;
+        let file = cache.disk_fs.read_file(original_file_path).await?;
         self.load_from_binary(file, compute_func).await
     }
 

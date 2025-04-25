@@ -11,8 +11,9 @@ use binds::binds::{
     bind_to_str, gen_local_player_action_hash_map, gen_local_player_action_hash_map_rev,
     syn_to_bind, syn_to_bind_keys, BindActionsLocalPlayer, BindKey,
 };
-use client_types::console::{
-    entries_to_parser, ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable,
+use client_types::{
+    cert::ServerCertMode,
+    console::{entries_to_parser, ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable},
 };
 use client_ui::console::utils::{syn_vec_to_config_val, try_apply_config_val};
 use command_parser::parser::{
@@ -34,7 +35,11 @@ use super::console::ConsoleRender;
 pub enum LocalConsoleEvent {
     Connect {
         addresses: Vec<SocketAddr>,
+        cert: ServerCertMode,
         can_start_local_server: bool,
+    },
+    ConnectLegacy {
+        addresses: Vec<SocketAddr>,
     },
     /// A bind command was executed
     Bind {
@@ -800,8 +805,37 @@ impl LocalConsoleBuilder {
                 let addresses = text.to_socket_addrs()?.collect();
                 console_events_cmd.push(LocalConsoleEvent::Connect {
                     addresses,
+                    cert: ServerCertMode::Unknown,
                     can_start_local_server: true,
                 });
+                Ok(format!("Trying to connect to {text}"))
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "connect_legacy".into(),
+            usage: "connect_legacy <ip:port>".into(),
+            description: "Connects to a legacy server of the given ip & port.".into(),
+            cmd: Rc::new(move |_, _, _, path| {
+                let (Syn::Text(text), _) = path
+                    .first()
+                    .ok_or_else(|| anyhow!("expected ip & port, but found nothing"))?
+                else {
+                    return Err(anyhow!("Expected a text that represents the ip+port"));
+                };
+                let text = if !text.contains(":") {
+                    format!("{text}:8303")
+                } else {
+                    text.clone()
+                };
+                let addresses = text.to_socket_addrs()?.collect();
+                console_events_cmd.push(LocalConsoleEvent::ConnectLegacy { addresses });
                 Ok(format!("Trying to connect to {text}"))
             }),
             args: vec![CommandArg {

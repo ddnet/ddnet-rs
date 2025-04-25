@@ -23,6 +23,8 @@ pub mod character_hook {
         /// the hook is did not attach to anything and goes into the character again
         RetractStart,
         /// like [HookState::RetractStart] but one tick later
+        RetractMid,
+        /// like [HookState::RetractMid] but one tick later
         RetractEnd,
         /// the hook is currently flying
         HookFlying,

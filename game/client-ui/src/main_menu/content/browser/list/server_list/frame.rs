@@ -90,6 +90,7 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
                 })
                 .unwrap_or(SocketAddr::V4("127.0.0.1:0".parse().unwrap()))],
             location: "default".try_into().unwrap(),
+            legacy_server: false,
         },
         rcon_secret,
     }];
@@ -192,6 +193,9 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
                         server_cert_hash
                     },
                 );
+                pipe.user_data
+                    .config
+                    .set_storage("server-is-legacy", &server.legacy_server);
                 if cur_page == MENU_LAN_NAME {
                     pipe.user_data
                         .config

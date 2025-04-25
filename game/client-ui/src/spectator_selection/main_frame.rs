@@ -30,17 +30,41 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             add_margins(ui, |ui| {
                 ui.style_mut().visuals.clip_rect_margin = 6.0;
                 ScrollArea::vertical().show(ui, |ui| {
+                    if pipe.user_data.ingame {
+                        ui.horizontal(|ui| {
+                            if ui.button("Exit spectate").clicked() {
+                                pipe.user_data
+                                    .events
+                                    .push_back(SpectatorSelectionEvent::Unspec);
+                            }
+                            let mut phased = pipe.user_data.into_phased;
+                            if ui.checkbox(&mut phased, "Phased character").changed() {
+                                pipe.user_data
+                                    .events
+                                    .push_back(SpectatorSelectionEvent::SwitchPhaseState);
+                            }
+                        });
+                    }
                     if ui.button("Free view").clicked() {
                         pipe.user_data
                             .events
                             .push_back(SpectatorSelectionEvent::FreeView);
                     }
-                    for (id, character) in pipe
+                    let mut list: Vec<_> = pipe
                         .user_data
                         .character_infos
                         .iter()
                         .filter(|(_, char)| char.stage_id.is_some())
-                    {
+                        .collect();
+                    list.sort_by(|(id1, p1), (id2, p2)| {
+                        let res = p1.info.name.cmp(&p2.info.name);
+                        if matches!(res, std::cmp::Ordering::Equal) {
+                            id1.cmp(id2)
+                        } else {
+                            res
+                        }
+                    });
+                    for (id, character) in list {
                         let mut render_rect = ui.available_rect_before_wrap();
                         render_rect.set_height(64.0);
 
