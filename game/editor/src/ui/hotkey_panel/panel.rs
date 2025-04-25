@@ -476,6 +476,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                         binds_per_event,
                         pipe.user_data.hotkeys,
                     );
+                    binds_changed |= hotkey_button(
+                        ui,
+                        "Close editor",
+                        "",
+                        EditorHotkeyEvent::File(EditorHotkeyEventFile::Close),
+                        options,
+                        binds_per_event,
+                        pipe.user_data.hotkeys,
+                    );
                     ui.separator();
                     ui.separator();
                     ui.end_row();

@@ -638,6 +638,8 @@ impl InputHandling {
         mut remote_console_state: Option<&mut UiState>,
         debug_hud_state: &mut UiState,
 
+        open_editor: &mut bool,
+
         io: &Io,
     ) {
         let actions = global_binds.process();
@@ -697,6 +699,9 @@ impl InputHandling {
                 }
                 BindActionsHotkey::DebugHud => {
                     debug_hud_state.is_ui_open = !debug_hud_state.is_ui_open;
+                }
+                BindActionsHotkey::OpenEditor => {
+                    *open_editor = true;
                 }
             }
         }
@@ -768,6 +773,7 @@ impl InputHandling {
         local_console_ui: &mut UiContainer,
         mut remote_console_ui: Option<&mut UiContainer>,
         debug_hud_ui: &mut UiContainer,
+        open_editor: &mut bool,
         graphics: &Graphics,
         io: &Io,
     ) {
@@ -790,6 +796,7 @@ impl InputHandling {
                                 &mut local_console_ui.ui_state,
                                 remote_console_ui.as_mut().map(|ui| &mut ui.ui_state),
                                 &mut debug_hud_ui.ui_state,
+                                open_editor,
                                 io,
                             );
                             global_binds.handle_key_up(&key_ev.key);
@@ -801,6 +808,7 @@ impl InputHandling {
                         &mut local_console_ui.ui_state,
                         remote_console_ui.as_mut().map(|ui| &mut ui.ui_state),
                         &mut debug_hud_ui.ui_state,
+                        open_editor,
                         io,
                     );
                 }

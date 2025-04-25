@@ -216,6 +216,7 @@ pub enum BindActionsHotkey {
     RemoteConsole,
     ConsoleClose,
     DebugHud,
+    OpenEditor,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

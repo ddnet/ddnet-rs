@@ -2936,6 +2936,14 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             ],
             BindActionsHotkey::DebugHud,
         );
+        global_binds.register_bind(
+            &[
+                BindKey::Key(PhysicalKey::Code(KeyCode::ControlLeft)),
+                BindKey::Key(PhysicalKey::Code(KeyCode::ShiftLeft)),
+                BindKey::Key(PhysicalKey::Code(KeyCode::KeyE)),
+            ],
+            BindActionsHotkey::OpenEditor,
+        );
         benchmark.bench("global binds");
 
         local_console.ui.ui_state.is_ui_open = false;
@@ -3111,6 +3119,8 @@ impl InputEventHandler for ClientNativeImpl {
 impl FromNativeImpl for ClientNativeImpl {
     fn run(&mut self, native: &mut dyn NativeImpl) {
         self.inp_manager.collect_events();
+
+        let mut open_editor = false;
         self.inp_manager.handle_global_binds(
             &mut self.global_binds,
             &mut self.local_console.ui,
@@ -3118,9 +3128,27 @@ impl FromNativeImpl for ClientNativeImpl {
                 .get_remote_console_mut()
                 .map(|console| &mut console.ui),
             &mut self.client_stats.ui,
+            &mut open_editor,
             &self.graphics,
             &self.io,
         );
+        if open_editor {
+            self.editor = match std::mem::take(&mut self.editor) {
+                EditorState::None => {
+                    let editor = EditorWasmManager::new(
+                        &self.sound,
+                        &self.graphics,
+                        &self.graphics_backend,
+                        &self.io,
+                        &self.thread_pool,
+                        &self.font_data,
+                    );
+                    EditorState::Open(editor)
+                }
+                EditorState::Open(editor) => EditorState::Minimized(editor),
+                EditorState::Minimized(editor) => EditorState::Open(editor),
+            }
+        }
 
         let sys = &mut self.sys;
         self.cur_time = sys.time_get();
