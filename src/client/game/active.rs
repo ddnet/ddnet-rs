@@ -256,6 +256,9 @@ impl ActiveGame {
             ServerToClientMessage::Custom(_) => {
                 // ignore
             }
+            ServerToClientMessage::RequiresPassword => {
+                // ignore
+            }
             ServerToClientMessage::ServerInfo { .. } => {
                 // TODO: update some stuff or just ignore?
             }

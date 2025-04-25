@@ -166,12 +166,7 @@ pub enum ClientState {
         name: ReducedAsciiString,
         hash: Hash,
     },
-    ServerInfoRequested {
-        name: ReducedAsciiString,
-        hash: Hash,
-        token: u8,
-    },
-    ReceivedServerInfo,
+    SentServerInfo,
     StartInfoSent,
     Ingame,
 }
@@ -180,7 +175,6 @@ pub enum ClientState {
 pub struct ClientReady {
     pub con: bool,
     pub client_con: bool,
-    pub server_info: bool,
 }
 
 pub struct ClientData {
@@ -254,9 +248,6 @@ impl ProxyClient {
     }
     pub fn sendg<'a, G: Into<Game<'a>>>(&mut self, msg: G) {
         self.socket.sendg(msg)
-    }
-    pub fn sendc<'a, C: Into<Connless<'a>>>(&mut self, addr: Addr, msg: C) {
-        self.socket.sendc(addr, msg)
     }
     pub fn flush(&mut self) {
         self.socket.flush();

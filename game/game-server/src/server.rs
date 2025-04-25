@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fmt::Debug,
-    net::IpAddr,
+    net::{IpAddr, SocketAddr},
     num::NonZeroUsize,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Weak},
@@ -41,7 +41,7 @@ use game_state_wasm::game::state_wasm_manager::GameStateWasmManager;
 use http_accounts::http::AccountHttp;
 use master_server_types::response::RegisterResponse;
 use network::network::{
-    connection::NetworkConnectionId,
+    connection::{ConnectionStats, NetworkConnectionId},
     connection_ban::ConnectionBans,
     connection_limit::MaxConnections,
     connection_per_ip::ConnectionLimitPerIp,
@@ -70,7 +70,7 @@ use crate::{
     auto_map_votes::AutoMapVotes,
     client::{
         ClientSnapshotForDiff, ClientSnapshotStorage, Clients, ServerClient, ServerClientPlayer,
-        ServerNetworkClient, ServerNetworkQueuedClient,
+        ServerNetworkClient, ServerNetworkQueuedClient, ServerPasswordClient,
     },
     map_votes::{MapVotes, ServerMapVotes},
     network_plugins::{accounts_only::AccountsOnly, cert_ban::CertBans},
@@ -1115,6 +1115,9 @@ impl Server {
         con_id: &NetworkConnectionId,
         _reason: &str,
     ) -> Option<PoolFxLinkedHashMap<PlayerId, ServerClientPlayer>> {
+        // remove client from password player list (if in)
+        self.clients.password_clients.remove(con_id);
+
         // find client in queued clients
         if self.clients.network_queued_clients.contains_key(con_id) {
             self.drop_client_from_queue(con_id);
@@ -2228,6 +2231,24 @@ impl Server {
             ClientToServerMessage::Custom(_) => {
                 // ignore
             }
+            ClientToServerMessage::PasswordResponse(password) => {
+                // check password
+                if self.config_game.sv.password == password.as_str() {
+                    // client can connect
+                    if let Some(player) = self.clients.password_clients.remove(con_id) {
+                        self.try_client_connect(
+                            con_id,
+                            &player.connect_timestamp,
+                            player.ip,
+                            player.cert,
+                            player.network_stats,
+                        );
+                    }
+                } else {
+                    self.network
+                        .kick(con_id, KickType::Kick("Wrong password".into()));
+                }
+            }
             ClientToServerMessage::Ready(ready_info) => {
                 if !ready_info.players.is_empty() {
                     // if client is actually waiting, make it part of the game
@@ -2864,7 +2885,7 @@ impl Server {
             max_players: self.config_game.sv.max_players,
             max_players_per_client: self.config_game.sv.max_players_per_client,
             tournament_mode: settings.tournament_mode,
-            passworded: false, // TODO:
+            passworded: !self.config_game.sv.password.is_empty(),
             cert_sha256_fingerprint: self.cert_sha256_fingerprint,
             requires_account: self.accounts_only,
         };
@@ -2991,6 +3012,55 @@ impl Server {
         );
     }
 
+    fn net_stat_to_player_net_stat(network_stats: ConnectionStats) -> PlayerNetworkStats {
+        PlayerNetworkStats {
+            ping: network_stats.ping,
+            packet_loss: network_stats.packets_lost as f32
+                / network_stats.packets_sent.clamp(1, u64::MAX) as f32,
+        }
+    }
+
+    fn send_server_info(
+        &mut self,
+        con_id: &NetworkConnectionId,
+        timestamp: &Duration,
+        addr: SocketAddr,
+        cert: Arc<x509_cert::Certificate>,
+        network_stats: ConnectionStats,
+    ) {
+        log::debug!(target: "server", "connect time sv: {}", timestamp.as_nanos());
+        self.try_client_connect(
+            con_id,
+            timestamp,
+            addr.ip(),
+            cert,
+            Self::net_stat_to_player_net_stat(network_stats),
+        );
+    }
+
+    fn send_password_info(
+        &mut self,
+        con_id: &NetworkConnectionId,
+        timestamp: &Duration,
+        addr: SocketAddr,
+        cert: Arc<x509_cert::Certificate>,
+        network_stats: ConnectionStats,
+    ) {
+        // else add it to the network queue and inform it about that
+        self.clients.password_clients.insert(
+            *con_id,
+            ServerPasswordClient {
+                connect_timestamp: *timestamp,
+                ip: addr.ip(),
+                cert,
+                network_stats: Self::net_stat_to_player_net_stat(network_stats),
+            },
+        );
+
+        self.network
+            .send_unordered_to(&ServerToClientMessage::RequiresPassword, con_id);
+    }
+
     pub fn run(&mut self) {
         let mut cur_time = self.sys.time_get();
         self.last_tick_time = cur_time;
@@ -3021,19 +3091,23 @@ impl Server {
                                 initial_network_stats,
                                 addr,
                             } => {
-                                log::debug!(target: "server", "connect time sv: {}", timestamp.as_nanos());
-                                self.try_client_connect(
-                                    &con_id,
-                                    &timestamp,
-                                    addr.ip(),
-                                    cert,
-                                    PlayerNetworkStats {
-                                        ping: initial_network_stats.ping,
-                                        packet_loss: initial_network_stats.packets_lost as f32
-                                            / initial_network_stats.packets_sent.clamp(1, u64::MAX)
-                                                as f32,
-                                    },
-                                );
+                                if self.config_game.sv.password.is_empty() {
+                                    self.send_server_info(
+                                        &con_id,
+                                        &timestamp,
+                                        addr,
+                                        cert,
+                                        initial_network_stats,
+                                    );
+                                } else {
+                                    self.send_password_info(
+                                        &con_id,
+                                        &timestamp,
+                                        addr,
+                                        cert,
+                                        initial_network_stats,
+                                    );
+                                }
                             }
                             NetworkEvent::Disconnected(reason) => {
                                 log::debug!(target: "server", "got disconnected event from network");

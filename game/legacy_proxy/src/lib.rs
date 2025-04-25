@@ -79,6 +79,7 @@ use libtw2_gamenet_ddnet::{
     enums::{self, Emote, Team, VERSION},
     msg::{
         self,
+        connless::INFO_FLAG_PASSWORD,
         game::{self, SvTeamsState, SvTeamsStateLegacy},
         system, Connless, Game, System, SystemOrGame,
     },
@@ -180,9 +181,10 @@ struct Capabilities {
     pub chat_timeout_codes: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct ServerInfo {
     pub game_type: String,
+    pub passworded: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -245,6 +247,8 @@ struct ClientBase {
     loaded_misc_votes: bool,
 
     dummies_legacy_ids: BTreeMap<i32, Dummy>,
+
+    join_password: String,
 
     // helpers
     input_deser: Pool<Vec<u8>>,
@@ -337,6 +341,33 @@ impl Client {
 
         Ok((
             std::thread::spawn(move || {
+                // first get the server info
+                let mut conless = SocketClient::new(addr).unwrap();
+
+                let token = rand::rng().next_u32() as u8;
+                conless.sendc(
+                    addr,
+                    Connless::RequestInfo(msg::connless::RequestInfo { token }),
+                );
+                let time = sys.time_get();
+                let mut server_info = None;
+                while server_info.is_none() {
+                    conless.run_once(|_, event| {
+                        if let libtw2_net::net::ChunkOrEvent::Connless(msg) = event {
+                            server_info = server_info
+                                .clone()
+                                .or(Self::on_connless_packet(token, msg.addr, msg.data));
+                        }
+                    });
+                    std::thread::sleep(Duration::from_millis(10));
+
+                    // timeout
+                    if sys.time_get().saturating_sub(time) > Duration::from_secs(20) {
+                        return;
+                    }
+                }
+
+                // then start proxy
                 let id_generator: IdGenerator = Default::default();
                 let vanilla_snap_pool = SnapshotPool::new(64, 64);
 
@@ -396,7 +427,9 @@ impl Client {
 
                         dummies_legacy_ids: Default::default(),
 
-                        server_info: Default::default(),
+                        server_info: server_info.unwrap(),
+
+                        join_password: Default::default(),
                     },
 
                     con_id: None,
@@ -1965,7 +1998,7 @@ impl Client {
                     } else {
                         socket.sends(System::Ready(system::Ready));
                         socket.flush();
-                        *state = ClientState::ReceivedServerInfo;
+                        *state = ClientState::SentServerInfo;
                     }
                 } else {
                     processed = false;
@@ -2874,35 +2907,32 @@ impl Client {
             debug!("unprocessed message {:?} {:?}", &player.state, msg);
         }
     }
-    fn on_connless_packet(base: &mut ClientBase, player: &mut ClientData, addr: Addr, data: &[u8]) {
+
+    fn on_connless_packet(token: u8, addr: Addr, data: &[u8]) -> Option<ServerInfo> {
         let msg = match Connless::decode(&mut WarnPkt(addr, data), &mut Unpacker::new(data)) {
             Ok(m) => m,
             Err(err) => {
                 warn!("decode error {:?}:", err);
                 hexdump(Level::Warn, data);
-                return;
+                return None;
             }
         };
         let mut processed = true;
         match msg {
             Connless::Info(info) => {
-                if let ClientState::ServerInfoRequested { token, .. } = &mut player.state {
-                    if info.token == *token as i32 {
-                        player.ready.server_info = true;
-
-                        base.server_info.game_type =
-                            String::from_utf8_lossy(info.game_type).to_string();
-                    }
+                if info.token == token as i32 {
+                    return Some(ServerInfo {
+                        game_type: String::from_utf8_lossy(info.game_type).to_string(),
+                        passworded: (info.flags & INFO_FLAG_PASSWORD) != 0,
+                    });
                 }
             }
             Connless::InfoExtended(info) => {
-                if let ClientState::ServerInfoRequested { token, .. } = &mut player.state {
-                    if info.token == *token as i32 {
-                        player.ready.server_info = true;
-
-                        base.server_info.game_type =
-                            String::from_utf8_lossy(info.game_type).to_string();
-                    }
+                if info.token == token as i32 {
+                    return Some(ServerInfo {
+                        game_type: String::from_utf8_lossy(info.game_type).to_string(),
+                        passworded: (info.flags & INFO_FLAG_PASSWORD) != 0,
+                    });
                 }
             }
             _ => processed = false,
@@ -2910,6 +2940,7 @@ impl Client {
         if !processed {
             debug!("unprocessed message {:?}", msg);
         }
+        None
     }
 
     fn input_to_legacy_input(
@@ -3013,18 +3044,24 @@ impl Client {
                     GameEvents::NetworkEvent(ev) => match ev {
                         NetworkEvent::Connected { .. } => {
                             self.con_id = Some(con_id);
+                            if self.base.server_info.passworded {
+                                self.server_network.send_unordered_to(
+                                    &ServerToClientMessage::RequiresPassword,
+                                    &con_id,
+                                );
+                            } else {
+                                let sock_loop = SocketClient::new(self.connect_addr)?;
 
-                            let sock_loop = SocketClient::new(self.connect_addr)?;
-
-                            self.players.insert(
-                                self.base.id_generator.next_id(),
-                                ProxyClient::new(
-                                    Default::default(),
-                                    sock_loop,
-                                    self.sys.time_get(),
-                                    0,
-                                ),
-                            );
+                                self.players.insert(
+                                    self.base.id_generator.next_id(),
+                                    ProxyClient::new(
+                                        Default::default(),
+                                        sock_loop,
+                                        self.sys.time_get(),
+                                        0,
+                                    ),
+                                );
+                            }
                         }
                         NetworkEvent::Disconnected(_) => {
                             self.shutdown = true;
@@ -3038,6 +3075,21 @@ impl Client {
                     },
                     GameEvents::NetworkMsg(ev) => match ev {
                         ClientToServerMessage::Custom(_) => {}
+                        ClientToServerMessage::PasswordResponse(password) => {
+                            self.base.join_password = password.to_string();
+
+                            let sock_loop = SocketClient::new(self.connect_addr)?;
+
+                            self.players.insert(
+                                self.base.id_generator.next_id(),
+                                ProxyClient::new(
+                                    Default::default(),
+                                    sock_loop,
+                                    self.sys.time_get(),
+                                    0,
+                                ),
+                            );
+                        }
                         ClientToServerMessage::Ready(msg) => {
                             if let Some(con_id) = self.con_id {
                                 self.server_network.send_unordered_to(
@@ -3751,16 +3803,13 @@ impl Client {
                             is_active_connection,
                             is_main_connection,
                         ),
-                        Connless(c) => Self::on_connless_packet(
-                            &mut self.base,
-                            &mut player.data,
-                            c.addr,
-                            c.data,
-                        ),
+                        Connless(_) => {
+                            // ignore
+                        }
                         Ready(_) => {
                             socket.sends(System::Info(system::Info {
                                 version: VERSION.as_bytes(),
-                                password: Some(b""),
+                                password: Some(self.base.join_password.as_bytes()),
                             }));
                             socket.flush();
                         }
@@ -3780,23 +3829,6 @@ impl Client {
                 });
 
                 if let ClientState::MapReady { name, hash } = &mut player.data.state {
-                    let token = rand::rng().next_u32() as u8;
-                    player.data.state = ClientState::ServerInfoRequested {
-                        name: std::mem::take(name),
-                        hash: *hash,
-                        token,
-                    };
-                    player.sendc(
-                        self.connect_addr,
-                        Connless::RequestInfo(msg::connless::RequestInfo { token }),
-                    );
-                    player.flush();
-                } else if let Some(ClientState::ServerInfoRequested { name, hash, .. }) = player
-                    .data
-                    .ready
-                    .server_info
-                    .then_some(&mut player.data.state)
-                {
                     let mut send_server_info_and_prepare_map_download =
                         |map_name: ReducedAsciiString, hash: &Hash| {
                             if !is_main_connection {
@@ -3884,12 +3916,11 @@ impl Client {
                         };
                     send_server_info_and_prepare_map_download(std::mem::take(name), hash);
 
-                    player.data.ready.server_info = false;
-                    player.data.state = ClientState::ReceivedServerInfo;
+                    player.data.state = ClientState::SentServerInfo;
                 }
                 if player.data.ready.con
                     && player.data.ready.client_con
-                    && matches!(player.data.state, ClientState::ReceivedServerInfo)
+                    && matches!(player.data.state, ClientState::SentServerInfo)
                 {
                     player
                         .socket

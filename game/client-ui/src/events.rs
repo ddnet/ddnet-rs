@@ -65,6 +65,8 @@ pub enum UiEvent {
         addr: SocketAddr,
         can_show_warning: bool,
     },
+    /// `None` = disconnect
+    PasswordEntered(Option<String>),
 }
 
 #[hiarc_safer_rc_refcell]

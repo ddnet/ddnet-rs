@@ -146,8 +146,9 @@ use crate::{
     game::Game,
     localplayer::ClientPlayer,
     ui::pages::{
-        editor::tee::TeeEditor, legacy_warning::LegacyWarningPage, loading::LoadingPage,
-        not_found::Error404Page, test::ColorTest,
+        connect_password::PasswordConnectPage, editor::tee::TeeEditor,
+        legacy_warning::LegacyWarningPage, loading::LoadingPage, not_found::Error404Page,
+        test::ColorTest,
     },
 };
 
@@ -1977,6 +1978,21 @@ impl ClientNativeImpl {
                                 });
                             }
                         }
+                        UiEvent::PasswordEntered(password) => {
+                            if let Game::Connecting(connecting) = &self.game {
+                                if let Some(password) = password {
+                                    self.config.engine.ui.path.route("connect");
+                                    connecting.network.send_unordered_to_server(
+                                        &ClientToServerMessage::PasswordResponse(
+                                            NetworkString::new_lossy(password),
+                                        ),
+                                    );
+                                } else {
+                                    self.game = Game::None;
+                                    self.config.engine.ui.path.route("");
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -2890,12 +2906,14 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         let tee_editor = Box::new(TeeEditor::new(&mut graphics));
         let color_test = Box::new(ColorTest::default());
         let page_legacy_warning = Box::new(LegacyWarningPage::new(ui_events.clone()));
+        let password_connect = Box::new(PasswordConnectPage::new(ui_events.clone()));
         ui_manager.register_path("", "", main_menu);
         ui_manager.register_path("", "connect", connecting_menu);
         ui_manager.register_path("", "ingame", ingame_menu);
         ui_manager.register_path("editor", "tee", tee_editor);
         ui_manager.register_path("", "color", color_test);
         ui_manager.register_path("", "legacywarning", page_legacy_warning);
+        ui_manager.register_path("", "connectpassword", password_connect);
         benchmark.bench("registering ui paths");
 
         let cur_time = loading.sys.time_get();

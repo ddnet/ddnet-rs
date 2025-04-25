@@ -866,6 +866,10 @@ impl Game {
                 *self = Self::PrepareConnect(game);
             }
             Game::Connecting(connecting) => match msg {
+                ServerToClientMessage::RequiresPassword => {
+                    pipe.config.ui.path.route("connectpassword");
+                    *self = Self::Connecting(connecting);
+                }
                 ServerToClientMessage::ServerInfo { info, overhead } => {
                     game_server_info.fill_game_info(GameInfo {
                         map_name: info.map.to_string(),

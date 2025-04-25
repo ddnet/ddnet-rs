@@ -689,6 +689,10 @@ pub struct ConfigServer {
     /// traffic.
     #[default = false]
     pub spatial_chat: bool,
+    /// If set, client's must input the correct password
+    /// before being able to join the server
+    #[default = ""]
+    pub password: String,
 }
 
 /// Sound configs used during rendering sound & graphics.

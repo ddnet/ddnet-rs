@@ -16,6 +16,14 @@ use pool::{datatypes::PoolFxLinkedHashMap, pool::Pool};
 
 use crate::server_game::ClientAuth;
 
+#[derive(Debug)]
+pub struct ServerPasswordClient {
+    pub connect_timestamp: Duration,
+    pub ip: IpAddr,
+    pub cert: Arc<x509_cert::Certificate>,
+    pub network_stats: PlayerNetworkStats,
+}
+
 /// A network queued client is a client that isn't actually part of the game,
 /// but e.g. waiting for a slot.
 #[derive(Debug)]
@@ -159,6 +167,7 @@ impl ServerClient {
 
 #[derive(Debug)]
 pub struct Clients {
+    pub password_clients: FxLinkedHashMap<NetworkConnectionId, ServerPasswordClient>,
     pub network_queued_clients: FxLinkedHashMap<NetworkConnectionId, ServerNetworkQueuedClient>,
     pub network_clients: HashMap<NetworkConnectionId, ServerNetworkClient>,
     pub clients: HashMap<NetworkConnectionId, ServerClient>,
@@ -176,6 +185,7 @@ impl Clients {
                     rustc_hash::FxBuildHasher,
                 )
             }),
+            password_clients: Default::default(),
             network_queued_clients: Default::default(),
             network_clients: Default::default(),
             clients: Default::default(),
