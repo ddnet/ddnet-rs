@@ -2470,6 +2470,10 @@ impl RenderGame {
                     .containers
                     .particles_container
                     .is_loaded_or_failed(&i.particles)
+                && self
+                    .containers
+                    .entities_container
+                    .is_loaded_or_failed(&i.entities)
         });
         // since we don't need the property anymore after they are loaded
         // clear it to save memory & performance.
