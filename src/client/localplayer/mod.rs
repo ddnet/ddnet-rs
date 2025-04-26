@@ -74,6 +74,8 @@ pub struct ClientPlayer {
     pub input_cam_mode: PlayerCameraMode,
     pub free_cam_pos: dvec2,
     pub cursor_pos: dvec2,
+    /// Last known cursor position done by a real player
+    pub player_cursor_pos: dvec2,
 }
 
 pub type LocalPlayers = FxLinkedHashMap<PlayerId, ClientPlayer>;

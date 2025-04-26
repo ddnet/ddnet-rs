@@ -3160,7 +3160,7 @@ impl Client {
                             debug!("[NOT IMPLEMENTED] rcon auto login: {:?}", msg.rcon_secret);
                         }
                         ClientToServerMessage::AddLocalPlayer(ev) => {
-                            if self.players.is_empty()
+                            if self.players.len() < 2
                                 || (self.connect_addr.ip.is_loopback() && self.players.len() < 128)
                             {
                                 let sock_loop = SocketClient::new(self.connect_addr)?;

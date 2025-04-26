@@ -245,7 +245,7 @@ impl InputHandling {
 
         let mut is_zooming = false;
 
-        let mut dummy_aim_character = false;
+        let mut dummy_fire_aim_character = false;
 
         let mut next_show_scoreboard = false;
         let mut next_show_chat_all = false;
@@ -273,9 +273,9 @@ impl InputHandling {
                         char_action(action, &mut character)
                     }
                     BindActionsLocalPlayer::Dummy(action) => char_action(action, &mut dummy),
-                    BindActionsLocalPlayer::DummyAimCharacter => {
+                    BindActionsLocalPlayer::DummyFireAimCharacter => {
                         // set the aim request in dummy controls
-                        dummy_aim_character = true;
+                        dummy_fire_aim_character = true;
                     }
                     BindActionsLocalPlayer::ShowHookCollision => {
                         flags |= CharacterInputFlags::HOOK_COLLISION_LINE;
@@ -618,14 +618,22 @@ impl InputHandling {
         input.state.flags.set(flags);
 
         if let Some((_, local_dummy)) = local.first_inactive_local_players_mut() {
-            if dummy_aim_character {
-                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy;
-                let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
-                local_dummy.input.inp.cursor.set(cursor);
-            }
             if dummy.reset {
                 dummy.changes_by_reset();
                 local_dummy.binds.reset_cur_keys();
+            }
+            let will_hook = (*local_dummy.input.inp.state.hook && !dummy.hook_change)
+                || (dummy.hook && dummy.hook_change);
+            if dummy_fire_aim_character && !will_hook {
+                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy * 32.0;
+                let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
+                local_dummy.input.inp.cursor.set(cursor);
+            } else if will_hook || !dummy_fire_aim_character {
+                // For hooks reset to human input cursor
+                local_dummy.cursor_pos = local_dummy.player_cursor_pos;
+                let cursor = local_dummy.cursor_pos / 32.0;
+                let cursor = CharacterInputCursor::from_vec2(&cursor);
+                local_dummy.input.inp.cursor.set(cursor);
             }
             if !next_show_spectator_selection {
                 set(&mut local_dummy.input.inp, dummy);
@@ -916,7 +924,7 @@ impl InputHandling {
 
                             match local_player.input_cam_mode {
                                 PlayerCameraMode::Default => {
-                                    let cur = local_player.cursor_pos;
+                                    let cur = local_player.player_cursor_pos;
                                     local_player.input.inp.cursor.set(
                                         CharacterInputCursor::from_vec2(
                                             &((cur
@@ -927,6 +935,7 @@ impl InputHandling {
                                     Self::clamp_cursor(config_game, local_player);
                                     local_player.cursor_pos =
                                         local_player.input.inp.cursor.to_vec2() * 32.0;
+                                    local_player.player_cursor_pos = local_player.cursor_pos;
                                 }
                                 PlayerCameraMode::Free => {
                                     let cur = local_player.free_cam_pos;
