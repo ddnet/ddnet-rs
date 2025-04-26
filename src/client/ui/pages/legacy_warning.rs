@@ -55,6 +55,10 @@ impl UiPageInterface<Config> for LegacyWarningPage {
 
                     ui.add_space(10.0);
                     ui.label(
+                        "Legacy servers are marked with an \
+                        `L` in the server browser.",
+                    );
+                    ui.label(
                         "Please keep these points in mind before \
                         requesting features or report bugs.",
                     );
