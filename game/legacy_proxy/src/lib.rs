@@ -27,9 +27,9 @@ use game_base::{
 };
 use game_interface::{
     client_commands::{ClientCameraMode, JoinStage},
-    events,
     events::{
-        EventIdGenerator, GameWorldNotificationEvent, GameWorldSystemMessage, GameWorldsEvents,
+        self, EventIdGenerator, GameWorldNotificationEvent, GameWorldSystemMessage,
+        GameWorldsEvents,
     },
     interface::GameStateServerOptions,
     types::{
@@ -49,7 +49,7 @@ use game_interface::{
         pickup::PickupType,
         player_info::PlayerUniqueId,
         render::{
-            character::{CharacterBuff, PlayerCameraMode, TeeEye},
+            character::{CharacterBuff, CharacterDebuff, PlayerCameraMode, TeeEye},
             game::game_match::MatchSide,
             projectiles::WeaponWithProjectile,
         },
@@ -1152,20 +1152,34 @@ impl Client {
                         emoticon_tick,
                         ..Default::default()
                     };
+                    let mut reusable_core =
+                        PoolCharacterReusableCore::from_without_pool(CharacterReusableCore {
+                            weapons,
+                            core: CoreReusable::new(),
+                            buffs,
+                            debuffs: Default::default(),
+                            interactions: Default::default(),
+                            queued_emoticon: Default::default(),
+                        });
+                    if let Some(ddnet_char) = ddnet_char {
+                        if ddnet_char.freeze_start.0 != 0 {
+                            let remaining = ddnet_char.freeze_end.0.saturating_sub(tick);
+                            reusable_core.debuffs.insert(
+                                CharacterDebuff::Freeze,
+                                BuffProps {
+                                    remaining_tick: (remaining.unsigned_abs() as u64).into(),
+                                    interact_tick: Default::default(),
+                                    interact_cursor_dir: Default::default(),
+                                    interact_val: 0.0,
+                                },
+                            );
+                        }
+                    }
                     stage.world.characters.insert(
                         char_id,
                         SnapshotCharacter {
                             core,
-                            reusable_core: PoolCharacterReusableCore::from_without_pool(
-                                CharacterReusableCore {
-                                    weapons,
-                                    core: CoreReusable::new(),
-                                    buffs,
-                                    debuffs: Default::default(),
-                                    interactions: Default::default(),
-                                    queued_emoticon: Default::default(),
-                                },
-                            ),
+                            reusable_core,
                             player_info,
                             ty: SnapshotCharacterPlayerTy::Player(PlayerNetworkStats {
                                 packet_loss: 0.0,
