@@ -26,7 +26,7 @@ use game_base::{
     },
 };
 use game_interface::{
-    client_commands::{ClientCameraMode, JoinStage},
+    client_commands::{ClientCameraMode, JoinStage, MAX_TEAM_NAME_LEN},
     events::{
         self, EventIdGenerator, GameWorldNotificationEvent, GameWorldSystemMessage,
         GameWorldsEvents,
@@ -213,6 +213,8 @@ struct ClientBase {
     latest_client_snap: Option<ClientSnapshotForDiff>,
     ack_input_tick: i32,
     last_snap_tick: i32,
+
+    own_teams: HashMap<PlayerId, (NetworkString<MAX_TEAM_NAME_LEN>, ubvec4, i32)>,
 
     emoticons: HashMap<i32, (Duration, enums::Emoticon)>,
     teams: HashMap<i32, (i32, StageId)>,
@@ -410,6 +412,7 @@ impl Client {
 
                         emoticons: Default::default(),
                         teams: Default::default(),
+                        own_teams: Default::default(),
 
                         char_legacy_to_new_id: Default::default(),
                         char_new_id_to_legacy: Default::default(),
@@ -3516,10 +3519,51 @@ impl Client {
                                             }));
                                             player.flush();
                                         } else {
-                                            let team = match &msg {
-                                                JoinStage::Default => "0",
-                                                JoinStage::Others(name) => name.as_str(),
-                                                JoinStage::Own { .. } => "-1",
+                                            let team = match msg {
+                                                JoinStage::Default => "0".to_string(),
+                                                JoinStage::Others(name) => {
+                                                    let team_index: Option<i32> = name.parse().ok();
+                                                    if team_index.is_some() {
+                                                        name.to_string()
+                                                    } else if let Some((_, _, index)) = self
+                                                        .base
+                                                        .own_teams
+                                                        .values()
+                                                        .find(|(n, _, _)| *n == name)
+                                                    {
+                                                        index.to_string()
+                                                    } else {
+                                                        "".to_string()
+                                                    }
+                                                }
+                                                JoinStage::Own { name, color } => {
+                                                    let mut likely_teams: BTreeSet<i32> =
+                                                        Default::default();
+
+                                                    self.base.teams.values().for_each(|(id, _)| {
+                                                        if *id != 0 {
+                                                            likely_teams.insert(*id);
+                                                        }
+                                                    });
+                                                    let mut likely_team_index = 1;
+                                                    for i in 1..256 {
+                                                        if !likely_teams.contains(&i) {
+                                                            likely_team_index = i;
+                                                            break;
+                                                        }
+                                                    }
+                                                    self.base.own_teams.insert(
+                                                        player_id,
+                                                        (
+                                                            name,
+                                                            ubvec4::new(
+                                                                color[0], color[1], color[2], 20,
+                                                            ),
+                                                            likely_team_index,
+                                                        ),
+                                                    );
+                                                    "-1".to_string()
+                                                }
                                             };
 
                                             player.sendg(Game::ClSay(game::ClSay {

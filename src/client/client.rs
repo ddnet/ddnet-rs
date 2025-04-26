@@ -89,7 +89,7 @@ use graphics_backend::{
 
 use editor_wasm::editor::editor_wasm_manager::{EditorState, EditorWasmManager};
 use game_interface::{
-    client_commands::{ClientCameraMode, ClientCommand, JoinStage},
+    client_commands::{ClientCameraMode, ClientCommand, JoinStage, MAX_TEAM_NAME_LEN},
     events::EventClientInfo,
     interface::GameStateInterface,
     types::{
@@ -1870,21 +1870,42 @@ impl ClientNativeImpl {
                         }
                         UiEvent::JoinOwnTeam { name, color } => {
                             if let Game::Active(game) = &mut self.game {
-                                for (player_id, _) in game.game_data.local.local_players.iter() {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::JoinStage(
-                                                JoinStage::Own {
-                                                    name: name
-                                                        .as_str()
-                                                        .try_into()
-                                                        .unwrap_or_default(),
-                                                    color: [color.r(), color.g(), color.b()],
-                                                },
-                                            ),
-                                        )),
-                                    );
+                                let stage_name: NetworkString<MAX_TEAM_NAME_LEN> =
+                                    name.as_str().try_into().unwrap_or_default();
+                                let active_player_id = game
+                                    .game_data
+                                    .local
+                                    .active_local_player()
+                                    .map(|(id, _)| *id);
+                                for (index, (player_id, _)) in
+                                    game.game_data.local.local_players.iter().enumerate()
+                                {
+                                    if Some(*player_id) == active_player_id
+                                        || (active_player_id.is_none() && index == 0)
+                                    {
+                                        game.network.send_in_order_to_server(
+                                            &ClientToServerMessage::PlayerMsg((
+                                                *player_id,
+                                                ClientToServerPlayerMessage::JoinStage(
+                                                    JoinStage::Own {
+                                                        name: stage_name.clone(),
+                                                        color: [color.r(), color.g(), color.b()],
+                                                    },
+                                                ),
+                                            )),
+                                            NetworkInOrderChannel::Global,
+                                        );
+                                    } else {
+                                        game.network.send_in_order_to_server(
+                                            &ClientToServerMessage::PlayerMsg((
+                                                *player_id,
+                                                ClientToServerPlayerMessage::JoinStage(
+                                                    JoinStage::Others(stage_name.clone()),
+                                                ),
+                                            )),
+                                            NetworkInOrderChannel::Global,
+                                        );
+                                    }
                                 }
                             }
                         }
