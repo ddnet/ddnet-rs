@@ -344,22 +344,36 @@ impl Client {
                 // first get the server info
                 let mut conless = SocketClient::new(addr).unwrap();
 
-                let token = rand::rng().next_u32() as u8;
+                let mut tokens = vec![rand::rng().next_u32() as u8];
                 conless.sendc(
                     addr,
-                    Connless::RequestInfo(msg::connless::RequestInfo { token }),
+                    Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
                 );
                 let time = sys.time_get();
+                let mut last_req = sys.time_get();
                 let mut server_info = None;
                 while server_info.is_none() {
                     conless.run_once(|_, event| {
                         if let libtw2_net::net::ChunkOrEvent::Connless(msg) = event {
                             server_info = server_info
                                 .clone()
-                                .or(Self::on_connless_packet(token, msg.addr, msg.data));
+                                .or(Self::on_connless_packet(&tokens, msg.addr, msg.data));
                         }
                     });
                     std::thread::sleep(Duration::from_millis(10));
+
+                    // send new request
+                    if sys.time_get().saturating_sub(last_req) > Duration::from_secs(1) {
+                        let token = rand::rng().next_u32() as u8;
+                        conless.sendc(
+                            addr,
+                            Connless::RequestInfo(msg::connless::RequestInfo { token }),
+                        );
+
+                        tokens.push(token);
+
+                        last_req = sys.time_get();
+                    }
 
                     // timeout
                     if sys.time_get().saturating_sub(time) > Duration::from_secs(20) {
@@ -2908,7 +2922,7 @@ impl Client {
         }
     }
 
-    fn on_connless_packet(token: u8, addr: Addr, data: &[u8]) -> Option<ServerInfo> {
+    fn on_connless_packet(tokens: &[u8], addr: Addr, data: &[u8]) -> Option<ServerInfo> {
         let msg = match Connless::decode(&mut WarnPkt(addr, data), &mut Unpacker::new(data)) {
             Ok(m) => m,
             Err(err) => {
@@ -2920,7 +2934,7 @@ impl Client {
         let mut processed = true;
         match msg {
             Connless::Info(info) => {
-                if info.token == token as i32 {
+                if tokens.contains(&(info.token as u8)) {
                     return Some(ServerInfo {
                         game_type: String::from_utf8_lossy(info.game_type).to_string(),
                         passworded: (info.flags & INFO_FLAG_PASSWORD) != 0,
@@ -2928,7 +2942,7 @@ impl Client {
                 }
             }
             Connless::InfoExtended(info) => {
-                if info.token == token as i32 {
+                if tokens.contains(&(info.token as u8)) {
                     return Some(ServerInfo {
                         game_type: String::from_utf8_lossy(info.game_type).to_string(),
                         passworded: (info.flags & INFO_FLAG_PASSWORD) != 0,
