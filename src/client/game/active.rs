@@ -8,6 +8,7 @@ use client_map::client_map::GameMap;
 use client_notifications::overlay::ClientNotifications;
 use client_render_game::render_game::{ObservedPlayer, RenderGameForPlayer};
 use client_replay::replay::Replay;
+use client_types::console::ConsoleEntry;
 use command_parser::parser::ParserCache;
 use demo::{
     recorder::{DemoRecorder, DemoRecorderCreateProps},
@@ -25,6 +26,7 @@ use game_config::config::ConfigGame;
 use game_interface::{
     events::GameEvents,
     types::{
+        character_info::NetworkCharacterInfo,
         game::{GameTickType, NonZeroGameTickType},
         id_types::PlayerId,
         input::CharacterInputInfo,
@@ -32,12 +34,13 @@ use game_interface::{
     },
 };
 use game_network::messages::{
-    ClientToServerMessage, MsgSvLoadVotes, MsgSvResetVotes, MsgSvStartVoteResult,
-    ServerToClientMessage,
+    ClientToServerMessage, ClientToServerPlayerMessage, MsgSvLoadVotes, MsgSvResetVotes,
+    MsgSvStartVoteResult, ServerToClientMessage,
 };
 use game_server::server::Server;
 use game_state_wasm::game::state_wasm_manager::GameStateWasmManager;
 use ghost::recorder::GhostRecorder;
+use input_binds::binds::Binds;
 use pool::{
     datatypes::{PoolBTreeMap, PoolVec},
     mt_pool::Pool as MtPool,
@@ -48,14 +51,14 @@ use url::Url;
 
 use crate::{
     game::data::{ClientConnectedPlayer, SnapshotStorageItem},
-    localplayer::{ClientPlayer, ServerInputForDiff},
+    localplayer::{ClientPlayer, ClientPlayerZoomMode, ServerInputForDiff},
     spatial_chat::spatial_chat::SpatialChatGameWorldTy,
 };
 
 use super::{
     data::GameData,
     types::{GameBase, GameConnect, GameMsgPipeline, GameNetwork},
-    DisconnectAutoCleanup,
+    DisconnectAutoCleanup, Game,
 };
 
 pub struct ActiveGame {
@@ -844,6 +847,105 @@ impl ActiveGame {
                 self.auto_cleanup
                     .client_info
                     .set_local_player_count(self.game_data.local.expected_local_players.len());
+            }
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        cur_time: &Duration,
+        config_game: &mut ConfigGame,
+        entries: &[ConsoleEntry],
+    ) {
+        // check msgs from ui
+        if self
+            .auto_cleanup
+            .player_settings_sync
+            .did_player_info_change()
+        {
+            self.next_player_info_change = Some(self.base.sys.time_get());
+        }
+
+        if self.next_player_info_change.is_some_and(|time| {
+            self.base.sys.time_get().saturating_sub(time) > Duration::from_secs(5)
+        }) {
+            self.next_player_info_change = None;
+            for (local_player_id, local_player) in self.game_data.local.local_players.iter_mut() {
+                let character_info = if let Some((info, copy_info)) = local_player
+                    .is_dummy
+                    .then(|| {
+                        config_game
+                            .players
+                            .get(config_game.profiles.dummy.index as usize)
+                            .zip(config_game.players.get(config_game.profiles.main as usize))
+                    })
+                    .flatten()
+                {
+                    Game::network_char_info_from_config_for_dummy(
+                        &config_game.cl,
+                        info,
+                        copy_info,
+                        &config_game.profiles.dummy,
+                    )
+                } else if let Some(p) = config_game.players.get(config_game.profiles.main as usize)
+                {
+                    // TODO: splitscreen support
+                    Game::network_char_info_from_config(&config_game.cl, p)
+                } else {
+                    NetworkCharacterInfo::explicit_default()
+                };
+                local_player.player_info_version += 1;
+                let version = local_player.player_info_version.try_into().unwrap();
+                self.network
+                    .send_unordered_to_server(&ClientToServerMessage::PlayerMsg((
+                        *local_player_id,
+                        ClientToServerPlayerMessage::UpdateCharacterInfo {
+                            info: Box::new(character_info),
+                            version,
+                        },
+                    )))
+            }
+        }
+        if self.auto_cleanup.player_settings_sync.did_controls_change() {
+            for p in self.game_data.local.local_players.values_mut() {
+                // delete all previous binds
+                p.binds = Binds::default();
+                GameData::init_local_player_binds(
+                    config_game,
+                    &mut p.binds,
+                    p.is_dummy,
+                    entries,
+                    &self.parser_cache,
+                );
+            }
+        }
+
+        for local_player in self.game_data.local.local_players.values_mut() {
+            if let Some(state) = &mut local_player.zoom_state {
+                const UPDATE_TIME: Duration = Duration::from_millis(50);
+                const FIRST_UPDATE_TIME: Duration = Duration::from_millis(250);
+                if state
+                    .last_apply_time
+                    .is_none_or(|t| *cur_time >= t + UPDATE_TIME)
+                {
+                    let mut zoom_diff = 0.0;
+                    match state.mode {
+                        ClientPlayerZoomMode::ZoomingIn => {
+                            zoom_diff += 1.0;
+                        }
+                        ClientPlayerZoomMode::ZoomingOut => {
+                            zoom_diff -= 1.0;
+                        }
+                    }
+                    local_player.zoom = (local_player.zoom - zoom_diff * 0.1).clamp(0.01, 1024.0);
+
+                    let apply_time = state
+                        .last_apply_time
+                        .map(|t| cur_time.saturating_sub(cur_time.saturating_sub(t + UPDATE_TIME)))
+                        .unwrap_or_else(|| cur_time.saturating_add(FIRST_UPDATE_TIME));
+
+                    state.last_apply_time = Some(apply_time);
+                }
             }
         }
     }

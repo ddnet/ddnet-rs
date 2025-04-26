@@ -34,7 +34,7 @@ use ui_base::{types::UiState, ui::UiContainer};
 
 use crate::game::data::{GameData, LocalPlayerGameData};
 use crate::localplayer::dummy_control::{DummyControlState, DummyHammerState};
-use crate::localplayer::ClientPlayer;
+use crate::localplayer::{ClientPlayer, ClientPlayerZoomMode, ClientPlayerZoomState};
 
 pub type DeviceToLocalPlayerIndex = HashMap<DeviceId, usize>;
 
@@ -243,13 +243,14 @@ impl InputHandling {
         let mut character = CharacterActions::default();
         let mut dummy = CharacterActions::default();
 
+        let mut is_zooming = false;
+
         let mut dummy_aim_character = false;
 
         let mut next_show_scoreboard = false;
         let mut next_show_chat_all = false;
         let mut next_show_emote_wheel = false;
         let mut next_show_spectator_selection = false;
-        let mut zoom_diff = Some(0);
         for actions in actions.cur_actions.iter() {
             for action in actions {
                 fn char_action(action: &BindActionsCharacter, character: &mut CharacterActions) {
@@ -319,10 +320,10 @@ impl InputHandling {
                         // only listen for click
                     }
                     BindActionsLocalPlayer::ZoomOut => {
-                        // only listen for press
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomIn => {
-                        // only listen for press
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomReset => {
                         // only listen for press
@@ -388,13 +389,22 @@ impl InputHandling {
                         };
                     }
                     BindActionsLocalPlayer::ZoomOut => {
-                        zoom_diff = zoom_diff.map(|diff| diff - 1);
+                        local_player.zoom_state = Some(ClientPlayerZoomState {
+                            mode: ClientPlayerZoomMode::ZoomingOut,
+                            last_apply_time: None,
+                        });
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomIn => {
-                        zoom_diff = zoom_diff.map(|diff| diff + 1);
+                        local_player.zoom_state = Some(ClientPlayerZoomState {
+                            mode: ClientPlayerZoomMode::ZoomingIn,
+                            last_apply_time: None,
+                        });
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomReset => {
-                        zoom_diff = None;
+                        local_player.zoom_state = None;
+                        local_player.zoom = 1.0;
                     }
                     _ => {
                         // ignore rest
@@ -562,6 +572,10 @@ impl InputHandling {
         local_player.show_scoreboard = next_show_scoreboard;
         local_player.show_chat_all = next_show_chat_all;
 
+        if !is_zooming {
+            local_player.zoom_state = None;
+        }
+
         input
             .state
             .input_method_flags
@@ -602,10 +616,6 @@ impl InputHandling {
             flags |= CharacterInputFlags::MENU_UI;
         }
         input.state.flags.set(flags);
-
-        local_player.zoom = zoom_diff
-            .map(|diff| (local_player.zoom - diff as f32 * 0.1).clamp(0.01, 1024.0))
-            .unwrap_or(1.0);
 
         if let Some((_, local_dummy)) = local.first_inactive_local_players_mut() {
             if dummy_aim_character {

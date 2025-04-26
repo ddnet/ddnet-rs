@@ -53,9 +53,8 @@ use game_interface::{
 };
 use game_network::{
     game_event_generator::GameEventGenerator,
-    messages::{ClientToServerMessage, ClientToServerPlayerMessage, ServerToClientMessage},
+    messages::{ClientToServerMessage, ServerToClientMessage},
 };
-use input_binds::binds::Binds;
 use log::info;
 use math::math::vector::vec2;
 use network::network::{
@@ -493,78 +492,13 @@ impl Game {
         ui_creator: &UiCreator,
         notifications: &mut ClientNotifications,
         entries: &[ConsoleEntry],
+        cur_time: &Duration,
     ) {
         let mut selfi = Self::None;
         std::mem::swap(&mut selfi, self);
         *self = match selfi {
             Game::Active(mut game) => {
-                // check msgs from ui
-                if game
-                    .auto_cleanup
-                    .player_settings_sync
-                    .did_player_info_change()
-                {
-                    game.next_player_info_change = Some(game.base.sys.time_get());
-                }
-
-                if game.next_player_info_change.is_some_and(|time| {
-                    game.base.sys.time_get().saturating_sub(time) > Duration::from_secs(5)
-                }) {
-                    game.next_player_info_change = None;
-                    for (local_player_id, local_player) in
-                        game.game_data.local.local_players.iter_mut()
-                    {
-                        let character_info = if let Some((info, copy_info)) = local_player
-                            .is_dummy
-                            .then(|| {
-                                config_game
-                                    .players
-                                    .get(config_game.profiles.dummy.index as usize)
-                                    .zip(
-                                        config_game.players.get(config_game.profiles.main as usize),
-                                    )
-                            })
-                            .flatten()
-                        {
-                            Game::network_char_info_from_config_for_dummy(
-                                &config_game.cl,
-                                info,
-                                copy_info,
-                                &config_game.profiles.dummy,
-                            )
-                        } else if let Some(p) =
-                            config_game.players.get(config_game.profiles.main as usize)
-                        {
-                            // TODO: splitscreen support
-                            Game::network_char_info_from_config(&config_game.cl, p)
-                        } else {
-                            NetworkCharacterInfo::explicit_default()
-                        };
-                        local_player.player_info_version += 1;
-                        let version = local_player.player_info_version.try_into().unwrap();
-                        game.network
-                            .send_unordered_to_server(&ClientToServerMessage::PlayerMsg((
-                                *local_player_id,
-                                ClientToServerPlayerMessage::UpdateCharacterInfo {
-                                    info: Box::new(character_info),
-                                    version,
-                                },
-                            )))
-                    }
-                }
-                if game.auto_cleanup.player_settings_sync.did_controls_change() {
-                    for p in game.game_data.local.local_players.values_mut() {
-                        // delete all previous binds
-                        p.binds = Binds::default();
-                        GameData::init_local_player_binds(
-                            config_game,
-                            &mut p.binds,
-                            p.is_dummy,
-                            entries,
-                            &game.parser_cache,
-                        );
-                    }
-                }
+                game.update(cur_time, config_game, entries);
                 Game::Active(game)
             }
             Game::None | Game::WaitingForFirstSnapshot(_) => {

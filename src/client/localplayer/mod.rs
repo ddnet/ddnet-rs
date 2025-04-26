@@ -22,6 +22,18 @@ pub struct ServerInputForDiff {
     pub inp: PlayerInputChainable,
 }
 
+#[derive(Debug)]
+pub enum ClientPlayerZoomMode {
+    ZoomingIn,
+    ZoomingOut,
+}
+
+#[derive(Debug)]
+pub struct ClientPlayerZoomState {
+    pub mode: ClientPlayerZoomMode,
+    pub last_apply_time: Option<Duration>,
+}
+
 #[derive(Debug, Default)]
 pub struct ClientPlayer {
     pub input: PlayerInput,
@@ -57,6 +69,7 @@ pub struct ClientPlayer {
     pub cursor_pos_dummy: dvec2,
 
     pub zoom: f32,
+    pub zoom_state: Option<ClientPlayerZoomState>,
 
     pub input_cam_mode: PlayerCameraMode,
     pub free_cam_pos: dvec2,

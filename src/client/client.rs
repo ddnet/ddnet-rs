@@ -3177,6 +3177,7 @@ impl FromNativeImpl for ClientNativeImpl {
             &self.ui_creator,
             &mut self.notifications,
             &self.local_console.entries,
+            &self.cur_time,
         );
 
         GameEventsClient::update(&mut GameEventPipeline {
