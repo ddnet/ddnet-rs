@@ -1973,10 +1973,13 @@ impl Server {
                     let display_name = name.as_str().try_into()?;
                     let command = cmd.as_str().try_into()?;
                     let res = format!("Added vote {name} in {category}");
-                    self.misc_votes
-                        .entry(category)
-                        .or_default()
-                        .insert(MiscVoteKey { display_name }, MiscVote { command });
+                    self.misc_votes.entry(category).or_default().insert(
+                        MiscVoteKey {
+                            display_name,
+                            description: Default::default(),
+                        },
+                        MiscVote { command },
+                    );
                     self.misc_votes_hash = None;
 
                     self.broadcast_in_order_filtered(
@@ -2002,7 +2005,10 @@ impl Server {
 
                     let res = format!("Remove vote {name} from {category}");
                     if let Some(votes) = self.misc_votes.get_mut(category) {
-                        votes.remove(&MiscVoteKey { display_name });
+                        votes.remove(&MiscVoteKey {
+                            display_name,
+                            description: Default::default(),
+                        });
 
                         if votes.is_empty() {
                             self.misc_votes.remove(category);

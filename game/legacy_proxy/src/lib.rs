@@ -2135,8 +2135,11 @@ impl Client {
                             category: "general".try_into().unwrap(),
                             vote_key: MiscVoteKey {
                                 display_name: NetworkString::new_lossy(format!(
-                                    "{}, reason: {}",
+                                    "{}",
                                     String::from_utf8_lossy(vote.description),
+                                )),
+                                description: NetworkString::new_lossy(format!(
+                                    "reason: {}",
                                     String::from_utf8_lossy(vote.reason)
                                 )),
                             },
@@ -3813,6 +3816,7 @@ impl Client {
                                                                         NetworkString::new_lossy(
                                                                             v_name.as_str(),
                                                                         ),
+                                                                    description: Default::default(),
                                                                 },
                                                                 MiscVote {
                                                                     command: Default::default(),

@@ -393,6 +393,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     VoteRenderType::Misc { key, .. } => {
                         render_header(ui, &key.vote_key.display_name, vote.remaining_time);
 
+                        if !key.vote_key.description.is_empty() {
+                            ui.add_space(10.0);
+                            ui.label(key.vote_key.description.as_str());
+                        }
+
+                        ui.add_space(10.0);
+
                         render_footer(ui, vote, &vote_rect);
                     }
                 }
