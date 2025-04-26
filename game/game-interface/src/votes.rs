@@ -100,6 +100,7 @@ pub struct MapVote {
 pub struct MiscVoteKey {
     /// How the vote is displayed in the vote menu
     pub display_name: NetworkString<MAX_MISC_NAME_LEN>,
+    pub description: NetworkString<MAX_MISC_NAME_LEN>,
 }
 
 /// Information to identify a misc vote send to a server.

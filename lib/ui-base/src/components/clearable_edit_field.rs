@@ -7,7 +7,6 @@ pub fn clearable_edit_field(
     input_at_most_size: Option<f32>,
     max_chars: Option<usize>,
 ) -> Option<Response> {
-    let address = text;
     let style = ui.style_mut();
     let rounding = &style.visuals.widgets.inactive.corner_radius;
     let rounding = rounding.ne.max(rounding.nw);
@@ -55,7 +54,7 @@ pub fn clearable_edit_field(
                                 widgets.open.expansion = widgets.inactive.expansion;
                                 widgets.open.bg_stroke = widgets.inactive.bg_stroke;
                                 ui.add(
-                                    TextEdit::singleline(address)
+                                    TextEdit::singleline(text)
                                         .margin(Margin {
                                             left: 3,
                                             right: 3,
@@ -91,7 +90,10 @@ pub fn clearable_edit_field(
                         .add(Button::new("\u{f00d}").stroke(Stroke::NONE))
                         .clicked()
                     {
-                        address.clear();
+                        text.clear();
+                        if let Some(res) = &mut res {
+                            res.mark_changed();
+                        }
                     }
                 });
             });

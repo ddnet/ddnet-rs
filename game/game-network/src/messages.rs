@@ -88,6 +88,8 @@ pub struct MsgSvSpatialChatOfEntitity {
 pub enum ServerToClientMessage<'a> {
     Custom(PoolCow<'a, [u8]>),
     QueueInfo(NetworkString<1024>),
+    /// Server requires a password before detailed server info is sent
+    RequiresPassword,
     ServerInfo {
         info: MsgSvServerInfo,
         /// To make the first ping estimation better the server adds
@@ -183,6 +185,7 @@ pub enum ClientToServerPlayerMessage<'a> {
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMessage<'a> {
     Custom(PoolCow<'a, [u8]>),
+    PasswordResponse(NetworkString<1024>),
     Ready(MsgClReady),
     AddLocalPlayer(Box<MsgClAddLocalPlayer>),
     PlayerMsg((PlayerId, ClientToServerPlayerMessage<'a>)),

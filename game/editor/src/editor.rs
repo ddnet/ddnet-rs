@@ -91,7 +91,7 @@ use crate::{
     client::EditorClient,
     editor_ui::{EditorUiRender, EditorUiRenderPipe},
     event::EditorEventOverwriteMap,
-    fs::read_file_editor,
+    fs::{read_file_editor, write_file_editor},
     hotkeys::{BindsPerEvent, EditorBindsFile, EditorHotkeyEvent},
     image_store_container::{load_image_store_container, ImageStoreContainer},
     map::{
@@ -1434,7 +1434,7 @@ impl Editor {
             )
             .await?;
 
-            fs.write_file(&path, map_legacy.map).await?;
+            write_file_editor(&fs, &path, map_legacy.map).await?;
             Ok(())
         }))
     }
@@ -1586,7 +1586,7 @@ impl Editor {
 
                 let mut file: Vec<u8> = Default::default();
                 map.write(&mut file, &tp)?;
-                fs.write_file(path.as_ref(), file).await?;
+                write_file_editor(&fs, path.as_ref(), file).await?;
 
                 // now write all resources
                 for (path, resource) in resources {

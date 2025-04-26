@@ -56,6 +56,7 @@ hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", feat
 fixed = "1.29.0"
 scan_fmt = "0.2.6"
 rustc-hash = "2.1.1"
+tempfile = { version = "3.19.1" }
 
 [dev-dependencies]
 base-fs = { path = "../../lib/base-fs" }

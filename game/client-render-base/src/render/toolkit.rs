@@ -230,8 +230,8 @@ impl ToolkitRender {
                     |mut stream_handle: LinesStreamHandle<'_>| -> () {
                     let mut line = StreamedLine::new().with_color(match hook_collision.color {
                         HookCollisionLineColor::Nothing => ubvec4::new(255, 0, 0, 255),
-                        HookCollisionLineColor::Player => ubvec4::new(0, 255, 255, 255),
-                        HookCollisionLineColor::Hookable => ubvec4::new(0, 128, 0, 255),
+                        HookCollisionLineColor::Player => ubvec4::new(255, 255, 0, 255),
+                        HookCollisionLineColor::Hookable => ubvec4::new(100, 255, 100, 255),
                         HookCollisionLineColor::Unhookable => ubvec4::new(255, 0, 0, 255),
                         HookCollisionLineColor::Custom(color) => color,
                     });

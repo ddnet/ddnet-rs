@@ -34,7 +34,7 @@ use ui_base::{types::UiState, ui::UiContainer};
 
 use crate::game::data::{GameData, LocalPlayerGameData};
 use crate::localplayer::dummy_control::{DummyControlState, DummyHammerState};
-use crate::localplayer::ClientPlayer;
+use crate::localplayer::{ClientPlayer, ClientPlayerZoomMode, ClientPlayerZoomState};
 
 pub type DeviceToLocalPlayerIndex = HashMap<DeviceId, usize>;
 
@@ -243,13 +243,14 @@ impl InputHandling {
         let mut character = CharacterActions::default();
         let mut dummy = CharacterActions::default();
 
-        let mut dummy_aim_character = false;
+        let mut is_zooming = false;
+
+        let mut dummy_fire_aim_character = false;
 
         let mut next_show_scoreboard = false;
         let mut next_show_chat_all = false;
         let mut next_show_emote_wheel = false;
         let mut next_show_spectator_selection = false;
-        let mut zoom_diff = Some(0);
         for actions in actions.cur_actions.iter() {
             for action in actions {
                 fn char_action(action: &BindActionsCharacter, character: &mut CharacterActions) {
@@ -272,9 +273,9 @@ impl InputHandling {
                         char_action(action, &mut character)
                     }
                     BindActionsLocalPlayer::Dummy(action) => char_action(action, &mut dummy),
-                    BindActionsLocalPlayer::DummyAimCharacter => {
+                    BindActionsLocalPlayer::DummyFireAimCharacter => {
                         // set the aim request in dummy controls
-                        dummy_aim_character = true;
+                        dummy_fire_aim_character = true;
                     }
                     BindActionsLocalPlayer::ShowHookCollision => {
                         flags |= CharacterInputFlags::HOOK_COLLISION_LINE;
@@ -319,10 +320,10 @@ impl InputHandling {
                         // only listen for click
                     }
                     BindActionsLocalPlayer::ZoomOut => {
-                        // only listen for press
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomIn => {
-                        // only listen for press
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomReset => {
                         // only listen for press
@@ -388,13 +389,22 @@ impl InputHandling {
                         };
                     }
                     BindActionsLocalPlayer::ZoomOut => {
-                        zoom_diff = zoom_diff.map(|diff| diff - 1);
+                        local_player.zoom_state = Some(ClientPlayerZoomState {
+                            mode: ClientPlayerZoomMode::ZoomingOut,
+                            last_apply_time: None,
+                        });
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomIn => {
-                        zoom_diff = zoom_diff.map(|diff| diff + 1);
+                        local_player.zoom_state = Some(ClientPlayerZoomState {
+                            mode: ClientPlayerZoomMode::ZoomingIn,
+                            last_apply_time: None,
+                        });
+                        is_zooming = true;
                     }
                     BindActionsLocalPlayer::ZoomReset => {
-                        zoom_diff = None;
+                        local_player.zoom_state = None;
+                        local_player.zoom = 1.0;
                     }
                     _ => {
                         // ignore rest
@@ -562,6 +572,10 @@ impl InputHandling {
         local_player.show_scoreboard = next_show_scoreboard;
         local_player.show_chat_all = next_show_chat_all;
 
+        if !is_zooming {
+            local_player.zoom_state = None;
+        }
+
         input
             .state
             .input_method_flags
@@ -603,19 +617,23 @@ impl InputHandling {
         }
         input.state.flags.set(flags);
 
-        local_player.zoom = zoom_diff
-            .map(|diff| (local_player.zoom - diff as f32 * 0.1).clamp(0.01, 1024.0))
-            .unwrap_or(1.0);
-
         if let Some((_, local_dummy)) = local.first_inactive_local_players_mut() {
-            if dummy_aim_character {
-                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy;
-                let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
-                local_dummy.input.inp.cursor.set(cursor);
-            }
             if dummy.reset {
                 dummy.changes_by_reset();
                 local_dummy.binds.reset_cur_keys();
+            }
+            let will_hook = (*local_dummy.input.inp.state.hook && !dummy.hook_change)
+                || (dummy.hook && dummy.hook_change);
+            if dummy_fire_aim_character && !will_hook {
+                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy * 32.0;
+                let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
+                local_dummy.input.inp.cursor.set(cursor);
+            } else if will_hook || !dummy_fire_aim_character {
+                // For hooks reset to human input cursor
+                local_dummy.cursor_pos = local_dummy.player_cursor_pos;
+                let cursor = local_dummy.cursor_pos / 32.0;
+                let cursor = CharacterInputCursor::from_vec2(&cursor);
+                local_dummy.input.inp.cursor.set(cursor);
             }
             if !next_show_spectator_selection {
                 set(&mut local_dummy.input.inp, dummy);
@@ -637,6 +655,8 @@ impl InputHandling {
         local_console_state: &mut UiState,
         mut remote_console_state: Option<&mut UiState>,
         debug_hud_state: &mut UiState,
+
+        open_editor: &mut bool,
 
         io: &Io,
     ) {
@@ -697,6 +717,9 @@ impl InputHandling {
                 }
                 BindActionsHotkey::DebugHud => {
                     debug_hud_state.is_ui_open = !debug_hud_state.is_ui_open;
+                }
+                BindActionsHotkey::OpenEditor => {
+                    *open_editor = true;
                 }
             }
         }
@@ -768,6 +791,7 @@ impl InputHandling {
         local_console_ui: &mut UiContainer,
         mut remote_console_ui: Option<&mut UiContainer>,
         debug_hud_ui: &mut UiContainer,
+        open_editor: &mut bool,
         graphics: &Graphics,
         io: &Io,
     ) {
@@ -790,6 +814,7 @@ impl InputHandling {
                                 &mut local_console_ui.ui_state,
                                 remote_console_ui.as_mut().map(|ui| &mut ui.ui_state),
                                 &mut debug_hud_ui.ui_state,
+                                open_editor,
                                 io,
                             );
                             global_binds.handle_key_up(&key_ev.key);
@@ -801,6 +826,7 @@ impl InputHandling {
                         &mut local_console_ui.ui_state,
                         remote_console_ui.as_mut().map(|ui| &mut ui.ui_state),
                         &mut debug_hud_ui.ui_state,
+                        open_editor,
                         io,
                     );
                 }
@@ -898,7 +924,7 @@ impl InputHandling {
 
                             match local_player.input_cam_mode {
                                 PlayerCameraMode::Default => {
-                                    let cur = local_player.cursor_pos;
+                                    let cur = local_player.player_cursor_pos;
                                     local_player.input.inp.cursor.set(
                                         CharacterInputCursor::from_vec2(
                                             &((cur
@@ -909,6 +935,7 @@ impl InputHandling {
                                     Self::clamp_cursor(config_game, local_player);
                                     local_player.cursor_pos =
                                         local_player.input.inp.cursor.to_vec2() * 32.0;
+                                    local_player.player_cursor_pos = local_player.cursor_pos;
                                 }
                                 PlayerCameraMode::Free => {
                                     let cur = local_player.free_cam_pos;

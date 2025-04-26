@@ -89,7 +89,7 @@ use graphics_backend::{
 
 use editor_wasm::editor::editor_wasm_manager::{EditorState, EditorWasmManager};
 use game_interface::{
-    client_commands::{ClientCameraMode, ClientCommand, JoinStage},
+    client_commands::{ClientCameraMode, ClientCommand, JoinStage, MAX_TEAM_NAME_LEN},
     events::EventClientInfo,
     interface::GameStateInterface,
     types::{
@@ -146,8 +146,9 @@ use crate::{
     game::Game,
     localplayer::ClientPlayer,
     ui::pages::{
-        editor::tee::TeeEditor, legacy_warning::LegacyWarningPage, loading::LoadingPage,
-        not_found::Error404Page, test::ColorTest,
+        connect_password::PasswordConnectPage, editor::tee::TeeEditor,
+        legacy_warning::LegacyWarningPage, loading::LoadingPage, not_found::Error404Page,
+        test::ColorTest,
     },
 };
 
@@ -1869,21 +1870,42 @@ impl ClientNativeImpl {
                         }
                         UiEvent::JoinOwnTeam { name, color } => {
                             if let Game::Active(game) = &mut self.game {
-                                for (player_id, _) in game.game_data.local.local_players.iter() {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::JoinStage(
-                                                JoinStage::Own {
-                                                    name: name
-                                                        .as_str()
-                                                        .try_into()
-                                                        .unwrap_or_default(),
-                                                    color: [color.r(), color.g(), color.b()],
-                                                },
-                                            ),
-                                        )),
-                                    );
+                                let stage_name: NetworkString<MAX_TEAM_NAME_LEN> =
+                                    name.as_str().try_into().unwrap_or_default();
+                                let active_player_id = game
+                                    .game_data
+                                    .local
+                                    .active_local_player()
+                                    .map(|(id, _)| *id);
+                                for (index, (player_id, _)) in
+                                    game.game_data.local.local_players.iter().enumerate()
+                                {
+                                    if Some(*player_id) == active_player_id
+                                        || (active_player_id.is_none() && index == 0)
+                                    {
+                                        game.network.send_in_order_to_server(
+                                            &ClientToServerMessage::PlayerMsg((
+                                                *player_id,
+                                                ClientToServerPlayerMessage::JoinStage(
+                                                    JoinStage::Own {
+                                                        name: stage_name.clone(),
+                                                        color: [color.r(), color.g(), color.b()],
+                                                    },
+                                                ),
+                                            )),
+                                            NetworkInOrderChannel::Global,
+                                        );
+                                    } else {
+                                        game.network.send_in_order_to_server(
+                                            &ClientToServerMessage::PlayerMsg((
+                                                *player_id,
+                                                ClientToServerPlayerMessage::JoinStage(
+                                                    JoinStage::Others(stage_name.clone()),
+                                                ),
+                                            )),
+                                            NetworkInOrderChannel::Global,
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -1975,6 +1997,21 @@ impl ClientNativeImpl {
                                     rcon_secret: Default::default(),
                                     can_start_local_server: false,
                                 });
+                            }
+                        }
+                        UiEvent::PasswordEntered(password) => {
+                            if let Game::Connecting(connecting) = &self.game {
+                                if let Some(password) = password {
+                                    self.config.engine.ui.path.route("connect");
+                                    connecting.network.send_unordered_to_server(
+                                        &ClientToServerMessage::PasswordResponse(
+                                            NetworkString::new_lossy(password),
+                                        ),
+                                    );
+                                } else {
+                                    self.game = Game::None;
+                                    self.config.engine.ui.path.route("");
+                                }
                             }
                         }
                     }
@@ -2890,12 +2927,14 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         let tee_editor = Box::new(TeeEditor::new(&mut graphics));
         let color_test = Box::new(ColorTest::default());
         let page_legacy_warning = Box::new(LegacyWarningPage::new(ui_events.clone()));
+        let password_connect = Box::new(PasswordConnectPage::new(ui_events.clone()));
         ui_manager.register_path("", "", main_menu);
         ui_manager.register_path("", "connect", connecting_menu);
         ui_manager.register_path("", "ingame", ingame_menu);
         ui_manager.register_path("editor", "tee", tee_editor);
         ui_manager.register_path("", "color", color_test);
         ui_manager.register_path("", "legacywarning", page_legacy_warning);
+        ui_manager.register_path("", "connectpassword", password_connect);
         benchmark.bench("registering ui paths");
 
         let cur_time = loading.sys.time_get();
@@ -2935,6 +2974,14 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
                 BindKey::Key(PhysicalKey::Code(KeyCode::KeyD)),
             ],
             BindActionsHotkey::DebugHud,
+        );
+        global_binds.register_bind(
+            &[
+                BindKey::Key(PhysicalKey::Code(KeyCode::ControlLeft)),
+                BindKey::Key(PhysicalKey::Code(KeyCode::ShiftLeft)),
+                BindKey::Key(PhysicalKey::Code(KeyCode::KeyE)),
+            ],
+            BindActionsHotkey::OpenEditor,
         );
         benchmark.bench("global binds");
 
@@ -3111,6 +3158,8 @@ impl InputEventHandler for ClientNativeImpl {
 impl FromNativeImpl for ClientNativeImpl {
     fn run(&mut self, native: &mut dyn NativeImpl) {
         self.inp_manager.collect_events();
+
+        let mut open_editor = false;
         self.inp_manager.handle_global_binds(
             &mut self.global_binds,
             &mut self.local_console.ui,
@@ -3118,9 +3167,27 @@ impl FromNativeImpl for ClientNativeImpl {
                 .get_remote_console_mut()
                 .map(|console| &mut console.ui),
             &mut self.client_stats.ui,
+            &mut open_editor,
             &self.graphics,
             &self.io,
         );
+        if open_editor {
+            self.editor = match std::mem::take(&mut self.editor) {
+                EditorState::None => {
+                    let editor = EditorWasmManager::new(
+                        &self.sound,
+                        &self.graphics,
+                        &self.graphics_backend,
+                        &self.io,
+                        &self.thread_pool,
+                        &self.font_data,
+                    );
+                    EditorState::Open(editor)
+                }
+                EditorState::Open(editor) => EditorState::Minimized(editor),
+                EditorState::Minimized(editor) => EditorState::Open(editor),
+            }
+        }
 
         let sys = &mut self.sys;
         self.cur_time = sys.time_get();
@@ -3131,6 +3198,7 @@ impl FromNativeImpl for ClientNativeImpl {
             &self.ui_creator,
             &mut self.notifications,
             &self.local_console.entries,
+            &self.cur_time,
         );
 
         GameEventsClient::update(&mut GameEventPipeline {

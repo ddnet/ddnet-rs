@@ -25,7 +25,7 @@ pub enum BindActionsLocalPlayer {
     Character(BindActionsCharacter),
     Dummy(BindActionsCharacter),
     /// Dummy aims to the character
-    DummyAimCharacter,
+    DummyFireAimCharacter,
     ShowHookCollision,
     OpenMenu,
     ActivateChatInput,
@@ -156,8 +156,8 @@ const LOCAL_PLAYER_ACTIONS: [(&str, BindActionsLocalPlayer); 46] = [
     ),
     // weapons end
     (
-        "+dummy.aim_character",
-        BindActionsLocalPlayer::DummyAimCharacter,
+        "+dummy.fire_aim_character",
+        BindActionsLocalPlayer::DummyFireAimCharacter,
     ),
     (
         "+show_hook_collision",
@@ -216,6 +216,7 @@ pub enum BindActionsHotkey {
     RemoteConsole,
     ConsoleClose,
     DebugHud,
+    OpenEditor,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

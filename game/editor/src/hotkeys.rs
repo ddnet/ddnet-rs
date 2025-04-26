@@ -11,6 +11,7 @@ pub enum EditorHotkeyEventFile {
     New,
     Open,
     Save,
+    Close,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
@@ -192,6 +193,10 @@ impl EditorBindsFile {
         hotkey(
             EditorHotkeyEvent::File(EditorHotkeyEventFile::Save),
             KeyboardShortcut::new(Modifiers::CTRL, Key::S),
+        );
+        hotkey(
+            EditorHotkeyEvent::File(EditorHotkeyEventFile::Close),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::Escape),
         );
         hotkey(
             EditorHotkeyEvent::Edit(EditorHotkeyEventEdit::Redo),

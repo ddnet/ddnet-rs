@@ -77,10 +77,16 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             *menu_dialog_mode = EditorMenuDialogMode::join(pipe.user_data.io);
                         }
                         ui.separator();
-                        if ui.button("Minimize").clicked() {
+                        if ui.add(Button::new("Minimize")).clicked() {
                             pipe.user_data.ui_events.push(EditorUiEvent::Minimize);
                         }
-                        if ui.button("Close").clicked() {
+                        if ui
+                            .add(Button::new("Close").shortcut_text(binds.fmt_ev_bind(
+                                per_ev,
+                                &EditorHotkeyEvent::File(EditorHotkeyEventFile::Close),
+                            )))
+                            .clicked()
+                        {
                             pipe.user_data.ui_events.push(EditorUiEvent::Close);
                         }
                     });
