@@ -2692,12 +2692,17 @@ impl Client {
                 {
                     let p = &p.player.player_info.player_info;
                     (p.name.clone(), p.skin.clone(), p.skin_info)
-                } else {
+                } else if chat.client_id == -1
+                    || base.char_legacy_to_new_id.contains_key(&chat.client_id)
+                {
                     (
                         "".try_into().unwrap(),
                         "".try_into().unwrap(),
                         NetworkSkinInfo::Original,
                     )
+                } else {
+                    // ignore the chat msg completely
+                    return;
                 };
                 if chat.client_id == -1 && is_active_connection {
                     let events = base
