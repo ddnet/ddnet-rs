@@ -27,8 +27,8 @@ use game_interface::types::{
 };
 use graphics::{
     handles::{
-        buffer_object::buffer_object::BufferObject,
         canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::ShaderStorage,
         stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
         stream_types::StreamedQuad,
         texture::texture::{TextureContainer, TextureContainer2dArray},
@@ -516,7 +516,7 @@ pub fn render_entities_for_ui(
     canvas_handle: &GraphicsCanvasHandle,
     entities_container: &mut EntitiesContainer,
     map_render: &MapGraphics,
-    buffer_object: BufferObject,
+    shader_storage: ShaderStorage,
     ui: &mut egui::Ui,
     ui_state: &mut UiState,
     render_rect: Rect,
@@ -534,7 +534,7 @@ pub fn render_entities_for_ui(
         size: f32,
         canvas_handle: GraphicsCanvasHandle,
         map_render: MapGraphics,
-        buffer_object: BufferObject,
+        shader_storage: ShaderStorage,
         opacity: f32,
     }
     impl CustomCallbackTrait for RenderEntitiesCb {
@@ -572,16 +572,22 @@ pub fn render_entities_for_ui(
             }
 
             let color = ColorRgba::new(1.0, 1.0, 1.0, self.opacity);
-            let buffer_object = &self.buffer_object;
+            let shader_storage = &self.shader_storage;
+
             self.map_render.render_tile_layer(
                 &state,
                 (&self.texture).into(),
-                buffer_object,
+                shader_storage,
                 &color,
-                PoolVec::from_without_pool(vec![TileLayerDrawInfo {
-                    quad_offset: 0,
-                    quad_count: 16 * 16,
-                }]),
+                PoolVec::from_without_pool(
+                    (0..16)
+                        .map(|y| TileLayerDrawInfo {
+                            quad_offset: y * 16,
+                            quad_count: 16,
+                            pos_y: y as f32,
+                        })
+                        .collect(),
+                ),
             );
         }
     }
@@ -592,7 +598,7 @@ pub fn render_entities_for_ui(
         render_rect,
         clip_rect,
         texture: texture.clone(),
-        buffer_object,
+        shader_storage,
         pos,
         size,
         canvas_handle: canvas_handle.clone(),

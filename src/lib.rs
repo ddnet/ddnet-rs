@@ -51,9 +51,6 @@ fn main_impl(app: NativeApp) {
 
     let thread_id = std::thread::current().id();
     std::panic::set_hook(Box::new(move |info| {
-        if thread_id != std::thread::current().id() {
-            return;
-        }
         // Try to extract the panic message
         let payload = info.payload();
         let message = if let Some(s) = payload.downcast_ref::<&str>() {
@@ -70,10 +67,13 @@ fn main_impl(app: NativeApp) {
             "".to_string()
         };
 
-        show_message_box(
-            "The game crashed",
-            &format!("Fatal error:\n{message}\n{loc}"),
-        );
+        let err_msg = format!("Fatal error:\n{message}\n{loc}");
+        println!("{err_msg}");
+        if thread_id != std::thread::current().id() {
+            return;
+        }
+
+        show_message_box("The game crashed", &err_msg);
     }));
 
     let mut args: Vec<_> = std::env::args().collect();

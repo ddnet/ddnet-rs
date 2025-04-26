@@ -397,6 +397,22 @@ impl BackendRenderInterface for RenderManager<'_> {
         }
     }
 
+    fn bind_shader_storage_descriptor_set(&self, first_set: u32) {
+        unsafe {
+            self.device.device.cmd_bind_descriptor_sets(
+                self.command_buffer.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.bound_pipe_line
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("no graphics pipeline was bound"))
+                    .pipe_layout,
+                first_set,
+                &[self.exec_buffer.shader_storage_descriptors.unwrap()],
+                &[],
+            );
+        }
+    }
+
     fn push_constants(&self, stage_flags: BackendShaderStage, offset: u32, constants: &[u8]) {
         let mut stage_flags_vk: vk::ShaderStageFlags = Default::default();
         if stage_flags.contains(BackendShaderStage::VERTEX) {

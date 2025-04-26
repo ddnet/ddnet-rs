@@ -18,7 +18,10 @@ pub enum GraphicsMemoryAllocationType {
         depth: NonZeroUsize,
         flags: TexFlags,
     },
-    Buffer {
+    VertexBuffer {
+        required_size: NonZeroUsize,
+    },
+    ShaderStorage {
         required_size: NonZeroUsize,
     },
 }
@@ -173,7 +176,8 @@ impl<'de> Deserialize<'de> for GraphicsBackendMemory {
                 depth,
                 ..
             } => width.get() * height.get() * depth.get() * 4,
-            GraphicsMemoryAllocationType::Buffer { required_size } => required_size.get(),
+            GraphicsMemoryAllocationType::VertexBuffer { required_size } => required_size.get(),
+            GraphicsMemoryAllocationType::ShaderStorage { required_size } => required_size.get(),
         };
         if required_len != mem.len() {
             return Err(serde::de::Error::custom(format!(

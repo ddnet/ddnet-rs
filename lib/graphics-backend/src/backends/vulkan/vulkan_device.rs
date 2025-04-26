@@ -27,15 +27,15 @@ use super::{
     queue::Queue,
     sampler::Sampler,
     utils::{
-        build_mipmaps, complete_buffer_object, complete_texture, copy_buffer, copy_buffer_to_image,
-        get_memory_range,
+        build_mipmaps, complete_buffer_object, complete_shader_storage_object, complete_texture,
+        copy_buffer, copy_buffer_to_image, get_memory_range,
     },
     vulkan_allocator::{FlushType, VulkanAllocator, VulkanDeviceInternalMemory},
     vulkan_limits::Limits,
     vulkan_mem::{BufferAllocationError, ImageAllocationError, Memory},
     vulkan_types::{
         BufferObject, BufferObjectMem, DescriptorPoolType, DeviceDescriptorPools,
-        ESupportedSamplerTypes, MemoryBlockType, TextureObject, SAMPLER_TYPES_COUNT,
+        ESupportedSamplerTypes, MemoryBlockType, ShaderStorage, TextureObject, SAMPLER_TYPES_COUNT,
     },
     Options,
 };
@@ -65,6 +65,8 @@ pub struct DescriptorLayouts {
     pub vertex_uniform_descriptor_set_layout: Arc<DescriptorSetLayout>,
     pub vertex_fragment_uniform_descriptor_set_layout: Arc<DescriptorSetLayout>,
 
+    pub vertex_shader_storage_descriptor_set_layout: Arc<DescriptorSetLayout>,
+
     pub samplers_layouts: Arc<[Arc<DescriptorSetLayout>; SAMPLER_TYPES_COUNT]>,
 }
 
@@ -84,6 +86,7 @@ pub struct Device {
 
     pub textures: HashMap<u128, TextureObject>,
     pub buffer_objects: HashMap<u128, BufferObject>,
+    pub shader_storages: HashMap<u128, ShaderStorage>,
 
     pub standard_texture_descr_pool: Arc<parking_lot::Mutex<DeviceDescriptorPools>>,
 
@@ -109,6 +112,15 @@ impl Device {
         VulkanAllocator::create_uniform_descriptor_set_layout(
             device,
             vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+        )
+    }
+
+    fn create_vertex_shader_storage_descriptor_set_layout(
+        device: &Arc<LogicalDevice>,
+    ) -> anyhow::Result<Arc<DescriptorSetLayout>> {
+        VulkanAllocator::create_shader_storage_read_only_descriptor_set_layout(
+            device,
+            vk::ShaderStageFlags::VERTEX,
         )
     }
 
@@ -216,6 +228,8 @@ impl Device {
             Self::create_vertex_uniform_descriptor_set_layout(&device)?;
         let vertex_fragment_uniform_descriptor_set_layout =
             Self::create_vertex_fragment_uniform_descriptor_set_layout(&device)?;
+        let vertex_shader_storage_descriptor_set_layout =
+            Self::create_vertex_shader_storage_descriptor_set_layout(&device)?;
 
         let (standard_textured_descriptor_set_layout, standard_3d_textured_descriptor_set_layout) =
             Self::create_descriptor_set_layouts(&device)?;
@@ -238,6 +252,7 @@ impl Device {
                 mem.clone(),
                 vk_gpu.limits.clone(),
                 graphics_queue,
+                vertex_shader_storage_descriptor_set_layout.clone(),
             )?,
 
             ash_vk: DeviceAsh {
@@ -252,6 +267,7 @@ impl Device {
                 (samplers[2].clone(), texture_2d_set),
             ]),
             textures: Default::default(),
+            shader_storages: Default::default(),
 
             buffer_objects: Default::default(),
             standard_texture_descr_pool: DeviceDescriptorPools::new(
@@ -266,6 +282,7 @@ impl Device {
                     standard_3d_textured_descriptor_set_layout,
                 vertex_uniform_descriptor_set_layout,
                 vertex_fragment_uniform_descriptor_set_layout,
+                vertex_shader_storage_descriptor_set_layout,
                 samplers_layouts: Arc::new(sampler_layouts),
             },
 
@@ -340,6 +357,7 @@ impl Device {
         size: vk::DeviceSize,
         buffer_access_type: vk::AccessFlags,
         before_command: bool,
+        source_stage_flags: vk::PipelineStageFlags,
     ) -> anyhow::Result<()> {
         let mem_command_buffer = self
             .get_memory_command_buffer(frame_resources)?
@@ -354,6 +372,7 @@ impl Device {
             size,
             buffer_access_type,
             before_command,
+            source_stage_flags,
         )
     }
 
@@ -668,6 +687,7 @@ impl Device {
             buffer_data_size,
             vk::AccessFlags::INDEX_READ,
             true,
+            vk::PipelineStageFlags::VERTEX_INPUT,
         )
         .map_err(BufferAllocationError::MemoryRelatedOperationFailed)?;
 
@@ -690,6 +710,7 @@ impl Device {
             buffer_data_size,
             vk::AccessFlags::INDEX_READ,
             false,
+            vk::PipelineStageFlags::VERTEX_INPUT,
         )
         .map_err(BufferAllocationError::MemoryRelatedOperationFailed)?;
 
@@ -784,6 +805,84 @@ impl Device {
             dst_buffer,
             copy_regions,
         )
+    }
+
+    pub fn create_shader_storage_object(
+        &mut self,
+        frame_resources: &mut FrameResources,
+        shader_storage_index: u128,
+        upload_data: VulkanDeviceInternalMemory,
+        buffer_data_size: vk::DeviceSize,
+    ) -> anyhow::Result<(), BufferAllocationError> {
+        let tmp_allocator = self.mem_allocator.clone();
+        let mut allocator = tmp_allocator.lock();
+
+        let staging_and_device_buffer = allocator
+            .get_and_remove_shader_storage_mem_block(upload_data.mem.as_mut_ptr())
+            .unwrap();
+
+        let mem = staging_and_device_buffer.base.device;
+        let mut descriptor = staging_and_device_buffer.descriptor_sets;
+
+        let staging_buffer = staging_and_device_buffer.base.staging;
+        // if not yet flushed, flush it
+        if let FlushType::None = staging_and_device_buffer.base.is_flushed {
+            let block_mem = staging_buffer.buffer_mem(frame_resources);
+            self.prepare_staging_mem_range_impl(
+                frame_resources,
+                block_mem,
+                &staging_buffer.heap_data,
+            );
+        }
+        if let FlushType::StagingBufferFlushed | FlushType::None =
+            staging_and_device_buffer.base.is_flushed
+        {
+            let command_buffer = self
+                .get_memory_command_buffer(frame_resources)
+                .map_err(BufferAllocationError::MemoryRelatedOperationFailed)?
+                .command_buffer;
+
+            complete_shader_storage_object(
+                frame_resources,
+                &self.ash_vk.device,
+                command_buffer,
+                &staging_buffer,
+                &mem,
+                buffer_data_size,
+            )?;
+
+            let mut descriptors = VulkanAllocator::create_shader_storage_descriptor_sets(
+                &self.ash_vk.device,
+                &allocator.shader_storage_descr_pools,
+                &self.layouts.vertex_shader_storage_descriptor_set_layout,
+                1,
+                &mem.buffer(frame_resources).clone().unwrap(),
+                mem.heap_data.allocation_size,
+                mem.heap_data.offset_to_align as vk::DeviceSize,
+            )
+            .map_err(BufferAllocationError::MemoryRelatedOperationFailed)?;
+            descriptor = Some(descriptors.remove(0));
+        }
+
+        let vertex_buffer = mem.buffer(frame_resources).clone().unwrap();
+        let buffer_offset = mem.heap_data.offset_to_align;
+        self.shader_storages.insert(
+            shader_storage_index,
+            ShaderStorage {
+                buffer: BufferObject {
+                    buffer_object: BufferObjectMem { mem },
+                    cur_buffer: vertex_buffer,
+                    cur_buffer_offset: buffer_offset,
+                },
+                descriptor: descriptor.unwrap(),
+            },
+        );
+
+        Ok(())
+    }
+
+    pub fn delete_shader_storage(&mut self, index: u128) {
+        self.shader_storages.remove(&index).unwrap();
     }
 
     pub fn create_new_textured_descriptor_sets_impl(

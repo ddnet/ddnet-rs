@@ -1,103 +1,28 @@
-use std::ops::{Index, IndexMut};
-
 use map::map::groups::layers::tiles::{rotation_180, rotation_270, TileFlags, ROTATION_90};
-use math::math::vector::{ubvec2, usvec2};
+use math::math::vector::ubvec2;
 
-pub(super) type GraphicsTilePos = usvec2;
-pub(super) type GraphicsTileTex = ubvec2;
+type GraphicsTileTex = ubvec2;
 
 #[repr(C)]
 #[derive(Default)]
 pub(super) struct GraphicTile {
-    top_left: GraphicsTilePos,
-    tex_coord_top_left: GraphicsTileTex,
-    top_right: GraphicsTilePos,
-    tex_coord_top_right: GraphicsTileTex,
-    bottom_right: GraphicsTilePos,
-    tex_coord_bottom_right: GraphicsTileTex,
-    bottom_left: GraphicsTilePos,
-    tex_coord_bottom_left: GraphicsTileTex,
-}
-
-impl Index<usize> for GraphicTile {
-    type Output = GraphicsTilePos;
-
-    fn index(&self, index: usize) -> &GraphicsTilePos {
-        match index {
-            0 => &self.top_left,
-            1 => &self.top_right,
-            2 => &self.bottom_right,
-            3 => &self.bottom_left,
-            _ => panic!("index out of bounds"),
-        }
-    }
-}
-
-impl IndexMut<usize> for GraphicTile {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        match index {
-            0 => &mut self.top_left,
-            1 => &mut self.top_right,
-            2 => &mut self.bottom_right,
-            3 => &mut self.bottom_left,
-            _ => panic!("index out of bounds"),
-        }
-    }
+    // use u32 directly and do bit shifting on the cpu
+    pos_x_and_tex_coord: u32,
 }
 
 impl GraphicTile {
-    pub(super) fn copy_into_slice(&self, dest: &mut [u8], textured: bool) -> usize {
-        fn copy_pos_into_slice(pos: &GraphicsTilePos, dest: &mut [u8]) -> usize {
+    pub(super) fn copy_into_slice(&self, dest: &mut [u8]) -> usize {
+        fn copy_pos_into_slice(pos: &u32, dest: &mut [u8]) -> usize {
             let mut off: usize = 0;
 
-            pos.x.to_ne_bytes().iter().for_each(|byte| {
-                dest[off] = *byte;
-                off += 1;
-            });
-            pos.y.to_ne_bytes().iter().for_each(|byte| {
-                dest[off] = *byte;
-                off += 1;
-            });
-            off
-        }
-        fn copy_tex_into_slice(tex: &GraphicsTileTex, dest: &mut [u8]) -> usize {
-            let mut off: usize = 0;
-
-            tex.x.to_ne_bytes().iter().for_each(|byte| {
-                dest[off] = *byte;
-                off += 1;
-            });
-            tex.y.to_ne_bytes().iter().for_each(|byte| {
+            pos.to_ne_bytes().iter().for_each(|byte| {
                 dest[off] = *byte;
                 off += 1;
             });
             off
         }
         let mut off = 0;
-        for index in 0..4 {
-            off += copy_pos_into_slice(
-                match index {
-                    0 => &self.top_left,
-                    1 => &self.top_right,
-                    2 => &self.bottom_right,
-                    3 => &self.bottom_left,
-                    _ => panic!("out of bounds"),
-                },
-                &mut dest[off..],
-            );
-            if textured {
-                off += copy_tex_into_slice(
-                    match index {
-                        0 => &self.tex_coord_top_left,
-                        1 => &self.tex_coord_top_right,
-                        2 => &self.tex_coord_bottom_right,
-                        3 => &self.tex_coord_bottom_left,
-                        _ => panic!("out of bounds"),
-                    },
-                    &mut dest[off..],
-                );
-            }
-        }
+        off += copy_pos_into_slice(&self.pos_x_and_tex_coord, &mut dest[off..]);
         off
     }
 }
@@ -107,7 +32,6 @@ fn fill_tmp_tile_speedup(
     _flags: TileFlags,
     index: u8,
     x: i32,
-    y: i32,
     angle_rotate: i16,
 ) {
     let angle = angle_rotate.unsigned_abs() % 360;
@@ -128,7 +52,6 @@ fn fill_tmp_tile_speedup(
             (angle % 90) as u8 + 1
         },
         x,
-        y,
     );
 }
 
@@ -172,33 +95,27 @@ pub fn tile_flags_to_uv(flags: TileFlags) -> (u8, u8, u8, u8, u8, u8, u8, u8) {
     (x0, y0, x1, y1, x2, y2, x3, y3)
 }
 
-fn fill_tmp_tile(tmp_tile: &mut GraphicTile, flags: TileFlags, index: u8, x: i32, y: i32) {
+fn fill_tmp_tile(tmp_tile: &mut GraphicTile, flags: TileFlags, index: u8, x: i32) {
     // tile tex
     let (x0, y0, x1, y1, x2, y2, x3, y3) = tile_flags_to_uv(flags);
 
-    tmp_tile.tex_coord_top_left.x |= x0;
-    tmp_tile.tex_coord_top_left.x |= y0 << 1;
-    tmp_tile.tex_coord_bottom_left.x |= x3;
-    tmp_tile.tex_coord_bottom_left.x |= y3 << 1;
-    tmp_tile.tex_coord_top_right.x |= x1;
-    tmp_tile.tex_coord_top_right.x |= y1 << 1;
-    tmp_tile.tex_coord_bottom_right.x |= x2;
-    tmp_tile.tex_coord_bottom_right.x |= y2 << 1;
+    let mut tex_coord = GraphicsTileTex::default();
+    tex_coord.x |= x0;
+    tex_coord.x |= y0 << 1;
+    tex_coord.x |= x1 << 2;
+    tex_coord.x |= y1 << 3;
+    tex_coord.x |= x2 << 4;
+    tex_coord.x |= y2 << 5;
+    tex_coord.x |= x3 << 6;
+    tex_coord.x |= y3 << 7;
 
-    tmp_tile.tex_coord_top_left.y = index;
-    tmp_tile.tex_coord_bottom_left.y = index;
-    tmp_tile.tex_coord_top_right.y = index;
-    tmp_tile.tex_coord_bottom_right.y = index;
+    tex_coord.y = index;
 
     // tile pos
-    tmp_tile.top_left.x = x as u16;
-    tmp_tile.top_left.y = y as u16;
-    tmp_tile.bottom_left.x = x as u16;
-    tmp_tile.bottom_left.y = (y + 1) as u16;
-    tmp_tile.top_right.x = (x + 1) as u16;
-    tmp_tile.top_right.y = y as u16;
-    tmp_tile.bottom_right.x = (x + 1) as u16;
-    tmp_tile.bottom_right.y = (y + 1) as u16;
+    let pos = x as u16;
+
+    tmp_tile.pos_x_and_tex_coord =
+        (pos as u32) | (((tex_coord.x as u32) | ((tex_coord.y as u32) << 8)) << 16);
 }
 
 pub(super) fn add_tile(
@@ -206,7 +123,6 @@ pub(super) fn add_tile(
     index: u8,
     flags: TileFlags,
     x: i32,
-    y: i32,
     fill_speedup: bool,
     angle_rotate: i16,
     ignore_index_check: bool,
@@ -214,9 +130,9 @@ pub(super) fn add_tile(
     if index > 0 || ignore_index_check {
         let mut tile = GraphicTile::default();
         if fill_speedup {
-            fill_tmp_tile_speedup(&mut tile, flags, index, x, y, angle_rotate);
+            fill_tmp_tile_speedup(&mut tile, flags, index, x, angle_rotate);
         } else {
-            fill_tmp_tile(&mut tile, flags, index, x, y);
+            fill_tmp_tile(&mut tile, flags, index, x);
         }
         tmp_tiles.push(tile);
 

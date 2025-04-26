@@ -9,6 +9,7 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
     },
 };
 use map::{
@@ -31,11 +32,13 @@ pub fn upload_physics_layer_buffer(
 }
 
 pub fn finish_physics_layer_buffer(
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     buffer: MapBufferPhysicsTileLayer,
 ) -> PhysicsTileLayerVisuals {
     ClientMapBuffered::finish_upload_physics_tile_layer(
+        shader_storage_handle,
         buffer_object_handle,
         backend_handle,
         buffer,
@@ -85,11 +88,17 @@ pub fn upload_design_tile_layer_buffer(
 }
 
 pub fn finish_design_tile_layer_buffer(
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     buffer: MapBufferTileLayer,
 ) -> TileLayerVisuals {
-    ClientMapBuffered::finish_upload_tile_layer(buffer_object_handle, backend_handle, buffer)
+    ClientMapBuffered::finish_upload_tile_layer(
+        shader_storage_handle,
+        buffer_object_handle,
+        backend_handle,
+        buffer,
+    )
 }
 
 pub fn update_design_tile_layer(

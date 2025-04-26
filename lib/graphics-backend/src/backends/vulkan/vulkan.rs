@@ -27,17 +27,18 @@ use graphics_base_traits::traits::{
 use anyhow::anyhow;
 use graphics_types::{
     commands::{
-        AllCommands, CommandClear, CommandCreateBufferObject, CommandDeleteBufferObject,
+        AllCommands, CommandClear, CommandCreateBufferObject, CommandCreateShaderStorage,
+        CommandDeleteBufferObject, CommandDeleteShaderStorage,
         CommandIndicesForQuadsRequiredNotify, CommandMultiSampling, CommandOffscreenCanvasCreate,
         CommandOffscreenCanvasDestroy, CommandOffscreenCanvasSkipFetchingOnce,
         CommandRecreateBufferObject, CommandRender, CommandRenderQuadContainer,
         CommandRenderQuadContainerAsSpriteMultiple, CommandSwitchCanvasMode,
         CommandSwitchCanvasModeType, CommandTextureCreate, CommandTextureDestroy,
-        CommandTextureUpdate, CommandUpdateBufferObject, CommandUpdateViewport, CommandVsync,
-        CommandsMisc, CommandsRender, CommandsRenderMod, CommandsRenderQuadContainer,
-        CommandsRenderStream, GlVertexTex3DStream, RenderSpriteInfo, StreamDataMax,
-        GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
-        GRAPHICS_UNIFORM_INSTANCE_COUNT,
+        CommandTextureUpdate, CommandUpdateBufferObject, CommandUpdateBufferRegion,
+        CommandUpdateShaderStorage, CommandUpdateViewport, CommandVsync, CommandsMisc,
+        CommandsRender, CommandsRenderMod, CommandsRenderQuadContainer, CommandsRenderStream,
+        GlVertexTex3DStream, RenderSpriteInfo, StreamDataMax, GRAPHICS_DEFAULT_UNIFORM_SIZE,
+        GRAPHICS_MAX_UNIFORM_RENDER_COUNT, GRAPHICS_UNIFORM_INSTANCE_COUNT,
     },
     gpu::Gpus,
     rendering::{GlVertex, State, StateTexture},
@@ -85,6 +86,7 @@ use super::{
     instance::Instance,
     logical_device::LogicalDevice,
     mapped_memory::MappedMemory,
+    memory::MemoryBlock,
     memory_block::DeviceMemoryBlock,
     phy_device::PhyDevice,
     queue::Queue,
@@ -687,6 +689,9 @@ impl VulkanBackend {
             CommandsMisc::RecreateBufferObject(cmd) => self.cmd_recreate_buffer_object(cmd),
             CommandsMisc::UpdateBufferObject(cmd) => self.cmd_update_buffer_object(cmd),
             CommandsMisc::DeleteBufferObject(cmd) => self.cmd_delete_buffer_object(&cmd),
+            CommandsMisc::CreateShaderStorage(cmd) => self.cmd_create_shader_storage(cmd),
+            CommandsMisc::UpdateShaderStorage(cmd) => self.cmd_update_shader_storage(cmd),
+            CommandsMisc::DeleteShaderStorage(cmd) => self.cmd_delete_shader_storage(&cmd),
             CommandsMisc::OffscreenCanvasCreate(cmd) => self.cmd_create_offscreen_canvas(&cmd),
             CommandsMisc::OffscreenCanvasDestroy(cmd) => self.cmd_destroy_offscreen_canvas(&cmd),
             CommandsMisc::OffscreenCanvasSkipFetchingOnce(cmd) => {
@@ -2409,6 +2414,94 @@ impl VulkanBackend {
         self.next_frame()
     }
 
+    fn update_buffer_impl(
+        &mut self,
+        mem: Arc<MemoryBlock>,
+        buffer: Arc<Buffer>,
+        update_data: Vec<u8>,
+        update_regions: Vec<CommandUpdateBufferRegion>,
+        access_flags: vk::AccessFlags,
+        source_stage_flags: vk::PipelineStageFlags,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            !update_regions.is_empty(),
+            anyhow!("copy regions shall not be empty.")
+        );
+        anyhow::ensure!(
+            !update_regions.iter().any(|region| region.size == 0),
+            anyhow!("copy regions sizes must be bigger than zero.")
+        );
+
+        let mut staging_allocation = self.props.device.mem_allocator.lock().get_staging_buffer(
+            update_data.as_ptr() as _,
+            update_data.len() as vk::DeviceSize,
+        );
+
+        if let Err(_) = staging_allocation {
+            self.skip_frames_until_current_frame_is_used_again()?;
+            staging_allocation = self.props.device.mem_allocator.lock().get_staging_buffer(
+                update_data.as_ptr() as _,
+                update_data.len() as vk::DeviceSize,
+            );
+        }
+        let staging_buffer = staging_allocation?;
+
+        let dst_buffer_align = mem.heap_data.offset_to_align;
+        let src_buffer = staging_buffer
+            .buffer(&mut self.current_frame_resources)
+            .clone()
+            .ok_or(anyhow!("staging mem had no buffer attached to it"))?;
+
+        let min_dst_off = update_regions
+            .iter()
+            .map(|region| region.dst_offset)
+            .min()
+            .unwrap();
+        let max_dst_off = update_regions
+            .iter()
+            .map(|region| region.dst_offset + region.size)
+            .max()
+            .unwrap();
+        self.props.device.memory_barrier(
+            &mut self.current_frame_resources,
+            &buffer,
+            min_dst_off as vk::DeviceSize + dst_buffer_align as vk::DeviceSize,
+            (max_dst_off - min_dst_off) as vk::DeviceSize,
+            access_flags,
+            true,
+            source_stage_flags,
+        )?;
+        self.props.device.copy_buffer(
+            &mut self.current_frame_resources,
+            &src_buffer,
+            &buffer,
+            &update_regions
+                .into_iter()
+                .map(|region| vk::BufferCopy {
+                    src_offset: staging_buffer.heap_data.offset_to_align as vk::DeviceSize
+                        + region.src_offset as vk::DeviceSize,
+                    dst_offset: region.dst_offset as vk::DeviceSize
+                        + dst_buffer_align as vk::DeviceSize,
+                    size: region.size as vk::DeviceSize,
+                })
+                .collect::<Vec<_>>(),
+        )?;
+        self.props.device.memory_barrier(
+            &mut self.current_frame_resources,
+            &buffer,
+            min_dst_off as vk::DeviceSize + dst_buffer_align as vk::DeviceSize,
+            (max_dst_off - min_dst_off) as vk::DeviceSize,
+            access_flags,
+            false,
+            source_stage_flags,
+        )?;
+        self.props
+            .device
+            .upload_and_free_staging_mem_block(&mut self.current_frame_resources, staging_buffer);
+
+        Ok(())
+    }
+
     fn cmd_create_buffer_object(&mut self, cmd: CommandCreateBufferObject) -> anyhow::Result<()> {
         let upload_data_size = cmd.upload_data.len();
 
@@ -2471,95 +2564,82 @@ impl VulkanBackend {
     }
 
     fn cmd_update_buffer_object(&mut self, cmd: CommandUpdateBufferObject) -> anyhow::Result<()> {
-        let update_buffer: Vec<u8> = cmd.update_data;
-        let copy_regions = cmd.update_regions;
-        anyhow::ensure!(
-            !copy_regions.is_empty(),
-            anyhow!("copy regions shall not be empty.")
-        );
-        anyhow::ensure!(
-            !copy_regions.iter().any(|region| region.size == 0),
-            anyhow!("copy regions sizes must be bigger than zero.")
-        );
-
-        let mut staging_allocation = self.props.device.mem_allocator.lock().get_staging_buffer(
-            update_buffer.as_ptr() as _,
-            update_buffer.len() as vk::DeviceSize,
-        );
-
-        if let Err(_) = staging_allocation {
-            self.skip_frames_until_current_frame_is_used_again()?;
-            staging_allocation = self.props.device.mem_allocator.lock().get_staging_buffer(
-                update_buffer.as_ptr() as _,
-                update_buffer.len() as vk::DeviceSize,
-            );
-        }
-        let staging_buffer = staging_allocation?;
-
         let buffer = self
             .props
             .device
             .buffer_objects
             .get(&cmd.buffer_index)
             .ok_or(anyhow!("buffer object with that index does not exist"))?;
-        let cur_buffer = buffer.cur_buffer.clone();
-        let dst_buffer_align = buffer.buffer_object.mem.heap_data.offset_to_align;
-        let src_buffer = staging_buffer
-            .buffer(&mut self.current_frame_resources)
-            .clone()
-            .ok_or(anyhow!("staging mem had no buffer attached to it"))?;
 
-        let min_dst_off = copy_regions
-            .iter()
-            .map(|region| region.dst_offset)
-            .min()
-            .unwrap();
-        let max_dst_off = copy_regions
-            .iter()
-            .map(|region| region.dst_offset + region.size)
-            .max()
-            .unwrap();
-        self.props.device.memory_barrier(
-            &mut self.current_frame_resources,
-            &cur_buffer,
-            min_dst_off as vk::DeviceSize + dst_buffer_align as vk::DeviceSize,
-            (max_dst_off - min_dst_off) as vk::DeviceSize,
+        self.update_buffer_impl(
+            buffer.buffer_object.mem.clone(),
+            buffer.cur_buffer.clone(),
+            cmd.update_data,
+            cmd.update_regions,
             vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
-            true,
-        )?;
-        self.props.device.copy_buffer(
-            &mut self.current_frame_resources,
-            &src_buffer,
-            &cur_buffer,
-            &copy_regions
-                .into_iter()
-                .map(|region| vk::BufferCopy {
-                    src_offset: staging_buffer.heap_data.offset_to_align as vk::DeviceSize
-                        + region.src_offset as vk::DeviceSize,
-                    dst_offset: region.dst_offset as vk::DeviceSize
-                        + dst_buffer_align as vk::DeviceSize,
-                    size: region.size as vk::DeviceSize,
-                })
-                .collect::<Vec<_>>(),
-        )?;
-        self.props.device.memory_barrier(
-            &mut self.current_frame_resources,
-            &cur_buffer,
-            min_dst_off as vk::DeviceSize + dst_buffer_align as vk::DeviceSize,
-            (max_dst_off - min_dst_off) as vk::DeviceSize,
-            vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
-            false,
-        )?;
-        self.props
-            .device
-            .upload_and_free_staging_mem_block(&mut self.current_frame_resources, staging_buffer);
-
-        Ok(())
+            vk::PipelineStageFlags::VERTEX_INPUT,
+        )
     }
 
     fn cmd_delete_buffer_object(&mut self, cmd: &CommandDeleteBufferObject) -> anyhow::Result<()> {
         let buffer_index = cmd.buffer_index;
         self.props.device.delete_buffer_object(buffer_index);
+
+        Ok(())
+    }
+
+    fn cmd_create_shader_storage(&mut self, cmd: CommandCreateShaderStorage) -> anyhow::Result<()> {
+        let upload_data_size = cmd.upload_data.len();
+
+        let data_mem = cmd.upload_data;
+        let mut data_mem = self
+            .props
+            .device
+            .mem_allocator
+            .lock()
+            .memory_to_internal_memory(data_mem);
+        if let Err((mem, _)) = data_mem {
+            data_mem = self
+                .props
+                .device
+                .mem_allocator
+                .lock()
+                .memory_to_internal_memory(mem);
+        }
+        let data_mem = data_mem.map_err(|(_, err)| err)?;
+
+        Ok(self.props.device.create_shader_storage_object(
+            &mut self.current_frame_resources,
+            cmd.shader_storage_index,
+            data_mem,
+            upload_data_size as vk::DeviceSize,
+        )?)
+    }
+
+    fn cmd_update_shader_storage(&mut self, cmd: CommandUpdateShaderStorage) -> anyhow::Result<()> {
+        let buffer = self
+            .props
+            .device
+            .shader_storages
+            .get(&cmd.shader_storage_index)
+            .ok_or(anyhow!("shader storage with that index does not exist"))?;
+
+        self.update_buffer_impl(
+            buffer.buffer.buffer_object.mem.clone(),
+            buffer.buffer.cur_buffer.clone(),
+            cmd.update_data,
+            cmd.update_regions,
+            vk::AccessFlags::SHADER_READ,
+            vk::PipelineStageFlags::VERTEX_SHADER,
+        )
+    }
+
+    fn cmd_delete_shader_storage(
+        &mut self,
+        cmd: &CommandDeleteShaderStorage,
+    ) -> anyhow::Result<()> {
+        let index = cmd.shader_storage_index;
+        self.props.device.delete_shader_storage(index);
 
         Ok(())
     }
@@ -3452,8 +3532,30 @@ impl GraphicsBackendMtInterface for VulkanBackendMt {
         let mut allocator = self.mem_allocator.lock();
         GraphicsBackendMemory::new(
             match alloc_type {
-                GraphicsMemoryAllocationType::Buffer { required_size } => {
+                GraphicsMemoryAllocationType::VertexBuffer { required_size } => {
                     let res = allocator.get_staging_buffer_for_mem_alloc(
+                        buffer_data,
+                        required_size.get() as vk::DeviceSize,
+                    );
+                    match res {
+                        Ok(res) => {
+                            GraphicsBackendMemoryAllocation::Static(GraphicsBackendMemoryStatic {
+                                mem: Some(res),
+                                deallocator: Some(Box::new(VulkanBackendDellocator {
+                                    mem_allocator: allocator_clone,
+                                })),
+                            })
+                        }
+                        Err(_) => {
+                            // go to slow memory as backup
+                            let mut res = Vec::new();
+                            res.resize(required_size.get(), Default::default());
+                            GraphicsBackendMemoryAllocation::Vector(res)
+                        }
+                    }
+                }
+                GraphicsMemoryAllocationType::ShaderStorage { required_size } => {
+                    let res = allocator.get_staging_buffer_for_shader_storage_mem_alloc(
                         buffer_data,
                         required_size.get() as vk::DeviceSize,
                     );

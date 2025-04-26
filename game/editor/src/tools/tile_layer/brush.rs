@@ -3,7 +3,8 @@ use std::{cell::Cell, collections::HashSet, rc::Rc, sync::Arc};
 use client_containers::{container::ContainerKey, entities::EntitiesContainer};
 use client_render_base::map::{
     map_buffered::{
-        ClientMapBuffered, PhysicsTileLayerVisuals, TileLayerBufferedVisuals, TileLayerVisuals,
+        ClientMapBuffered, PhysicsTileLayerVisuals, TileLayerBufferedVisualObjects,
+        TileLayerBufferedVisuals, TileLayerVisuals,
     },
     map_pipeline::{MapGraphics, TileLayerDrawInfo},
     render_tools::{CanvasType, RenderTools},
@@ -15,8 +16,9 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
-        texture::texture::TextureContainer2dArray,
+        canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
+        stream::stream::GraphicsStreamHandle, texture::texture::TextureContainer2dArray,
     },
     utils::{render_blur, render_swapped_frame, DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS},
 };
@@ -134,6 +136,7 @@ pub struct TileBrushTilePicker {
 impl TileBrushTilePicker {
     pub fn new(
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         physics_overlay: Rc<PhysicsLayerOverlaysDdnet>,
@@ -143,6 +146,7 @@ impl TileBrushTilePicker {
         Self {
             render: ClientMapBuffered::tile_set_preview(
                 graphics_mt,
+                shader_storage_handle,
                 buffer_object_handle,
                 backend_handle,
             ),
@@ -188,6 +192,7 @@ pub struct TileBrush {
 impl TileBrush {
     pub fn new(
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         physics_overlay: &Rc<PhysicsLayerOverlaysDdnet>,
@@ -197,6 +202,7 @@ impl TileBrush {
 
             tile_picker: TileBrushTilePicker::new(
                 graphics_mt,
+                shader_storage_handle,
                 buffer_object_handle,
                 backend_handle,
                 physics_overlay.clone(),
@@ -788,6 +794,7 @@ impl TileBrush {
     pub fn create_brush_visual(
         tp: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         w: NonZeroU16MinusOne,
@@ -800,12 +807,22 @@ impl TileBrush {
                 let buffer = tp.install(|| {
                     upload_design_tile_layer_buffer(graphics_mt, tiles, w, h, has_texture)
                 });
-                finish_design_tile_layer_buffer(buffer_object_handle, backend_handle, buffer)
+                finish_design_tile_layer_buffer(
+                    shader_storage_handle,
+                    buffer_object_handle,
+                    backend_handle,
+                    buffer,
+                )
             }),
             MapTileLayerTiles::Physics(tiles) => BrushVisual::Physics({
                 let buffer =
                     tp.install(|| upload_physics_layer_buffer(graphics_mt, w, h, tiles.as_ref()));
-                finish_physics_layer_buffer(buffer_object_handle, backend_handle, buffer)
+                finish_physics_layer_buffer(
+                    shader_storage_handle,
+                    buffer_object_handle,
+                    backend_handle,
+                    buffer,
+                )
             }),
         }
     }
@@ -865,6 +882,7 @@ impl TileBrush {
         ui_canvas: &UiCanvasSize,
         tp: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         canvas_handle: &GraphicsCanvasHandle,
@@ -1141,6 +1159,7 @@ impl TileBrush {
                                         )
                                     });
                                     finish_design_tile_layer_buffer(
+                                        shader_storage_handle,
                                         buffer_object_handle,
                                         backend_handle,
                                         buffer,
@@ -1156,6 +1175,7 @@ impl TileBrush {
                                         )
                                     });
                                     finish_physics_layer_buffer(
+                                        shader_storage_handle,
                                         buffer_object_handle,
                                         backend_handle,
                                         buffer,
@@ -1370,6 +1390,7 @@ impl TileBrush {
                             let render = Self::create_brush_visual(
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 w,
@@ -2442,6 +2463,7 @@ impl TileBrush {
         tp: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         canvas_handle: &GraphicsCanvasHandle,
         stream_handle: &GraphicsStreamHandle,
@@ -2462,6 +2484,7 @@ impl TileBrush {
                 tp,
                 graphics_mt,
                 backend_handle,
+                shader_storage_handle,
                 buffer_object_handle,
                 canvas_handle,
                 stream_handle,
@@ -2491,7 +2514,11 @@ impl TileBrush {
             base:
                 TileLayerBufferedVisuals {
                     base,
-                    buffer_object: Some(buffer_object),
+                    obj:
+                        TileLayerBufferedVisualObjects {
+                            shader_storage: Some(shader_storage),
+                            ..
+                        },
                 },
             ..
         })
@@ -2501,7 +2528,11 @@ impl TileBrush {
                     base:
                         TileLayerBufferedVisuals {
                             base,
-                            buffer_object: Some(buffer_object),
+                            obj:
+                                TileLayerBufferedVisualObjects {
+                                    shader_storage: Some(shader_storage),
+                                    ..
+                                },
                         },
                     ..
                 },
@@ -2546,11 +2577,12 @@ impl TileBrush {
                         brush.map_render.render_tile_layer(
                             &state,
                             (&brush.texture).into(),
-                            buffer_object,
+                            shader_storage,
                             &get_animated_color(map, design_attr),
                             PoolVec::from_without_pool(vec![TileLayerDrawInfo {
                                 quad_offset,
                                 quad_count: draw_count,
+                                pos_y: brush_y as f32,
                             }]),
                         );
 
@@ -2579,7 +2611,11 @@ impl TileBrush {
         if let BrushVisual::Design(TileLayerVisuals {
             base:
                 TileLayerBufferedVisuals {
-                    buffer_object: Some(buffer_object_index),
+                    obj:
+                        TileLayerBufferedVisualObjects {
+                            shader_storage: Some(shader_storage),
+                            ..
+                        },
                     ..
                 },
             ..
@@ -2589,7 +2625,11 @@ impl TileBrush {
                 TileLayerVisuals {
                     base:
                         TileLayerBufferedVisuals {
-                            buffer_object: Some(buffer_object_index),
+                            obj:
+                                TileLayerBufferedVisualObjects {
+                                    shader_storage: Some(shader_storage),
+                                    ..
+                                },
                             ..
                         },
                     ..
@@ -2614,12 +2654,17 @@ impl TileBrush {
             brush.map_render.render_tile_layer(
                 &state,
                 (&brush.texture).into(),
-                buffer_object_index,
+                shader_storage,
                 &get_animated_color(map, design_attr),
-                PoolVec::from_without_pool(vec![TileLayerDrawInfo {
-                    quad_offset: 0,
-                    quad_count: brush.w.get() as usize * brush.h.get() as usize,
-                }]),
+                PoolVec::from_without_pool(
+                    (0..brush.h.get() as usize)
+                        .map(|y| TileLayerDrawInfo {
+                            quad_offset: y * brush.w.get() as usize,
+                            quad_count: brush.w.get() as usize,
+                            pos_y: y as f32,
+                        })
+                        .collect(),
+                ),
             );
         }
     }
@@ -2673,6 +2718,7 @@ impl TileBrush {
         tp: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         canvas_handle: &GraphicsCanvasHandle,
         stream_handle: &GraphicsStreamHandle,
@@ -2807,6 +2853,7 @@ impl TileBrush {
                 pos: &usvec2,
                 tp: &Arc<rayon::ThreadPool>,
                 graphics_mt: &GraphicsMultiThreaded,
+                shader_storage_handle: &GraphicsShaderStorageHandle,
                 buffer_object_handle: &GraphicsBufferObjectHandle,
                 backend_handle: &GraphicsBackendHandle,
                 last_fill: &mut Option<TileBrushLastFill>,
@@ -2835,6 +2882,7 @@ impl TileBrush {
                         render: TileBrush::create_brush_visual(
                             tp,
                             graphics_mt,
+                            shader_storage_handle,
                             buffer_object_handle,
                             backend_handle,
                             width,
@@ -2870,6 +2918,7 @@ impl TileBrush {
                                 &pos,
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 &mut self.fill,
@@ -2896,6 +2945,7 @@ impl TileBrush {
                                 &pos,
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 &mut self.fill,
@@ -2922,6 +2972,7 @@ impl TileBrush {
                                 &pos,
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 &mut self.fill,
@@ -2948,6 +2999,7 @@ impl TileBrush {
                                 &pos,
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 &mut self.fill,
@@ -2974,6 +3026,7 @@ impl TileBrush {
                                 &pos,
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 &mut self.fill,
@@ -3000,6 +3053,7 @@ impl TileBrush {
                                 &pos,
                                 tp,
                                 graphics_mt,
+                                shader_storage_handle,
                                 buffer_object_handle,
                                 backend_handle,
                                 &mut self.fill,
@@ -3034,6 +3088,7 @@ impl TileBrush {
                         &pos,
                         tp,
                         graphics_mt,
+                        shader_storage_handle,
                         buffer_object_handle,
                         backend_handle,
                         &mut self.fill,
@@ -3112,6 +3167,7 @@ impl TileBrush {
         ui_canvas: &UiCanvasSize,
         tp: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         canvas_handle: &GraphicsCanvasHandle,
@@ -3138,6 +3194,7 @@ impl TileBrush {
                 ui_canvas,
                 tp,
                 graphics_mt,
+                shader_storage_handle,
                 buffer_object_handle,
                 backend_handle,
                 canvas_handle,
@@ -3170,6 +3227,7 @@ impl TileBrush {
         tp: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
         backend_handle: &GraphicsBackendHandle,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         stream_handle: &GraphicsStreamHandle,
         canvas_handle: &GraphicsCanvasHandle,
@@ -3243,23 +3301,41 @@ impl TileBrush {
                 },
             };
             let color = get_animated_color(map, design_attr);
-            let buffer_object = self.tile_picker.render.base.buffer_object.as_ref().unwrap();
+            let shader_storage = self
+                .tile_picker
+                .render
+                .base
+                .obj
+                .shader_storage
+                .as_ref()
+                .unwrap();
             self.tile_picker.map_render.render_tile_layer(
                 &state,
                 texture.into(),
-                buffer_object,
+                shader_storage,
                 &color,
-                PoolVec::from_without_pool(vec![TileLayerDrawInfo {
-                    quad_offset: 0,
-                    quad_count: 16 * 16,
-                }]),
+                PoolVec::from_without_pool(
+                    (0..16)
+                        .map(|y| TileLayerDrawInfo {
+                            quad_offset: y * 16,
+                            quad_count: 16,
+                            pos_y: y as f32,
+                        })
+                        .collect(),
+                ),
             );
 
-            if let Some(buffer_object) = map
+            if let Some(shader_storage) = map
                 .user
                 .options
                 .show_tile_numbers
-                .then_some(self.tile_picker.render.tile_index_buffer_object.as_ref())
+                .then_some(
+                    self.tile_picker
+                        .render
+                        .tile_index_obj
+                        .shader_storage
+                        .as_ref(),
+                )
                 .flatten()
             {
                 self.tile_picker.map_render.render_tile_layer(
@@ -3268,12 +3344,17 @@ impl TileBrush {
                         .get_or_default::<ContainerKey>(&"default".try_into().unwrap())
                         .text_overlay_bottom)
                         .into(),
-                    buffer_object,
+                    shader_storage,
                     &color,
-                    PoolVec::from_without_pool(vec![TileLayerDrawInfo {
-                        quad_offset: 0,
-                        quad_count: 16 * 16,
-                    }]),
+                    PoolVec::from_without_pool(
+                        (0..16)
+                            .map(|y| TileLayerDrawInfo {
+                                quad_offset: y * 16,
+                                quad_count: 16,
+                                pos_y: y as f32,
+                            })
+                            .collect(),
+                    ),
                 );
             }
             // render rect border
@@ -3333,6 +3414,7 @@ impl TileBrush {
                 tp,
                 graphics_mt,
                 backend_handle,
+                shader_storage_handle,
                 buffer_object_handle,
                 canvas_handle,
                 stream_handle,
@@ -3349,6 +3431,7 @@ impl TileBrush {
                 tp,
                 graphics_mt,
                 backend_handle,
+                shader_storage_handle,
                 buffer_object_handle,
                 canvas_handle,
                 stream_handle,

@@ -24,8 +24,9 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
-        texture::texture::GraphicsTextureHandle,
+        canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
+        stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
     },
 };
 use math::math::vector::ubvec4;
@@ -613,6 +614,7 @@ pub struct UserData<'a> {
 
     pub texture_handle: &'a GraphicsTextureHandle,
     pub backend_handle: &'a GraphicsBackendHandle,
+    pub shader_storage_handle: &'a GraphicsShaderStorageHandle,
     pub buffer_object_handle: &'a GraphicsBufferObjectHandle,
     pub stream_handle: &'a GraphicsStreamHandle,
     pub canvas_handle: &'a GraphicsCanvasHandle,

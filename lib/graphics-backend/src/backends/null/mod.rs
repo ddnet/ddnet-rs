@@ -63,7 +63,10 @@ pub fn mem_alloc_lazy(alloc_type: GraphicsMemoryAllocationType) -> GraphicsBacke
             width.get() * height.get() * depth.get() * 4,
             Default::default(),
         ),
-        GraphicsMemoryAllocationType::Buffer { required_size } => {
+        GraphicsMemoryAllocationType::VertexBuffer { required_size } => {
+            mem.resize(required_size.get(), Default::default())
+        }
+        GraphicsMemoryAllocationType::ShaderStorage { required_size } => {
             mem.resize(required_size.get(), Default::default())
         }
     }

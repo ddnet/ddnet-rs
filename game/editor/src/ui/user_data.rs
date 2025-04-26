@@ -11,7 +11,9 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
+        canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
+        stream::stream::GraphicsStreamHandle,
     },
 };
 use math::math::vector::vec2;
@@ -292,6 +294,7 @@ pub struct UserData<'a> {
 
     pub tp: &'a Arc<rayon::ThreadPool>,
     pub graphics_mt: &'a GraphicsMultiThreaded,
+    pub shader_storage_handle: &'a GraphicsShaderStorageHandle,
     pub buffer_object_handle: &'a GraphicsBufferObjectHandle,
     pub backend_handle: &'a GraphicsBackendHandle,
 
@@ -320,6 +323,7 @@ pub struct UserDataWithTab<'a> {
 
     pub tp: &'a Arc<rayon::ThreadPool>,
     pub graphics_mt: &'a GraphicsMultiThreaded,
+    pub shader_storage_handle: &'a GraphicsShaderStorageHandle,
     pub buffer_object_handle: &'a GraphicsBufferObjectHandle,
     pub backend_handle: &'a GraphicsBackendHandle,
 

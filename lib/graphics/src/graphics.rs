@@ -21,6 +21,7 @@ pub mod graphics {
             buffer_object::buffer_object::GraphicsBufferObjectHandle,
             canvas::canvas::GraphicsCanvasHandle,
             quad_container::quad_container::GraphicsQuadContainerHandle,
+            shader_storage::shader_storage::GraphicsShaderStorageHandle,
             stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
         },
     };
@@ -155,6 +156,8 @@ pub mod graphics {
 
         pub buffer_object_handle: GraphicsBufferObjectHandle,
 
+        pub shader_storage_handle: GraphicsShaderStorageHandle,
+
         pub stream_handle: GraphicsStreamHandle,
 
         pub texture_handle: GraphicsTextureHandle,
@@ -171,6 +174,7 @@ pub mod graphics {
         ) -> Graphics {
             let backend_handle = GraphicsBackendHandle::new(backend);
             let buffer_object_handle = GraphicsBufferObjectHandle::new(backend_handle.clone());
+            let shader_storage_handle = GraphicsShaderStorageHandle::new(backend_handle.clone());
             Graphics {
                 // handles
                 canvas_handle: GraphicsCanvasHandle::new(backend_handle.clone(), window_props),
@@ -180,6 +184,7 @@ pub mod graphics {
                     buffer_object_handle.clone(),
                 ),
                 buffer_object_handle,
+                shader_storage_handle,
                 stream_handle: GraphicsStreamHandle::new(stream_data, backend_handle.clone()),
                 texture_handle: GraphicsTextureHandle::new(backend_handle.clone()),
                 backend_handle,

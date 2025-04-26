@@ -38,6 +38,7 @@ pub fn entities_list(
             let tile_set_preview = pipe.user_data.tile_set_preview.get_or_insert_with(|| {
                 ClientMapBuffered::tile_set_preview(
                     pipe.user_data.graphics_mt,
+                    pipe.user_data.shader_storage_handle,
                     pipe.user_data.buffer_object_handle,
                     pipe.user_data.backend_handle,
                 )
@@ -46,7 +47,7 @@ pub fn entities_list(
                 pipe.user_data.canvas_handle,
                 pipe.user_data.entities_container,
                 pipe.user_data.map_render,
-                tile_set_preview.base.buffer_object.clone().unwrap(),
+                tile_set_preview.base.obj.shader_storage.clone().unwrap(),
                 ui,
                 ui_state,
                 ui.ctx().screen_rect(),

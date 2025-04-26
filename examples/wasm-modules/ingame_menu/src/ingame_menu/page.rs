@@ -47,8 +47,9 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
-        texture::texture::GraphicsTextureHandle,
+        canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
+        stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
     },
 };
 use math::math::Rng;
@@ -68,6 +69,7 @@ impl MainMenuInterface for MenuImpl {
 pub struct IngameMenu {
     config: Config,
 
+    shader_storage_handle: GraphicsShaderStorageHandle,
     buffer_object_handle: GraphicsBufferObjectHandle,
     backend_handle: GraphicsBackendHandle,
     stream_handle: GraphicsStreamHandle,
@@ -105,6 +107,7 @@ impl IngameMenu {
         Self {
             config,
 
+            shader_storage_handle: graphics.shader_storage_handle.clone(),
             buffer_object_handle: graphics.buffer_object_handle.clone(),
             backend_handle: graphics.backend_handle.clone(),
             stream_handle: graphics.stream_handle.clone(),
@@ -190,6 +193,7 @@ impl IngameMenu {
                         client_info: &ClientInfo::default(),
 
                         backend_handle: &self.backend_handle,
+                        shader_storage_handle: &self.shader_storage_handle,
                         buffer_object_handle: &self.buffer_object_handle,
                         stream_handle: &self.stream_handle,
                         canvas_handle: &self.canvas_handle,

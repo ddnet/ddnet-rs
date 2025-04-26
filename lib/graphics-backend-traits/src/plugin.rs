@@ -81,6 +81,10 @@ pub enum BackendResourceDescription {
     /// sets: 1
     /// bindings: 1
     VertexFragmentUniformBuffer,
+    /// A shader storage accessable in the vertex shader
+    /// sets: 1,
+    /// bindings: 1
+    VertexShaderStorage,
 }
 
 bitflags! {
@@ -145,6 +149,8 @@ pub trait BackendRenderExecuteInterface {
 
     fn set_vertex_buffer(&mut self, buffer_object_index: u128);
     fn set_vertex_buffer_with_offset(&mut self, buffer_object_index: u128, offset: usize);
+
+    fn set_shader_storage(&mut self, shader_storage_index: u128);
 }
 
 pub enum SubRenderPassAttributes {
@@ -233,6 +239,8 @@ pub trait BackendRenderInterface {
 
     fn bind_uniform_descriptor_sets(&self, first_set: u32, descriptor_index: u64);
 
+    fn bind_shader_storage_descriptor_set(&self, first_set: u32);
+
     fn push_constants(&self, stage_flags: BackendShaderStage, offset: u32, constants: &[u8]);
 
     fn draw_indexed(
@@ -275,6 +283,26 @@ pub struct GraphicsBufferObjectAccessAndRewrite<'a> {
     pub accesses: PoolVec<GraphicsBufferObjectAccess>,
 }
 
+#[derive(Debug, Hiarc)]
+pub enum GraphicsShaderStorageAccess {
+    IndicedQuad {
+        /// How many quads are skipped in the index buffer before rendering.
+        quad_offset: usize,
+        /// How many quads are expected to be drawn
+        quad_count: usize,
+        /// The size of a single entry for this quad
+        entry_byte_size: usize,
+        /// The alignment of the shader storage buffer's entry data type.
+        alignment: NonZeroUsize,
+    },
+}
+
+#[derive(Debug)]
+pub struct GraphicsShaderStorageAccessAndRewrite<'a> {
+    pub shader_storage_index: &'a mut u128,
+    pub accesses: PoolVec<GraphicsShaderStorageAccess>,
+}
+
 #[derive(Debug)]
 pub struct GraphicsUniformAccessAndRewrite<'a> {
     pub index: &'a mut usize,
@@ -290,6 +318,7 @@ pub struct GraphicsObjectRewriteFunc<'a> {
     pub textures_2d_array: &'a mut [&'a mut StateTexture2dArray],
     pub buffer_objects: &'a mut [GraphicsBufferObjectAccessAndRewrite<'a>],
     pub uniform_instances: &'a mut [GraphicsUniformAccessAndRewrite<'a>],
+    pub shader_storages: &'a mut [GraphicsShaderStorageAccessAndRewrite<'a>],
 }
 
 pub trait BackendCustomPipeline: Debug + Sync + Send {
