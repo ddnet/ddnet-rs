@@ -17,6 +17,8 @@ use libtw2_snapshot::Manager;
 use libtw2_socket::{Addr, Socket};
 use log::{debug, log, log_enabled, Level};
 
+use crate::ServerInfo;
+
 pub struct SocketClient {
     pub socket: Socket,
     pub net: Net<Addr>,
@@ -166,6 +168,15 @@ pub enum ClientState {
         name: ReducedAsciiString,
         hash: Hash,
     },
+    RequestedLegacyServerInfo {
+        name: ReducedAsciiString,
+        hash: Hash,
+        token: u8,
+    },
+    ReceivedLegacyServerInfo {
+        name: ReducedAsciiString,
+        hash: Hash,
+    },
     SentServerInfo,
     StartInfoSent,
     Ingame,
@@ -174,6 +185,7 @@ pub enum ClientState {
 #[derive(Debug, Default)]
 pub struct ClientReady {
     pub con: bool,
+    pub received_server_info: Option<ServerInfo>,
     pub client_con: bool,
 }
 

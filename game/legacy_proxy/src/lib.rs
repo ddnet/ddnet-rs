@@ -203,6 +203,21 @@ struct Dummy {
     pub ddnet_player_snap: Option<DdnetPlayer>,
 }
 
+#[derive(Debug, Clone)]
+enum ServerInfoTy {
+    Partial { requires_password: bool },
+    Full(ServerInfo),
+}
+
+impl ServerInfoTy {
+    pub fn requires_password(&self) -> bool {
+        match self {
+            Self::Partial { requires_password } => *requires_password,
+            Self::Full(info) => info.passworded,
+        }
+    }
+}
+
 struct ClientBase {
     vanilla_snap_pool: SnapshotPool,
     stage_0_id: StageId,
@@ -240,7 +255,7 @@ struct ClientBase {
 
     tunes: Tunings,
 
-    server_info: ServerInfo,
+    server_info: ServerInfoTy,
 
     votes: ServerMapVotes,
     vote_state: Option<VoteState>,
@@ -343,43 +358,127 @@ impl Client {
 
         Ok((
             std::thread::spawn(move || {
-                // first get the server info
-                let mut conless = SocketClient::new(addr).unwrap();
-
-                let mut tokens = vec![rand::rng().next_u32() as u8];
-                conless.sendc(
-                    addr,
-                    Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
-                );
-                let time = sys.time_get();
-                let mut last_req = sys.time_get();
                 let mut server_info = None;
-                while server_info.is_none() {
-                    conless.run_once(|_, event| {
-                        if let libtw2_net::net::ChunkOrEvent::Connless(msg) = event {
-                            server_info = server_info
-                                .clone()
-                                .or(Self::on_connless_packet(&tokens, msg.addr, msg.data));
+                {
+                    // first get the server info
+                    let mut conless = SocketClient::new(addr).unwrap();
+                    let mut is_connect = false;
+                    let mut is_ready = false;
+                    let mut is_map_ready = false;
+
+                    let mut tokens = vec![rand::rng().next_u32() as u8];
+                    conless.sendc(
+                        addr,
+                        Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
+                    );
+                    let start_time = sys.time_get();
+                    let mut last_req = start_time;
+                    let mut last_reconnect = start_time;
+                    while server_info.is_none() {
+                        conless.run_once(|conless, event| match event {
+                            libtw2_net::net::ChunkOrEvent::Chunk(libtw2_net::net::Chunk {
+                                data,
+                                pid,
+                                ..
+                            }) => {
+                                let msg = match msg::decode(
+                                    &mut WarnPkt(pid, data),
+                                    &mut Unpacker::new(data),
+                                ) {
+                                    Ok(m) => m,
+                                    Err(err) => {
+                                        debug!("decode err during startup: {:?}", err);
+                                        // TODO: hacky way to listen for reconnect msg not impl in libtw2
+                                        if !is_map_ready {
+                                            conless
+                                                .net
+                                                .disconnect(
+                                                    &mut conless.socket,
+                                                    conless.server_pid,
+                                                    b"reconnect",
+                                                )
+                                                .unwrap();
+                                            let (pid, res) =
+                                                conless.net.connect(&mut conless.socket, addr);
+                                            res.unwrap();
+                                            conless.server_pid = pid;
+                                        }
+                                        return;
+                                    }
+                                };
+
+                                if matches!(msg, SystemOrGame::System(System::MapChange(_))) {
+                                    is_map_ready = true;
+                                }
+                            }
+                            libtw2_net::net::ChunkOrEvent::Connless(msg) => {
+                                server_info = server_info
+                                    .clone()
+                                    .or(Self::on_connless_packet(&tokens, msg.addr, msg.data)
+                                        .map(ServerInfoTy::Full));
+                            }
+                            libtw2_net::net::ChunkOrEvent::Connect(_) => is_connect = true,
+                            libtw2_net::net::ChunkOrEvent::Ready(_) => {
+                                is_ready = true;
+                            }
+                            libtw2_net::net::ChunkOrEvent::Disconnect(_, items) => {
+                                if String::from_utf8_lossy(items).contains("password") {
+                                    server_info =
+                                        server_info.clone().or(Some(ServerInfoTy::Partial {
+                                            requires_password: true,
+                                        }));
+                                }
+                            }
+                        });
+                        if server_info.is_none() {
+                            std::thread::sleep(Duration::from_millis(10));
                         }
-                    });
-                    std::thread::sleep(Duration::from_millis(10));
 
-                    // send new request
-                    if sys.time_get().saturating_sub(last_req) > Duration::from_secs(1) {
-                        let token = rand::rng().next_u32() as u8;
-                        conless.sendc(
-                            addr,
-                            Connless::RequestInfo(msg::connless::RequestInfo { token }),
-                        );
+                        let cur_time = sys.time_get();
+                        // send new request
+                        if cur_time.saturating_sub(last_req) > Duration::from_secs(1) {
+                            let token = rand::rng().next_u32() as u8;
+                            conless.sendc(
+                                addr,
+                                Connless::RequestInfo(msg::connless::RequestInfo { token }),
+                            );
 
-                        tokens.push(token);
+                            tokens.push(token);
 
-                        last_req = sys.time_get();
-                    }
+                            last_req = cur_time;
+                        }
 
-                    // timeout
-                    if sys.time_get().saturating_sub(time) > Duration::from_secs(20) {
-                        return;
+                        // try to reconnect
+                        if cur_time.saturating_sub(last_reconnect) > Duration::from_secs(3) {
+                            conless
+                                .net
+                                .disconnect(&mut conless.socket, conless.server_pid, b"reconnect")
+                                .unwrap();
+                            let (pid, res) = conless.net.connect(&mut conless.socket, addr);
+                            res.unwrap();
+                            conless.server_pid = pid;
+
+                            last_reconnect = cur_time;
+                        }
+
+                        // send info, even if password is wrong and this results in a kick
+                        if is_connect
+                            && is_ready
+                            && cur_time.saturating_sub(start_time) > Duration::from_secs(2)
+                        {
+                            conless.sends(System::Info(system::Info {
+                                version: VERSION.as_bytes(),
+                                password: Some(b""),
+                            }));
+                            conless.flush();
+                            is_ready = false;
+                        }
+
+                        // timeout
+                        if cur_time.saturating_sub(start_time) > Duration::from_secs(20) {
+                            debug!("giving up to connect after 20 seconds.");
+                            return;
+                        }
                     }
                 }
 
@@ -481,6 +580,7 @@ impl Client {
         ))
     }
 }
+
 impl Client {
     fn player_info_mut<'a>(
         id: i32,
@@ -1953,6 +2053,9 @@ impl Client {
                     .ok()
                     .and_then(|s| ReducedAsciiString::try_from(s.as_str()).ok())
                 {
+                    base.server_info = ServerInfoTy::Partial {
+                        requires_password: base.server_info.requires_password(),
+                    };
                     player.ready = Default::default();
                     // try to read file
                     let fs = io.fs.clone();
@@ -2016,6 +2119,9 @@ impl Client {
                     .and_then(|s| ReducedAsciiString::try_from(s.as_str()).ok())
                 {
                     if is_main_connection {
+                        base.server_info = ServerInfoTy::Partial {
+                            requires_password: base.server_info.requires_password(),
+                        };
                         player.ready = Default::default();
                         // Since crc checks are not secure, the client will always download these maps
                         socket.sends(System::RequestMapData(system::RequestMapData { chunk: 0 }));
@@ -3083,7 +3189,7 @@ impl Client {
                     GameEvents::NetworkEvent(ev) => match ev {
                         NetworkEvent::Connected { .. } => {
                             self.con_id = Some(con_id);
-                            if self.base.server_info.passworded {
+                            if self.base.server_info.requires_password() {
                                 self.server_network.send_unordered_to(
                                     &ServerToClientMessage::RequiresPassword,
                                     &con_id,
@@ -3884,8 +3990,21 @@ impl Client {
                             is_active_connection,
                             is_main_connection,
                         ),
-                        Connless(_) => {
-                            // ignore
+                        Connless(data) => {
+                            if let ClientState::RequestedLegacyServerInfo { token, .. } =
+                                &player.data.state
+                            {
+                                if self.connect_addr == data.addr {
+                                    player.data.ready.received_server_info =
+                                        player.data.ready.received_server_info.clone().or(
+                                            Self::on_connless_packet(
+                                                &[*token],
+                                                self.connect_addr,
+                                                data.data,
+                                            ),
+                                        );
+                                }
+                            }
                         }
                         Ready(_) => {
                             socket.sends(System::Info(system::Info {
@@ -3910,6 +4029,37 @@ impl Client {
                 });
 
                 if let ClientState::MapReady { name, hash } = &mut player.data.state {
+                    if matches!(self.base.server_info, ServerInfoTy::Partial { .. }) {
+                        let token = rand::rng().next_u32() as u8;
+                        player.socket.sendc(
+                            self.connect_addr,
+                            Connless::RequestInfo(msg::connless::RequestInfo { token }),
+                        );
+                        player.data.state = ClientState::RequestedLegacyServerInfo {
+                            name: std::mem::take(name),
+                            hash: *hash,
+                            token,
+                        };
+                    } else {
+                        player.data.state = ClientState::ReceivedLegacyServerInfo {
+                            name: std::mem::take(name),
+                            hash: *hash,
+                        };
+                    }
+                }
+                if let ClientState::RequestedLegacyServerInfo { name, hash, .. } =
+                    &mut player.data.state
+                {
+                    if let Some(server_info) = player.data.ready.received_server_info.take() {
+                        self.base.server_info = ServerInfoTy::Full(server_info);
+                        player.data.state = ClientState::ReceivedLegacyServerInfo {
+                            name: std::mem::take(name),
+                            hash: *hash,
+                        };
+                    }
+                }
+                if let ClientState::ReceivedLegacyServerInfo { name, hash } = &mut player.data.state
+                {
                     let mut send_server_info_and_prepare_map_download =
                         |map_name: ReducedAsciiString, hash: &Hash| {
                             if !is_main_connection {
@@ -3948,7 +4098,10 @@ impl Client {
 
                             let first_connect = self.http_server.is_none();
 
-                            let game_type = self.base.server_info.game_type.to_lowercase();
+                            let ServerInfoTy::Full(server_info) = &self.base.server_info else {
+                                panic!("server info not received, bug in code.");
+                            };
+                            let game_type = server_info.game_type.to_lowercase();
                             let is_race = game_type == "race"
                                 || game_type.contains("ddrace")
                                 || game_type.contains("block")
