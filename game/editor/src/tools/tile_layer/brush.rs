@@ -805,7 +805,7 @@ impl TileBrush {
             MapTileLayerTiles::Design(tiles) => BrushVisual::Design({
                 let has_texture = true;
                 let buffer = tp.install(|| {
-                    upload_design_tile_layer_buffer(graphics_mt, tiles, w, h, has_texture)
+                    upload_design_tile_layer_buffer(graphics_mt, tiles, w, h, has_texture, true)
                 });
                 finish_design_tile_layer_buffer(
                     shader_storage_handle,
@@ -815,8 +815,9 @@ impl TileBrush {
                 )
             }),
             MapTileLayerTiles::Physics(tiles) => BrushVisual::Physics({
-                let buffer =
-                    tp.install(|| upload_physics_layer_buffer(graphics_mt, w, h, tiles.as_ref()));
+                let buffer = tp.install(|| {
+                    upload_physics_layer_buffer(graphics_mt, w, h, tiles.as_ref(), true)
+                });
                 finish_physics_layer_buffer(
                     shader_storage_handle,
                     buffer_object_handle,
@@ -1156,6 +1157,7 @@ impl TileBrush {
                                             w,
                                             h,
                                             has_texture,
+                                            true,
                                         )
                                     });
                                     finish_design_tile_layer_buffer(
@@ -1172,6 +1174,7 @@ impl TileBrush {
                                             w,
                                             h,
                                             tiles.as_ref(),
+                                            true,
                                         )
                                     });
                                     finish_physics_layer_buffer(
