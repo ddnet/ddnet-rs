@@ -36,9 +36,8 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle,
         shader_storage::shader_storage::GraphicsShaderStorageHandle,
-        stream::stream::{GraphicsStreamHandle, LinesStreamHandle},
+        stream::stream::LinesStreamHandle,
         stream_types::StreamedLine,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
@@ -220,13 +219,7 @@ pub struct Editor {
     notifications_overlay: ClientNotifications,
 
     // graphics
-    graphics_mt: GraphicsMultiThreaded,
-    shader_storage_handle: GraphicsShaderStorageHandle,
-    buffer_object_handle: GraphicsBufferObjectHandle,
-    backend_handle: GraphicsBackendHandle,
-    texture_handle: GraphicsTextureHandle,
-    canvas_handle: GraphicsCanvasHandle,
-    stream_handle: GraphicsStreamHandle,
+    graphics: Graphics,
 
     // sound
     sound_mt: SoundMultiThreaded,
@@ -402,13 +395,7 @@ impl Editor {
             notifications: Default::default(),
             notifications_overlay: ClientNotifications::new(graphics, &sys, &ui_creator),
 
-            graphics_mt,
-            shader_storage_handle: graphics.shader_storage_handle.clone(),
-            buffer_object_handle: graphics.buffer_object_handle.clone(),
-            backend_handle: graphics.backend_handle.clone(),
-            texture_handle: graphics.texture_handle.clone(),
-            canvas_handle: graphics.canvas_handle.clone(),
-            stream_handle: graphics.stream_handle.clone(),
+            graphics: graphics.clone(),
 
             scene_handle: sound.scene_handle.clone(),
             container_scene: scene,
@@ -517,18 +504,20 @@ impl Editor {
             tiles: vec![TileBase::default(); 50 * 50],
         };
         let visuals = {
+            let graphics_mt = self.graphics.get_graphics_mt();
             let buffer = self.thread_pool.install(|| {
                 upload_physics_layer_buffer(
-                    &self.graphics_mt,
+                    &graphics_mt,
                     physics_group_attr.width,
                     physics_group_attr.height,
                     MapTileLayerPhysicsTilesRef::Game(&game_layer.tiles),
+                    false,
                 )
             });
             finish_physics_layer_buffer(
-                &self.shader_storage_handle,
-                &self.buffer_object_handle,
-                &self.backend_handle,
+                &self.graphics.shader_storage_handle,
+                &self.graphics.buffer_object_handle,
+                &self.graphics.backend_handle,
                 buffer,
             )
         };
@@ -613,9 +602,9 @@ impl Editor {
                     },
                 },
                 map_render: RenderMap::new(
-                    &self.backend_handle,
-                    &self.canvas_handle,
-                    &self.stream_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.canvas_handle,
+                    &self.graphics.stream_handle,
                 ),
                 server,
                 client,
@@ -805,6 +794,7 @@ impl Editor {
                                         layer.attr.width,
                                         layer.attr.height,
                                         layer.attr.image_array.is_some(),
+                                        false,
                                     )),
                                     layer,
                                 },
@@ -843,6 +833,7 @@ impl Editor {
                                 map.groups.physics.attr.width,
                                 map.groups.physics.attr.height,
                                 layer.as_ref().tiles_ref(),
+                                false,
                             ),
                             layer,
                         )
@@ -1114,14 +1105,14 @@ impl Editor {
 
     fn map_to_editor_map(&self, map: Map, resources: HashMap<Hash, Vec<u8>>) -> EditorMap {
         Self::map_to_editor_map_impl(
-            self.graphics_mt.clone(),
+            self.graphics.get_graphics_mt(),
             self.sound_mt.clone(),
             &self.thread_pool,
             &self.scene_handle,
-            &self.backend_handle,
-            &self.shader_storage_handle,
-            &self.buffer_object_handle,
-            &self.texture_handle,
+            &self.graphics.backend_handle,
+            &self.graphics.shader_storage_handle,
+            &self.graphics.buffer_object_handle,
+            &self.graphics.texture_handle,
             map,
             resources,
         )
@@ -1212,9 +1203,9 @@ impl Editor {
             EditorTab {
                 map,
                 map_render: RenderMap::new(
-                    &self.backend_handle,
-                    &self.canvas_handle,
-                    &self.stream_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.canvas_handle,
+                    &self.graphics.stream_handle,
                 ),
                 server: Some(server),
                 client,
@@ -1366,9 +1357,9 @@ impl Editor {
             EditorTab {
                 map,
                 map_render: RenderMap::new(
-                    &self.backend_handle,
-                    &self.canvas_handle,
-                    &self.stream_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.canvas_handle,
+                    &self.graphics.stream_handle,
                 ),
                 server: Some(server),
                 client,
@@ -1695,11 +1686,11 @@ impl Editor {
             let update_res = tab.client.update(
                 &self.thread_pool,
                 &self.sound_mt,
-                &self.graphics_mt,
-                &self.shader_storage_handle,
-                &self.buffer_object_handle,
-                &self.backend_handle,
-                &self.texture_handle,
+                &self.graphics.get_graphics_mt(),
+                &self.graphics.shader_storage_handle,
+                &self.graphics.buffer_object_handle,
+                &self.graphics.backend_handle,
+                &self.graphics.texture_handle,
                 &mut tab.map,
                 &mut tab.admin_panel,
                 &self.auto_mapper,
@@ -1715,14 +1706,14 @@ impl Editor {
             {
                 let map = Map::read(&map, &self.thread_pool).unwrap();
                 tab.map = Self::map_to_editor_map_impl(
-                    self.graphics_mt.clone(),
+                    self.graphics.get_graphics_mt(),
                     self.sound_mt.clone(),
                     &self.thread_pool,
                     &self.scene_handle,
-                    &self.backend_handle,
-                    &self.shader_storage_handle,
-                    &self.buffer_object_handle,
-                    &self.texture_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.shader_storage_handle,
+                    &self.graphics.buffer_object_handle,
+                    &self.graphics.texture_handle,
                     map,
                     resources,
                 );
@@ -1735,11 +1726,11 @@ impl Editor {
                 server.update(
                     &self.thread_pool,
                     &self.sound_mt,
-                    &self.graphics_mt,
-                    &self.shader_storage_handle,
-                    &self.buffer_object_handle,
-                    &self.backend_handle,
-                    &self.texture_handle,
+                    &self.graphics.get_graphics_mt(),
+                    &self.graphics.shader_storage_handle,
+                    &self.graphics.buffer_object_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.texture_handle,
                     &mut tab.map,
                     &mut tab.auto_saver,
                     &mut self.notifications_overlay,
@@ -1795,12 +1786,12 @@ impl Editor {
         };
         let color = ubvec4::new(255, 255, 255, 255);
         let state = render_rect_state(
-            &self.canvas_handle,
+            &self.graphics.canvas_handle,
             map,
             &vec2::new(parallax.x.to_num(), parallax.y.to_num()),
             &vec2::new(offset.x.to_num(), offset.y.to_num()),
         );
-        render_rect_from_state(&self.stream_handle, state, rect, color);
+        render_rect_from_state(&self.graphics.stream_handle, state, rect, color);
     }
 
     fn render_design_layer<AS: HiarcTrait, A: HiarcTrait>(
@@ -1912,14 +1903,102 @@ impl Editor {
         };
         let color = ubvec4::new(255, 0, 0, 255);
         render_rect(
-            &self.canvas_handle,
-            &self.stream_handle,
+            &self.graphics.canvas_handle,
+            &self.graphics.stream_handle,
             map,
             rect,
             color,
             &vec2::new(100.0, 100.0),
             &vec2::new(0.0, 0.0),
         );
+    }
+
+    fn check_active_layer_tile_numbers(
+        graphics: &Graphics,
+        tp: &Arc<rayon::ThreadPool>,
+        map: &mut EditorMap,
+    ) {
+        let check_design = |groups: &mut [EditorGroup]| {
+            for group in groups.iter_mut() {
+                for layer in group.layers.iter_mut() {
+                    let is_active = layer.editor_attr().active;
+                    if let EditorLayer::Tile(layer) = layer {
+                        let visuals = &layer.user.visuals;
+                        let has_visuals = visuals.tile_flag_obj.buffer_object.is_some()
+                            || visuals.tile_flag_obj.shader_storage.is_some()
+                            || visuals.tile_index_obj.buffer_object.is_some()
+                            || visuals.tile_index_obj.shader_storage.is_some();
+                        let should_show_numbers = is_active && map.user.options.show_tile_numbers;
+                        let recreate = if should_show_numbers && !has_visuals {
+                            Some(true)
+                        } else if !should_show_numbers && has_visuals {
+                            Some(false)
+                        } else {
+                            None
+                        };
+                        if let Some(with_tile_numbers) = recreate {
+                            let graphics_mt = graphics.get_graphics_mt();
+                            let buffer = tp.install(|| {
+                                upload_design_tile_layer_buffer(
+                                    &graphics_mt,
+                                    &layer.layer.tiles,
+                                    layer.layer.attr.width,
+                                    layer.layer.attr.height,
+                                    true,
+                                    with_tile_numbers,
+                                )
+                            });
+                            layer.user.visuals = finish_design_tile_layer_buffer(
+                                &graphics.shader_storage_handle,
+                                &graphics.buffer_object_handle,
+                                &graphics.backend_handle,
+                                buffer,
+                            );
+                        }
+                    }
+                }
+            }
+        };
+        check_design(&mut map.groups.background);
+        check_design(&mut map.groups.foreground);
+        // physics
+        let group = &mut map.groups.physics;
+        for layer in group.layers.iter_mut() {
+            let is_active = layer.editor_attr().active;
+            let visuals = &layer.user().visuals;
+            let has_visuals = visuals.base.tile_flag_obj.buffer_object.is_some()
+                || visuals.base.tile_flag_obj.shader_storage.is_some()
+                || visuals.base.tile_index_obj.buffer_object.is_some()
+                || visuals.base.tile_index_obj.shader_storage.is_some();
+            let should_show_numbers = is_active && map.user.options.show_tile_numbers;
+            let recreate = if should_show_numbers && !has_visuals {
+                Some(true)
+            } else if !should_show_numbers && has_visuals {
+                Some(false)
+            } else {
+                None
+            };
+            if let Some(with_tile_numbers) = recreate {
+                let graphics_mt = graphics.get_graphics_mt();
+                let tmp_layer = layer.layer_ref();
+                let tiles = tmp_layer.tiles_ref();
+                let buffer = tp.install(|| {
+                    upload_physics_layer_buffer(
+                        &graphics_mt,
+                        group.attr.width,
+                        group.attr.height,
+                        tiles,
+                        with_tile_numbers,
+                    )
+                });
+                layer.user_mut().visuals = finish_physics_layer_buffer(
+                    &graphics.shader_storage_handle,
+                    &graphics.buffer_object_handle,
+                    &graphics.backend_handle,
+                    buffer,
+                );
+            }
+        }
     }
 
     fn render_design_groups(
@@ -1945,7 +2024,10 @@ impl Editor {
                         None,
                         layer_rect,
                     );
-                    if layer.editor_attr().active && map.user.options.show_tile_numbers {
+                    if matches!(layer, EditorLayer::Tile(_))
+                        && layer.editor_attr().active
+                        && map.user.options.show_tile_numbers
+                    {
                         self.render_design_layer(
                             map_render,
                             map,
@@ -2092,7 +2174,7 @@ impl Editor {
 
                     let zoom = tab.map.groups.user.zoom;
                     let pos = ui_pos_to_world_pos(
-                        &self.canvas_handle,
+                        &self.graphics.canvas_handle,
                         ui_canvas,
                         zoom,
                         vec2::new(pos.x, pos.y),
@@ -2105,7 +2187,7 @@ impl Editor {
                         false,
                     );
                     let old_pos = ui_pos_to_world_pos(
-                        &self.canvas_handle,
+                        &self.graphics.canvas_handle,
                         ui_canvas,
                         zoom,
                         vec2::new(old_pos.x, old_pos.y),
@@ -2196,11 +2278,11 @@ impl Editor {
                     ui_canvas,
                     tool,
                     &self.thread_pool,
-                    &self.graphics_mt,
-                    &self.shader_storage_handle,
-                    &self.buffer_object_handle,
-                    &self.backend_handle,
-                    &self.canvas_handle,
+                    &self.graphics.get_graphics_mt(),
+                    &self.graphics.shader_storage_handle,
+                    &self.graphics.buffer_object_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.canvas_handle,
                     &mut self.entities_container,
                     &self.fake_texture_array,
                     &tab.map,
@@ -2214,10 +2296,10 @@ impl Editor {
                 ActiveTool::Quads(tool) => self.tools.quads.update(
                     ui_canvas,
                     tool,
-                    &self.graphics_mt,
-                    &self.buffer_object_handle,
-                    &self.backend_handle,
-                    &self.canvas_handle,
+                    &self.graphics.get_graphics_mt(),
+                    &self.graphics.buffer_object_handle,
+                    &self.graphics.backend_handle,
+                    &self.graphics.canvas_handle,
                     &mut tab.map,
                     &self.fake_texture,
                     &self.latest_pointer,
@@ -2228,7 +2310,7 @@ impl Editor {
                 ActiveTool::Sounds(tool) => self.tools.sounds.update(
                     ui_canvas,
                     tool,
-                    &self.canvas_handle,
+                    &self.graphics.canvas_handle,
                     &mut tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
@@ -2283,12 +2365,12 @@ impl Editor {
                     ui_canvas,
                     tool,
                     &self.thread_pool,
-                    &self.graphics_mt,
-                    &self.backend_handle,
-                    &self.shader_storage_handle,
-                    &self.buffer_object_handle,
-                    &self.stream_handle,
-                    &self.canvas_handle,
+                    &self.graphics.get_graphics_mt(),
+                    &self.graphics.backend_handle,
+                    &self.graphics.shader_storage_handle,
+                    &self.graphics.buffer_object_handle,
+                    &self.graphics.stream_handle,
+                    &self.graphics.canvas_handle,
                     &mut self.entities_container,
                     &self.fake_texture_array,
                     &tab.map,
@@ -2301,8 +2383,8 @@ impl Editor {
                 ActiveTool::Quads(tool) => self.tools.quads.render(
                     ui_canvas,
                     tool,
-                    &self.stream_handle,
-                    &self.canvas_handle,
+                    &self.graphics.stream_handle,
+                    &self.graphics.canvas_handle,
                     &tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
@@ -2310,8 +2392,8 @@ impl Editor {
                 ActiveTool::Sounds(tool) => self.tools.sounds.render(
                     ui_canvas,
                     tool,
-                    &self.stream_handle,
-                    &self.canvas_handle,
+                    &self.graphics.stream_handle,
+                    &self.graphics.canvas_handle,
                     &tab.map,
                     &self.latest_pointer,
                     &self.current_pointer_pos,
@@ -2421,6 +2503,11 @@ impl Editor {
                 Self::add_fake_anim_point(&mut tab.map);
             }
         }
+
+        if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
+            // check some props for active layers
+            Self::check_active_layer_tile_numbers(&self.graphics, &self.thread_pool, &mut tab.map);
+        }
         let active_tab = self.tabs.get(&self.active_tab);
         if let Some(tab) = active_tab {
             let tile_index_texture = self.tile_textures.index.clone();
@@ -2500,7 +2587,7 @@ impl Editor {
 
         let mut state = State::new();
         RenderTools::map_canvas_of_group(
-            CanvasType::Handle(&self.canvas_handle),
+            CanvasType::Handle(&self.graphics.canvas_handle),
             &mut state,
             tab.map.groups.user.pos.x,
             tab.map.groups.user.pos.y,
@@ -2535,7 +2622,7 @@ impl Editor {
             y += grid_size;
         }
 
-        self.stream_handle.render_lines(
+        self.graphics.stream_handle.render_lines(
             hi_closure!(
                 [lines: Vec<StreamedLine>],
                 |mut stream_handle: LinesStreamHandle<'_>| -> () {
@@ -2778,7 +2865,7 @@ impl EditorInterface for Editor {
         self.render_world();
 
         // if msaa is enabled, consume them now
-        self.backend_handle.consumble_multi_samples();
+        self.graphics.backend_handle.consumble_multi_samples();
 
         // render the grid, if active
         self.render_grid();
@@ -2794,8 +2881,8 @@ impl EditorInterface for Editor {
             Rect::from_min_size(
                 pos2(0.0, 0.0),
                 vec2(
-                    self.canvas_handle.canvas_width() as f32,
-                    self.canvas_handle.canvas_height() as f32,
+                    self.graphics.canvas_handle.canvas_width() as f32,
+                    self.graphics.canvas_handle.canvas_height() as f32,
                 ),
             )
         });
@@ -2831,8 +2918,8 @@ impl EditorInterface for Editor {
                         Rect::from_min_size(
                             pos2(0.0, 0.0),
                             vec2(
-                                self.canvas_handle.canvas_width() as f32,
-                                self.canvas_handle.canvas_height() as f32,
+                                self.graphics.canvas_handle.canvas_width() as f32,
+                                self.graphics.canvas_handle.canvas_height() as f32,
                             ),
                         )
                     }),

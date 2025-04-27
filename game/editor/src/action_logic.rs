@@ -1174,6 +1174,7 @@ pub fn do_action(
                                         layer.attr.width,
                                         layer.attr.height,
                                         layer.attr.image_array.is_some(),
+                                        user.attr.active,
                                     )
                                 });
                                 finish_design_tile_layer_buffer(
@@ -1436,6 +1437,7 @@ pub fn do_action(
                         layer.attr.width,
                         layer.attr.height,
                         layer.attr.image_array.is_some(),
+                        false,
                     )
                 });
                 finish_design_tile_layer_buffer(
@@ -1707,6 +1709,7 @@ pub fn do_action(
                         physics.attr.width,
                         physics.attr.height,
                         layer.as_ref().tiles_ref(),
+                        false,
                     )
                 });
                 finish_physics_layer_buffer(
@@ -2100,6 +2103,7 @@ pub fn do_action(
                                                     layer.attr.width,
                                                     layer.attr.height,
                                                     layer.attr.image_array.is_some(),
+                                                    false,
                                                 )
                                             });
                                             finish_design_tile_layer_buffer(
@@ -2359,6 +2363,7 @@ pub fn do_action(
                                     width,
                                     height,
                                     new_tiles.as_ref(),
+                                    false,
                                 ),
                                 new_tiles,
                             )
@@ -2483,14 +2488,15 @@ pub fn do_action(
                     }
 
                     layer.user.visuals = {
-                        let layer = &layer.layer;
+                        let tile_layer = &layer.layer;
                         let buffer = tp.install(|| {
                             upload_design_tile_layer_buffer(
                                 graphics_mt,
-                                &layer.tiles,
-                                layer.attr.width,
-                                layer.attr.height,
-                                layer.attr.image_array.is_some(),
+                                &tile_layer.tiles,
+                                tile_layer.attr.width,
+                                tile_layer.attr.height,
+                                tile_layer.attr.image_array.is_some(),
+                                layer.user.attr.active,
                             )
                         });
                         finish_design_tile_layer_buffer(

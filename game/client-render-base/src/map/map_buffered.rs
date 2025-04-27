@@ -2137,7 +2137,12 @@ impl ClientMapBuffered {
             text_overlay_count = 2;
         }
 
-        let create_tile_index_flag = true;
+        let obj = &layer.user().borrow().base.tile_index_obj;
+        let flag_obj = &layer.user().borrow().base.tile_flag_obj;
+        let create_tile_index_flag = obj.shader_storage.is_some()
+            || obj.buffer_object.is_some()
+            || flag_obj.shader_storage.is_some()
+            || flag_obj.buffer_object.is_some();
 
         for cur_text_overlay in
             0..text_overlay_count + 1 + if create_tile_index_flag { 2 } else { 0 }
@@ -2386,40 +2391,49 @@ impl ClientMapBuffered {
             true, // always true bcs `ignore_tile_index_and_is_textured_check`
         );
 
-        for i in 0..2 {
-            let (buffer_object, shader_storage) = if i == 0 {
-                let obj = &mut layer.user.borrow_mut().tile_index_obj;
-                (&mut obj.buffer_object, &mut obj.shader_storage)
-            } else {
-                let obj = &mut layer.user.borrow_mut().tile_flag_obj;
-                (&mut obj.buffer_object, &mut obj.shader_storage)
-            };
-            Self::update_tile_layer(
-                tp,
-                buffer_object,
-                shader_storage,
-                layer_width,
-                layer_height,
-                x,
-                y,
-                width,
-                height,
-                |skip| {
-                    Box::new(layer.layer.tiles[skip..].iter().map(|tile| {
-                        (
-                            if i == 0 {
-                                tile.index
-                            } else {
-                                flag_to_bits(tile.flags)
-                            },
-                            Default::default(),
-                            -1,
-                        )
-                    }))
-                },
-                false,
-                true, // always true bcs `ignore_tile_index_and_is_textured_check`
-            );
+        let obj = &layer.user.borrow().tile_index_obj;
+        let flag_obj = &layer.user.borrow().tile_flag_obj;
+        let create_tile_index_flag = obj.shader_storage.is_some()
+            || obj.buffer_object.is_some()
+            || flag_obj.shader_storage.is_some()
+            || flag_obj.buffer_object.is_some();
+
+        if create_tile_index_flag {
+            for i in 0..2 {
+                let (buffer_object, shader_storage) = if i == 0 {
+                    let obj = &mut layer.user.borrow_mut().tile_index_obj;
+                    (&mut obj.buffer_object, &mut obj.shader_storage)
+                } else {
+                    let obj = &mut layer.user.borrow_mut().tile_flag_obj;
+                    (&mut obj.buffer_object, &mut obj.shader_storage)
+                };
+                Self::update_tile_layer(
+                    tp,
+                    buffer_object,
+                    shader_storage,
+                    layer_width,
+                    layer_height,
+                    x,
+                    y,
+                    width,
+                    height,
+                    |skip| {
+                        Box::new(layer.layer.tiles[skip..].iter().map(|tile| {
+                            (
+                                if i == 0 {
+                                    tile.index
+                                } else {
+                                    flag_to_bits(tile.flags)
+                                },
+                                Default::default(),
+                                -1,
+                            )
+                        }))
+                    },
+                    false,
+                    true, // always true bcs `ignore_tile_index_and_is_textured_check`
+                );
+            }
         }
     }
 

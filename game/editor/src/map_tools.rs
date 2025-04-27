@@ -27,8 +27,17 @@ pub fn upload_physics_layer_buffer(
     width: NonZeroU16MinusOne,
     height: NonZeroU16MinusOne,
     tiles: MapTileLayerPhysicsTilesRef,
+    create_tile_index_flag: bool,
 ) -> MapBufferPhysicsTileLayer {
-    ClientMapBuffered::upload_physics_layer(graphics_mt, width, height, tiles, 0, true, true)
+    ClientMapBuffered::upload_physics_layer(
+        graphics_mt,
+        width,
+        height,
+        tiles,
+        0,
+        true,
+        create_tile_index_flag,
+    )
 }
 
 pub fn finish_physics_layer_buffer(
@@ -73,6 +82,7 @@ pub fn upload_design_tile_layer_buffer(
     width: NonZeroU16MinusOne,
     height: NonZeroU16MinusOne,
     has_texture: bool,
+    create_tile_index_flag: bool,
 ) -> MapBufferTileLayer {
     ClientMapBuffered::upload_design_tile_layer(
         graphics_mt,
@@ -83,7 +93,7 @@ pub fn upload_design_tile_layer_buffer(
         0,
         0,
         true,
-        true,
+        create_tile_index_flag,
     )
 }
 
