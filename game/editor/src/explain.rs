@@ -58,6 +58,7 @@ The tile brush allows to select a range of tiles (`left click`) and apply differ
   (The fill tool is always destructive!)\n\n\
 ---\n\n\
 Press `right click` to unset the selection.  \n\
+Hold `shift` without any tile selected to delete a range of tiles.  \n\
 Hold `space` to open the tile picker, which is basically an overview of all tiles within a tile layer image.\
 ";
 
