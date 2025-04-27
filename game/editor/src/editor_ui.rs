@@ -9,8 +9,9 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
-        texture::texture::GraphicsTextureHandle,
+        canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
+        stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
     },
 };
 use sound::scene_object::SceneObject;
@@ -74,6 +75,7 @@ pub struct EditorUiRender {
     canvas_handle: GraphicsCanvasHandle,
     stream_handle: GraphicsStreamHandle,
     texture_handle: GraphicsTextureHandle,
+    shader_storage_handle: GraphicsShaderStorageHandle,
     buffer_object_handle: GraphicsBufferObjectHandle,
     graphics_mt: GraphicsMultiThreaded,
 
@@ -96,6 +98,7 @@ impl EditorUiRender {
             canvas_handle: graphics.canvas_handle.clone(),
             stream_handle: graphics.stream_handle.clone(),
             texture_handle: graphics.texture_handle.clone(),
+            shader_storage_handle: graphics.shader_storage_handle.clone(),
             buffer_object_handle: graphics.buffer_object_handle.clone(),
             graphics_mt: graphics.get_graphics_mt(),
 
@@ -143,6 +146,7 @@ impl EditorUiRender {
 
                     tp: &self.tp,
                     graphics_mt: &self.graphics_mt,
+                    shader_storage_handle: &self.shader_storage_handle,
                     buffer_object_handle: &self.buffer_object_handle,
                     backend_handle: &self.backend_handle,
 

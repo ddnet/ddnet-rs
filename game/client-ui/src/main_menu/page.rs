@@ -36,8 +36,9 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
-        canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
-        texture::texture::GraphicsTextureHandle,
+        canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
+        stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
     },
 };
 use master_server_types::{addr::Protocol, servers::BrowserServers};
@@ -114,6 +115,7 @@ pub struct MainMenuUi {
 
     events: UiEvents,
 
+    pub shader_storage_handle: GraphicsShaderStorageHandle,
     pub buffer_object_handle: GraphicsBufferObjectHandle,
     pub backend_handle: GraphicsBackendHandle,
     pub stream_handle: GraphicsStreamHandle,
@@ -438,6 +440,7 @@ impl MainMenuUi {
 
             events,
 
+            shader_storage_handle: graphics.shader_storage_handle.clone(),
             buffer_object_handle: graphics.buffer_object_handle.clone(),
             backend_handle: graphics.backend_handle.clone(),
             stream_handle: graphics.stream_handle.clone(),
@@ -491,6 +494,7 @@ impl MainMenuUi {
             events: &self.events,
 
             backend_handle: &self.backend_handle,
+            shader_storage_handle: &self.shader_storage_handle,
             buffer_object_handle: &self.buffer_object_handle,
             stream_handle: &self.stream_handle,
             canvas_handle: &self.canvas_handle,

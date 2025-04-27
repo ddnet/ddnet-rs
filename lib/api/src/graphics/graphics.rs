@@ -70,9 +70,12 @@ impl GraphicsBackendInterface for GraphicsBackend {
                 width.get() * height.get() * depth.get() * 4,
                 Default::default(),
             ),
-            graphics_types::types::GraphicsMemoryAllocationType::Buffer { required_size } => {
+            graphics_types::types::GraphicsMemoryAllocationType::VertexBuffer { required_size } => {
                 mem.resize(required_size.get(), Default::default())
             }
+            graphics_types::types::GraphicsMemoryAllocationType::ShaderStorage {
+                required_size,
+            } => mem.resize(required_size.get(), Default::default()),
         };
         GraphicsBackendMemory::new(GraphicsBackendMemoryAllocation::Vector(mem), alloc_type)
     }

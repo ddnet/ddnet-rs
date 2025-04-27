@@ -120,11 +120,13 @@ pub struct CommandRecreateBufferObject {
 }
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]
-pub struct CommandUpdateBufferObjectRegion {
+pub struct CommandUpdateBufferRegion {
     pub src_offset: usize,
     pub dst_offset: usize,
     pub size: usize,
 }
+
+pub type CommandUpdateBufferObjectRegion = CommandUpdateBufferRegion;
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]
 pub struct CommandUpdateBufferObject {
@@ -132,6 +134,33 @@ pub struct CommandUpdateBufferObject {
 
     pub update_data: Vec<u8>,
     pub update_regions: Vec<CommandUpdateBufferObjectRegion>,
+}
+
+#[derive(Debug, Hiarc, Serialize, Deserialize)]
+pub struct CommandDeleteBufferObject {
+    pub buffer_index: u128,
+}
+
+#[derive(Debug, Hiarc, Serialize, Deserialize)]
+pub struct CommandCreateShaderStorage {
+    pub shader_storage_index: u128,
+
+    pub upload_data: GraphicsBackendMemory,
+}
+
+pub type CommandUpdateShaderStorageRegion = CommandUpdateBufferRegion;
+
+#[derive(Debug, Hiarc, Serialize, Deserialize)]
+pub struct CommandUpdateShaderStorage {
+    pub shader_storage_index: u128,
+
+    pub update_data: Vec<u8>,
+    pub update_regions: Vec<CommandUpdateShaderStorageRegion>,
+}
+
+#[derive(Debug, Hiarc, Serialize, Deserialize)]
+pub struct CommandDeleteShaderStorage {
+    pub shader_storage_index: u128,
 }
 
 #[derive(Debug, Hiarc, Copy, Clone, Default, Serialize, Deserialize)]
@@ -142,11 +171,6 @@ pub enum GraphicsType {
     #[default]
     UnsignedInt,
     Float,
-}
-
-#[derive(Debug, Hiarc, Serialize, Deserialize)]
-pub struct CommandDeleteBufferObject {
-    pub buffer_index: u128,
 }
 
 #[derive(Debug, Hiarc, Default, Serialize, Deserialize)]
@@ -343,6 +367,10 @@ pub enum CommandsMisc {
     RecreateBufferObject(CommandRecreateBufferObject),
     UpdateBufferObject(CommandUpdateBufferObject),
     DeleteBufferObject(CommandDeleteBufferObject),
+
+    CreateShaderStorage(CommandCreateShaderStorage),
+    UpdateShaderStorage(CommandUpdateShaderStorage),
+    DeleteShaderStorage(CommandDeleteShaderStorage),
 
     // offscreen canvases
     OffscreenCanvasCreate(CommandOffscreenCanvasCreate),

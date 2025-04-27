@@ -294,13 +294,15 @@ pub fn copy_buffer(
     Ok(())
 }
 
-pub fn complete_buffer_object(
+fn complete_buffer_impl(
     frame_resources: &mut FrameResources,
     device: &Arc<LogicalDevice>,
     command_buffer: vk::CommandBuffer,
     staging_buffer: &Arc<MemoryBlock>,
     buffer_mem: &Arc<MemoryBlock>,
     buffer_data_size: vk::DeviceSize,
+    access_flags: vk::AccessFlags,
+    source_stage_flags: vk::PipelineStageFlags,
 ) -> anyhow::Result<(), BufferAllocationError> {
     let vertex_buffer = buffer_mem.buffer(frame_resources).clone().unwrap();
     let buffer_offset = buffer_mem.heap_data.offset_to_align;
@@ -312,8 +314,9 @@ pub fn complete_buffer_object(
         &vertex_buffer,
         buffer_offset as u64,
         buffer_data_size,
-        vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
+        access_flags,
         true,
+        source_stage_flags,
     )
     .map_err(BufferAllocationError::MemoryRelatedOperationFailed)?;
 
@@ -338,12 +341,53 @@ pub fn complete_buffer_object(
         &vertex_buffer,
         buffer_offset as u64,
         buffer_data_size,
-        vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
+        access_flags,
         false,
+        source_stage_flags,
     )
     .map_err(BufferAllocationError::MemoryRelatedOperationFailed)?;
 
     Ok(())
+}
+
+pub fn complete_buffer_object(
+    frame_resources: &mut FrameResources,
+    device: &Arc<LogicalDevice>,
+    command_buffer: vk::CommandBuffer,
+    staging_buffer: &Arc<MemoryBlock>,
+    buffer_mem: &Arc<MemoryBlock>,
+    buffer_data_size: vk::DeviceSize,
+) -> anyhow::Result<(), BufferAllocationError> {
+    complete_buffer_impl(
+        frame_resources,
+        device,
+        command_buffer,
+        staging_buffer,
+        buffer_mem,
+        buffer_data_size,
+        vk::AccessFlags::VERTEX_ATTRIBUTE_READ,
+        vk::PipelineStageFlags::VERTEX_INPUT,
+    )
+}
+
+pub fn complete_shader_storage_object(
+    frame_resources: &mut FrameResources,
+    device: &Arc<LogicalDevice>,
+    command_buffer: vk::CommandBuffer,
+    staging_buffer: &Arc<MemoryBlock>,
+    buffer_mem: &Arc<MemoryBlock>,
+    buffer_data_size: vk::DeviceSize,
+) -> anyhow::Result<(), BufferAllocationError> {
+    complete_buffer_impl(
+        frame_resources,
+        device,
+        command_buffer,
+        staging_buffer,
+        buffer_mem,
+        buffer_data_size,
+        vk::AccessFlags::SHADER_READ,
+        vk::PipelineStageFlags::VERTEX_SHADER,
+    )
 }
 
 pub fn get_memory_range(

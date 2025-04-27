@@ -3,6 +3,7 @@ use std::ops::DerefMut;
 use graphics::handles::{
     backend::backend::GraphicsBackendHandle,
     buffer_object::buffer_object::BufferObject,
+    shader_storage::shader_storage::ShaderStorage,
     texture::texture::{TextureType, TextureType2dArray},
 };
 use graphics_backend_traits::plugin::{
@@ -10,6 +11,7 @@ use graphics_backend_traits::plugin::{
     BackendRenderExecuteInterface, BackendRenderInterface, BackendResourceDescription,
     BackendShaderStage, BackendVertexFormat, BackendVertexInputAttributeDescription,
     GraphicsBufferObjectAccess, GraphicsBufferObjectAccessAndRewrite, GraphicsObjectRewriteFunc,
+    GraphicsShaderStorageAccess, GraphicsShaderStorageAccessAndRewrite,
     GraphicsUniformAccessAndRewrite, SubRenderPassAttributes,
 };
 use graphics_types::{
@@ -20,7 +22,7 @@ use graphics_types::{
     rendering::{ColorRgba, GlColorf, State, StateTexture, StateTexture2dArray},
 };
 use hiarc::Hiarc;
-use math::math::vector::{ubvec2, ubvec4, usvec2, vec2};
+use math::math::vector::{ubvec2, ubvec4, vec2};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use pool::{
@@ -46,6 +48,9 @@ pub enum MapPipelineNames {
 pub struct TileLayerDrawInfo {
     pub quad_offset: usize,
     pub quad_count: usize,
+
+    /// This field is only used for non-border tiles
+    pub pos_y: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,7 +61,7 @@ pub struct CommandRenderTileLayer {
 
     pub draws: PoolVec<TileLayerDrawInfo>,
 
-    pub buffer_object_index: u128,
+    pub shader_storage_index: u128,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,7 +73,6 @@ pub struct CommandRenderBorderTile {
     pub draw: TileLayerDrawInfo,
 
     pub buffer_object_index: u128,
-    pub buffer_object_offset: usize,
 
     pub offset: vec2,
     pub scale: vec2,
@@ -113,10 +117,14 @@ pub enum CommandsRenderMap {
     QuadLayer(CommandRenderQuadLayer),   // render a quad layer
 }
 
+type UniformTilePos = [f32; 4 * 2];
+
 #[derive(Default)]
 #[repr(C)]
 pub struct UniformTileGPos {
-    pub pos: [f32; 4 * 2],
+    pub pos: UniformTilePos,
+    pub pos_y: f32,
+    pub alignment: f32,
 }
 
 #[derive(Default)]
@@ -132,7 +140,7 @@ pub type SUniformTileGVertColor = ColorRgba;
 #[derive(Default)]
 #[repr(C)]
 pub struct UniformTileGVertColorAlign {
-    pub pad: [f32; (64 - 48) / 4],
+    pub pad: [f32; (64 - 56) / 4],
 }
 
 #[derive(Default)]
@@ -142,9 +150,9 @@ pub struct UniformQuadGPos {
     pub quad_offset: i32,
 }
 
-const TILE_LAYER_VERTEX_SIZE: usize = std::mem::size_of::<usvec2>();
-const TILE_LAYER_TEXTURED_VERTEX_SIZE: usize =
-    TILE_LAYER_VERTEX_SIZE + std::mem::size_of::<ubvec2>();
+const TILE_LAYER_VERTEX_SIZE: usize = std::mem::size_of::<u16>() + std::mem::size_of::<ubvec2>();
+// last addition is offset for alignment
+const TILE_LAYER_TEXTURED_VERTEX_SIZE: usize = TILE_LAYER_VERTEX_SIZE;
 
 const TILE_LAYER_BORDER_VERTEX_SIZE: usize = std::mem::size_of::<f32>() * 2;
 const TILE_LAYER_BORDER_TEXTURED_VERTEX_SIZE: usize =
@@ -159,6 +167,7 @@ const QUAD_LAYER_TEXTURED_VERTEX_SIZE: usize =
 pub struct MapPipeline {
     pipe_name_offset: u64,
     accesses_pool: MtPool<Vec<GraphicsBufferObjectAccess>>,
+    shader_storage_accesses_pool: MtPool<Vec<GraphicsShaderStorageAccess>>,
 }
 
 impl MapPipeline {
@@ -166,28 +175,18 @@ impl MapPipeline {
         Box::new(Self {
             pipe_name_offset: 0,
             accesses_pool: MtPool::with_capacity(32),
+            shader_storage_accesses_pool: MtPool::with_capacity(32),
         })
     }
 
-    fn tile_pipeline_layout(has_sampler: bool) -> BackendPipelineLayout {
-        let mut attribute_descriptors: Vec<BackendVertexInputAttributeDescription> =
-            Default::default();
-        attribute_descriptors.push(BackendVertexInputAttributeDescription {
-            location: 0,
-            binding: 0,
-            format: BackendVertexFormat::UsVec2,
-            offset: 0,
-        });
-        if has_sampler {
-            attribute_descriptors.push(BackendVertexInputAttributeDescription {
-                location: 1,
-                binding: 0,
-                format: BackendVertexFormat::UbVec2,
-                offset: TILE_LAYER_VERTEX_SIZE as u32,
-            });
-        }
+    fn tile_pipeline_layout() -> BackendPipelineLayout {
+        let attribute_descriptors: Vec<BackendVertexInputAttributeDescription> = Default::default();
 
-        let set_layouts = [BackendResourceDescription::Fragment2DArrayTexture].to_vec();
+        let set_layouts = [
+            BackendResourceDescription::Fragment2DArrayTexture,
+            BackendResourceDescription::VertexShaderStorage,
+        ]
+        .to_vec();
 
         let vert_push_constant_size = std::mem::size_of::<UniformTileGPos>();
 
@@ -208,16 +207,11 @@ impl MapPipeline {
             },
         ]
         .to_vec();
-        let stride = if has_sampler {
-            TILE_LAYER_TEXTURED_VERTEX_SIZE
-        } else {
-            TILE_LAYER_VERTEX_SIZE
-        };
         BackendPipelineLayout {
             vertex_attributes: attribute_descriptors,
             descriptor_layouts: set_layouts,
             push_constants,
-            stride: stride as BackendDeviceSize,
+            stride: 0,
             geometry_is_line: false,
         }
     }
@@ -335,6 +329,31 @@ impl MapPipeline {
         draw_calls: usize,
         state: &State,
         texture_index: &StateTexture2dArray,
+        shader_storage_index: u128,
+    ) {
+        render_execute_manager.set_shader_storage(shader_storage_index);
+
+        match texture_index {
+            StateTexture2dArray::Texture(texture_index) => {
+                render_execute_manager.set_texture_3d(0, *texture_index);
+            }
+            StateTexture2dArray::None => {
+                // nothing to do
+            }
+        }
+
+        render_execute_manager.uses_index_buffer();
+
+        render_execute_manager.estimated_render_calls(draw_calls as u64);
+
+        render_execute_manager.exec_buffer_fill_dynamic_states(state);
+    }
+
+    fn render_tile_border_fill_execute_buffer(
+        render_execute_manager: &mut dyn BackendRenderExecuteInterface,
+        draw_calls: usize,
+        state: &State,
+        texture_index: &StateTexture2dArray,
         buffer_object_index: u128,
         buffer_object_offset: usize,
     ) {
@@ -366,8 +385,7 @@ impl MapPipeline {
             cmd.draws.len(),
             &cmd.state,
             &cmd.texture_index,
-            cmd.buffer_object_index,
-            0,
+            cmd.shader_storage_index,
         );
     }
 
@@ -375,13 +393,13 @@ impl MapPipeline {
         render_execute_manager: &mut dyn BackendRenderExecuteInterface,
         cmd: &CommandRenderBorderTile,
     ) {
-        Self::render_tile_layer_fill_execute_buffer(
+        Self::render_tile_border_fill_execute_buffer(
             render_execute_manager,
             1,
             &cmd.state,
             &cmd.texture_index,
             cmd.buffer_object_index,
-            cmd.buffer_object_offset,
+            0,
         );
     }
 
@@ -454,14 +472,18 @@ impl MapPipeline {
             },
         );
 
-        render_manager.bind_vertex_buffer();
+        if is_border {
+            render_manager.bind_vertex_buffer();
+        } else {
+            render_manager.bind_shader_storage_descriptor_set(2);
+        }
 
         if render_manager.is_textured() {
             render_manager.bind_texture_descriptor_sets(0, 0);
         }
 
         let mut vertex_push_constants = UniformTileGPosBorder::default();
-        let mut vertex_push_constant_size: usize = std::mem::size_of::<UniformTileGPos>();
+        let mut vertex_push_constant_size: usize = std::mem::size_of::<UniformTilePos>();
         let frag_push_constant_size: usize = std::mem::size_of::<SUniformTileGVertColor>();
 
         vertex_push_constants.base.pos = m;
@@ -496,6 +518,20 @@ impl MapPipeline {
 
         for draw in draws {
             let index_offset = draw.quad_offset.checked_mul(6).unwrap() as BackendDeviceSize;
+
+            if !is_border {
+                vertex_push_constants.base.pos_y = draw.pos_y;
+                render_manager.push_constants(
+                    BackendShaderStage::VERTEX,
+                    std::mem::size_of::<UniformTilePos>() as u32,
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            (&vertex_push_constants.base.pos_y) as *const _ as *const u8,
+                            std::mem::size_of::<f32>(),
+                        )
+                    },
+                );
+            }
 
             render_manager.draw_indexed(
                 draw.quad_count.checked_mul(6).unwrap() as u32,
@@ -644,7 +680,7 @@ impl BackendCustomPipeline for MapPipeline {
     fn pipe_layout_of(&self, name: u64, is_textured: bool) -> BackendPipelineLayout {
         let name = MapPipelineNames::from_u64(name - self.pipe_name_offset).unwrap();
         match name {
-            MapPipelineNames::TilePipeline => Self::tile_pipeline_layout(is_textured),
+            MapPipelineNames::TilePipeline => Self::tile_pipeline_layout(),
             MapPipelineNames::TileBorderPipeline => Self::border_tile_pipeline_layout(is_textured),
             MapPipelineNames::QuadPipeline => Self::quad_pipeline_layout(is_textured),
         }
@@ -748,22 +784,23 @@ impl BackendCustomPipeline for MapPipeline {
         match &mut command {
             CommandsRenderMap::TileLayer(cmd) => f(GraphicsObjectRewriteFunc {
                 textures: &mut [],
-                buffer_objects: &mut [GraphicsBufferObjectAccessAndRewrite {
-                    buffer_object_index: &mut cmd.buffer_object_index,
+                buffer_objects: &mut [],
+                uniform_instances: &mut [],
+                shader_storages: &mut [GraphicsShaderStorageAccessAndRewrite {
+                    shader_storage_index: &mut cmd.shader_storage_index,
                     accesses: {
-                        let mut accesses = self.accesses_pool.new();
+                        let mut accesses = self.shader_storage_accesses_pool.new();
 
                         cmd.draws.iter().for_each(|draw| {
-                            accesses.push(GraphicsBufferObjectAccess::Quad {
+                            accesses.push(GraphicsShaderStorageAccess::IndicedQuad {
                                 quad_offset: draw.quad_offset,
                                 quad_count: draw.quad_count,
-                                buffer_byte_offset: 0,
-                                vertex_byte_size: if cmd.texture_index.is_textured() {
+                                entry_byte_size: if cmd.texture_index.is_textured() {
                                     TILE_LAYER_TEXTURED_VERTEX_SIZE
                                 } else {
                                     TILE_LAYER_VERTEX_SIZE
                                 },
-                                alignment: 2.try_into().unwrap(),
+                                alignment: 4.try_into().unwrap(),
                             });
                         });
 
@@ -771,7 +808,6 @@ impl BackendCustomPipeline for MapPipeline {
                     },
                 }],
                 textures_2d_array: &mut [&mut cmd.texture_index],
-                uniform_instances: &mut [],
             }),
             CommandsRenderMap::BorderTile(cmd) => f(GraphicsObjectRewriteFunc {
                 textures: &mut [],
@@ -783,7 +819,7 @@ impl BackendCustomPipeline for MapPipeline {
                         accesses.push(GraphicsBufferObjectAccess::Quad {
                             quad_offset: cmd.draw.quad_offset,
                             quad_count: cmd.draw.quad_count,
-                            buffer_byte_offset: cmd.buffer_object_offset,
+                            buffer_byte_offset: 0,
                             vertex_byte_size: if cmd.texture_index.is_textured() {
                                 TILE_LAYER_BORDER_TEXTURED_VERTEX_SIZE
                             } else {
@@ -797,6 +833,7 @@ impl BackendCustomPipeline for MapPipeline {
                 }],
                 textures_2d_array: &mut [&mut cmd.texture_index],
                 uniform_instances: &mut [],
+                shader_storages: &mut [],
             }),
             CommandsRenderMap::QuadLayer(cmd) => f(GraphicsObjectRewriteFunc {
                 textures_2d_array: &mut [],
@@ -826,6 +863,7 @@ impl BackendCustomPipeline for MapPipeline {
                     instance_count: cmd.quad_num,
                     single_instance_byte_size: std::mem::size_of::<QuadRenderInfo>(),
                 }],
+                shader_storages: &mut [],
             }),
         }
         cmd.clear();
@@ -862,7 +900,7 @@ impl MapGraphics {
         &self,
         state: &State,
         texture: TextureType2dArray,
-        buffer_object: &BufferObject,
+        shader_storage: &ShaderStorage,
         color: &ColorRgba,
         draws: PoolVec<TileLayerDrawInfo>,
     ) {
@@ -874,7 +912,7 @@ impl MapGraphics {
         let cmd = CommandRenderTileLayer {
             state: *state,
             texture_index: texture.into(),
-            buffer_object_index: buffer_object.get_index_unsafe(),
+            shader_storage_index: shader_storage.get_index_unsafe(),
             color: *color,
 
             draws,
@@ -903,7 +941,6 @@ impl MapGraphics {
         state: &State,
         texture: TextureType2dArray,
         buffer_object_index: &BufferObject,
-        buffer_object_offset: usize,
         color: &ColorRgba,
         offset: &vec2,
         scale: &vec2,
@@ -920,10 +957,10 @@ impl MapGraphics {
             draw: TileLayerDrawInfo {
                 quad_offset,
                 quad_count,
+                pos_y: 0.0,
             },
 
             buffer_object_index: buffer_object_index.get_index_unsafe(),
-            buffer_object_offset,
 
             color: *color,
 

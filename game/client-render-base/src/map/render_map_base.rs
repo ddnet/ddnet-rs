@@ -27,6 +27,7 @@ use graphics::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
         stream::stream::GraphicsStreamHandle,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
@@ -63,6 +64,7 @@ pub struct ClientMapFileProcessed {
 pub struct RenderMapLoading {
     pub task: IoRuntimeTask<ClientMapFileProcessed>,
     pub backend_handle: GraphicsBackendHandle,
+    pub shader_storage_handle: GraphicsShaderStorageHandle,
     pub buffer_object_handle: GraphicsBufferObjectHandle,
     pub texture_handle: GraphicsTextureHandle,
     pub canvas_handle: GraphicsCanvasHandle,
@@ -462,6 +464,7 @@ impl RenderMapLoading {
                 })
             }),
             backend_handle: graphics.backend_handle.clone(),
+            shader_storage_handle: graphics.shader_storage_handle.clone(),
             buffer_object_handle: graphics.buffer_object_handle.clone(),
             texture_handle: graphics.texture_handle.clone(),
             canvas_handle: graphics.canvas_handle.clone(),
@@ -593,6 +596,7 @@ impl ClientMapRender {
 
                         let map_buffered = ClientMapBuffered::new(
                             &map_upload.backend_handle,
+                            &map_upload.shader_storage_handle,
                             &map_upload.buffer_object_handle,
                             map_file.upload_data,
                             images,

@@ -37,6 +37,7 @@ use graphics::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         canvas::canvas::GraphicsCanvasHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
         stream::stream::{GraphicsStreamHandle, LinesStreamHandle},
         stream_types::StreamedLine,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
@@ -220,6 +221,7 @@ pub struct Editor {
 
     // graphics
     graphics_mt: GraphicsMultiThreaded,
+    shader_storage_handle: GraphicsShaderStorageHandle,
     buffer_object_handle: GraphicsBufferObjectHandle,
     backend_handle: GraphicsBackendHandle,
     texture_handle: GraphicsTextureHandle,
@@ -354,6 +356,7 @@ impl Editor {
                 tiles: ToolTileLayer {
                     brush: TileBrush::new(
                         &graphics_mt,
+                        &graphics.shader_storage_handle,
                         &graphics.buffer_object_handle,
                         &graphics.backend_handle,
                         &overlays,
@@ -400,6 +403,7 @@ impl Editor {
             notifications_overlay: ClientNotifications::new(graphics, &sys, &ui_creator),
 
             graphics_mt,
+            shader_storage_handle: graphics.shader_storage_handle.clone(),
             buffer_object_handle: graphics.buffer_object_handle.clone(),
             backend_handle: graphics.backend_handle.clone(),
             texture_handle: graphics.texture_handle.clone(),
@@ -521,7 +525,12 @@ impl Editor {
                     MapTileLayerPhysicsTilesRef::Game(&game_layer.tiles),
                 )
             });
-            finish_physics_layer_buffer(&self.buffer_object_handle, &self.backend_handle, buffer)
+            finish_physics_layer_buffer(
+                &self.shader_storage_handle,
+                &self.buffer_object_handle,
+                &self.backend_handle,
+                buffer,
+            )
         };
 
         let scene = self.scene_handle.create(Default::default());
@@ -632,6 +641,7 @@ impl Editor {
         tp: &Arc<rayon::ThreadPool>,
         scene_handle: &SoundSceneHandle,
         backend_handle: &GraphicsBackendHandle,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         texture_handle: &GraphicsTextureHandle,
         map: Map,
@@ -862,6 +872,7 @@ impl Editor {
                                 EditorLayer::Tile(EditorLayerTile {
                                     user: EditorTileLayerProps {
                                         visuals: finish_design_tile_layer_buffer(
+                                            shader_storage_handle,
                                             buffer_object_handle,
                                             backend_handle,
                                             *buffer,
@@ -1018,6 +1029,7 @@ impl Editor {
                         .map(|(buffer, layer)| {
                             let user = EditorPhysicsLayerProps {
                                 visuals: finish_physics_layer_buffer(
+                                    shader_storage_handle,
                                     buffer_object_handle,
                                     backend_handle,
                                     buffer,
@@ -1107,6 +1119,7 @@ impl Editor {
             &self.thread_pool,
             &self.scene_handle,
             &self.backend_handle,
+            &self.shader_storage_handle,
             &self.buffer_object_handle,
             &self.texture_handle,
             map,
@@ -1683,6 +1696,7 @@ impl Editor {
                 &self.thread_pool,
                 &self.sound_mt,
                 &self.graphics_mt,
+                &self.shader_storage_handle,
                 &self.buffer_object_handle,
                 &self.backend_handle,
                 &self.texture_handle,
@@ -1706,6 +1720,7 @@ impl Editor {
                     &self.thread_pool,
                     &self.scene_handle,
                     &self.backend_handle,
+                    &self.shader_storage_handle,
                     &self.buffer_object_handle,
                     &self.texture_handle,
                     map,
@@ -1721,6 +1736,7 @@ impl Editor {
                     &self.thread_pool,
                     &self.sound_mt,
                     &self.graphics_mt,
+                    &self.shader_storage_handle,
                     &self.buffer_object_handle,
                     &self.backend_handle,
                     &self.texture_handle,
@@ -2181,6 +2197,7 @@ impl Editor {
                     tool,
                     &self.thread_pool,
                     &self.graphics_mt,
+                    &self.shader_storage_handle,
                     &self.buffer_object_handle,
                     &self.backend_handle,
                     &self.canvas_handle,
@@ -2268,6 +2285,7 @@ impl Editor {
                     &self.thread_pool,
                     &self.graphics_mt,
                     &self.backend_handle,
+                    &self.shader_storage_handle,
                     &self.buffer_object_handle,
                     &self.stream_handle,
                     &self.canvas_handle,

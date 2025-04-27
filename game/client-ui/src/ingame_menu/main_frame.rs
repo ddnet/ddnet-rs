@@ -125,6 +125,10 @@ fn render_content(
 
                                     graphics_mt: pipe.user_data.browser_menu.graphics_mt,
                                     backend_handle: pipe.user_data.browser_menu.backend_handle,
+                                    shader_storage_handle: pipe
+                                        .user_data
+                                        .browser_menu
+                                        .shader_storage_handle,
                                     buffer_object_handle: pipe
                                         .user_data
                                         .browser_menu

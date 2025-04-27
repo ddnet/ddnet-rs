@@ -524,6 +524,17 @@ pub fn handle_buffer_object_mod(attr: TokenStream, tokens: TokenStream) -> Token
 }
 
 #[proc_macro_attribute]
+pub fn handle_shader_storage_mod(attr: TokenStream, tokens: TokenStream) -> TokenStream {
+    impl_mod(
+        get_tokens_from_file(
+            attr.into_iter().next().unwrap(),
+            "lib/graphics/src/handles/shader_storage.rs",
+        ),
+        tokens,
+    )
+}
+
+#[proc_macro_attribute]
 pub fn handle_canvas_mod(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     impl_mod(
         get_tokens_from_file(

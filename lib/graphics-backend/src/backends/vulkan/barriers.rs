@@ -221,6 +221,7 @@ pub fn memory_barrier(
     size: vk::DeviceSize,
     buffer_access_type: vk::AccessFlags,
     before_command: bool,
+    source_stage_flags: vk::PipelineStageFlags,
 ) -> anyhow::Result<()> {
     let mut barrier = vk::BufferMemoryBarrier::default();
     barrier.src_queue_family_index = vk::QUEUE_FAMILY_IGNORED;
@@ -236,14 +237,14 @@ pub fn memory_barrier(
         barrier.src_access_mask = buffer_access_type;
         barrier.dst_access_mask = vk::AccessFlags::TRANSFER_WRITE;
 
-        source_stage = vk::PipelineStageFlags::VERTEX_INPUT;
+        source_stage = source_stage_flags;
         destination_stage = vk::PipelineStageFlags::TRANSFER;
     } else {
         barrier.src_access_mask = vk::AccessFlags::TRANSFER_WRITE;
         barrier.dst_access_mask = buffer_access_type;
 
         source_stage = vk::PipelineStageFlags::TRANSFER;
-        destination_stage = vk::PipelineStageFlags::VERTEX_INPUT;
+        destination_stage = source_stage_flags;
     }
 
     unsafe {

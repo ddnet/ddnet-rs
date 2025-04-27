@@ -47,7 +47,7 @@ pub mod buffer_object {
         pub fn create_buffer_object_slow(&mut self, upload_data: Vec<u8>) -> BufferObject {
             let mut buffer_mem =
                 self.backend_handle
-                    .mem_alloc(GraphicsMemoryAllocationType::Buffer {
+                    .mem_alloc(GraphicsMemoryAllocationType::VertexBuffer {
                         required_size: upload_data.len().try_into().unwrap(),
                     });
             buffer_mem.copy_from_slice(&upload_data);
@@ -114,7 +114,7 @@ pub mod buffer_object {
         pub fn recreate_buffer_object_slow(&self, upload_data: Vec<u8>) {
             let mut buffer_mem =
                 self.backend_handle
-                    .mem_alloc(GraphicsMemoryAllocationType::Buffer {
+                    .mem_alloc(GraphicsMemoryAllocationType::VertexBuffer {
                         required_size: upload_data.len().try_into().unwrap(),
                     });
             buffer_mem.copy_from_slice(&upload_data);

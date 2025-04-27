@@ -47,7 +47,12 @@ impl GraphicsBackendMtInterface for GraphicsBackendMultiThreaded {
                     );
                     GraphicsBackendMemoryAllocation::Vector(res)
                 }
-                GraphicsMemoryAllocationType::Buffer { required_size } => {
+                GraphicsMemoryAllocationType::VertexBuffer { required_size } => {
+                    let mut res = Vec::new();
+                    res.resize(required_size.get(), Default::default());
+                    GraphicsBackendMemoryAllocation::Vector(res)
+                }
+                GraphicsMemoryAllocationType::ShaderStorage { required_size } => {
                     let mut res = Vec::new();
                     res.resize(required_size.get(), Default::default());
                     GraphicsBackendMemoryAllocation::Vector(res)

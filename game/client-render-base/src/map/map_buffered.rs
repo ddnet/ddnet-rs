@@ -9,6 +9,7 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::{BufferObject, GraphicsBufferObjectHandle},
+        shader_storage::shader_storage::{GraphicsShaderStorageHandle, ShaderStorage},
         texture::texture::{TextureContainer, TextureContainer2dArray},
     },
 };
@@ -44,7 +45,7 @@ use rayon::{
 use math::math::vector::ivec2;
 
 use graphics_types::{
-    commands::CommandUpdateBufferObjectRegion,
+    commands::{CommandUpdateBufferObjectRegion, CommandUpdateShaderStorageRegion},
     types::{GraphicsBackendMemory, GraphicsMemoryAllocationType},
 };
 use sound::{
@@ -62,7 +63,7 @@ use self::{
     graphic_border_tile::{
         add_border_tile, GraphicBorderTile, GraphicsBorderTilePos, GraphicsBorderTileTex,
     },
-    graphic_tile::{add_tile, GraphicTile, GraphicsTilePos, GraphicsTileTex},
+    graphic_tile::{add_tile, GraphicTile},
 };
 
 use super::map_with_visual::{
@@ -159,17 +160,25 @@ impl TileLayerVisualsBase {
 }
 
 #[derive(Debug, Hiarc, Clone)]
+pub struct TileLayerBufferedVisualObjects {
+    /// For border
+    pub buffer_object: Option<BufferObject>,
+    /// For tiles
+    pub shader_storage: Option<ShaderStorage>,
+}
+
+#[derive(Debug, Hiarc, Clone)]
 pub struct TileLayerBufferedVisuals {
     pub base: TileLayerVisualsBase,
-    pub buffer_object: Option<BufferObject>,
+    pub obj: TileLayerBufferedVisualObjects,
 }
 
 #[derive(Debug, Hiarc, Clone)]
 pub struct TileLayerVisuals {
     pub base: TileLayerBufferedVisuals,
     /// Exclusivly for editor rn to show the tile numbers & flags
-    pub tile_index_buffer_object: Option<BufferObject>,
-    pub tile_flag_buffer_object: Option<BufferObject>,
+    pub tile_index_obj: TileLayerBufferedVisualObjects,
+    pub tile_flag_obj: TileLayerBufferedVisualObjects,
 }
 
 #[derive(Debug, Hiarc, Clone)]
@@ -378,6 +387,7 @@ pub struct ClientMapBuffered {
 #[derive(Debug, Default, Hiarc)]
 pub struct MapBufferTileLayerBase {
     mem: Option<GraphicsBackendMemory>,
+    shader_storage_mem: Option<GraphicsBackendMemory>,
     /// The amount of quads the index buffer must be able to draw
     quad_count_for_indices: u64,
     visuals: TileLayerVisualsBase,
@@ -422,6 +432,7 @@ pub struct ClientMapBufferUploadData {
 impl ClientMapBuffered {
     pub fn new(
         backend_handle: &GraphicsBackendHandle,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         upload_data: ClientMapBufferUploadData,
         images: Vec<TextureContainer>,
@@ -431,6 +442,7 @@ impl ClientMapBuffered {
         sound_objects: Vec<SoundObject>,
     ) -> Self {
         fn collect_groups(
+            shader_storage_handle: &GraphicsShaderStorageHandle,
             buffer_object_handle: &GraphicsBufferObjectHandle,
             backend_handle: &GraphicsBackendHandle,
             groups: Vec<MapGroup>,
@@ -461,12 +473,15 @@ impl ClientMapBuffered {
                                 let render_info = upload_data.render_info;
 
                                 let visuals = ClientMapBuffered::finish_upload_tile_layer(
+                                    shader_storage_handle,
                                     buffer_object_handle,
                                     backend_handle,
                                     upload_data,
                                 );
 
-                                if visuals.base.buffer_object.is_some() {
+                                if visuals.base.obj.buffer_object.is_some()
+                                    || visuals.base.obj.shader_storage.is_some()
+                                {
                                     tile_render_infos.push(render_info);
                                 }
 
@@ -551,12 +566,15 @@ impl ClientMapBuffered {
                                 let uploaded_data = physics_tile_layer_uploads.next().unwrap();
                                 let render_info = uploaded_data.render_info.clone();
                                 let visuals = Self::finish_upload_physics_tile_layer(
+                                    shader_storage_handle,
                                     buffer_object_handle,
                                     backend_handle,
                                     uploaded_data,
                                 );
 
-                                if visuals.base.base.buffer_object.is_some() {
+                                if visuals.base.base.obj.buffer_object.is_some()
+                                    || visuals.base.base.obj.shader_storage.is_some()
+                                {
                                     physics_tile_render_infos.push(render_info);
                                 }
                                 match def {
@@ -614,6 +632,7 @@ impl ClientMapBuffered {
                         user: (),
                     },
                     background: collect_groups(
+                        shader_storage_handle,
                         buffer_object_handle,
                         backend_handle,
                         upload_data.map.groups.background,
@@ -624,6 +643,7 @@ impl ClientMapBuffered {
                         &mut sound.background_sound_layers,
                     ),
                     foreground: collect_groups(
+                        shader_storage_handle,
                         buffer_object_handle,
                         backend_handle,
                         upload_data.map.groups.foreground,
@@ -754,6 +774,7 @@ impl ClientMapBuffered {
     }
 
     pub fn finish_upload_tile_layer(
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         upload_data: MapBufferTileLayer,
@@ -762,6 +783,7 @@ impl ClientMapBuffered {
             base:
                 MapBufferTileLayerBase {
                     mem,
+                    shader_storage_mem,
                     quad_count_for_indices,
                     visuals,
                 },
@@ -775,32 +797,59 @@ impl ClientMapBuffered {
         if let Some(mem) = &tile_flag {
             backend_handle.indices_for_quads_required_notify(mem.quad_count_for_indices);
         }
-        let tile_index_buffer_object = tile_index
-            .and_then(|base| base.mem)
-            .map(|mem| buffer_object_handle.create_buffer_object(mem));
-        let tile_flag_buffer_object = tile_flag
-            .and_then(|base| base.mem)
-            .map(|mem| buffer_object_handle.create_buffer_object(mem));
-        if mem.as_ref().is_some_and(|mem| !mem.as_slice().is_empty()) {
+        let buffer_to_obj = |buffer: Option<MapBufferTileLayerBase>| {
+            buffer
+                .and_then(|mem| {
+                    (mem.mem.is_some() || mem.shader_storage_mem.is_some()).then(|| {
+                        TileLayerBufferedVisualObjects {
+                            buffer_object: mem
+                                .mem
+                                .map(|mem| buffer_object_handle.create_buffer_object(mem)),
+                            shader_storage: mem
+                                .shader_storage_mem
+                                .map(|mem| shader_storage_handle.create_shader_storage(mem)),
+                        }
+                    })
+                })
+                .unwrap_or(TileLayerBufferedVisualObjects {
+                    buffer_object: None,
+                    shader_storage: None,
+                })
+        };
+        let tile_index_buffer_object = buffer_to_obj(tile_index);
+        let tile_flag_buffer_object = buffer_to_obj(tile_flag);
+        if mem.as_ref().is_some_and(|mem| !mem.as_slice().is_empty())
+            || shader_storage_mem
+                .as_ref()
+                .is_some_and(|mem| !mem.as_slice().is_empty())
+        {
             // and finally inform the backend how many indices are required
             backend_handle.indices_for_quads_required_notify(quad_count_for_indices);
             // create the buffer object
             TileLayerVisuals {
                 base: TileLayerBufferedVisuals {
                     base: visuals,
-                    buffer_object: Some(buffer_object_handle.create_buffer_object(mem.unwrap())),
+                    obj: TileLayerBufferedVisualObjects {
+                        buffer_object: mem
+                            .map(|mem| buffer_object_handle.create_buffer_object(mem)),
+                        shader_storage: shader_storage_mem
+                            .map(|mem| shader_storage_handle.create_shader_storage(mem)),
+                    },
                 },
-                tile_index_buffer_object,
-                tile_flag_buffer_object,
+                tile_index_obj: tile_index_buffer_object,
+                tile_flag_obj: tile_flag_buffer_object,
             }
         } else {
             TileLayerVisuals {
                 base: TileLayerBufferedVisuals {
                     base: visuals,
-                    buffer_object: None,
+                    obj: TileLayerBufferedVisualObjects {
+                        buffer_object: None,
+                        shader_storage: None,
+                    },
                 },
-                tile_index_buffer_object,
-                tile_flag_buffer_object,
+                tile_index_obj: tile_index_buffer_object,
+                tile_flag_obj: tile_flag_buffer_object,
             }
         }
     }
@@ -835,6 +884,7 @@ impl ClientMapBuffered {
     }
 
     pub fn finish_upload_physics_tile_layer(
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         upload_data: MapBufferPhysicsTileLayer,
@@ -847,6 +897,7 @@ impl ClientMapBuffered {
             overlays,
         } = upload_data;
         let layer_visuals = Self::finish_upload_tile_layer(
+            shader_storage_handle,
             buffer_object_handle,
             backend_handle,
             MapBufferTileLayer {
@@ -863,6 +914,7 @@ impl ClientMapBuffered {
         let mut overlay_buffer_objects: Vec<PhysicsTileLayerOverlayVisuals> = Vec::new();
         for (ty, base) in overlays {
             let visuals = Self::finish_upload_tile_layer(
+                shader_storage_handle,
                 buffer_object_handle,
                 backend_handle,
                 MapBufferTileLayer {
@@ -943,7 +995,6 @@ impl ClientMapBuffered {
                 index,
                 flags,
                 x as i32,
-                y as i32,
                 add_as_speedup,
                 angle_rotate,
                 ignore_tile_index_and_is_textured_check,
@@ -1152,57 +1203,72 @@ impl ClientMapBuffered {
             }
         }
 
-        let tile_size = std::mem::size_of::<GraphicsTilePos>() * 4
-            + if is_textured {
-                std::mem::size_of::<GraphicsTileTex>() * 4
-            } else {
-                0
-            };
+        let tile_size = std::mem::size_of::<GraphicTile>();
         let border_tile_size = std::mem::size_of::<GraphicsBorderTilePos>() * 4
             + if is_textured {
                 std::mem::size_of::<GraphicsBorderTileTex>() * 4
             } else {
                 0
             };
-        let upload_data_size =
-            tmp_tiles.len() * tile_size + tmp_border_tiles.len() * border_tile_size;
-        if upload_data_size > 0 {
+        let tile_upload_data_size = tmp_tiles.len() * tile_size;
+        let border_upload_data_size = tmp_border_tiles.len() * border_tile_size;
+        if tile_upload_data_size > 0 || border_upload_data_size > 0 {
             let quad_count_for_indices = (tmp_tiles.len().max(tmp_border_tiles.len())) as u64;
-            let mut upload_data_buffer =
-                graphics_mt.mem_alloc(GraphicsMemoryAllocationType::Buffer {
-                    required_size: upload_data_size.try_into().unwrap(),
-                });
 
-            let data = upload_data_buffer.as_mut_slice();
-            if !tmp_tiles.is_empty() {
-                let data = &mut data[..tmp_tiles.len() * tile_size];
-                let size_per_tile = tmp_tiles[0].copy_into_slice(data, is_textured);
-                data.par_chunks_exact_mut(size_per_tile)
-                    .enumerate()
-                    .for_each(|(index, data)| {
-                        let tile = &tmp_tiles[index];
-                        tile.copy_into_slice(data, is_textured);
+            let tile_shader_storage = if tile_upload_data_size > 0 {
+                let mut upload_data_buffer =
+                    graphics_mt.mem_alloc(GraphicsMemoryAllocationType::ShaderStorage {
+                        required_size: tile_upload_data_size.try_into().unwrap(),
                     });
 
-                visuals.buffer_size_all_tiles = tmp_tiles.len() * tile_size;
-            }
-            if !tmp_border_tiles.is_empty() {
-                let data = &mut data[tmp_tiles.len() * tile_size..];
-                let size_per_tile = tmp_border_tiles[0].copy_into_slice(data, is_textured);
-                data.par_chunks_exact_mut(size_per_tile)
-                    .enumerate()
-                    .for_each(|(index, data)| {
-                        let tile = &tmp_border_tiles[index];
-                        tile.copy_into_slice(data, is_textured);
+                let data = upload_data_buffer.as_mut_slice();
+                if !tmp_tiles.is_empty() {
+                    let size_per_tile = tmp_tiles[0].copy_into_slice(data);
+                    data.par_chunks_exact_mut(size_per_tile)
+                        .enumerate()
+                        .for_each(|(index, data)| {
+                            let tile = &tmp_tiles[index];
+                            tile.copy_into_slice(data);
+                        });
+
+                    visuals.buffer_size_all_tiles = tmp_tiles.len() * tile_size;
+                }
+                if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
+                    // Ignore the error, but log it.
+                    log::debug!("err while flushing memory: {}", err);
+                }
+                Some(upload_data_buffer)
+            } else {
+                None
+            };
+            let border_buffer = if border_upload_data_size > 0 {
+                let mut upload_data_buffer =
+                    graphics_mt.mem_alloc(GraphicsMemoryAllocationType::VertexBuffer {
+                        required_size: border_upload_data_size.try_into().unwrap(),
                     });
-            }
-            if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
-                // Ignore the error, but log it.
-                log::debug!("err while flushing memory: {}", err);
-            }
+
+                let data = upload_data_buffer.as_mut_slice();
+                if !tmp_border_tiles.is_empty() {
+                    let size_per_tile = tmp_border_tiles[0].copy_into_slice(data, is_textured);
+                    data.par_chunks_exact_mut(size_per_tile)
+                        .enumerate()
+                        .for_each(|(index, data)| {
+                            let tile = &tmp_border_tiles[index];
+                            tile.copy_into_slice(data, is_textured);
+                        });
+                }
+                if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
+                    // Ignore the error, but log it.
+                    log::debug!("err while flushing memory: {}", err);
+                }
+                Some(upload_data_buffer)
+            } else {
+                None
+            };
 
             Some(MapBufferTileLayerBase {
-                mem: Some(upload_data_buffer),
+                mem: border_buffer,
+                shader_storage_mem: tile_shader_storage,
                 quad_count_for_indices,
                 visuals,
             })
@@ -1265,7 +1331,7 @@ impl ClientMapBuffered {
 
         if upload_data_size > 0 {
             let mut upload_data_buffer =
-                graphics_mt.mem_alloc(GraphicsMemoryAllocationType::Buffer {
+                graphics_mt.mem_alloc(GraphicsMemoryAllocationType::VertexBuffer {
                     required_size: upload_data_size.try_into().unwrap(),
                 });
 
@@ -1602,6 +1668,7 @@ impl ClientMapBuffered {
                     res = MapBufferPhysicsTileLayer {
                         base: MapBufferTileLayerBase {
                             mem: data.mem,
+                            shader_storage_mem: data.shader_storage_mem,
                             quad_count_for_indices: data.quad_count_for_indices,
                             visuals: data.visuals,
                         },
@@ -1631,7 +1698,8 @@ impl ClientMapBuffered {
     /// `F` takes the amount of tiles to skip as argument
     fn update_tile_layer<'a, F>(
         tp: &Arc<rayon::ThreadPool>,
-        buffer_object_index: &mut Option<BufferObject>,
+        buffer_object: &mut Option<BufferObject>,
+        shader_storage: &mut Option<ShaderStorage>,
         layer_width: NonZeroU16MinusOne,
         layer_height: NonZeroU16MinusOne,
         x: u16,
@@ -1644,11 +1712,7 @@ impl ClientMapBuffered {
     ) where
         F: Fn(usize) -> Box<dyn Iterator<Item = (u8, TileFlags, i16)> + 'a> + 'a,
     {
-        let size_of_tile = if is_textured {
-            std::mem::size_of::<GraphicTile>()
-        } else {
-            std::mem::size_of::<GraphicsTilePos>() * 4
-        };
+        let size_of_tile = std::mem::size_of::<GraphicTile>();
         let size_of_border_tile = if is_textured {
             std::mem::size_of::<GraphicBorderTile>()
         } else {
@@ -1670,7 +1734,7 @@ impl ClientMapBuffered {
 
         let mut tmp_tiles: Vec<GraphicTile> =
             Vec::with_capacity(width.get() as usize * height.get() as usize);
-        let mut tile_update_regions: Vec<CommandUpdateBufferObjectRegion> =
+        let mut tile_update_regions: Vec<CommandUpdateShaderStorageRegion> =
             Vec::with_capacity(height.get() as usize);
 
         for y in y..y + height.get() {
@@ -1694,7 +1758,6 @@ impl ClientMapBuffered {
                         index,
                         flags,
                         x as i32,
-                        y as i32,
                         add_as_speedup,
                         angle_rotate,
                         ignore_tile_index_check,
@@ -1820,7 +1883,7 @@ impl ClientMapBuffered {
                 });
 
             if tmp_tiles.len() > tmp_tiles_len {
-                tile_update_regions.push(CommandUpdateBufferObjectRegion {
+                tile_update_regions.push(CommandUpdateShaderStorageRegion {
                     src_offset: tmp_tiles_len * size_of_tile,
                     dst_offset: tile_index_skip * size_of_tile,
                     size: (tmp_tiles.len() - tmp_tiles_len) * size_of_tile,
@@ -1836,14 +1899,14 @@ impl ClientMapBuffered {
                     .enumerate()
                     .for_each(|(index, upload_data)| {
                         let tile = &tmp_tiles[index];
-                        tile.copy_into_slice(upload_data, is_textured);
+                        tile.copy_into_slice(upload_data);
                     });
             });
 
-            buffer_object_index
+            shader_storage
                 .as_ref()
                 .unwrap()
-                .update_buffer_object(upload_data, tile_update_regions);
+                .update_shader_storage(upload_data, tile_update_regions);
         }
 
         // do the corner tiles
@@ -1859,12 +1922,11 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile,
+                    dst_offset: 0,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -1882,13 +1944,11 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile
-                        + size_of_border_tile,
+                    dst_offset: size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -1906,13 +1966,11 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile
-                        + 2 * size_of_border_tile,
+                    dst_offset: 2 * size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -1930,14 +1988,11 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize
-                        * layer_height.get() as usize
-                        * size_of_tile)
-                        + 3 * size_of_border_tile,
+                    dst_offset: 3 * size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -1957,13 +2012,11 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile
-                        + (4 + x as usize) * size_of_border_tile,
+                    dst_offset: (4 + x as usize) * size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -1981,13 +2034,11 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile
-                        + (4 + layer_width.get() as usize + x as usize) * size_of_border_tile,
+                    dst_offset: (4 + layer_width.get() as usize + x as usize) * size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -2005,13 +2056,12 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile
-                        + (4 + layer_width.get() as usize * 2 + y as usize) * size_of_border_tile,
+                    dst_offset: (4 + layer_width.get() as usize * 2 + y as usize)
+                        * size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -2029,16 +2079,15 @@ impl ClientMapBuffered {
                 .for_each(|tile| off += tile.copy_into_slice(&mut upload_data[off..], is_textured));
 
             let upload_data_len = upload_data.len();
-            buffer_object_index.as_ref().unwrap().update_buffer_object(
+            buffer_object.as_ref().unwrap().update_buffer_object(
                 upload_data,
                 [CommandUpdateBufferObjectRegion {
                     src_offset: 0,
-                    dst_offset: (layer_width.get() as usize * layer_height.get() as usize)
-                        * size_of_tile
-                        + (4 + layer_width.get() as usize * 2
-                            + layer_height.get() as usize
-                            + y as usize)
-                            * size_of_border_tile,
+                    dst_offset: (4
+                        + layer_width.get() as usize * 2
+                        + layer_height.get() as usize
+                        + y as usize)
+                        * size_of_border_tile,
                     size: upload_data_len,
                 }]
                 .into(),
@@ -2099,23 +2148,27 @@ impl ClientMapBuffered {
                 create_tile_index_flag && cur_text_overlay == text_overlay_count + 1;
             let is_tile_flag_layer =
                 create_tile_index_flag && cur_text_overlay == text_overlay_count + 2;
-            let mut buffer_object = if cur_text_overlay == 0 {
-                &layer.user_mut().borrow_mut().base.base.buffer_object
+            let (mut buffer_object, mut shader_storage) = if cur_text_overlay == 0 {
+                let obj = &layer.user_mut().borrow().base.base.obj;
+                (obj.buffer_object.clone(), obj.shader_storage.clone())
             } else if !create_tile_index_flag || cur_text_overlay < text_overlay_count + 1 {
-                &layer.user_mut().borrow_mut().overlays[cur_text_overlay - 1]
+                let obj = &layer.user_mut().borrow_mut().overlays[cur_text_overlay - 1]
                     .visuals
-                    .buffer_object
+                    .obj;
+                (obj.buffer_object.clone(), obj.shader_storage.clone())
             } else if is_tile_index_layer {
-                &layer.user_mut().borrow_mut().base.tile_index_buffer_object
+                let obj = &layer.user_mut().borrow_mut().base.tile_index_obj;
+                (obj.buffer_object.clone(), obj.shader_storage.clone())
             } else if is_tile_flag_layer {
-                &layer.user_mut().borrow_mut().base.tile_flag_buffer_object
+                let obj = &layer.user_mut().borrow_mut().base.tile_flag_obj;
+                (obj.buffer_object.clone(), obj.shader_storage.clone())
             } else {
                 panic!("unexpected overlay")
-            }
-            .clone();
+            };
             Self::update_tile_layer(
                 tp,
                 &mut buffer_object,
+                &mut shader_storage,
                 group_width,
                 group_height,
                 x,
@@ -2275,19 +2328,25 @@ impl ClientMapBuffered {
                 is_speedup_layer,
                 true,
             );
-            *if cur_text_overlay == 0 {
-                &mut layer.user_mut().borrow_mut().base.base.buffer_object
+            let (buffer_obj, shader_stor) = if cur_text_overlay == 0 {
+                let obj = &mut layer.user_mut().borrow_mut().base.base.obj;
+                (&mut obj.buffer_object, &mut obj.shader_storage)
             } else if !create_tile_index_flag || cur_text_overlay < text_overlay_count + 1 {
-                &mut layer.user_mut().borrow_mut().overlays[cur_text_overlay - 1]
+                let obj = &mut layer.user_mut().borrow_mut().overlays[cur_text_overlay - 1]
                     .visuals
-                    .buffer_object
+                    .obj;
+                (&mut obj.buffer_object, &mut obj.shader_storage)
             } else if is_tile_index_layer {
-                &mut layer.user_mut().borrow_mut().base.tile_index_buffer_object
+                let obj = &mut layer.user_mut().borrow_mut().base.tile_index_obj;
+                (&mut obj.buffer_object, &mut obj.shader_storage)
             } else if is_tile_flag_layer {
-                &mut layer.user_mut().borrow_mut().base.tile_flag_buffer_object
+                let obj = &mut layer.user_mut().borrow_mut().base.tile_flag_obj;
+                (&mut obj.buffer_object, &mut obj.shader_storage)
             } else {
                 panic!("unexpected overlayer");
-            } = buffer_object;
+            };
+            *buffer_obj = buffer_object;
+            *shader_stor = shader_storage;
         }
     }
 
@@ -2305,9 +2364,11 @@ impl ClientMapBuffered {
         let layer_width = layer.layer.attr.width;
         let layer_height = layer.layer.attr.height;
 
+        let obj = &mut layer.user.borrow_mut().base.obj;
         Self::update_tile_layer(
             tp,
-            &mut layer.user.borrow_mut().base.buffer_object,
+            &mut obj.buffer_object,
+            &mut obj.shader_storage,
             layer_width,
             layer_height,
             x,
@@ -2326,13 +2387,17 @@ impl ClientMapBuffered {
         );
 
         for i in 0..2 {
+            let (buffer_object, shader_storage) = if i == 0 {
+                let obj = &mut layer.user.borrow_mut().tile_index_obj;
+                (&mut obj.buffer_object, &mut obj.shader_storage)
+            } else {
+                let obj = &mut layer.user.borrow_mut().tile_flag_obj;
+                (&mut obj.buffer_object, &mut obj.shader_storage)
+            };
             Self::update_tile_layer(
                 tp,
-                if i == 0 {
-                    &mut layer.user.borrow_mut().tile_index_buffer_object
-                } else {
-                    &mut layer.user.borrow_mut().tile_flag_buffer_object
-                },
+                buffer_object,
+                shader_storage,
                 layer_width,
                 layer_height,
                 x,
@@ -2585,6 +2650,7 @@ impl ClientMapBuffered {
 
     pub fn tile_set_preview(
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
     ) -> TileLayerVisuals {
@@ -2605,6 +2671,11 @@ impl ClientMapBuffered {
             true,
             true,
         );
-        ClientMapBuffered::finish_upload_tile_layer(buffer_object_handle, backend_handle, layer)
+        ClientMapBuffered::finish_upload_tile_layer(
+            shader_storage_handle,
+            buffer_object_handle,
+            backend_handle,
+            layer,
+        )
     }
 }

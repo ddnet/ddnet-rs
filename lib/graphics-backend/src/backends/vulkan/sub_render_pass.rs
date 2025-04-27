@@ -521,6 +521,9 @@ impl SubRenderPass {
                 BackendResourceDescription::VertexFragmentUniformBuffer => {
                     set_layouts.push(layouts.vertex_fragment_uniform_descriptor_set_layout.layout);
                 }
+                BackendResourceDescription::VertexShaderStorage => {
+                    set_layouts.push(layouts.vertex_shader_storage_descriptor_set_layout.layout);
+                }
             }
         }
 

@@ -45,6 +45,7 @@ pub enum DescriptorPoolType {
     Image,
     Sampler,
     Uniform,
+    ShaderStorage,
 }
 
 #[derive(Debug, Clone, Hiarc)]
@@ -137,6 +138,13 @@ pub struct BufferObject {
 
     pub cur_buffer: Arc<Buffer>,
     pub cur_buffer_offset: usize,
+}
+
+#[derive(Debug, Hiarc)]
+pub struct ShaderStorage {
+    pub buffer: BufferObject,
+
+    pub descriptor: Arc<DescriptorSets>,
 }
 
 #[derive(Debug, Hiarc)]

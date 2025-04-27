@@ -76,6 +76,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         mirror_tiles_y(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,
@@ -134,6 +135,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         mirror_tiles_x(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,
@@ -195,6 +197,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         rotate_tiles_plus_90(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,
@@ -203,6 +206,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         rotate_tiles_plus_90(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,
@@ -211,6 +215,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         rotate_tiles_plus_90(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,
@@ -253,6 +258,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         rotate_tiles_plus_90(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,
@@ -297,6 +303,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         rotate_tile_flags_plus_90(
                             pipe.user_data.tp,
                             pipe.user_data.graphics_mt,
+                            pipe.user_data.shader_storage_handle,
                             pipe.user_data.buffer_object_handle,
                             pipe.user_data.backend_handle,
                             brush,

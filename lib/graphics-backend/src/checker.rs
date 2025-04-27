@@ -8,7 +8,9 @@ use graphics::handles::{
     backend::backend::GraphicsBackendHandle, canvas::canvas::GraphicsCanvasHandle,
     stream::stream::GraphicsStreamHandle,
 };
-use graphics_backend_traits::plugin::{GraphicsBufferObjectAccess, GraphicsObjectRewriteFunc};
+use graphics_backend_traits::plugin::{
+    GraphicsBufferObjectAccess, GraphicsObjectRewriteFunc, GraphicsShaderStorageAccess,
+};
 use graphics_types::{
     commands::{
         AllCommands, CommandDeleteBufferObject, CommandRender, CommandTextureDestroy, CommandsMisc,
@@ -27,6 +29,11 @@ struct BufferObject {
     alloc_size: usize,
 }
 
+#[derive(Debug, Hiarc)]
+struct ShaderStorage {
+    alloc_size: usize,
+}
+
 /// rewrites graphics commands to make them use resource indices
 /// that are not colliding with host indices
 /// Important: Does not validate correctness in any kind.
@@ -35,6 +42,7 @@ struct BufferObject {
 pub struct GraphicsContainersAPI {
     textures: HashMap<u128, TextureContainer>,
     buffers: HashMap<u128, BufferObject>,
+    shader_storages: HashMap<u128, ShaderStorage>,
     offscreen_canvases: HashSet<u128>,
 
     index_buffer_quad_count: u64,
@@ -51,6 +59,7 @@ impl GraphicsContainersAPI {
         Self {
             textures: Default::default(),
             buffers: Default::default(),
+            shader_storages: Default::default(),
             offscreen_canvases: Default::default(),
             index_buffer_quad_count: 0,
             id_offset,
@@ -92,7 +101,18 @@ impl GraphicsContainersAPI {
 
         assert!(
             self.buffers.contains_key(&real_index),
-            "texture does not exists, this is not allowed"
+            "buffer object does not exists, this is not allowed"
+        );
+        *index = real_index;
+    }
+
+    fn process_shader_storage(&self, index: &mut u128) {
+        assert!(*index < u64::MAX as u128, "invalid index");
+        let real_index = *index + self.id_offset;
+
+        assert!(
+            self.shader_storages.contains_key(&real_index),
+            "shader storage does not exists, this is not allowed"
         );
         *index = real_index;
     }
@@ -189,6 +209,32 @@ impl GraphicsContainersAPI {
                 self.buffers.remove(&real_index);
             }
             CommandsMisc::UpdateBufferObject(_) => todo!(),
+            CommandsMisc::CreateShaderStorage(cmd) => {
+                assert!(cmd.shader_storage_index < u64::MAX as u128, "invalid index");
+                let real_index = cmd.shader_storage_index + self.id_offset;
+                cmd.shader_storage_index = real_index;
+                assert!(
+                    !self.shader_storages.contains_key(&real_index),
+                    "shader storage already exists, this is not allowed"
+                );
+                self.shader_storages.insert(
+                    real_index,
+                    ShaderStorage {
+                        alloc_size: cmd.upload_data.len(),
+                    },
+                );
+            }
+            CommandsMisc::DeleteShaderStorage(cmd) => {
+                assert!(cmd.shader_storage_index < u64::MAX as u128, "invalid index");
+                let real_index = cmd.shader_storage_index + self.id_offset;
+                cmd.shader_storage_index = real_index;
+                assert!(
+                    self.shader_storages.contains_key(&real_index),
+                    "shader storage does not exists, this is not allowed"
+                );
+                self.shader_storages.remove(&real_index);
+            }
+            CommandsMisc::UpdateShaderStorage(_) => todo!(),
             CommandsMisc::OffscreenCanvasCreate(cmd) => {
                 assert!(cmd.offscreen_index < u64::MAX as u128, "invalid index");
                 assert!(
@@ -302,6 +348,32 @@ impl GraphicsContainersAPI {
         );
     }
 
+    fn check_shader_storage(
+        &self,
+        real_index: u128,
+        quad_offset: usize,
+        quad_num: usize,
+        single_entry_byte_size: usize,
+        allowed_alignment: NonZeroUsize,
+    ) {
+        let shader_storage = self.shader_storages.get(&real_index).unwrap();
+        // check that offset and draw num are multiples of the index buffer
+        let pre_cond = quad_offset as u64 <= u64::MAX / std::mem::size_of::<u32>() as u64 / 6
+            && quad_num as u64 <= u32::MAX as u64 / 6
+            && (quad_offset as u64 + quad_num as u64) <= self.index_buffer_quad_count;
+
+        // common min alignment
+        assert!(allowed_alignment.get() % 2 == 0);
+
+        // make sure the shader storage is big enough
+        let number_of_quads = quad_offset.checked_add(quad_num).unwrap();
+        assert!(
+            pre_cond
+                && shader_storage.alloc_size
+                    >= single_entry_byte_size.checked_mul(number_of_quads).unwrap()
+        );
+    }
+
     fn check_and_change_uniform_instance(
         &self,
         stream_handle: &GraphicsStreamHandle,
@@ -386,6 +458,7 @@ impl GraphicsContainersAPI {
                           textures_2d_array,
                           buffer_objects,
                           uniform_instances,
+                          shader_storages,
                       }| {
                         for texture in textures {
                             self.process_texture(texture)
@@ -424,6 +497,27 @@ impl GraphicsContainersAPI {
                                 uniform_instance.single_instance_byte_size,
                                 uniform_offset_before_commands,
                             )
+                        }
+                        for shader_storage in shader_storages {
+                            self.process_shader_storage(shader_storage.shader_storage_index);
+                            for access in shader_storage.accesses.iter() {
+                                match access {
+                                    GraphicsShaderStorageAccess::IndicedQuad {
+                                        quad_offset,
+                                        quad_count,
+                                        entry_byte_size,
+                                        alignment,
+                                    } => {
+                                        self.check_shader_storage(
+                                            *shader_storage.shader_storage_index,
+                                            *quad_offset,
+                                            *quad_count,
+                                            *entry_byte_size,
+                                            *alignment,
+                                        );
+                                    }
+                                }
+                            }
                         }
                     },
                 );

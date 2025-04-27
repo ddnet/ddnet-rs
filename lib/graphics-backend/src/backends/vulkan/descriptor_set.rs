@@ -58,11 +58,12 @@ impl DescriptorSets {
         self.sets[0]
     }
 
-    pub fn assign_uniform_buffer_to_sets(
+    fn assign_buffer_to_sets_impl(
         &self,
         buffer: &Arc<Buffer>,
         offset: vk::DeviceSize,
         range_per_set: vk::DeviceSize,
+        ty: vk::DescriptorType,
     ) -> usize {
         let mut buffer_infos: Vec<vk::DescriptorBufferInfo> = Vec::with_capacity(self.sets.len());
         let mut descriptor_writes: Vec<vk::WriteDescriptorSet> =
@@ -83,7 +84,7 @@ impl DescriptorSets {
                     .dst_set(self.sets[i])
                     .dst_binding(0)
                     .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                    .descriptor_type(ty)
                     .buffer_info(&buffer_infos[i..i + 1]),
             );
         }
@@ -98,6 +99,34 @@ impl DescriptorSets {
         *self.assigned_buffer.write() = Some(buffer.clone());
 
         self.sets.len()
+    }
+
+    pub fn assign_uniform_buffer_to_sets(
+        &self,
+        buffer: &Arc<Buffer>,
+        offset: vk::DeviceSize,
+        range_per_set: vk::DeviceSize,
+    ) -> usize {
+        self.assign_buffer_to_sets_impl(
+            buffer,
+            offset,
+            range_per_set,
+            vk::DescriptorType::UNIFORM_BUFFER,
+        )
+    }
+
+    pub fn assign_shader_storage_buffer_to_sets(
+        &self,
+        buffer: &Arc<Buffer>,
+        offset: vk::DeviceSize,
+        range_per_set: vk::DeviceSize,
+    ) -> usize {
+        self.assign_buffer_to_sets_impl(
+            buffer,
+            offset,
+            range_per_set,
+            vk::DescriptorType::STORAGE_BUFFER,
+        )
     }
 
     pub fn assign_texture_and_sampler_combined(

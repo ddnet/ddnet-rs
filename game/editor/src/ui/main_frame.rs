@@ -30,6 +30,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
             editor_options: pipe.user_data.editor_options,
             auto_mapper: pipe.user_data.auto_mapper,
             graphics_mt: pipe.user_data.graphics_mt,
+            shader_storage_handle: pipe.user_data.shader_storage_handle,
             buffer_object_handle: pipe.user_data.buffer_object_handle,
             backend_handle: pipe.user_data.backend_handle,
             quad_tile_images_container: pipe.user_data.quad_tile_images_container,

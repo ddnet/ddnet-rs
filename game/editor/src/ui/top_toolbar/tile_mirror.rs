@@ -6,6 +6,7 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
     },
 };
 use map::map::groups::layers::tiles::{
@@ -57,6 +58,7 @@ fn mirror_y_tiles<T: Copy + Clone + Sync + Send + AsMut<TileBase>>(
 pub fn mirror_tiles_y(
     tp: &Arc<rayon::ThreadPool>,
     graphics_mt: &GraphicsMultiThreaded,
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     brush: &mut TileBrushTiles,
@@ -92,7 +94,14 @@ pub fn mirror_tiles_y(
     }
 
     if upload_new_layer {
-        upload_brush(tp, graphics_mt, buffer_object_handle, backend_handle, brush);
+        upload_brush(
+            tp,
+            graphics_mt,
+            shader_storage_handle,
+            buffer_object_handle,
+            backend_handle,
+            brush,
+        );
     }
 }
 
@@ -114,6 +123,7 @@ fn mirror_x_tiles<T: Copy + Clone + Send + Sync + AsMut<TileBase>>(
 pub fn mirror_tiles_x(
     tp: &Arc<rayon::ThreadPool>,
     graphics_mt: &GraphicsMultiThreaded,
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     brush: &mut TileBrushTiles,
@@ -149,13 +159,21 @@ pub fn mirror_tiles_x(
     }
 
     if upload_new_layer {
-        upload_brush(tp, graphics_mt, buffer_object_handle, backend_handle, brush);
+        upload_brush(
+            tp,
+            graphics_mt,
+            shader_storage_handle,
+            buffer_object_handle,
+            backend_handle,
+            brush,
+        );
     }
 }
 
 pub fn rotate_tiles_plus_90(
     tp: &Arc<rayon::ThreadPool>,
     graphics_mt: &GraphicsMultiThreaded,
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     brush: &mut TileBrushTiles,
@@ -235,13 +253,21 @@ pub fn rotate_tiles_plus_90(
     std::mem::swap(&mut brush.w, &mut brush.h);
 
     if upload_new_layer {
-        upload_brush(tp, graphics_mt, buffer_object_handle, backend_handle, brush);
+        upload_brush(
+            tp,
+            graphics_mt,
+            shader_storage_handle,
+            buffer_object_handle,
+            backend_handle,
+            brush,
+        );
     }
 }
 
 pub fn rotate_tile_flags_plus_90(
     tp: &Arc<rayon::ThreadPool>,
     graphics_mt: &GraphicsMultiThreaded,
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     brush: &mut TileBrushTiles,
@@ -288,13 +314,21 @@ pub fn rotate_tile_flags_plus_90(
     }
 
     if upload_new_layer {
-        upload_brush(tp, graphics_mt, buffer_object_handle, backend_handle, brush);
+        upload_brush(
+            tp,
+            graphics_mt,
+            shader_storage_handle,
+            buffer_object_handle,
+            backend_handle,
+            brush,
+        );
     }
 }
 
 fn upload_brush(
     tp: &Arc<rayon::ThreadPool>,
     graphics_mt: &GraphicsMultiThreaded,
+    shader_storage_handle: &GraphicsShaderStorageHandle,
     buffer_object_handle: &GraphicsBufferObjectHandle,
     backend_handle: &GraphicsBackendHandle,
     brush: &mut TileBrushTiles,
@@ -302,6 +336,7 @@ fn upload_brush(
     brush.render = TileBrush::create_brush_visual(
         tp,
         graphics_mt,
+        shader_storage_handle,
         buffer_object_handle,
         backend_handle,
         brush.w,

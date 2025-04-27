@@ -11,6 +11,7 @@ use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
+        shader_storage::shader_storage::GraphicsShaderStorageHandle,
         texture::texture::GraphicsTextureHandle,
     },
 };
@@ -198,6 +199,7 @@ impl EditorClient {
         tp: &Arc<rayon::ThreadPool>,
         sound_mt: &SoundMultiThreaded,
         graphics_mt: &GraphicsMultiThreaded,
+        shader_storage_handle: &GraphicsShaderStorageHandle,
         buffer_object_handle: &GraphicsBufferObjectHandle,
         backend_handle: &GraphicsBackendHandle,
         texture_handle: &GraphicsTextureHandle,
@@ -245,6 +247,7 @@ impl EditorClient {
                                             tp,
                                             sound_mt,
                                             graphics_mt,
+                                            shader_storage_handle,
                                             buffer_object_handle,
                                             backend_handle,
                                             texture_handle,

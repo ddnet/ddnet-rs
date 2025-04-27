@@ -34,6 +34,8 @@ pub struct RenderCommandExecuteBuffer {
     pub texture_descriptors: [Option<vk::DescriptorSet>; 2],
     #[hiarc_skip_unsafe]
     pub uniform_descriptors: [Option<vk::DescriptorSet>; 2],
+    #[hiarc_skip_unsafe]
+    pub shader_storage_descriptors: Option<vk::DescriptorSet>,
 
     #[hiarc_skip_unsafe]
     pub index_buffer: vk::Buffer,
@@ -320,5 +322,21 @@ impl BackendRenderExecuteInterface for RenderCommandExecuteManager<'_> {
             .cur_buffer
             .get_buffer(&mut self.backend.current_frame_resources);
         self.exec_buffer.buffer_off = buffer_object.cur_buffer_offset + offset;
+    }
+
+    fn set_shader_storage(&mut self, shader_storage_index: u128) {
+        let shader_storage = self
+            .backend
+            .props
+            .device
+            .shader_storages
+            .get(&shader_storage_index)
+            .unwrap();
+
+        self.exec_buffer.shader_storage_descriptors = Some(
+            shader_storage
+                .descriptor
+                .set(&mut self.backend.current_frame_resources),
+        );
     }
 }

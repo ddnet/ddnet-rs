@@ -24,6 +24,7 @@ use graphics::handles::{
     backend::backend::GraphicsBackendHandle,
     buffer_object::buffer_object::BufferObject,
     canvas::canvas::GraphicsCanvasHandle,
+    shader_storage::shader_storage::ShaderStorage,
     stream::stream::{GraphicsStreamHandle, StreamedUniforms},
     stream_types::StreamedQuad,
     texture::texture::{
@@ -156,83 +157,82 @@ impl RenderMap {
         cur_anim_time: &Duration,
         include_last_anim_point: bool,
         visuals: &TileLayerVisualsBase,
-        buffer_object_index: &Option<BufferObject>,
+        buffer_object: &Option<BufferObject>,
+        shader_storage: &Option<ShaderStorage>,
         color_anim: &Option<usize>,
         color_anim_offset: &time::Duration,
         animations: &AnimationsSkeleton<AN, AS>,
         mut color: ColorRgba,
     ) {
-        if let Some(buffer_container_index) = buffer_object_index {
-            let (screen_x0, screen_y0, screen_x1, screen_y1) = state.get_canvas_mapping();
-
-            let channels = if let Some(anim) = {
-                if let Some(color_anim) = color_anim {
-                    animations.color.get(*color_anim)
-                } else {
-                    None
-                }
-            } {
-                Self::animation_eval(
-                    &anim.def,
-                    cur_time,
-                    cur_anim_time,
-                    color_anim_offset,
-                    include_last_anim_point,
-                )
+        let (screen_x0, screen_y0, screen_x1, screen_y1) = state.get_canvas_mapping();
+        let channels = if let Some(anim) = {
+            if let Some(color_anim) = color_anim {
+                animations.color.get(*color_anim)
             } else {
-                nfvec4::new(
-                    nffixed::from_num(1),
-                    nffixed::from_num(1),
-                    nffixed::from_num(1),
-                    nffixed::from_num(1),
-                )
-            };
+                None
+            }
+        } {
+            Self::animation_eval(
+                &anim.def,
+                cur_time,
+                cur_anim_time,
+                color_anim_offset,
+                include_last_anim_point,
+            )
+        } else {
+            nfvec4::new(
+                nffixed::from_num(1),
+                nffixed::from_num(1),
+                nffixed::from_num(1),
+                nffixed::from_num(1),
+            )
+        };
 
-            let mut draw_border = false;
+        let mut draw_border = false;
 
-            let border_y0 = (screen_y0).floor() as i32;
-            let border_x0 = (screen_x0).floor() as i32;
-            let border_y1 = (screen_y1).ceil() as i32;
-            let border_x1 = (screen_x1).ceil() as i32;
+        let border_y0 = (screen_y0).floor() as i32;
+        let border_x0 = (screen_x0).floor() as i32;
+        let border_y1 = (screen_y1).ceil() as i32;
+        let border_x1 = (screen_x1).ceil() as i32;
 
-            let mut y0 = border_y0;
-            let mut x0 = border_x0;
-            let mut y1 = border_y1;
-            let mut x1 = border_x1;
+        let mut y0 = border_y0;
+        let mut x0 = border_x0;
+        let mut y1 = border_y1;
+        let mut x1 = border_x1;
 
-            let (width, height) = (visuals.width as i32, visuals.height as i32);
+        let (width, height) = (visuals.width as i32, visuals.height as i32);
 
-            if x0 < 0 {
-                x0 = 0;
-                draw_border = true;
-            }
-            if y0 < 0 {
-                y0 = 0;
-                draw_border = true;
-            }
-            if x1 > width {
-                x1 = width;
-                draw_border = true;
-            }
-            if y1 > height {
-                y1 = height;
-                draw_border = true;
-            }
+        if x0 < 0 {
+            x0 = 0;
+            draw_border = true;
+        }
+        if y0 < 0 {
+            y0 = 0;
+            draw_border = true;
+        }
+        if x1 > width {
+            x1 = width;
+            draw_border = true;
+        }
+        if y1 > height {
+            y1 = height;
+            draw_border = true;
+        }
 
-            let mut draw_layer = true;
-            if x1 <= 0 {
-                draw_layer = false;
-            }
-            if y1 <= 0 {
-                draw_layer = false;
-            }
-            if x0 >= width {
-                draw_layer = false;
-            }
-            if y0 >= height {
-                draw_layer = false;
-            }
-
+        let mut draw_layer = true;
+        if x1 <= 0 {
+            draw_layer = false;
+        }
+        if y1 <= 0 {
+            draw_layer = false;
+        }
+        if x0 >= width {
+            draw_layer = false;
+        }
+        if y0 >= height {
+            draw_layer = false;
+        }
+        if let Some(shader_storage) = shader_storage {
             if draw_layer {
                 // indices buffers we want to draw
                 let mut draws = self.tile_layer_render_info_pool.new();
@@ -266,6 +266,7 @@ impl RenderMap {
                             quad_offset: visuals.tiles_of_layer[(y * width + x0) as usize]
                                 .quad_offset(),
                             quad_count: num_quads,
+                            pos_y: y as f32,
                         });
                     }
                 }
@@ -280,26 +281,26 @@ impl RenderMap {
                     self.map_graphics.render_tile_layer(
                         state,
                         texture.clone(),
-                        buffer_container_index,
+                        shader_storage,
                         &color,
                         draws,
                     );
                 }
             }
+        }
 
-            if draw_border {
-                self.render_tile_border(
-                    state,
-                    texture.clone(),
-                    visuals,
-                    buffer_object_index,
-                    &color,
-                    border_x0,
-                    border_y0,
-                    border_x1,
-                    border_y1,
-                );
-            }
+        if draw_border {
+            self.render_tile_border(
+                state,
+                texture.clone(),
+                visuals,
+                buffer_object,
+                &color,
+                border_x0,
+                border_y0,
+                border_x1,
+                border_y1,
+            );
         }
     }
 
@@ -346,7 +347,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -362,7 +362,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -381,7 +380,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -397,7 +395,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -425,7 +422,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -454,7 +450,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -482,7 +477,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -510,7 +504,6 @@ impl RenderMap {
                         state,
                         texture.clone(),
                         buffer_container_index,
-                        visuals.buffer_size_all_tiles,
                         color,
                         &offset,
                         &scale,
@@ -529,7 +522,7 @@ impl RenderMap {
         visuals: &TileLayerBufferedVisuals,
         color: &ColorRgba,
     ) {
-        if let Some(buffer_container_index) = &visuals.buffer_object {
+        if let Some(buffer_container_index) = &visuals.obj.buffer_object {
             let (canvas_x0, canvas_y0, canvas_x1, canvas_y1) = state.get_canvas_mapping();
 
             let mut draw_border = false;
@@ -595,7 +588,6 @@ impl RenderMap {
                     state,
                     texture.clone(),
                     buffer_container_index,
-                    visuals.base.buffer_size_all_tiles,
                     color,
                     &offset,
                     &scale,
@@ -614,7 +606,6 @@ impl RenderMap {
                     state,
                     texture.clone(),
                     buffer_container_index,
-                    visuals.base.buffer_size_all_tiles,
                     color,
                     &offset,
                     &scale,
@@ -633,7 +624,6 @@ impl RenderMap {
                     state,
                     texture.clone(),
                     buffer_container_index,
-                    visuals.base.buffer_size_all_tiles,
                     color,
                     &offset,
                     &scale,
@@ -652,7 +642,6 @@ impl RenderMap {
                     state,
                     texture,
                     buffer_container_index,
-                    visuals.base.buffer_size_all_tiles,
                     color,
                     &offset,
                     &scale,
@@ -1034,13 +1023,22 @@ impl RenderMap {
 
                 state.blend(BlendType::Alpha);
 
-                let buffer_object =
+                let (buffer_object, shader_storage) =
                     if matches!(forced_texture, Some(ForcedTexture::TileLayerTileIndex(_))) {
-                        &visual.tile_index_buffer_object
+                        (
+                            &visual.tile_index_obj.buffer_object,
+                            &visual.tile_index_obj.shader_storage,
+                        )
                     } else if matches!(forced_texture, Some(ForcedTexture::TileLayerTileFlag(_))) {
-                        &visual.tile_flag_buffer_object
+                        (
+                            &visual.tile_flag_obj.buffer_object,
+                            &visual.tile_flag_obj.shader_storage,
+                        )
                     } else {
-                        &visual.base.buffer_object
+                        (
+                            &visual.base.obj.buffer_object,
+                            &visual.base.obj.shader_storage,
+                        )
                     };
 
                 self.render_tile_layer(
@@ -1051,6 +1049,7 @@ impl RenderMap {
                     include_last_anim_point,
                     &visual.base.base,
                     buffer_object,
+                    shader_storage,
                     &layer.attr.color_anim,
                     &layer.attr.color_anim_offset,
                     animations,
@@ -1174,6 +1173,21 @@ impl RenderMap {
             );
         }
 
+        let base = &layer.user().borrow().base;
+        let (buffer_object, shader_storage) =
+            if matches!(forced_texture, Some(ForcedTexture::TileLayerTileIndex(_))) {
+                (
+                    &base.tile_index_obj.buffer_object,
+                    &base.tile_index_obj.shader_storage,
+                )
+            } else if matches!(forced_texture, Some(ForcedTexture::TileLayerTileFlag(_))) {
+                (
+                    &base.tile_flag_obj.buffer_object,
+                    &base.tile_flag_obj.shader_storage,
+                )
+            } else {
+                (&base.base.obj.buffer_object, &base.base.obj.shader_storage)
+            };
         self.render_tile_layer(
             &state,
             if let Some(
@@ -1191,13 +1205,8 @@ impl RenderMap {
             cur_anim_time,
             include_last_anim_point,
             &layer.user().borrow().base.base.base,
-            if matches!(forced_texture, Some(ForcedTexture::TileLayerTileIndex(_))) {
-                &layer.user().borrow().base.tile_index_buffer_object
-            } else if matches!(forced_texture, Some(ForcedTexture::TileLayerTileFlag(_))) {
-                &layer.user().borrow().base.tile_flag_buffer_object
-            } else {
-                &layer.user().borrow().base.base.buffer_object
-            },
+            buffer_object,
+            shader_storage,
             &None,
             &time::Duration::ZERO,
             animations,
@@ -1216,7 +1225,8 @@ impl RenderMap {
                 cur_anim_time,
                 include_last_anim_point,
                 &overlay.visuals.base,
-                &overlay.visuals.buffer_object,
+                &overlay.visuals.obj.buffer_object,
+                &overlay.visuals.obj.shader_storage,
                 &None,
                 &time::Duration::ZERO,
                 animations,
