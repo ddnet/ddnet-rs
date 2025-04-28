@@ -1982,7 +1982,7 @@ impl ClientNativeImpl {
                             } else if let Ok(legacy_proxy) = legacy_proxy::proxy_run(
                                 &self.io,
                                 &self.sys,
-                                addr.into(),
+                                addr,
                                 self.connecting_log.clone(),
                             ) {
                                 self.ui_events.push(UiEvent::Connect {
@@ -2345,7 +2345,7 @@ impl ClientNativeImpl {
                     if let Ok(legacy_proxy) = legacy_proxy::proxy_run(
                         &self.io,
                         &self.sys,
-                        legacy_addr.into(),
+                        legacy_addr,
                         self.connecting_log.clone(),
                     ) {
                         self.local_console.add_event(LocalConsoleEvent::Connect {

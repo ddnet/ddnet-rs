@@ -1,5 +1,6 @@
 mod client;
 pub mod projectile;
+mod socket;
 
 use anyhow::anyhow;
 use base::{
@@ -93,7 +94,6 @@ use libtw2_gamenet_ddnet::{
 };
 use libtw2_net::net::PeerId;
 use libtw2_packer::{IntUnpacker, Unpacker};
-use libtw2_socket::Addr;
 use log::{debug, log_enabled, warn, Level};
 use map::map::Map;
 use math::{
@@ -109,6 +109,7 @@ use network::network::{
     errors::KickType,
     event::NetworkEvent,
     networks::Networks,
+    notifier::NetworkEventNotifier,
     packet_compressor::DefaultNetworkPacketCompressor,
     plugins::{NetworkPluginConnection, NetworkPluginPacket, NetworkPlugins},
     quinn_network::QuinnNetworks,
@@ -128,12 +129,15 @@ use pool::{
 use projectile::{get_pos, get_vel};
 use rand::RngCore;
 use sha2::Digest;
+use socket::Socket;
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     ffi::CStr,
+    future::Future,
     net::SocketAddr,
     num::{NonZeroU16, NonZeroU64},
+    pin::Pin,
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
@@ -294,7 +298,7 @@ struct ClientBase {
 struct Client {
     base: ClientBase,
 
-    connect_addr: Addr,
+    connect_addr: SocketAddr,
 
     con_id: Option<NetworkConnectionId>,
 
@@ -309,6 +313,7 @@ struct Client {
     players: PoolFxLinkedHashMap<PlayerId, ProxyClient>,
 
     server_network: QuinnNetworks,
+    notifier_server: Arc<NetworkEventNotifier>,
 
     is_finished: Arc<AtomicBool>,
 
@@ -321,7 +326,7 @@ impl Client {
     fn run(
         io: &Io,
         sys: &base::system::System,
-        addr: Addr,
+        addr: SocketAddr,
         log: ConnectingLog,
     ) -> anyhow::Result<LegacyProxy> {
         let fs = io.fs.clone();
@@ -353,7 +358,7 @@ impl Client {
         }
 
         let (cert, private_key) = create_certifified_keys();
-        let (network_server, cert, sock_addrs, _notifer_server) = Networks::init_server(
+        let (network_server, cert, sock_addrs, notifier_server) = Networks::init_server(
             "127.0.0.1".parse()?,
             "::1".parse()?,
             0,
@@ -382,254 +387,260 @@ impl Client {
 
         let is_finished: Arc<AtomicBool> = Default::default();
         let is_finished_thread = is_finished.clone();
-        let thread = std::thread::spawn(move || {
-            let mut server_info = None;
-            {
-                log.log(format!("Getting server info from: {}", addr));
-                // first get the server info
-                let mut conless = SocketClient::new(addr).unwrap();
-                let mut is_connect = false;
-                let mut is_ready = false;
-                let mut is_map_ready = false;
-
-                let mut tokens = vec![rand::rng().next_u32() as u8];
-                conless.sendc(
-                    addr,
-                    Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
-                );
-                let start_time = sys.time_get();
-                let mut last_req = start_time;
-                let mut last_reconnect = start_time;
-                while server_info.is_none()
-                    && !is_finished_thread.load(std::sync::atomic::Ordering::SeqCst)
+        let thread = std::thread::Builder::new()
+            .name("legacy-proxy".into())
+            .spawn(move || {
+                let io = Io::new(|_| fs, Arc::new(HttpClient::new()));
+                let mut server_info = None;
                 {
-                    conless.run_once(|conless, event| match event {
-                        libtw2_net::net::ChunkOrEvent::Chunk(libtw2_net::net::Chunk {
-                            data,
-                            pid,
-                            ..
-                        }) => {
-                            let msg = match msg::decode(
-                                &mut WarnPkt(pid, data),
-                                &mut Unpacker::new(data),
-                            ) {
-                                Ok(m) => m,
-                                Err(err) => {
-                                    debug!("decode err during startup: {:?}", err);
-                                    // TODO: hacky way to listen for reconnect msg not impl in libtw2
-                                    if !is_map_ready {
-                                        log.log("Reconnecting");
-                                        conless
-                                            .net
-                                            .disconnect(
-                                                &mut conless.socket,
-                                                conless.server_pid,
-                                                b"reconnect",
-                                            )
-                                            .unwrap();
-                                        let (pid, res) =
-                                            conless.net.connect(&mut conless.socket, addr);
-                                        res.unwrap();
-                                        conless.server_pid = pid;
-                                    }
-                                    return;
-                                }
-                            };
+                    log.log(format!("Getting server info from: {}", addr));
+                    // first get the server info
+                    let mut conless = SocketClient::new(&io, addr).unwrap();
+                    let mut is_connect = false;
+                    let mut is_ready = false;
+                    let mut is_map_ready = false;
 
-                            if matches!(msg, SystemOrGame::System(System::MapChange(_))) {
-                                is_map_ready = true;
-                            }
-                        }
-                        libtw2_net::net::ChunkOrEvent::Connless(msg) => {
-                            log.log("Processing connless packet");
-                            server_info = server_info
-                                .clone()
-                                .or(Self::on_connless_packet(&tokens, msg.addr, msg.data)
-                                    .map(ServerInfoTy::Full));
-                        }
-                        libtw2_net::net::ChunkOrEvent::Connect(_) => {
-                            log.log("Initial connecting established");
-                            is_connect = true
-                        }
-                        libtw2_net::net::ChunkOrEvent::Ready(_) => {
-                            log.log("Initial connecting ready");
-                            is_ready = true;
-                        }
-                        libtw2_net::net::ChunkOrEvent::Disconnect(_, items) => {
-                            let reason = String::from_utf8_lossy(items);
-                            log.log(format!("Connection lost: {}", reason));
-                            if reason.contains("password") {
-                                server_info = server_info.clone().or(Some(ServerInfoTy::Partial {
-                                    requires_password: true,
-                                }));
-                            }
-                        }
-                    });
-                    if server_info.is_none()
+                    let mut tokens = vec![rand::rng().next_u32() as u8];
+                    conless.sendc(
+                        addr,
+                        Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
+                    );
+                    let start_time = sys.time_get();
+                    let mut last_req = start_time;
+                    let mut last_reconnect = start_time;
+                    while server_info.is_none()
                         && !is_finished_thread.load(std::sync::atomic::Ordering::SeqCst)
                     {
-                        std::thread::sleep(Duration::from_millis(10));
-                    }
+                        conless.run_once(|conless, event| match event {
+                            libtw2_net::net::ChunkOrEvent::Chunk(libtw2_net::net::Chunk {
+                                data,
+                                pid,
+                                ..
+                            }) => {
+                                let msg = match msg::decode(
+                                    &mut WarnPkt(pid, data),
+                                    &mut Unpacker::new(data),
+                                ) {
+                                    Ok(m) => m,
+                                    Err(err) => {
+                                        debug!("decode err during startup: {:?}", err);
+                                        // TODO: hacky way to listen for reconnect msg not impl in libtw2
+                                        if !is_map_ready {
+                                            log.log("Reconnecting");
+                                            conless
+                                                .net
+                                                .disconnect(
+                                                    &mut conless.socket,
+                                                    conless.server_pid,
+                                                    b"reconnect",
+                                                )
+                                                .unwrap();
+                                            let (pid, res) =
+                                                conless.net.connect(&mut conless.socket, addr);
+                                            res.unwrap();
+                                            conless.server_pid = pid;
+                                        }
+                                        return;
+                                    }
+                                };
 
-                    let cur_time = sys.time_get();
-                    // send new request
-                    if cur_time.saturating_sub(last_req) > Duration::from_secs(1) {
-                        log.log("Sending new info request after 1s timeout");
-                        let token = rand::rng().next_u32() as u8;
-                        conless.sendc(
-                            addr,
-                            Connless::RequestInfo(msg::connless::RequestInfo { token }),
-                        );
+                                if matches!(msg, SystemOrGame::System(System::MapChange(_))) {
+                                    is_map_ready = true;
+                                }
+                            }
+                            libtw2_net::net::ChunkOrEvent::Connless(msg) => {
+                                log.log("Processing connless packet");
+                                server_info = server_info
+                                    .clone()
+                                    .or(Self::on_connless_packet(&tokens, msg.addr, msg.data)
+                                        .map(ServerInfoTy::Full));
+                            }
+                            libtw2_net::net::ChunkOrEvent::Connect(_) => {
+                                log.log("Initial connecting established");
+                                is_connect = true
+                            }
+                            libtw2_net::net::ChunkOrEvent::Ready(_) => {
+                                log.log("Initial connecting ready");
+                                is_ready = true;
+                            }
+                            libtw2_net::net::ChunkOrEvent::Disconnect(_, items) => {
+                                let reason = String::from_utf8_lossy(items);
+                                log.log(format!("Connection lost: {}", reason));
+                                if reason.contains("password") {
+                                    server_info =
+                                        server_info.clone().or(Some(ServerInfoTy::Partial {
+                                            requires_password: true,
+                                        }));
+                                }
+                            }
+                        });
+                        if server_info.is_none()
+                            && !is_finished_thread.load(std::sync::atomic::Ordering::SeqCst)
+                        {
+                            std::thread::sleep(Duration::from_millis(10));
+                        }
 
-                        tokens.push(token);
+                        let cur_time = sys.time_get();
+                        // send new request
+                        if cur_time.saturating_sub(last_req) > Duration::from_secs(1) {
+                            log.log("Sending new info request after 1s timeout");
+                            let token = rand::rng().next_u32() as u8;
+                            conless.sendc(
+                                addr,
+                                Connless::RequestInfo(msg::connless::RequestInfo { token }),
+                            );
 
-                        last_req = cur_time;
-                    }
+                            tokens.push(token);
 
-                    // try to reconnect
-                    if cur_time.saturating_sub(last_reconnect) > Duration::from_secs(3) {
-                        log.log("Trying to reconnect after 3s timeout");
-                        conless
-                            .net
-                            .disconnect(&mut conless.socket, conless.server_pid, b"reconnect")
-                            .unwrap();
-                        let (pid, res) = conless.net.connect(&mut conless.socket, addr);
-                        res.unwrap();
-                        conless.server_pid = pid;
+                            last_req = cur_time;
+                        }
 
-                        last_reconnect = cur_time;
-                    }
+                        // try to reconnect
+                        if cur_time.saturating_sub(last_reconnect) > Duration::from_secs(3) {
+                            log.log("Trying to reconnect after 3s timeout");
+                            conless
+                                .net
+                                .disconnect(&mut conless.socket, conless.server_pid, b"reconnect")
+                                .unwrap();
+                            let (pid, res) = conless.net.connect(&mut conless.socket, addr);
+                            res.unwrap();
+                            conless.server_pid = pid;
 
-                    // send info, even if password is wrong and this results in a kick
-                    if is_connect
-                        && is_ready
-                        && cur_time.saturating_sub(start_time) > Duration::from_secs(2)
-                    {
-                        log.log("Sending client info for initial connection after 2s timeout");
-                        conless.sends(System::Info(system::Info {
-                            version: VERSION.as_bytes(),
-                            password: Some(b""),
-                        }));
-                        conless.flush();
-                        is_ready = false;
-                    }
+                            last_reconnect = cur_time;
+                        }
 
-                    // timeout
-                    if cur_time.saturating_sub(start_time) > Duration::from_secs(20) {
-                        log.log("Server was not responding after a total of 20 seconds");
-                        debug!("giving up to connect after 20 seconds.");
-                        return;
+                        // send info, even if password is wrong and this results in a kick
+                        if is_connect
+                            && is_ready
+                            && cur_time.saturating_sub(start_time) > Duration::from_secs(2)
+                        {
+                            log.log("Sending client info for initial connection after 2s timeout");
+                            conless.sends(System::Info(system::Info {
+                                version: VERSION.as_bytes(),
+                                password: Some(b""),
+                            }));
+                            conless.flush();
+                            is_ready = false;
+                        }
+
+                        // timeout
+                        if cur_time.saturating_sub(start_time) > Duration::from_secs(20) {
+                            log.log("Server was not responding after a total of 20 seconds");
+                            debug!("giving up to connect after 20 seconds.");
+                            return;
+                        }
                     }
                 }
-            }
 
-            // then start proxy
-            let id_generator: IdGenerator = Default::default();
-            let vanilla_snap_pool = SnapshotPool::new(64, 64);
+                // then start proxy
+                let id_generator: IdGenerator = Default::default();
+                let vanilla_snap_pool = SnapshotPool::new(64, 64);
 
-            let event_id_generator: EventIdGenerator = Default::default();
-            log.log("Got initial server info");
+                let event_id_generator: EventIdGenerator = Default::default();
+                log.log("Got initial server info");
 
-            let server_info = match server_info {
-                Some(i) => i,
-                None => {
-                    log::warn!("Got no server info at all, falling back to partial.");
-                    ServerInfoTy::Partial {
-                        requires_password: false,
+                let server_info = match server_info {
+                    Some(i) => i,
+                    None => {
+                        log::warn!("Got no server info at all, falling back to partial.");
+                        ServerInfoTy::Partial {
+                            requires_password: false,
+                        }
                     }
-                }
-            };
+                };
 
-            let mut app = Client {
-                last_snapshot: Snapshot::new(
-                    &vanilla_snap_pool,
-                    id_generator.peek_next_id(),
-                    None,
-                    Default::default(),
-                ),
+                let mut app = Client {
+                    last_snapshot: Snapshot::new(
+                        &vanilla_snap_pool,
+                        id_generator.peek_next_id(),
+                        None,
+                        Default::default(),
+                    ),
 
-                base: ClientBase {
-                    vanilla_snap_pool,
-                    stage_0_id: id_generator.next_id(),
-                    id_generator,
-                    client_snap_storage: Default::default(),
-                    snap_id: 0,
-                    cur_monotonic_tick: 0,
-                    latest_client_snap: None,
-                    player_snap_pool: Pool::with_capacity(2),
-                    ack_input_tick: -1,
-                    last_snap_tick: i32::MAX,
-                    input_deser: Pool::with_capacity(8),
-                    inputs_to_ack: Default::default(),
+                    base: ClientBase {
+                        vanilla_snap_pool,
+                        stage_0_id: id_generator.next_id(),
+                        id_generator,
+                        client_snap_storage: Default::default(),
+                        snap_id: 0,
+                        cur_monotonic_tick: 0,
+                        latest_client_snap: None,
+                        player_snap_pool: Pool::with_capacity(2),
+                        ack_input_tick: -1,
+                        last_snap_tick: i32::MAX,
+                        input_deser: Pool::with_capacity(8),
+                        inputs_to_ack: Default::default(),
 
-                    emoticons: Default::default(),
-                    teams: Default::default(),
-                    own_teams: Default::default(),
+                        emoticons: Default::default(),
+                        teams: Default::default(),
+                        own_teams: Default::default(),
 
-                    char_legacy_to_new_id: Default::default(),
-                    char_new_id_to_legacy: Default::default(),
-                    proj_legacy_to_new_id: Default::default(),
-                    laser_legacy_to_new_id: Default::default(),
-                    pickup_legacy_to_new_id: Default::default(),
-                    flag_legacy_to_new_id: Default::default(),
-                    confirmed_player_ids: Default::default(),
+                        char_legacy_to_new_id: Default::default(),
+                        char_new_id_to_legacy: Default::default(),
+                        proj_legacy_to_new_id: Default::default(),
+                        laser_legacy_to_new_id: Default::default(),
+                        pickup_legacy_to_new_id: Default::default(),
+                        flag_legacy_to_new_id: Default::default(),
+                        confirmed_player_ids: Default::default(),
 
-                    legacy_id_in_stage_id: Default::default(),
+                        legacy_id_in_stage_id: Default::default(),
 
-                    events: events::GameEvents {
-                        event_id: event_id_generator.peek_next_id(),
-                        worlds: GameWorldsEvents::new_without_pool(),
+                        events: events::GameEvents {
+                            event_id: event_id_generator.peek_next_id(),
+                            worlds: GameWorldsEvents::new_without_pool(),
+                        },
+                        event_id_generator,
+
+                        capabilities: Capabilities::default(),
+                        tunes: Default::default(),
+
+                        votes: ServerMapVotes {
+                            categories: Default::default(),
+                            has_unfinished_map_votes: false,
+                        },
+                        vote_state: None,
+                        vote_list_updated: false,
+                        loaded_map_votes: false,
+                        loaded_misc_votes: false,
+
+                        dummies_legacy_ids: Default::default(),
+
+                        server_info,
+
+                        join_password: Default::default(),
                     },
-                    event_id_generator,
 
-                    capabilities: Capabilities::default(),
-                    tunes: Default::default(),
+                    con_id: None,
 
-                    votes: ServerMapVotes {
-                        categories: Default::default(),
-                        has_unfinished_map_votes: false,
-                    },
-                    vote_state: None,
-                    vote_list_updated: false,
-                    loaded_map_votes: false,
-                    loaded_misc_votes: false,
+                    connect_addr: addr,
 
-                    dummies_legacy_ids: Default::default(),
+                    sys,
+                    tp: Arc::new(
+                        rayon::ThreadPoolBuilder::new()
+                            .thread_name(|index| format!("legacy-proxy-{index}"))
+                            .num_threads(2)
+                            .build()
+                            .unwrap(),
+                    ),
+                    io,
+                    http_server: None,
 
-                    server_info,
+                    collisions: None,
 
-                    join_password: Default::default(),
-                },
+                    server_has_new_events: has_new_events_server,
+                    server_event_handler: game_event_generator_server,
+                    server_network: network_server,
+                    notifier_server: Arc::new(notifier_server),
+                    players: PoolFxLinkedHashMap::new_without_pool(),
 
-                con_id: None,
+                    is_finished: is_finished_thread,
 
-                connect_addr: addr,
+                    log,
+                };
 
-                sys,
-                tp: Arc::new(
-                    rayon::ThreadPoolBuilder::new()
-                        .thread_name(|index| format!("legacy-proxy-{index}"))
-                        .num_threads(2)
-                        .build()
-                        .unwrap(),
-                ),
-                io: Io::new(|_| fs, Arc::new(HttpClient::new())),
-                http_server: None,
-
-                collisions: None,
-
-                server_has_new_events: has_new_events_server,
-                server_event_handler: game_event_generator_server,
-                server_network: network_server,
-                players: PoolFxLinkedHashMap::new_without_pool(),
-
-                is_finished: is_finished_thread,
-
-                log,
-            };
-
-            app.run_loop().unwrap();
-        });
+                app.run_loop().unwrap();
+            })
+            .unwrap();
         Ok(LegacyProxy {
             thread: JoinThread::new(thread),
             addresses: sock_addrs,
@@ -2033,7 +2044,7 @@ impl Client {
         pid: PeerId,
         data: &[u8],
         collision: &mut Option<Box<Collision>>,
-        connect_addr: &Addr,
+        connect_addr: &SocketAddr,
         snapshot: &mut Snapshot,
         is_active_connection: bool,
         is_main_connection: bool,
@@ -3130,7 +3141,7 @@ impl Client {
         }
     }
 
-    fn on_connless_packet(tokens: &[u8], addr: Addr, data: &[u8]) -> Option<ServerInfo> {
+    fn on_connless_packet(tokens: &[u8], addr: SocketAddr, data: &[u8]) -> Option<ServerInfo> {
         let msg = match Connless::decode(&mut WarnPkt(addr, data), &mut Unpacker::new(data)) {
             Ok(m) => m,
             Err(err) => {
@@ -3226,7 +3237,6 @@ impl Client {
     fn run_loop(&mut self) -> anyhow::Result<()> {
         while !self.is_finished.load(std::sync::atomic::Ordering::SeqCst) {
             self.run_once()?;
-            std::thread::sleep(Duration::from_millis(5));
         }
         Ok(())
     }
@@ -3273,7 +3283,7 @@ impl Client {
                                     &con_id,
                                 );
                             } else {
-                                let sock_loop = SocketClient::new(self.connect_addr)?;
+                                let sock_loop = SocketClient::new(&self.io, self.connect_addr)?;
 
                                 self.players.insert(
                                     self.base.id_generator.next_id(),
@@ -3310,7 +3320,7 @@ impl Client {
                                 .log("Received password, proxy is connecting to game.");
                             self.base.join_password = password.to_string();
 
-                            let sock_loop = SocketClient::new(self.connect_addr)?;
+                            let sock_loop = SocketClient::new(&self.io, self.connect_addr)?;
 
                             self.players.insert(
                                 self.base.id_generator.next_id(),
@@ -3361,9 +3371,10 @@ impl Client {
                         }
                         ClientToServerMessage::AddLocalPlayer(ev) => {
                             if self.players.len() < 2
-                                || (self.connect_addr.ip.is_loopback() && self.players.len() < 128)
+                                || (self.connect_addr.ip().is_loopback()
+                                    && self.players.len() < 128)
                             {
-                                let sock_loop = SocketClient::new(self.connect_addr)?;
+                                let sock_loop = SocketClient::new(&self.io, self.connect_addr)?;
                                 let player_id = self.base.id_generator.next_id();
                                 self.players.insert(
                                     player_id,
@@ -4043,80 +4054,101 @@ impl Client {
         }
 
         if let Some(con_id) = self.con_id {
+            let mut event_handler = |socket: &mut SocketClient,
+                                     ev: libtw2_net::net::ChunkOrEvent<'_, SocketAddr>,
+                                     base: &mut ClientBase,
+                                     collisions: &mut Option<Box<Collision>>,
+                                     player_id: PlayerId,
+                                     player_data: &mut ClientData,
+                                     is_active_connection: bool,
+                                     is_main_connection: bool| {
+                use libtw2_net::net::ChunkOrEvent::*;
+                match ev {
+                    Chunk(c) => Self::on_packet(
+                        player_id,
+                        player_data,
+                        socket,
+                        &self.sys,
+                        &self.io,
+                        &self.server_network,
+                        con_id,
+                        base,
+                        &self.log,
+                        c.pid,
+                        c.data,
+                        collisions,
+                        &self.connect_addr,
+                        &mut self.last_snapshot,
+                        is_active_connection,
+                        is_main_connection,
+                    ),
+                    Connless(data) => {
+                        if let ClientState::RequestedLegacyServerInfo { token, .. } =
+                            &player_data.state
+                        {
+                            self.log.log("Recevied connectionless packet.");
+                            if self.connect_addr == data.addr {
+                                player_data.ready.received_server_info =
+                                    player_data.ready.received_server_info.clone().or(
+                                        Self::on_connless_packet(
+                                            &[*token],
+                                            self.connect_addr,
+                                            data.data,
+                                        ),
+                                    );
+                            }
+                        }
+                    }
+                    Ready(_) => {
+                        self.log.log("Proxy client ready, sending info.");
+                        socket.sends(System::Info(system::Info {
+                            version: VERSION.as_bytes(),
+                            password: Some(base.join_password.as_bytes()),
+                        }));
+                        socket.flush();
+                    }
+                    Disconnect(_, reason) => {
+                        let reason = String::from_utf8_lossy(reason).to_string();
+                        self.log
+                            .log(format!("Proxy client got disconnected: {}", reason));
+                        socket.skip_disconnect_on_drop = true;
+                        if is_main_connection {
+                            self.server_network.kick(&con_id, KickType::Kick(reason));
+                        }
+                    }
+                    Connect(_) => {
+                        // ignore
+                    }
+                }
+            };
+            fn calc_is_active_connection(player_data: &ClientData) -> bool {
+                !player_data
+                    .latest_char_input
+                    .state
+                    .input_method_flags
+                    .contains(CharacterInputMethodFlags::DUMMY)
+            }
+
             let mut is_active_connection = None;
             // rev here, so the first dummy without dummy input is active connection
             for (index, (&player_id, player)) in self.players.iter_mut().enumerate().rev() {
                 let is_main_connection = index == 0;
                 is_active_connection = match is_active_connection {
                     Some((_, player_id)) => Some((false, player_id)),
-                    None => (!player
-                        .data
-                        .latest_char_input
-                        .state
-                        .input_method_flags
-                        .contains(CharacterInputMethodFlags::DUMMY))
-                    .then_some((true, player_id)),
+                    None => calc_is_active_connection(&player.data).then_some((true, player_id)),
                 };
                 let is_active_connection = is_active_connection.map(|(b, _)| b).unwrap_or_default();
                 player.socket.run_once(|socket, ev| {
-                    use libtw2_net::net::ChunkOrEvent::*;
-                    match ev {
-                        Chunk(c) => Self::on_packet(
-                            player_id,
-                            &mut player.data,
-                            socket,
-                            &self.sys,
-                            &self.io,
-                            &self.server_network,
-                            con_id,
-                            &mut self.base,
-                            &self.log,
-                            c.pid,
-                            c.data,
-                            &mut self.collisions,
-                            &self.connect_addr,
-                            &mut self.last_snapshot,
-                            is_active_connection,
-                            is_main_connection,
-                        ),
-                        Connless(data) => {
-                            if let ClientState::RequestedLegacyServerInfo { token, .. } =
-                                &player.data.state
-                            {
-                                self.log.log("Recevied connectionless packet.");
-                                if self.connect_addr == data.addr {
-                                    player.data.ready.received_server_info =
-                                        player.data.ready.received_server_info.clone().or(
-                                            Self::on_connless_packet(
-                                                &[*token],
-                                                self.connect_addr,
-                                                data.data,
-                                            ),
-                                        );
-                                }
-                            }
-                        }
-                        Ready(_) => {
-                            self.log.log("Proxy client ready, sending info.");
-                            socket.sends(System::Info(system::Info {
-                                version: VERSION.as_bytes(),
-                                password: Some(self.base.join_password.as_bytes()),
-                            }));
-                            socket.flush();
-                        }
-                        Disconnect(_, reason) => {
-                            let reason = String::from_utf8_lossy(reason).to_string();
-                            self.log
-                                .log(format!("Proxy client got disconnected: {}", reason));
-                            socket.skip_disconnect_on_drop = true;
-                            if is_main_connection {
-                                self.server_network.kick(&con_id, KickType::Kick(reason));
-                            }
-                        }
-                        Connect(_) => {
-                            // ignore
-                        }
-                    }
+                    event_handler(
+                        socket,
+                        ev,
+                        &mut self.base,
+                        &mut self.collisions,
+                        player_id,
+                        &mut player.data,
+                        is_active_connection,
+                        is_main_connection,
+                    )
                 });
 
                 if let ClientState::MapReady { name, hash } = &mut player.data.state {
@@ -4322,6 +4354,65 @@ impl Client {
             self.base.emoticons.retain(|_, (start_time, _)| {
                 cur_time.saturating_sub(*start_time) <= Duration::from_secs(2)
             });
+
+            let net = self.notifier_server.clone();
+            let receivers: Vec<_> = self
+                .players
+                .values()
+                .map(|p| p.socket.socket.receivers())
+                .collect();
+            let (pkt, index) = self
+                .io
+                .rt
+                .spawn(async move {
+                    type SockFuture =
+                        Pin<Box<dyn Future<Output = Option<(Vec<u8>, SocketAddr)>> + Send>>;
+                    let mut futures: Vec<SockFuture> = vec![Box::pin(async move {
+                        net.wait_for_event_async(None).await;
+                        None
+                    })];
+                    futures.extend(receivers.into_iter().map(|(v4, v6)| {
+                        let future: SockFuture =
+                            Box::pin(async move { Socket::recv_from(v4, v6).await });
+                        future
+                    }));
+                    let (res, index, _) = futures::future::select_all(futures).await;
+                    Ok((res, index))
+                })
+                .get_storage()
+                .unwrap();
+            if let Some((data, addr)) = pkt {
+                if index > 0 {
+                    let index = index - 1;
+
+                    let other_active = if index > 0 {
+                        self.players
+                            .values()
+                            .take(index - 1)
+                            .any(|p| calc_is_active_connection(&p.data))
+                    } else {
+                        false
+                    };
+
+                    let (player_id, player) = self.players.iter_mut().nth(index).unwrap();
+                    player.socket.run_recv((addr, data), &mut |socket, ev| {
+                        let is_active_connection =
+                            !other_active && calc_is_active_connection(&player.data);
+                        event_handler(
+                            socket,
+                            ev,
+                            &mut self.base,
+                            &mut self.collisions,
+                            *player_id,
+                            &mut player.data,
+                            is_active_connection,
+                            index == 0,
+                        )
+                    });
+                }
+            }
+        } else {
+            self.notifier_server.wait_for_event(None);
         }
 
         Ok(())
@@ -4331,7 +4422,7 @@ impl Client {
 pub fn proxy_run(
     io: &Io,
     sys: &base::system::System,
-    addr: Addr,
+    addr: SocketAddr,
     log: ConnectingLog,
 ) -> anyhow::Result<LegacyProxy> {
     Client::run(io, sys, addr, log)
