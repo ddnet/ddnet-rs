@@ -386,7 +386,7 @@ impl Game {
             .iter()
             .map(|(&id, player)| {
                 let is_dummy = match player {
-                    ClientConnectedPlayer::Connecting { is_dummy } => is_dummy,
+                    ClientConnectedPlayer::Connecting { is_dummy, .. } => is_dummy,
                     ClientConnectedPlayer::Connected { is_dummy, .. } => is_dummy,
                 };
                 let player_info = if let Some((info, copy_info)) = is_dummy
@@ -718,9 +718,14 @@ impl Game {
                 ClientConnectedPlayer::Connecting { .. } => {
                     // nothing to do
                 }
-                ClientConnectedPlayer::Connected { is_dummy, .. } => {
+                ClientConnectedPlayer::Connected {
+                    is_dummy,
+                    owns_dummies,
+                    ..
+                } => {
                     *p = ClientConnectedPlayer::Connecting {
                         is_dummy: *is_dummy,
+                        owns_dummies: *owns_dummies,
                     };
                 }
             }
@@ -825,7 +830,10 @@ impl Game {
                         Default::default();
                     expected_local_players.insert(
                         local_player_id_counter,
-                        ClientConnectedPlayer::Connecting { is_dummy: false },
+                        ClientConnectedPlayer::Connecting {
+                            is_dummy: false,
+                            owns_dummies: true,
+                        },
                     );
                     let active_local_player_id = local_player_id_counter;
                     local_player_id_counter += 1;

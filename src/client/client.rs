@@ -1628,7 +1628,10 @@ impl ClientNativeImpl {
                                 game.game_data.local.local_player_id_counter += 1;
                                 game.game_data.local.expected_local_players.insert(
                                     id,
-                                    ClientConnectedPlayer::Connecting { is_dummy: as_dummy },
+                                    ClientConnectedPlayer::Connecting {
+                                        is_dummy: as_dummy,
+                                        owns_dummies: false,
+                                    },
                                 );
                                 game.network.send_unordered_to_server(
                                     &ClientToServerMessage::AddLocalPlayer(Box::new(
@@ -2423,7 +2426,7 @@ impl ClientNativeImpl {
                                 .expected_local_players
                                 .iter()
                                 .filter(|(_, p)| match p {
-                                    ClientConnectedPlayer::Connecting { is_dummy } => *is_dummy,
+                                    ClientConnectedPlayer::Connecting { is_dummy, .. } => *is_dummy,
                                     ClientConnectedPlayer::Connected { is_dummy, .. } => *is_dummy,
                                 })
                                 .nth(dummy_index)
@@ -2433,8 +2436,15 @@ impl ClientNativeImpl {
                         } else if let Some((index, _)) =
                             game.game_data.local.expected_local_players.iter().find(
                                 |(_, p)| match p {
-                                    ClientConnectedPlayer::Connecting { is_dummy } => !*is_dummy,
-                                    ClientConnectedPlayer::Connected { is_dummy, .. } => !*is_dummy,
+                                    ClientConnectedPlayer::Connecting {
+                                        is_dummy,
+                                        owns_dummies,
+                                    } => !*is_dummy && *owns_dummies,
+                                    ClientConnectedPlayer::Connected {
+                                        is_dummy,
+                                        owns_dummies,
+                                        ..
+                                    } => !*is_dummy && *owns_dummies,
                                 },
                             )
                         {

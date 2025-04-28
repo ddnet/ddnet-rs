@@ -68,8 +68,15 @@ pub struct NetworkByteStats {
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClientConnectedPlayer {
-    Connecting { is_dummy: bool },
-    Connected { is_dummy: bool, player_id: PlayerId },
+    Connecting {
+        owns_dummies: bool,
+        is_dummy: bool,
+    },
+    Connected {
+        owns_dummies: bool,
+        is_dummy: bool,
+        player_id: PlayerId,
+    },
 }
 
 pub struct LocalPlayerGameData {
@@ -526,6 +533,7 @@ impl GameData {
             let Some(ClientConnectedPlayer::Connected {
                 player_id: client_player_id,
                 is_dummy,
+                owns_dummies,
             }) = expected_local_players.get(&snap_player.id)
             else {
                 return;
@@ -536,6 +544,7 @@ impl GameData {
             if !local_players.contains_key(&id) {
                 let mut local_player: ClientPlayer = ClientPlayer {
                     is_dummy: *is_dummy,
+                    is_dummies_owner: *owns_dummies,
                     zoom: options
                         .forced_ingame_camera_zoom
                         .map(|z| z.as_f64() as f32)
@@ -720,7 +729,11 @@ impl GameData {
                     .try_overwrite(&inp, local_player.input.version() + 1, true);
             }
 
-            handle_character(local_player_id, local_player, local_player.is_dummy);
+            handle_character(
+                local_player_id,
+                local_player,
+                local_player.is_dummy || local_player.is_dummies_owner,
+            );
         }
         if let DummyHammerState::Active { last_hammer } = &mut self.dummy_control.dummy_hammer {
             if last_hammer
