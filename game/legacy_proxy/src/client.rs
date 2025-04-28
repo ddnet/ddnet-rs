@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    time::Duration,
+};
 
 use anyhow::anyhow;
 use arrayvec::ArrayVec;
@@ -6,12 +9,11 @@ use base::{hash::Hash, reduced_ascii_str::ReducedAsciiString};
 use game_interface::types::{character_info::NetworkCharacterInfo, input::CharacterInput};
 use game_server::client::ServerClientPlayer;
 use hexdump::hexdump_iter;
-use libtw2_event_loop::{Chunk, PeerId};
 use libtw2_gamenet_ddnet::{
     msg::{Connless, Game, System},
     snap_obj,
 };
-use libtw2_net::{net::ChunkOrEvent, Net};
+use libtw2_net::{net::Chunk, net::ChunkOrEvent, net::PeerId, Net};
 use libtw2_packer::with_packer;
 use libtw2_snapshot::Manager;
 use libtw2_socket::{Addr, Socket};
@@ -19,11 +21,22 @@ use log::{debug, log, log_enabled, Level};
 
 use crate::ServerInfo;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct QueuedChunk {
+    pub vital: bool,
+    pub data: Vec<u8>,
+}
+
 pub struct SocketClient {
     pub socket: Socket,
     pub net: Net<Addr>,
     pub server_pid: PeerId,
     pub skip_disconnect_on_drop: bool,
+
+    is_connected: bool,
+    queued_connless: VecDeque<(Vec<u8>, Addr)>,
+    send_buffer: VecDeque<QueuedChunk>,
+    needs_flush: bool,
 }
 
 impl SocketClient {
@@ -37,6 +50,10 @@ impl SocketClient {
             net,
             server_pid,
             skip_disconnect_on_drop: false,
+            queued_connless: Default::default(),
+            send_buffer: Default::default(),
+            needs_flush: false,
+            is_connected: false,
         })
     }
     pub fn run_once(&mut self, mut on_event: impl FnMut(&mut Self, ChunkOrEvent<'_, Addr>)) {
@@ -48,6 +65,42 @@ impl SocketClient {
             .for_each(|e| panic!("{:?}", e));
 
         self.socket.sleep(Some(Duration::from_micros(1))).unwrap();
+
+        while let Some((queued_connless, addr)) = self.queued_connless.pop_front() {
+            match self
+                .net
+                .send_connless(&mut self.socket, addr, &queued_connless)
+            {
+                Ok(_) => {}
+                Err(_) => {
+                    self.queued_connless.push_front((queued_connless, addr));
+                    break;
+                }
+            }
+        }
+
+        if std::mem::take(&mut self.needs_flush) {
+            for queued_connless in &self.send_buffer {
+                self.net
+                    .send(
+                        &mut self.socket,
+                        Chunk {
+                            pid: self.server_pid,
+                            vital: queued_connless.vital,
+                            data: &queued_connless.data,
+                        },
+                    )
+                    .unwrap();
+            }
+            match self.net.flush(&mut self.socket, self.server_pid) {
+                Ok(_) => {
+                    self.send_buffer.clear();
+                }
+                Err(_) => {
+                    self.needs_flush = true;
+                }
+            }
+        }
 
         while let Some(res) = {
             buf1.clear();
@@ -68,6 +121,7 @@ impl SocketClient {
                     continue;
                 }
                 if let ChunkOrEvent::Connect(pid) = chunk {
+                    self.is_connected = true;
                     self.net.accept(&mut self.socket, pid).unwrap();
                 } else {
                     on_event(self, chunk);
@@ -81,15 +135,32 @@ impl SocketClient {
             .unwrap();
     }
     fn send(&mut self, chunk: Chunk) {
-        self.net.send(&mut self.socket, chunk).unwrap();
+        self.send_buffer.push_back(QueuedChunk {
+            vital: chunk.vital,
+            data: chunk.data.to_vec(),
+        });
+        if !self.needs_flush {
+            self.net.send(&mut self.socket, chunk).unwrap();
+        }
     }
     fn send_connless(&mut self, addr: Addr, data: &[u8]) {
-        self.net
-            .send_connless(&mut self.socket, addr, data)
-            .unwrap();
+        match self.net.send_connless(&mut self.socket, addr, data) {
+            Ok(_) => {}
+            Err(_) => {
+                self.queued_connless.push_back((data.to_vec(), addr));
+            }
+        };
     }
     pub fn flush(&mut self) {
-        self.net.flush(&mut self.socket, self.server_pid).unwrap();
+        match self.net.flush(&mut self.socket, self.server_pid) {
+            Ok(_) => {
+                self.send_buffer.clear();
+                self.needs_flush = false;
+            }
+            Err(_) => {
+                self.needs_flush = true;
+            }
+        }
     }
 
     fn sends_impl(msg: System, vital: bool, socket_client: &mut SocketClient) {
@@ -128,7 +199,7 @@ impl SocketClient {
 
 impl Drop for SocketClient {
     fn drop(&mut self) {
-        if !self.skip_disconnect_on_drop {
+        if !self.skip_disconnect_on_drop && self.is_connected {
             self.disconnect(b"disconnect");
         }
     }

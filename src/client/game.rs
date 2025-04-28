@@ -26,7 +26,6 @@ use client_render_game::render_game::{RenderGameCreateOptions, RenderModTy};
 use client_replay::replay::Replay;
 use client_types::{cert::ServerCertMode, console::ConsoleEntry};
 use client_ui::{
-    connect::user_data::ConnectModes,
     ingame_menu::server_info::{GameInfo, GameServerInfo},
     main_menu::page::MainMenuUi,
 };
@@ -35,6 +34,7 @@ use data::{ClientConnectedPlayer, GameData, LocalPlayerGameData};
 use demo::recorder::{DemoRecorder, DemoRecorderCreateProps, DemoRecorderCreatePropsBase};
 use game_base::{
     assets_url::HTTP_RESOURCE_URL,
+    connecting_log::ConnectModes,
     network::messages::{
         GameModification, MsgClAddLocalPlayer, MsgClReady, MsgSvServerInfo, RenderModification,
         RequiredResources,
@@ -240,6 +240,7 @@ impl Game {
             packet_plugins.push(Arc::new(DefaultNetworkPacketCompressor::new()));
         }
 
+        connect.log.log("Preparing client network socket.");
         match QuinnNetwork::init_client(
             None,
             game_event_generator_client.clone(),
@@ -354,6 +355,7 @@ impl Game {
                 &config.dbg,
                 game_options,
                 props,
+                connect.log.clone(),
             ),
             ping,
             prediction_timer: PredictionTimer::new(ping, timestamp),
@@ -603,6 +605,9 @@ impl Game {
 
                     let events_pool = Pool::with_capacity(4);
 
+                    connect
+                        .log
+                        .log("Map fully loaded, waiting for first snapshot from server now.");
                     Self::WaitingForFirstSnapshot(Box::new(ActiveGame {
                         network,
                         map,
@@ -655,7 +660,9 @@ impl Game {
                 } else {
                     map.continue_loading();
                     if let Err(err) = map.err() {
-                        connect.mode.set(ConnectModes::ConnectingErr { msg: err });
+                        connect
+                            .log
+                            .set_mode(ConnectModes::ConnectingErr { msg: err });
                     }
                     Self::Loading(LoadingGame {
                         network,
@@ -801,6 +808,7 @@ impl Game {
             }
             Game::Connecting(connecting) => match msg {
                 ServerToClientMessage::RequiresPassword => {
+                    connecting.connect.log.log("Server requires a password.");
                     pipe.config.ui.path.route("connectpassword");
                     *self = Self::Connecting(connecting);
                 }
@@ -845,6 +853,10 @@ impl Game {
                         required_resources: info.required_resources.clone(),
                     };
 
+                    connecting
+                        .connect
+                        .log
+                        .log("Got initial server info, loading game.");
                     *self = Self::load(
                         connecting.base,
                         connecting.network,
@@ -884,7 +896,11 @@ impl Game {
                     );
                 }
                 ServerToClientMessage::QueueInfo(info) => {
-                    connecting.connect.mode.set(ConnectModes::Queue {
+                    connecting
+                        .connect
+                        .log
+                        .log("Server put client into a connecting queue.");
+                    connecting.connect.log.set_mode(ConnectModes::Queue {
                         msg: info.to_string(),
                     });
                     pipe.config.ui.path.route("connect");
@@ -897,6 +913,10 @@ impl Game {
             },
             Game::Loading(loading) => {
                 if let ServerToClientMessage::Load(info) = msg {
+                    loading
+                        .connect
+                        .log
+                        .log("Server send new server info (map change).");
                     self.on_load(
                         pipe,
                         game_server_info,
@@ -916,6 +936,10 @@ impl Game {
             }
             Game::WaitingForFirstSnapshot(mut game) | Game::Active(mut game) => {
                 if let ServerToClientMessage::Load(info) = msg {
+                    game.connect.log.log(
+                        "Server send new server info (map change).\
+                        Client was waiting for snapshot",
+                    );
                     self.on_load(
                         pipe,
                         game_server_info,
@@ -938,6 +962,9 @@ impl Game {
                     } = &msg
                     {
                         if is_waiting {
+                            game.connect
+                                .log
+                                .log("Got first snapshot, client fully connected.");
                             // set the first ping based on the intial packets,
                             // later prefer the network stats
                             let last_game_tick = pipe.sys.time_get()

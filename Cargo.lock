@@ -101,20 +101,11 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca972c2ea5f742bfce5687b9aef75506a764f61d37f8f649047846a9686ddb66"
-dependencies = [
- "memchr 0.1.11",
-]
-
-[[package]]
-name = "aho-corasick"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e60d3430d3a69478ad0993f19238d2df97c507009a52b3c10addcd7f6bcb916"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -620,7 +611,7 @@ dependencies = [
  "base",
  "clap 4.5.37",
  "dotenvy",
- "env_logger 0.11.8",
+ "env_logger",
  "image-utils",
  "log 0.4.27",
  "parking_lot",
@@ -770,7 +761,7 @@ dependencies = [
  "hyper-util",
  "itoa",
  "matchit",
- "memchr 2.7.4",
+ "memchr",
  "mime",
  "percent-encoding",
  "pin-project-lite",
@@ -1014,7 +1005,7 @@ dependencies = [
  "prettyplease",
  "proc-macro2",
  "quote",
- "regex 1.11.1",
+ "regex",
  "rustc-hash 1.1.0",
  "shlex",
  "syn 2.0.101",
@@ -1170,7 +1161,7 @@ version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "234113d19d0d7d613b40e86fb654acf958910802bcceab913a4f9e7cda03b1a4"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
  "serde",
 ]
 
@@ -1955,7 +1946,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -1966,7 +1957,7 @@ dependencies = [
  "base",
  "hiarc",
  "logos",
- "regex 1.11.1",
+ "regex",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -2466,7 +2457,7 @@ version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d02f3b0da4c6504f86e9cd789d8dbafab48c2321be74e9987593de5a894d93d"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -2774,7 +2765,7 @@ dependencies = [
  "egui-winit",
  "egui_extras",
  "emath",
- "env_logger 0.11.8",
+ "env_logger",
  "fixed",
  "game-base",
  "game-config",
@@ -2835,7 +2826,7 @@ dependencies = [
  "flate2",
  "itertools 0.10.5",
  "log 0.4.27",
- "ndarray 0.15.6",
+ "ndarray",
  "num-complex",
  "realfft",
  "rubato 0.14.1",
@@ -3386,7 +3377,7 @@ dependencies = [
  "config",
  "ed25519-dalek",
  "editor",
- "env_logger 0.11.8",
+ "env_logger",
  "graphics",
  "graphics-backend",
  "graphics-base-traits",
@@ -3757,17 +3748,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
 dependencies = [
  "log 0.4.27",
- "regex 1.11.1",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
-dependencies = [
- "log 0.3.9",
- "regex 0.1.80",
+ "regex",
 ]
 
 [[package]]
@@ -4184,7 +4165,7 @@ dependencies = [
  "futures-macro",
  "futures-sink",
  "futures-task",
- "memchr 2.7.4",
+ "memchr",
  "pin-project-lite",
  "pin-utils",
  "slab",
@@ -4196,7 +4177,7 @@ version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
 dependencies = [
- "thread_local 1.1.8",
+ "thread_local",
 ]
 
 [[package]]
@@ -4560,11 +4541,11 @@ version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54a1028dfc5f5df5da8a56a73e6c153c9a9708ec57232470703592a3f18e49f5"
 dependencies = [
- "aho-corasick 1.1.3",
+ "aho-corasick",
  "bstr",
  "log 0.4.27",
  "regex-automata",
- "regex-syntax 0.8.5",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -5395,7 +5376,7 @@ dependencies = [
  "crossbeam-deque",
  "globset",
  "log 0.4.27",
- "memchr 2.7.4",
+ "memchr",
  "regex-automata",
  "same-file",
  "walkdir",
@@ -5540,7 +5521,7 @@ checksum = "ab2d11b2f17a45095b8c3603928ba29d7d918d7129d0d0641a36ba73cf07daa6"
 dependencies = [
  "console 0.15.11",
  "once_cell",
- "regex 1.11.1",
+ "regex",
  "serde",
  "similar",
 ]
@@ -5801,7 +5782,6 @@ dependencies = [
  "base",
  "base-http",
  "base-io",
- "base-io-traits",
  "bin-patch",
  "bincode",
  "game-base",
@@ -5809,18 +5789,14 @@ dependencies = [
  "game-network",
  "game-server",
  "hexdump",
- "libtw2-common",
- "libtw2-event-loop",
  "libtw2-gamenet-ddnet",
  "libtw2-net",
  "libtw2-packer",
  "libtw2-snapshot",
  "libtw2-socket",
- "libtw2-world",
  "log 0.4.27",
  "map",
  "math",
- "ndarray 0.16.1",
  "network",
  "pool",
  "rand 0.9.1",
@@ -5911,22 +5887,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libtw2-event-loop"
-version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=62e12840783d494df83056efafb0cd55d5b3ae09#62e12840783d494df83056efafb0cd55d5b3ae09"
-dependencies = [
- "arrayvec 0.5.2",
- "hexdump",
- "itertools 0.4.19",
- "libtw2-common",
- "libtw2-logger",
- "libtw2-net",
- "libtw2-socket",
- "log 0.3.9",
- "warn",
-]
-
-[[package]]
 name = "libtw2-gamenet-common"
 version = "0.0.1"
 source = "git+https://github.com/Jupeyy/libtw2.git?rev=62e12840783d494df83056efafb0cd55d5b3ae09#62e12840783d494df83056efafb0cd55d5b3ae09"
@@ -5970,21 +5930,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libtw2-gamenet-teeworlds-0-6"
-version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=62e12840783d494df83056efafb0cd55d5b3ae09#62e12840783d494df83056efafb0cd55d5b3ae09"
-dependencies = [
- "arrayvec 0.5.2",
- "buffer",
- "libtw2-common",
- "libtw2-gamenet-common",
- "libtw2-gamenet-snap",
- "libtw2-packer",
- "uuid 0.8.2",
- "warn",
-]
-
-[[package]]
 name = "libtw2-huffman"
 version = "0.0.1"
 source = "git+https://github.com/Jupeyy/libtw2.git?rev=62e12840783d494df83056efafb0cd55d5b3ae09#62e12840783d494df83056efafb0cd55d5b3ae09"
@@ -5993,14 +5938,6 @@ dependencies = [
  "buffer",
  "itertools 0.4.19",
  "libtw2-common",
-]
-
-[[package]]
-name = "libtw2-logger"
-version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=62e12840783d494df83056efafb0cd55d5b3ae09#62e12840783d494df83056efafb0cd55d5b3ae09"
-dependencies = [
- "env_logger 0.3.5",
 ]
 
 [[package]]
@@ -6065,15 +6002,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libtw2-world"
-version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=62e12840783d494df83056efafb0cd55d5b3ae09#62e12840783d494df83056efafb0cd55d5b3ae09"
-dependencies = [
- "libtw2-common",
- "libtw2-gamenet-teeworlds-0-6",
-]
-
-[[package]]
 name = "libyml"
 version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6131,7 +6059,7 @@ dependencies = [
  "liquid-derive",
  "pest",
  "pest_derive",
- "regex 1.11.1",
+ "regex",
  "serde",
  "time",
 ]
@@ -6156,7 +6084,7 @@ dependencies = [
  "itertools 0.14.0",
  "liquid-core",
  "percent-encoding",
- "regex 1.11.1",
+ "regex",
  "time",
  "unicode-segmentation",
 ]
@@ -6218,7 +6146,7 @@ dependencies = [
  "lazy_static",
  "proc-macro2",
  "quote",
- "regex-syntax 0.8.5",
+ "regex-syntax",
  "rustc_version",
  "syn 2.0.101",
 ]
@@ -6356,7 +6284,7 @@ dependencies = [
  "base-fs",
  "base-io",
  "clap 4.5.37",
- "env_logger 0.11.8",
+ "env_logger",
  "log 0.4.27",
  "map",
  "map-convert-lib",
@@ -6397,7 +6325,7 @@ dependencies = [
  "base64 0.13.1",
  "bytes",
  "clap 2.34.0",
- "env_logger 0.11.8",
+ "env_logger",
  "headers",
  "hex",
  "log 0.4.27",
@@ -6466,15 +6394,6 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8b629fb514376c675b98c1421e80b151d3817ac42d7c667717d282761418d20"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
@@ -6528,7 +6447,7 @@ dependencies = [
  "deep_filter",
  "hiarc",
  "log 0.4.27",
- "ndarray 0.15.6",
+ "ndarray",
  "opus",
  "rubato 0.16.2",
  "serde",
@@ -6701,8 +6620,8 @@ dependencies = [
  "indexmap 2.9.0",
  "naga",
  "once_cell",
- "regex 1.11.1",
- "regex-syntax 0.8.5",
+ "regex",
+ "regex-syntax",
  "rustc-hash 1.1.0",
  "thiserror 1.0.69",
  "tracing",
@@ -6781,21 +6700,6 @@ dependencies = [
  "num-traits",
  "rawpointer",
  "serde",
-]
-
-[[package]]
-name = "ndarray"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
-dependencies = [
- "matrixmultiply",
- "num-complex",
- "num-integer",
- "num-traits",
- "portable-atomic",
- "portable-atomic-util",
- "rawpointer",
 ]
 
 [[package]]
@@ -6908,7 +6812,7 @@ version = "5.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08959a387a676302eebf4ddbcbc611da04285579f76f88ee0506c63b1a61dd4b"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
  "version_check",
 ]
 
@@ -6918,7 +6822,7 @@ version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
  "minimal-lexical",
 ]
 
@@ -7395,7 +7299,7 @@ dependencies = [
  "flate2",
  "hashbrown 0.14.5",
  "indexmap 2.9.0",
- "memchr 2.7.4",
+ "memchr",
  "ruzstd 0.5.0",
 ]
 
@@ -7405,7 +7309,7 @@ version = "0.36.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -7740,7 +7644,7 @@ version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "198db74531d58c70a361c42201efde7e2591e976d518caf7662a47dc5720e7b6"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
  "thiserror 2.0.12",
  "ucd-trie",
 ]
@@ -8172,7 +8076,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f86ba2052aebccc42cbbb3ed234b8b13ce76f75c3551a303cb2bcffcff12bb14"
 dependencies = [
  "bitflags 2.9.0",
- "memchr 2.7.4",
+ "memchr",
  "unicase",
 ]
 
@@ -8194,7 +8098,7 @@ version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d3a6e5838b60e0e8fa7a43f22ade549a37d61f8bdbe636d0d7816191de969c2"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -8203,7 +8107,7 @@ version = "0.37.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "331e97a1af0bf59823e6eadffe373d7b27f485be8748f71471c662c1f269b7fb"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -8546,27 +8450,14 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "0.1.80"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fd4ace6a8cf7860714a2c2280d6c1f7e6a413486c13298bbc86fd3da019402f"
-dependencies = [
- "aho-corasick 0.5.3",
- "memchr 0.1.11",
- "regex-syntax 0.3.9",
- "thread_local 0.2.7",
- "utf8-ranges",
-]
-
-[[package]]
-name = "regex"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
 dependencies = [
- "aho-corasick 1.1.3",
- "memchr 2.7.4",
+ "aho-corasick",
+ "memchr",
  "regex-automata",
- "regex-syntax 0.8.5",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -8575,16 +8466,10 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 dependencies = [
- "aho-corasick 1.1.3",
- "memchr 2.7.4",
- "regex-syntax 0.8.5",
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
 ]
-
-[[package]]
-name = "regex-syntax"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9ec002c35e86791825ed294b50008eea9ddfc8def4420124fbc6b08db834957"
 
 [[package]]
 name = "regex-syntax"
@@ -9060,7 +8945,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b53b0a5db882a8e2fdaae0a43f7b39e7e9082389e978398bdf223a55b581248"
 dependencies = [
- "regex 1.11.1",
+ "regex",
 ]
 
 [[package]]
@@ -9267,7 +9152,7 @@ checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
 dependencies = [
  "indexmap 2.9.0",
  "itoa",
- "memchr 2.7.4",
+ "memchr",
  "ryu",
  "serde",
 ]
@@ -9342,7 +9227,7 @@ dependencies = [
  "indexmap 2.9.0",
  "itoa",
  "libyml",
- "memchr 2.7.4",
+ "memchr",
  "ryu",
  "serde",
  "version_check",
@@ -9354,7 +9239,7 @@ version = "0.1.0"
 dependencies = [
  "base",
  "base-fs",
- "env_logger 0.11.8",
+ "env_logger",
  "game-base",
  "game-server",
  "network",
@@ -9627,7 +9512,7 @@ dependencies = [
  "hashlink 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 2.9.0",
  "log 0.4.27",
- "memchr 2.7.4",
+ "memchr",
  "once_cell",
  "percent-encoding",
  "rustls",
@@ -9709,7 +9594,7 @@ dependencies = [
  "itoa",
  "log 0.4.27",
  "md-5",
- "memchr 2.7.4",
+ "memchr",
  "once_cell",
  "percent-encoding",
  "rand 0.8.5",
@@ -9749,7 +9634,7 @@ dependencies = [
  "itoa",
  "log 0.4.27",
  "md-5",
- "memchr 2.7.4",
+ "memchr",
  "once_cell",
  "rand 0.8.5",
  "serde",
@@ -10305,16 +10190,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "thread-id"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9539db560102d1cef46b8b78ce737ff0bb64e7e18d35b2a5688f7d097d0ff03"
-dependencies = [
- "kernel32-sys",
- "libc",
-]
-
-[[package]]
 name = "thread-priority"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10326,15 +10201,6 @@ dependencies = [
  "log 0.4.27",
  "rustversion",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "thread_local"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8576dbbfcaef9641452d5cf0df9b0e7eeab7694956dd33bb61515fb8f18cfdd5"
-dependencies = [
- "thread-id",
 ]
 
 [[package]]
@@ -10704,7 +10570,7 @@ dependencies = [
  "lazy_static",
  "log 0.4.27",
  "maplit",
- "ndarray 0.15.6",
+ "ndarray",
  "num-integer",
  "num-traits",
  "rustfft",
@@ -10725,7 +10591,7 @@ dependencies = [
  "itertools 0.10.5",
  "lazy_static",
  "maplit",
- "ndarray 0.15.6",
+ "ndarray",
  "nom 7.1.3",
  "num-complex",
  "num-integer",
@@ -11105,12 +10971,6 @@ name = "utf16_iter"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8232dd3cdaed5356e0f716d285e4b40b932ac434100fe9b7e0e8e935b9e6246"
-
-[[package]]
-name = "utf8-ranges"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1ca13c08c41c9c3e04224ed9ff80461d97e121589ff27c753a16cb10830ae0f"
 
 [[package]]
 name = "utf8_iter"
@@ -11926,9 +11786,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.26.8"
+version = "0.26.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2210b291f7ea53617fbafcc4939f10914214ec15aace5ba62293a668f322c5c9"
+checksum = "29aad86cec885cafd03e8305fd727c418e970a521322c91688414d5b8efba16b"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -12512,7 +12372,7 @@ version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6cb8234a863ea0e8cd7284fcdd4f145233eb00fee02bbdd9861aec44e6477bc5"
 dependencies = [
- "memchr 2.7.4",
+ "memchr",
 ]
 
 [[package]]
@@ -12840,7 +12700,7 @@ dependencies = [
  "hmac",
  "indexmap 2.9.0",
  "lzma-rs",
- "memchr 2.7.4",
+ "memchr",
  "pbkdf2",
  "sha1",
  "time",

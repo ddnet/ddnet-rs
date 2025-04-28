@@ -1,6 +1,6 @@
 use std::{
     borrow::Borrow, cell::RefCell, net::SocketAddr, num::NonZeroUsize, path::PathBuf, rc::Rc,
-    sync::Arc, thread::JoinHandle, time::Duration,
+    sync::Arc, time::Duration,
 };
 
 use anyhow::anyhow;
@@ -48,10 +48,7 @@ use client_types::{
 };
 use client_ui::{
     chat::user_data::{ChatEvent, ChatMode},
-    connect::{
-        page::ConnectingUi,
-        user_data::{ConnectMode, ConnectModes},
-    },
+    connect::page::ConnectingUi,
     console::utils::run_commands,
     events::{UiEvent, UiEvents},
     ingame_menu::{
@@ -113,6 +110,7 @@ use game_interface::{
 use game_server::{local_server::start_local_server, server::Server};
 use graphics_types::rendering::ColorRgba;
 use input_binds::binds::{BindKey, Binds};
+use legacy_proxy::LegacyProxy;
 use math::math::{
     length, normalize, normalize_pre_length,
     vector::{dvec2, vec2},
@@ -154,6 +152,7 @@ use crate::{
 
 use game_base::{
     assets_url::HTTP_RESOURCE_URL,
+    connecting_log::{ConnectModes, ConnectingLog},
     game_types::{intra_tick_time, intra_tick_time_to_ratio, is_next_tick, time_until_tick},
     local_server_info::{LocalServerInfo, LocalServerState},
     network::messages::{GameModification, MsgClAddLocalPlayer, MsgClChatMsg, MsgClLoadVotes},
@@ -405,7 +404,7 @@ struct ClientNativeImpl {
     sound: SoundManager,
     sound_backend: Rc<SoundBackend>,
     game: Game,
-    connect_info: ConnectMode,
+    connecting_log: ConnectingLog,
     demo_player: Option<DemoViewer>,
     client_stats: ClientStats,
     notifications: ClientNotifications,
@@ -442,7 +441,7 @@ struct ClientNativeImpl {
 
     global_binds: Binds<BindActionsHotkey>,
 
-    legacy_proxy_thread: Option<JoinHandle<()>>,
+    legacy_proxy_thread: Option<LegacyProxy>,
 
     // pools & helpers
     string_pool: StringPool,
@@ -1980,23 +1979,26 @@ impl ClientNativeImpl {
                             if can_show_warning && !self.config.game.cl.shown_legacy_server_warning
                             {
                                 self.config.engine.ui.path.route("legacywarning");
-                            } else if let Ok((thread, mut addrs, cert)) =
-                                legacy_proxy::proxy_run(&self.io, &self.sys, addr.into())
-                            {
-                                self.legacy_proxy_thread = Some(thread);
+                            } else if let Ok(legacy_proxy) = legacy_proxy::proxy_run(
+                                &self.io,
+                                &self.sys,
+                                addr.into(),
+                                self.connecting_log.clone(),
+                            ) {
                                 self.ui_events.push(UiEvent::Connect {
-                                    addr: addrs.remove(0),
-                                    cert_hash: match cert {
+                                    addr: legacy_proxy.addresses[0],
+                                    cert_hash: match &legacy_proxy.cert {
                                         NetworkServerCertModeResult::Cert { cert } => cert
                                             .tbs_certificate
                                             .subject_public_key_info
                                             .fingerprint_bytes()
                                             .unwrap(),
-                                        NetworkServerCertModeResult::PubKeyHash { hash } => hash,
+                                        NetworkServerCertModeResult::PubKeyHash { hash } => *hash,
                                     },
                                     rcon_secret: Default::default(),
                                     can_start_local_server: false,
                                 });
+                                self.legacy_proxy_thread = Some(legacy_proxy);
                             }
                         }
                         UiEvent::PasswordEntered(password) => {
@@ -2190,7 +2192,8 @@ impl ClientNativeImpl {
         self.client_info.set_local_player_count(1);
         self.account_info.fill_account_info(None);
         self.config.engine.ui.path.route("connect");
-        self.connect_info.set(ConnectModes::Connecting { addr });
+        self.connecting_log
+            .set_mode(ConnectModes::Connecting { addr });
         self.game = Game::new(
             GameBase {
                 graphics: self.graphics.clone(),
@@ -2204,7 +2207,7 @@ impl ClientNativeImpl {
             GameConnect {
                 rcon_secret,
                 addr,
-                mode: self.connect_info.clone(),
+                log: self.connecting_log.clone(),
                 server_cert,
                 browser_data: self.browser_data.clone(),
             },
@@ -2339,22 +2342,25 @@ impl ClientNativeImpl {
                         } else {
                             "127.0.0.1:8303".parse().unwrap()
                         };
-                    if let Ok((thread, addrs, cert)) =
-                        legacy_proxy::proxy_run(&self.io, &self.sys, legacy_addr.into())
-                    {
-                        self.legacy_proxy_thread = Some(thread);
+                    if let Ok(legacy_proxy) = legacy_proxy::proxy_run(
+                        &self.io,
+                        &self.sys,
+                        legacy_addr.into(),
+                        self.connecting_log.clone(),
+                    ) {
                         self.local_console.add_event(LocalConsoleEvent::Connect {
-                            addresses: addrs,
+                            addresses: legacy_proxy.addresses.clone(),
                             can_start_local_server: false,
-                            cert: match cert {
+                            cert: match &legacy_proxy.cert {
                                 NetworkServerCertModeResult::Cert { cert } => {
                                     ServerCertMode::Cert(cert.to_der().unwrap())
                                 }
                                 NetworkServerCertModeResult::PubKeyHash { hash } => {
-                                    ServerCertMode::Hash(hash)
+                                    ServerCertMode::Hash(*hash)
                                 }
                             },
                         });
+                        self.legacy_proxy_thread = Some(legacy_proxy);
                     }
                 }
                 LocalConsoleEvent::Bind { was_player_profile }
@@ -2807,6 +2813,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
                 required_resources: Default::default(),
                 client_local_infos: Default::default(),
             },
+            Default::default(),
         );
         benchmark.bench("menu map");
 
@@ -2843,9 +2850,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         let (steam_client, steam_rt) = init_steam(412220)?;
         benchmark.bench("steam");
 
-        let connect_info = ConnectMode::new(ConnectModes::Connecting {
-            addr: "127.0.0.1:0".parse().unwrap(),
-        });
+        let connecting_log = ConnectingLog::default();
         let ui_events = UiEvents::new();
         let client_info = ClientInfo::default();
 
@@ -2900,7 +2905,8 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             browser_data.clone(),
             enabled_features,
         ));
-        let connecting_menu = Box::new(ConnectingUi::new(connect_info.clone(), ui_events.clone()));
+        let connecting_menu =
+            Box::new(ConnectingUi::new(connecting_log.clone(), ui_events.clone()));
         let ingame_menu = Box::new(IngameMenuUi::new(
             &graphics,
             &sound,
@@ -3005,7 +3011,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             sound,
             sound_backend,
             game: Game::None,
-            connect_info,
+            connecting_log,
             demo_player: None,
 
             client_stats,
@@ -3192,6 +3198,22 @@ impl FromNativeImpl for ClientNativeImpl {
         let sys = &mut self.sys;
         self.cur_time = sys.time_get();
 
+        if let Some(legacy_proxy) = &self.legacy_proxy_thread {
+            if !matches!(self.game, Game::Active(_)) && legacy_proxy.thread.is_finished() {
+                // check for an error from the thread
+                let mut legacy_proxy = self.legacy_proxy_thread.take().unwrap();
+                if let Err(err) = legacy_proxy.thread.try_join() {
+                    self.notifications.add_err(
+                        format!("Legacy proxy crashed: {}", err),
+                        Duration::from_secs(10),
+                    );
+                    self.connecting_log.log(format!("Legacy proxy died: {err}"));
+                } else {
+                    self.connecting_log
+                        .log("Legacy proxy was shutdown gracefully.");
+                }
+            }
+        }
         self.game.update(
             &self.config.engine,
             &mut self.config.game,

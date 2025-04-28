@@ -27,7 +27,7 @@ use rayon::ThreadPool;
 pub use render_game_wasm::render::render_wasm_manager::RenderGameWasmManager;
 use render_game_wasm::render::render_wasm_manager::{RenderGameMod, RENDER_MODS_PATH};
 
-use game_base::network::messages::GameModification;
+use game_base::{connecting_log::ConnectingLog, network::messages::GameModification};
 use sound::sound::SoundManager;
 
 #[derive(Debug)]
@@ -73,6 +73,7 @@ pub struct ClientMapLoadingFile {
     graphics: Graphics,
     backend: Rc<GraphicsBackend>,
     sys: System,
+    log: ConnectingLog,
 }
 
 impl ClientMapLoadingFile {
@@ -91,6 +92,7 @@ impl ClientMapLoadingFile {
         config_debug: &ConfigDebug,
         game_options: GameStateCreateOptions,
         props: RenderGameCreateOptions,
+        log: ConnectingLog,
     ) -> Self {
         let downloaded_path: Option<&Path> = (!as_menu_map).then_some("downloaded".as_ref());
         let download_map_file_name = if let Some(map_hash) = map_hash {
@@ -110,14 +112,20 @@ impl ClientMapLoadingFile {
 
         let file_system = io.fs.clone();
         let http = io.http.clone();
+        let log_load = log.clone();
         let resource_download_server_thread = props.resource_download_server.clone();
         Self {
             task: io.rt.spawn(async move {
+                log_load.log(format!(
+                    "Ready map file from file system: {:?}",
+                    map_file_name
+                ));
                 let file = file_system.read_file(map_file_name.as_ref()).await;
 
                 let file = match file {
                     Ok(file) => Ok(file),
                     Err(err) => {
+                        log_load.log("Loading map failed, downloading from server now.");
                         // try to download file
                         if let Some(resource_download_server) = resource_download_server_thread
                             .and_then(|url| {
@@ -147,6 +155,7 @@ impl ClientMapLoadingFile {
                             file_system
                                 .write_file(map_file_name.as_ref(), file.clone())
                                 .await?;
+                            log_load.log("Map downloaded successfully and saved to disk.");
                             Ok(file)
                         } else {
                             Err(err)
@@ -181,12 +190,21 @@ impl ClientMapLoadingFile {
                         let resource_download_server_thread =
                             props.resource_download_server.clone();
 
+                        let log = log.clone();
+
                         io.rt.spawn(async move {
+                            log.log(format!(
+                                "Loading physics wasm module: {:?}",
+                                game_mod_file_name
+                            ));
                             let file = fs.read_file(game_mod_file_name.as_ref()).await;
 
                             let file = match file {
                                 Ok(file) => Ok(file),
                                 Err(err) => {
+                                    log.log(
+                                        "Physics wasm module not found, downloading from server.",
+                                    );
                                     // try to download file
                                     if let Some(resource_download_server) =
                                         resource_download_server_thread.and_then(|url| {
@@ -214,6 +232,10 @@ impl ClientMapLoadingFile {
                                         }
                                         fs.write_file(game_mod_file_name.as_ref(), file.clone())
                                             .await?;
+                                        log.log(
+                                            "Physics wasm module downloaded sucessfully \
+                                            and written to disk.",
+                                        );
 
                                         Ok(file)
                                     } else {
@@ -236,6 +258,7 @@ impl ClientMapLoadingFile {
             sys: sys.clone(),
             props,
             game_options,
+            log,
         }
     }
 }
@@ -270,6 +293,7 @@ pub struct ClientMapComponentLoading {
     ty: ClientMapComponentLoadingType,
     io: Io,
     thread_pool: Arc<rayon::ThreadPool>,
+    log: ConnectingLog,
 }
 
 impl ClientMapComponentLoading {
@@ -284,6 +308,7 @@ impl ClientMapComponentLoading {
         config: &ConfigDebug,
         as_menu_map: bool,
         props: RenderGameCreateOptions,
+        log: ConnectingLog,
     ) -> Self {
         Self {
             ty: if as_menu_map {
@@ -301,6 +326,8 @@ impl ClientMapComponentLoading {
             } else {
                 let fs = io.fs.clone();
                 let render_mod = props.render_mod.clone();
+                let log = log.clone();
+                log.log("Preparing rendering module");
                 ClientMapComponentLoadingType::Game(GameLoading::Task {
                     task: io.rt.spawn(async move {
                         let required = matches!(&render_mod, RenderModTy::Required { .. });
@@ -324,6 +351,7 @@ impl ClientMapComponentLoading {
                                 } else {
                                     format!("{}/{}.wasm", RENDER_MODS_PATH, name.as_str())
                                 };
+                                log.log(format!("Reading rendering module: {}", path_str));
                                 let file = fs
                                     .read_file(path_str.as_ref())
                                     .await
@@ -345,6 +373,10 @@ impl ClientMapComponentLoading {
 
                                 let file = if let (Err(err), Some(local_name)) = (&file, local_name)
                                 {
+                                    log.log(format!(
+                                        "Failed to load optional render mod: {err}. \
+                                        Falling back to local mod."
+                                    ));
                                     log::info!(
                                         "Failed to load optional render mod: {err}. \
                                         Falling back to local mod."
@@ -397,6 +429,7 @@ impl ClientMapComponentLoading {
             },
             io,
             thread_pool,
+            log,
         }
     }
 }
@@ -492,6 +525,7 @@ impl ClientMapLoading {
         config_debug: &ConfigDebug,
         game_options: GameStateCreateOptions,
         props: RenderGameCreateOptions,
+        log: ConnectingLog,
     ) -> Self {
         Self::File(ClientMapLoadingFile::new(
             sound,
@@ -508,6 +542,7 @@ impl ClientMapLoading {
             config_debug,
             game_options,
             props,
+            log,
         ))
     }
 
@@ -563,6 +598,7 @@ impl ClientMapLoading {
                                 &file.config_debug,
                                 file.as_menu_map,
                                 file.props,
+                                file.log,
                             );
 
                             *self = Self::PrepareComponents {
@@ -623,6 +659,7 @@ impl ClientMapLoading {
                                         ),
                                         io: render.io,
                                         thread_pool: render.thread_pool,
+                                        log: render.log,
                                     },
                                     map,
                                     map_name,
@@ -657,6 +694,7 @@ impl ClientMapLoading {
                                                         game.info.chat_commands.clone(),
                                                     );
 
+                                                    render.log.log("Loaded map & modules.");
                                                     // finished loading
                                                     *self =
                                                         Self::Map(ClientMapFile::Game(GameMap {
@@ -684,6 +722,7 @@ impl ClientMapLoading {
                                                     ),
                                                     io: render.io,
                                                     thread_pool: render.thread_pool,
+                                                    log: render.log,
                                                 },
                                                 map,
                                                 map_name,
@@ -711,6 +750,7 @@ impl ClientMapLoading {
                                             ty: ClientMapComponentLoadingType::Menu(map_prepare),
                                             io: render.io,
                                             thread_pool: render.thread_pool,
+                                            log: render.log,
                                         },
                                         map,
                                         map_name,

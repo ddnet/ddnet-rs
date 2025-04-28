@@ -12,13 +12,15 @@ use client_notifications::overlay::ClientNotifications;
 use client_types::{cert::ServerCertMode, console::ConsoleEntry};
 use client_ui::ingame_menu::account_info::AccountInfo;
 use client_ui::{
-    connect::user_data::ConnectMode,
     ingame_menu::{client_info::ClientInfo, votes::Votes},
     main_menu::{player_settings_ntfy::PlayerSettingsSync, spatial_chat},
 };
 use config::config::ConfigEngine;
 use egui::FontDefinitions;
-use game_base::{local_server_info::LocalServerInfo, server_browser::ServerBrowserData};
+use game_base::{
+    connecting_log::ConnectingLog, local_server_info::LocalServerInfo,
+    server_browser::ServerBrowserData,
+};
 use game_config::config::ConfigGame;
 use game_network::{game_event_generator::GameEventGenerator, messages::ServerToClientMessage};
 use graphics::graphics::graphics::Graphics;
@@ -67,7 +69,7 @@ impl Drop for DisconnectAutoCleanup {
 pub struct GameConnect {
     pub rcon_secret: Option<[u8; 32]>,
     pub addr: SocketAddr,
-    pub mode: ConnectMode,
+    pub log: ConnectingLog,
     pub server_cert: ServerCertMode,
     pub browser_data: ServerBrowserData,
 }

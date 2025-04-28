@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use chrono::DateTime;
-use client_ui::{connect::user_data::ConnectModes, ingame_menu::server_info::GameServerInfo};
+use client_ui::ingame_menu::server_info::GameServerInfo;
+use game_base::connecting_log::ConnectModes;
 use game_network::game_event_generator::GameEvents;
 use math::math::vector::luffixed;
 
@@ -60,16 +61,16 @@ impl GameEventsClient {
                             if matches!(reason, NetworkEventDisconnect::Graceful) {
                                 pipe.msgs.config.ui.path.route("");
                             } else {
-                                let connect_info = match pipe.game {
+                                let log = match pipe.game {
                                     Game::None | Game::Err(_) => None,
-                                    Game::PrepareConnect(game) => Some(&game.connect.mode),
-                                    Game::Connecting(game) => Some(&game.connect.mode),
-                                    Game::Loading(game) => Some(&game.connect.mode),
-                                    Game::WaitingForFirstSnapshot(game) => Some(&game.connect.mode),
-                                    Game::Active(game) => Some(&game.connect.mode),
+                                    Game::PrepareConnect(game) => Some(&game.connect.log),
+                                    Game::Connecting(game) => Some(&game.connect.log),
+                                    Game::Loading(game) => Some(&game.connect.log),
+                                    Game::WaitingForFirstSnapshot(game) => Some(&game.connect.log),
+                                    Game::Active(game) => Some(&game.connect.log),
                                 };
-                                if let Some(connect_info) = connect_info {
-                                    connect_info.set(ConnectModes::DisconnectErr {
+                                if let Some(log) = log {
+                                    log.set_mode(ConnectModes::DisconnectErr {
                                         msg: match reason {
                                             NetworkEventDisconnect::ConnectionClosed(
                                                 NetworkEventConnectingClosed::Banned(ban),
@@ -159,7 +160,7 @@ impl GameEventsClient {
                         }
                         NetworkEvent::ConnectingFailed(reason) => {
                             if let Game::Connecting(game) = pipe.game {
-                                game.connect.mode.set(ConnectModes::ConnectingErr {
+                                game.connect.log.set_mode(ConnectModes::ConnectingErr {
                                     msg: match reason {
                                         NetworkEventConnectingFailed::ConnectionClosed(
                                             NetworkEventConnectingClosed::Banned(ban),
