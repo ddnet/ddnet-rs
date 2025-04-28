@@ -897,6 +897,8 @@ impl TileBrush {
         available_rect: &egui::Rect,
         client: &mut EditorClient,
     ) {
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
+        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
         fn has_unused_tiles(
             tile_picker: &TileBrushTilePicker,
             map: &EditorMap,
@@ -1425,7 +1427,7 @@ impl TileBrush {
                         self.brush = None;
                     }
 
-                    if !latest_pointer.primary_down() {
+                    if !is_primary_allowed_down {
                         // if shift, then delete the selection
                         if self.pointer_down_world_pos.is_some_and(|t| t.shift) {
                             if let Some(brush) = &self.brush {
@@ -1583,12 +1585,12 @@ impl TileBrush {
                 }
             }
 
-            if !latest_pointer.primary_down() {
+            if !is_primary_allowed_down {
                 self.pointer_down_world_pos = None;
             }
         } else {
             // else check if the pointer is down now
-            if latest_pointer.primary_pressed() {
+            if is_primary_allowed_pressed {
                 let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
                 let pos = ui_pos_to_world_pos(
                     canvas_handle,
@@ -2084,6 +2086,7 @@ impl TileBrush {
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         current_pointer_pos: &egui::Pos2,
         client: &mut EditorClient,
     ) {
@@ -2092,12 +2095,15 @@ impl TileBrush {
 
         let brush = self.brush.as_ref().unwrap();
 
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
+        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
+
         // reset brush
         if latest_pointer.secondary_pressed() {
             self.brush = None;
             self.shift_pointer_down_world_pos = None;
         } else if (latest_modifiers.shift
-            && (!latest_pointer.primary_down() || latest_pointer.primary_pressed()))
+            && (!is_primary_allowed_down || is_primary_allowed_pressed))
             || self.shift_pointer_down_world_pos.is_some()
         {
             if let Some(TileBrushDownPos { world, .. }) = &self.shift_pointer_down_world_pos {
@@ -2129,7 +2135,7 @@ impl TileBrush {
                 let height = (pos_cur.y - pos_old.y).unsigned_abs() as u16 + 1;
                 let pos_min = ivec2::new(pos_cur.x.min(pos_old.x), pos_cur.y.min(pos_old.y));
 
-                if !latest_pointer.primary_down() {
+                if !is_primary_allowed_down {
                     self.apply_brush_repeating_internal(
                         brush,
                         map,
@@ -2151,7 +2157,7 @@ impl TileBrush {
                     );
                     self.shift_pointer_down_world_pos = None;
                 }
-            } else if latest_pointer.primary_pressed() {
+            } else if is_primary_allowed_pressed {
                 let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
                 let pos = ui_pos_to_world_pos(
                     canvas_handle,
@@ -2173,9 +2179,9 @@ impl TileBrush {
             }
         }
         // fill tool
-        else if latest_modifiers.ctrl
+        else if latest_keys_down.contains(&egui::Key::B)
             && Self::brush_tiles_match_layer(&brush.tiles, &layer)
-            && latest_pointer.primary_pressed()
+            && is_primary_allowed_pressed
         {
             let (w, h) = layer.get_width_and_height();
             let pos = current_pointer_pos;
@@ -2417,7 +2423,7 @@ impl TileBrush {
             });
         }
         // apply brush
-        else if !latest_modifiers.ctrl && latest_pointer.primary_down() {
+        else if !latest_keys_down.contains(&egui::Key::B) && is_primary_allowed_down {
             let pos = current_pointer_pos;
 
             let pos = vec2::new(pos.x, pos.y);
@@ -2471,16 +2477,16 @@ impl TileBrush {
         canvas_handle: &GraphicsCanvasHandle,
         stream_handle: &GraphicsStreamHandle,
         map: &EditorMap,
-        latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
         entities_container: &mut EntitiesContainer,
         fake_texture_2d_array: &TextureContainer2dArray,
     ) {
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
         // if pointer was already down
-        if self.pointer_down_world_pos.is_some()
-            && latest_pointer.primary_down()
-            && self.brush.is_some()
+        if self.pointer_down_world_pos.is_some() && is_primary_allowed_down && self.brush.is_some()
         {
             self.render_brush(
                 ui_canvas,
@@ -2492,7 +2498,7 @@ impl TileBrush {
                 canvas_handle,
                 stream_handle,
                 map,
-                latest_modifiers,
+                latest_keys_down,
                 current_pointer_pos,
                 entities_container,
                 fake_texture_2d_array,
@@ -2726,7 +2732,7 @@ impl TileBrush {
         canvas_handle: &GraphicsCanvasHandle,
         stream_handle: &GraphicsStreamHandle,
         map: &EditorMap,
-        latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         current_pointer_pos: &egui::Pos2,
         entities_container: &mut EntitiesContainer,
         fake_texture_2d_array: &TextureContainer2dArray,
@@ -2830,7 +2836,7 @@ impl TileBrush {
                 &parallax,
                 &offset,
             );
-        } else if latest_modifiers.ctrl
+        } else if latest_keys_down.contains(&egui::Key::B)
             && brush.w.get() == 1
             && brush.h.get() == 1
             && Self::brush_tiles_match_layer(&brush.tiles, &layer)
@@ -3218,6 +3224,7 @@ impl TileBrush {
                 map,
                 latest_pointer,
                 latest_modifiers,
+                latest_keys_down,
                 current_pointer_pos,
                 client,
             );
@@ -3238,8 +3245,8 @@ impl TileBrush {
         fake_texture_2d_array: &TextureContainer2dArray,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
-        latest_keys_down: &HashSet<egui::Key>,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         current_pointer_pos: &egui::Pos2,
         available_rect: &egui::Rect,
     ) {
@@ -3422,8 +3429,9 @@ impl TileBrush {
                 canvas_handle,
                 stream_handle,
                 map,
-                latest_modifiers,
+                latest_keys_down,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
                 entities_container,
                 fake_texture_2d_array,
@@ -3439,7 +3447,7 @@ impl TileBrush {
                 canvas_handle,
                 stream_handle,
                 map,
-                latest_modifiers,
+                latest_keys_down,
                 current_pointer_pos,
                 entities_container,
                 fake_texture_2d_array,

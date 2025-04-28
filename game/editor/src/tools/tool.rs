@@ -112,8 +112,8 @@ impl ToolTileLayer {
                 fake_texture_2d_array,
                 map,
                 latest_pointer,
-                latest_keys_down,
                 latest_modifiers,
+                latest_keys_down,
                 current_pointer_pos,
                 available_rect,
             ),
@@ -149,6 +149,7 @@ impl ToolQuadLayer {
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         client: &mut EditorClient,
     ) {
         match active_tool {
@@ -163,6 +164,7 @@ impl ToolQuadLayer {
                 latest_pointer,
                 current_pointer_pos,
                 latest_modifiers,
+                latest_keys_down,
                 client,
             ),
             ActiveToolQuads::Selection => self.selection.update(
@@ -172,6 +174,7 @@ impl ToolQuadLayer {
                 latest_pointer,
                 current_pointer_pos,
                 latest_modifiers,
+                latest_keys_down,
                 client,
             ),
         }
@@ -185,6 +188,7 @@ impl ToolQuadLayer {
         canvas_handle: &GraphicsCanvasHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
     ) {
         match active_tool {
@@ -194,6 +198,7 @@ impl ToolQuadLayer {
                 canvas_handle,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
             ),
             ActiveToolQuads::Selection => self.selection.render(
@@ -202,6 +207,7 @@ impl ToolQuadLayer {
                 canvas_handle,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
             ),
         }

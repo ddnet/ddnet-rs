@@ -2165,7 +2165,9 @@ impl Editor {
     /// brushes, moving camera etc.
     fn handle_world(&mut self, ui_canvas: &UiCanvasSize, unused_rect: egui::Rect) {
         // handle middle mouse click
-        if self.latest_pointer.middle_down() {
+        if self.latest_pointer.middle_down()
+            || (self.latest_modifiers.ctrl && self.latest_pointer.primary_down())
+        {
             let active_tab = self.tabs.get_mut(&self.active_tab);
             if let Some(tab) = active_tab {
                 if let Some(middle_down_pointer) = &self.middle_down_pointer_pos {
@@ -2305,6 +2307,7 @@ impl Editor {
                     &self.latest_pointer,
                     &self.current_pointer_pos,
                     &self.latest_modifiers,
+                    &self.latest_keys_down,
                     &mut tab.client,
                 ),
                 ActiveTool::Sounds(tool) => self.tools.sounds.update(
@@ -2387,6 +2390,7 @@ impl Editor {
                     &self.graphics.canvas_handle,
                     &tab.map,
                     &self.latest_pointer,
+                    &self.latest_modifiers,
                     &self.current_pointer_pos,
                 ),
                 ActiveTool::Sounds(tool) => self.tools.sounds.render(

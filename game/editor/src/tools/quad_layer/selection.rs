@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use client_render_base::map::render_tools::{CanvasType, RenderTools};
 use graphics::handles::{
@@ -72,6 +72,7 @@ impl QuadSelection {
         canvas_handle: &GraphicsCanvasHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
     ) {
         let layer = map.active_layer();
@@ -87,6 +88,7 @@ impl QuadSelection {
         else {
             return;
         };
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
 
         let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
@@ -154,7 +156,7 @@ impl QuadSelection {
                 self.range = None;
             }
 
-            if !latest_pointer.primary_down() {
+            if !is_primary_allowed_down {
                 self.pointer_down_state = QuadPointerDownState::None;
             }
         } else {
@@ -184,6 +186,7 @@ impl QuadSelection {
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         client: &EditorClient,
     ) {
         let layer = map.active_layer();
@@ -206,6 +209,11 @@ impl QuadSelection {
 
         let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
+        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
+        let is_primary_allowed_released =
+            !latest_modifiers.ctrl && latest_pointer.primary_released();
+
         let vec2 { x, y } = ui_pos_to_world_pos(
             canvas_handle,
             ui_canvas,
@@ -224,9 +232,7 @@ impl QuadSelection {
             point: QuadPointerDownPoint::Center,
             cursor_in_world_pos,
             cursor_corner_offset,
-        }) = latest_pointer
-            .primary_down()
-            .then_some(&mut self.pointer_down_state)
+        }) = is_primary_allowed_down.then_some(&mut self.pointer_down_state)
         {
             let align_pos = |pos: vec2| align_pos(map, latest_modifiers, pos);
 
@@ -252,7 +258,7 @@ impl QuadSelection {
                 let alter_anim_point = map.user.change_animations()
                     && pos_anim.is_some_and(|a| quads.values().all(|q| q.pos_anim == Some(a)));
                 if alter_anim_point {
-                    if latest_modifiers.ctrl {
+                    if latest_keys_down.contains(&egui::Key::R) {
                         if let Some(pos) = &mut map.animations.user.active_anim_points.pos {
                             pos.value.z += ffixed::from_num(diff);
                         }
@@ -264,7 +270,7 @@ impl QuadSelection {
                     quads.into_iter().for_each(|(index, q)| {
                         let old = *q;
 
-                        if latest_modifiers.ctrl {
+                        if latest_keys_down.contains(&egui::Key::R) {
                             // handle rotation
                             let (points, center) = q.points.split_at_mut(4);
 
@@ -304,7 +310,7 @@ impl QuadSelection {
                     });
 
                     // move the selection, small visual upgrade
-                    if !latest_modifiers.ctrl {
+                    if !latest_keys_down.contains(&egui::Key::R) {
                         range.x += x_diff;
                         range.y += y_diff;
                     }
@@ -313,7 +319,7 @@ impl QuadSelection {
         } else {
             // check if the pointer clicked on one of the quad corner/center points
             let mut clicked_quad_point = false;
-            if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
+            if is_primary_allowed_pressed || latest_pointer.secondary_pressed() {
                 for quad in layer.layer.quads.iter() {
                     let points =
                         super::shared::get_quad_points_animated(quad, map, map.user.render_time());
@@ -353,7 +359,7 @@ impl QuadSelection {
                         let quad_pos =
                             vec2::new(points[index].x.to_num(), points[index].y.to_num());
                         let cursor = vec2::new(x, y);
-                        if latest_pointer.primary_pressed() {
+                        if is_primary_allowed_pressed {
                             self.pointer_down_state = QuadPointerDownState::Point {
                                 point: down_point,
                                 cursor_in_world_pos: cursor,
@@ -373,7 +379,7 @@ impl QuadSelection {
                 }
             }
 
-            if latest_pointer.primary_released() {
+            if is_primary_allowed_released {
                 self.pointer_down_state = QuadPointerDownState::None;
             }
         }
@@ -386,6 +392,7 @@ impl QuadSelection {
         stream_handle: &GraphicsStreamHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
     ) {
         let layer = map.active_layer();
@@ -394,9 +401,10 @@ impl QuadSelection {
         } else {
             Default::default()
         };
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
         // if pointer was already down
         if let QuadPointerDownState::Selection(pointer_down) = &self.pointer_down_state {
-            if latest_pointer.primary_down() {
+            if is_primary_allowed_down {
                 let pos = current_pointer_pos;
                 let pos = ui_pos_to_world_pos(
                     canvas_handle,
@@ -486,6 +494,7 @@ impl QuadSelection {
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         client: &EditorClient,
     ) {
         let layer = map.active_layer();
@@ -499,6 +508,7 @@ impl QuadSelection {
                 canvas_handle,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
             );
         } else if self.range.is_some() {
@@ -509,6 +519,7 @@ impl QuadSelection {
                 latest_pointer,
                 current_pointer_pos,
                 latest_modifiers,
+                latest_keys_down,
                 client,
             );
         }
@@ -521,6 +532,7 @@ impl QuadSelection {
         canvas_handle: &GraphicsCanvasHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
     ) {
         let layer = map.active_layer();
@@ -545,6 +557,7 @@ impl QuadSelection {
                 stream_handle,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
             );
         } else {
