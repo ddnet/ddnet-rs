@@ -657,6 +657,7 @@ impl QuadBrush {
                         count,
                         cur_quad_offset.get(),
                     );
+                    cur_quad_offset.set(cur_quad_offset.get() + count);
                 }),
             );
         }
