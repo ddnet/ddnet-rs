@@ -1124,6 +1124,29 @@ impl Client {
                             ddnet_char.target_y as f64 / 32.0,
                         )));
                     }
+                    let mut reusable_core =
+                        PoolCharacterReusableCore::from_without_pool(CharacterReusableCore {
+                            weapons,
+                            core: CoreReusable::new(),
+                            buffs,
+                            debuffs: Default::default(),
+                            interactions: Default::default(),
+                            queued_emoticon: Default::default(),
+                        });
+                    if let Some(ddnet_char) = ddnet_char {
+                        if ddnet_char.freeze_start.0 != 0 {
+                            let remaining = ddnet_char.freeze_end.0.saturating_sub(tick);
+                            reusable_core.debuffs.insert(
+                                CharacterDebuff::Freeze,
+                                BuffProps {
+                                    remaining_tick: (remaining.unsigned_abs() as u64).into(),
+                                    interact_tick: Default::default(),
+                                    interact_cursor_dir: Default::default(),
+                                    interact_val: 0.0,
+                                },
+                            );
+                        }
+                    }
                     if let Some(collision) = collision {
                         let mut char_tick = character_core.tick;
                         let field = CharacterPositionPlayfield::new(
@@ -1190,7 +1213,8 @@ impl Client {
                                 })
                                 .flatten()
                                 .or(inp);
-                            let use_inp = inp.is_some();
+                            let use_inp = inp.is_some()
+                                && !reusable_core.debuffs.contains_key(&CharacterDebuff::Freeze);
                             let inp = inp.unwrap_or_default();
                             core.physics_tick(
                                 &mut fake_pos,
@@ -1324,29 +1348,6 @@ impl Client {
                         emoticon_tick,
                         ..Default::default()
                     };
-                    let mut reusable_core =
-                        PoolCharacterReusableCore::from_without_pool(CharacterReusableCore {
-                            weapons,
-                            core: CoreReusable::new(),
-                            buffs,
-                            debuffs: Default::default(),
-                            interactions: Default::default(),
-                            queued_emoticon: Default::default(),
-                        });
-                    if let Some(ddnet_char) = ddnet_char {
-                        if ddnet_char.freeze_start.0 != 0 {
-                            let remaining = ddnet_char.freeze_end.0.saturating_sub(tick);
-                            reusable_core.debuffs.insert(
-                                CharacterDebuff::Freeze,
-                                BuffProps {
-                                    remaining_tick: (remaining.unsigned_abs() as u64).into(),
-                                    interact_tick: Default::default(),
-                                    interact_cursor_dir: Default::default(),
-                                    interact_val: 0.0,
-                                },
-                            );
-                        }
-                    }
                     stage.world.characters.insert(
                         char_id,
                         SnapshotCharacter {

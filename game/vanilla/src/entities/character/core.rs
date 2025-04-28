@@ -70,6 +70,8 @@ pub mod character_core {
         pub count: i32,
         pub max: i32,
         pub queued: u64,
+
+        pub endless: bool,
     }
 
     impl Default for CoreJumps {
@@ -79,6 +81,7 @@ pub mod character_core {
                 count: 0,
                 max: 2,
                 queued: 0,
+                endless: false,
             }
         }
     }
@@ -104,6 +107,8 @@ pub mod character_core {
         pub collision_disabled: bool,
         pub hook_hit_disabled: bool,
         pub is_super: bool,
+
+        pub has_endless: bool,
 
         pub move_restrictions: i32,
     }
