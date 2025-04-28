@@ -654,11 +654,41 @@ pub mod character {
                 .push_effect(Some(self.base.game_element_id), pos, ev);
         }
 
-        fn handle_game_layer_tiles(&mut self, tile: &Tile, res: &mut CharacterDamageResult) {
+        /// Returns true if the tile was handled
+        fn handle_game_front_tiles(
+            &mut self,
+            tile: &Tile,
+            res: &mut CharacterDamageResult,
+        ) -> bool {
             if tile.index == DdraceTileNum::Death as u8 {
                 self.die(None, GameWorldActionKillWeapon::World, Default::default());
                 *res = CharacterDamageResult::Death;
+            } else if tile.index == DdraceTileNum::Freeze as u8 {
+                // freeze
+                self.reusable_core.debuffs.insert(
+                    CharacterDebuff::Freeze,
+                    BuffProps {
+                        remaining_tick: (TICKS_PER_SECOND * 3).into(),
+                        interact_tick: 0.into(),
+                        interact_cursor_dir: Default::default(),
+                        interact_val: 0.0,
+                    },
+                );
+            } else if tile.index == DdraceTileNum::Unfreeze as u8 {
+                // unfreeze
+                self.reusable_core.debuffs.remove(&CharacterDebuff::Freeze);
+            } else {
+                return false;
             }
+            true
+        }
+
+        fn handle_game_layer_tiles(&mut self, tile: &Tile, res: &mut CharacterDamageResult) {
+            self.handle_game_front_tiles(tile, res);
+        }
+
+        fn handle_front_layer_tiles(&mut self, tile: &Tile, res: &mut CharacterDamageResult) {
+            self.handle_game_front_tiles(tile, res);
         }
 
         #[must_use]
@@ -670,10 +700,7 @@ pub mod character {
                     self.handle_game_layer_tiles(tile, &mut res);
                 }
                 HitTile::Front(tile) => {
-                    if tile.index == DdraceTileNum::Death as u8 {
-                        self.die(None, GameWorldActionKillWeapon::World, Default::default());
-                        res = CharacterDamageResult::Death;
-                    }
+                    self.handle_front_layer_tiles(tile, &mut res);
                 }
                 HitTile::Tele(_) => {}
                 HitTile::Speedup(_) => {}
@@ -1477,6 +1504,39 @@ pub mod character {
 
             self.handle_emoticon_queue();
         }
+
+        fn post_ddrace_tick(&mut self) {
+            let core = &mut self.core.core;
+            if core.has_endless {
+                if let CharacterPhasedState::Normal(state) = &mut self.phased {
+                    let (mut hook, hooked_char) = state.hook.get();
+                    if let Hook::Active { hook_tick, .. } = &mut hook {
+                        *hook_tick = 0;
+                    }
+                    state.hook.set(hook, hooked_char);
+                }
+            }
+
+            // following jump rules can be overridden by tiles, like Refill Jumps, Stopper and Wall Jump
+            if core.jumps.max == -1 {
+                // The player has only one ground jump, so his feet are always dark
+                core.jumps.flag |= 2;
+            } else if core.jumps.max == 0 {
+                // The player has no jumps at all, so his feet are always dark
+                core.jumps.flag |= 2;
+            } else if core.jumps.max == 1 && core.jumps.flag > 0 {
+                // If the player has only one jump, each jump is the last one
+                core.jumps.flag |= 2;
+            } else if core.jumps.count < core.jumps.max - 1 && core.jumps.flag > 1 {
+                // The player has not yet used up all his jumps, so his feet remain light
+                core.jumps.flag = 1;
+            }
+
+            if (core.is_super || core.jumps.endless) && core.jumps.flag > 1 {
+                // Super players and players with infinite jumps always have light feet
+                core.jumps.flag = 1;
+            }
+        }
     }
 
     impl EntityInterface<CharacterCore, CharacterReusableCore, SimulationPipeCharacter<'_>>
@@ -1491,6 +1551,19 @@ pub mod character {
                     self.core.eye = self.player_info.player_info.default_eyes;
                 };
                 self.core.default_eye = self.player_info.player_info.default_eyes;
+            }
+
+            if self
+                .reusable_core
+                .debuffs
+                .contains_key(&CharacterDebuff::Freeze)
+            {
+                self.core.input.state.fire.set(false);
+                self.core.input.state.hook.set(false);
+                self.core.input.state.dir.set(0);
+                self.core.input.state.jump.set(false);
+                self.core.core.queued_hooks.clicked = 0;
+                self.core.core.jumps.queued = 0;
             }
 
             EntityTickResult::None
@@ -1533,6 +1606,8 @@ pub mod character {
 
             self.handle_buffs_and_debuffs(pipe);
             self.handle_weapons(pipe);
+
+            self.post_ddrace_tick();
 
             EntityTickResult::None
         }

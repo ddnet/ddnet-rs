@@ -1,32 +1,41 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::BTreeMap, net::SocketAddr, time::Duration};
 
 use anyhow::anyhow;
 use arrayvec::ArrayVec;
 use base::{hash::Hash, reduced_ascii_str::ReducedAsciiString};
+use base_io::io::Io;
 use game_interface::types::{character_info::NetworkCharacterInfo, input::CharacterInput};
 use game_server::client::ServerClientPlayer;
 use hexdump::hexdump_iter;
-use libtw2_event_loop::{Chunk, PeerId};
 use libtw2_gamenet_ddnet::{
     msg::{Connless, Game, System},
     snap_obj,
 };
-use libtw2_net::{net::ChunkOrEvent, Net};
+use libtw2_net::{net::Chunk, net::ChunkOrEvent, net::PeerId, Net};
 use libtw2_packer::with_packer;
 use libtw2_snapshot::Manager;
-use libtw2_socket::{Addr, Socket};
 use log::{debug, log, log_enabled, Level};
+
+use crate::{socket::Socket, ServerInfo};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct QueuedChunk {
+    pub vital: bool,
+    pub data: Vec<u8>,
+}
 
 pub struct SocketClient {
     pub socket: Socket,
-    pub net: Net<Addr>,
+    pub net: Net<SocketAddr>,
     pub server_pid: PeerId,
     pub skip_disconnect_on_drop: bool,
+
+    is_connected: bool,
 }
 
 impl SocketClient {
-    pub fn new(addr: Addr) -> anyhow::Result<SocketClient> {
-        let mut socket = Socket::new().unwrap();
+    pub fn new(io: &Io, addr: SocketAddr) -> anyhow::Result<SocketClient> {
+        let mut socket = Socket::new(io).unwrap();
         let mut net = Net::client();
         let (server_pid, res) = net.connect(&mut socket, addr);
 
@@ -35,42 +44,46 @@ impl SocketClient {
             net,
             server_pid,
             skip_disconnect_on_drop: false,
+            is_connected: false,
         })
     }
-    pub fn run_once(&mut self, mut on_event: impl FnMut(&mut Self, ChunkOrEvent<'_, Addr>)) {
-        let mut buf1: ArrayVec<[u8; 4096]> = ArrayVec::new();
-        let mut buf2: ArrayVec<[u8; 4096]> = ArrayVec::new();
-
+    pub fn run_recv(
+        &mut self,
+        res: (SocketAddr, Vec<u8>),
+        on_event: &mut impl FnMut(&mut Self, ChunkOrEvent<'_, SocketAddr>),
+    ) {
+        let (addr, data) = res;
+        let mut buf2 = Vec::with_capacity(4096);
+        let (iter, res) = self.net.feed(
+            &mut self.socket,
+            &mut Warn(addr, &data),
+            addr,
+            &data,
+            &mut buf2,
+        );
+        res.unwrap();
+        for mut chunk in iter {
+            if !self.net.is_receive_chunk_still_valid(&mut chunk) {
+                continue;
+            }
+            if let ChunkOrEvent::Connect(pid) = chunk {
+                self.is_connected = true;
+                self.net.accept(&mut self.socket, pid).unwrap();
+            } else {
+                if let ChunkOrEvent::Ready(_) = &chunk {
+                    self.is_connected = true;
+                }
+                on_event(self, chunk);
+            }
+        }
+    }
+    pub fn run_once(&mut self, mut on_event: impl FnMut(&mut Self, ChunkOrEvent<'_, SocketAddr>)) {
         self.net
             .tick(&mut self.socket)
             .for_each(|e| panic!("{:?}", e));
 
-        self.socket.sleep(Some(Duration::from_micros(1))).unwrap();
-
-        while let Some(res) = {
-            buf1.clear();
-            self.socket.receive(&mut buf1)
-        } {
-            let (addr, data) = res.unwrap();
-            buf2.clear();
-            let (iter, res) = self.net.feed(
-                &mut self.socket,
-                &mut Warn(addr, data),
-                addr,
-                data,
-                &mut buf2,
-            );
-            res.unwrap();
-            for mut chunk in iter {
-                if !self.net.is_receive_chunk_still_valid(&mut chunk) {
-                    continue;
-                }
-                if let ChunkOrEvent::Connect(pid) = chunk {
-                    self.net.accept(&mut self.socket, pid).unwrap();
-                } else {
-                    on_event(self, chunk);
-                }
-            }
+        while let Ok(res) = self.socket.try_recv() {
+            self.run_recv(res, &mut on_event);
         }
     }
     pub fn disconnect(&mut self, reason: &[u8]) {
@@ -81,7 +94,7 @@ impl SocketClient {
     fn send(&mut self, chunk: Chunk) {
         self.net.send(&mut self.socket, chunk).unwrap();
     }
-    fn send_connless(&mut self, addr: Addr, data: &[u8]) {
+    fn send_connless(&mut self, addr: SocketAddr, data: &[u8]) {
         self.net
             .send_connless(&mut self.socket, addr, data)
             .unwrap();
@@ -114,8 +127,8 @@ impl SocketClient {
         }
         inner(msg.into(), self)
     }
-    pub fn sendc<'a, C: Into<Connless<'a>>>(&mut self, addr: Addr, msg: C) {
-        fn inner(msg: Connless, addr: Addr, socket_client: &mut SocketClient) {
+    pub fn sendc<'a, C: Into<Connless<'a>>>(&mut self, addr: SocketAddr, msg: C) {
+        fn inner(msg: Connless, addr: SocketAddr, socket_client: &mut SocketClient) {
             let mut buf: ArrayVec<[u8; 2048]> = ArrayVec::new();
             with_packer(&mut buf, |p| msg.encode(p).unwrap());
             socket_client.send_connless(addr, &buf)
@@ -126,7 +139,7 @@ impl SocketClient {
 
 impl Drop for SocketClient {
     fn drop(&mut self) {
-        if !self.skip_disconnect_on_drop {
+        if !self.skip_disconnect_on_drop && self.is_connected {
             self.disconnect(b"disconnect");
         }
     }
@@ -138,7 +151,7 @@ fn hexdump(level: Level, data: &[u8]) {
     }
 }
 
-struct Warn<'a>(Addr, &'a [u8]);
+struct Warn<'a>(SocketAddr, &'a [u8]);
 
 impl<W: std::fmt::Debug> warn::Warn<W> for Warn<'_> {
     fn warn(&mut self, w: W) {
@@ -166,6 +179,15 @@ pub enum ClientState {
         name: ReducedAsciiString,
         hash: Hash,
     },
+    RequestedLegacyServerInfo {
+        name: ReducedAsciiString,
+        hash: Hash,
+        token: u8,
+    },
+    ReceivedLegacyServerInfo {
+        name: ReducedAsciiString,
+        hash: Hash,
+    },
     SentServerInfo,
     StartInfoSent,
     Ingame,
@@ -174,6 +196,7 @@ pub enum ClientState {
 #[derive(Debug, Default)]
 pub struct ClientReady {
     pub con: bool,
+    pub received_server_info: Option<ServerInfo>,
     pub client_con: bool,
 }
 

@@ -1,7 +1,4 @@
-use client_ui::{
-    connect::user_data::{ConnectMode, ConnectModes, UserData},
-    events::UiEvents,
-};
+use client_ui::{connect::user_data::UserData, events::UiEvents};
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
 
@@ -30,9 +27,7 @@ impl Connecting {
             &mut UiRenderPipe {
                 cur_time: pipe.cur_time,
                 user_data: &mut UserData {
-                    mode: &ConnectMode::new(ConnectModes::Connecting {
-                        addr: "127.0.0.1:8303".parse().unwrap(),
-                    }),
+                    log: &Default::default(),
                     config: &mut Default::default(),
                     events: &UiEvents::new(),
                 },

@@ -1,5 +1,6 @@
-use egui::{vec2, Align2, Frame, Vec2, Window};
+use egui::{vec2, Align2, Color32, FontId, Frame, RichText, ScrollArea, Vec2, Window};
 
+use game_base::connecting_log::ConnectModes;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -8,57 +9,61 @@ use ui_base::{
 
 use crate::events::UiEvent;
 
-use super::user_data::{ConnectModes, UserData};
+use super::user_data::UserData;
 
 pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
-    match pipe.user_data.mode.get() {
-        ConnectModes::Connecting { addr } => {
-            ui.vertical(|ui| {
-                ui.label(format!("Connecting to:\n{}", addr));
-                if ui.button("Cancel").clicked() {
-                    pipe.user_data.events.push(UiEvent::Disconnect);
-                    pipe.user_data.config.engine.ui.path.route("");
-                }
-            });
-        }
-        ConnectModes::ConnectingErr { msg } => {
-            ui.vertical(|ui| {
-                ui.label(format!(
-                    "Connecting to {} failed:\n{}",
-                    pipe.user_data.config.storage::<String>("server-addr"),
-                    msg
-                ));
-                if ui.button("Return").clicked() {
-                    pipe.user_data.events.push(UiEvent::Disconnect);
-                    pipe.user_data.config.engine.ui.path.route("");
-                }
-            });
-        }
-        ConnectModes::Queue { msg } => {
-            ui.vertical(|ui| {
-                ui.label(format!(
-                    "Connecting to {}",
-                    pipe.user_data.config.storage::<String>("server-addr")
-                ));
-                ui.label(format!("Waiting in queue: {}", msg));
-                if ui.button("Cancel").clicked() {
-                    pipe.user_data.events.push(UiEvent::Disconnect);
-                    pipe.user_data.config.engine.ui.path.route("");
-                }
-            });
-        }
-        ConnectModes::DisconnectErr { msg } => {
-            ui.vertical(|ui| {
-                ui.label(format!(
-                    "Connection to {} lost:\n{}",
-                    pipe.user_data.config.storage::<String>("server-addr"),
-                    msg
-                ));
-                if ui.button("Return").clicked() {
-                    pipe.user_data.events.push(UiEvent::Disconnect);
-                    pipe.user_data.config.engine.ui.path.route("");
-                }
-            });
+    let log = &pipe.user_data.log;
+    let mode = log.mode();
+    if let Some(mode) = mode {
+        match mode {
+            ConnectModes::Connecting { addr } => {
+                ui.vertical(|ui| {
+                    ui.label(format!("Connecting to:\n{}", addr));
+                    if ui.button("Cancel").clicked() {
+                        pipe.user_data.events.push(UiEvent::Disconnect);
+                        pipe.user_data.config.engine.ui.path.route("");
+                    }
+                });
+            }
+            ConnectModes::ConnectingErr { msg } => {
+                ui.vertical(|ui| {
+                    ui.label(format!(
+                        "Connecting to {} failed:\n{}",
+                        pipe.user_data.config.storage::<String>("server-addr"),
+                        msg
+                    ));
+                    if ui.button("Return").clicked() {
+                        pipe.user_data.events.push(UiEvent::Disconnect);
+                        pipe.user_data.config.engine.ui.path.route("");
+                    }
+                });
+            }
+            ConnectModes::Queue { msg } => {
+                ui.vertical(|ui| {
+                    ui.label(format!(
+                        "Connecting to {}",
+                        pipe.user_data.config.storage::<String>("server-addr")
+                    ));
+                    ui.label(format!("Waiting in queue: {}", msg));
+                    if ui.button("Cancel").clicked() {
+                        pipe.user_data.events.push(UiEvent::Disconnect);
+                        pipe.user_data.config.engine.ui.path.route("");
+                    }
+                });
+            }
+            ConnectModes::DisconnectErr { msg } => {
+                ui.vertical(|ui| {
+                    ui.label(format!(
+                        "Connection to {} lost:\n{}",
+                        pipe.user_data.config.storage::<String>("server-addr"),
+                        msg
+                    ));
+                    if ui.button("Return").clicked() {
+                        pipe.user_data.events.push(UiEvent::Disconnect);
+                        pipe.user_data.config.engine.ui.path.route("");
+                    }
+                });
+            }
         }
     }
 }
@@ -75,7 +80,26 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
         .show(ui.ctx(), |ui| {
             add_margins(ui, |ui| {
                 ui.style_mut().visuals.clip_rect_margin = 6.0;
-                render_modes(ui, pipe)
+                render_modes(ui, pipe);
+                let log = &pipe.user_data.log;
+                let logs = log.logs();
+                if !logs.is_empty() {
+                    ui.separator();
+                    Frame::new()
+                        .fill(Color32::from_black_alpha(20))
+                        .inner_margin(5)
+                        .show(ui, |ui| {
+                            ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
+                                for log in logs {
+                                    ui.label(
+                                        RichText::new(log)
+                                            .font(FontId::proportional(10.0))
+                                            .color(Color32::GRAY),
+                                    );
+                                }
+                            });
+                        });
+                }
             });
         });
     if let Some(res) = res {

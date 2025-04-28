@@ -1219,6 +1219,7 @@ impl DemoViewer {
                                     .client_local_infos
                                     .clone(),
                             },
+                            Default::default(),
                         )
                     };
 

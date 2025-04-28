@@ -65,6 +65,8 @@ pub struct ClientPlayer {
     /// [`PlayerInputChainable`] here is always the last of a chain that is send.
     pub server_input_storage: BTreeMap<u64, PlayerInputChainable>,
 
+    /// Owns the dummies
+    pub is_dummies_owner: bool,
     pub is_dummy: bool,
     pub cursor_pos_dummy: dvec2,
 

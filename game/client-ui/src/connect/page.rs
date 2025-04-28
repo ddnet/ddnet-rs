@@ -1,22 +1,20 @@
+use game_base::connecting_log::ConnectingLog;
 use game_config::config::Config;
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
 
 use crate::events::UiEvents;
 
-use super::{
-    main_frame,
-    user_data::{ConnectMode, UserData},
-};
+use super::{main_frame, user_data::UserData};
 
 pub struct ConnectingUi {
-    mode: ConnectMode,
+    log: ConnectingLog,
     events: UiEvents,
 }
 
 impl ConnectingUi {
-    pub fn new(mode: ConnectMode, events: UiEvents) -> Self {
-        Self { mode, events }
+    pub fn new(log: ConnectingLog, events: UiEvents) -> Self {
+        Self { log, events }
     }
 
     fn render_impl(
@@ -31,7 +29,7 @@ impl ConnectingUi {
             &mut UiRenderPipe {
                 cur_time: pipe.cur_time,
                 user_data: &mut UserData {
-                    mode: &self.mode,
+                    log: &self.log,
                     config: pipe.user_data,
                     events: &self.events,
                 },
@@ -48,5 +46,9 @@ impl UiPageInterface<Config> for ConnectingUi {
         ui_state: &mut UiState,
     ) {
         self.render_impl(ui, ui_state, pipe)
+    }
+
+    fn unmount(&mut self) {
+        self.log.clear();
     }
 }

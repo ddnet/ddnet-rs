@@ -1,4 +1,4 @@
-use std::{cell::Cell, time::Duration};
+use std::{cell::Cell, collections::HashSet, time::Duration};
 
 use client_render_base::map::{
     map::RenderMap,
@@ -125,6 +125,7 @@ impl QuadBrush {
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         client: &mut EditorClient,
     ) {
         let layer = map.active_layer();
@@ -147,6 +148,9 @@ impl QuadBrush {
         let parallax_aware_zoom = map.groups.user.parallax_aware_zoom;
 
         let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
+
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
+        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
 
         let vec2 {
             x: mut x1,
@@ -233,7 +237,7 @@ impl QuadBrush {
                 self.brush = None;
             }
 
-            if !latest_pointer.primary_down() {
+            if !is_primary_allowed_down {
                 self.pointer_down_state = QuadPointerDownState::None;
             }
         } else {
@@ -241,7 +245,7 @@ impl QuadBrush {
 
             // check if the pointer clicked on one of the quad corner/center points
             let mut clicked_quad_point = false;
-            if latest_pointer.primary_pressed() || latest_pointer.secondary_pressed() {
+            if is_primary_allowed_pressed || latest_pointer.secondary_pressed() {
                 for (q, quad) in layer.layer.quads.iter().enumerate() {
                     let points =
                         super::shared::get_quad_points_animated(quad, map, map.user.render_time());
@@ -279,7 +283,7 @@ impl QuadBrush {
                             vec2::new(points[index].x.to_num(), points[index].y.to_num());
                         let cursor = vec2::new(x1, y1);
                         self.pointer_down_state = QuadPointerDownState::Point(down_point);
-                        if latest_pointer.primary_pressed() {
+                        if is_primary_allowed_pressed {
                             self.last_translation = Some(QuadSelection {
                                 is_background,
                                 group: group_index,
@@ -314,9 +318,7 @@ impl QuadBrush {
                 }
             }
             // else check if the pointer is down now
-            if !clicked_quad_point
-                && latest_pointer.primary_pressed()
-                && self.last_translation.is_none()
+            if !clicked_quad_point && is_primary_allowed_pressed && self.last_translation.is_none()
             {
                 let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
                 let pos = ui_pos_to_world_pos(
@@ -334,11 +336,11 @@ impl QuadBrush {
                 );
                 self.pointer_down_state = QuadPointerDownState::Selection(pos);
             }
-            if !clicked_quad_point && latest_pointer.primary_pressed() {
+            if !clicked_quad_point && is_primary_allowed_pressed {
                 self.last_translation = None;
                 self.last_selection = None;
             }
-            if latest_pointer.primary_down() && self.last_translation.is_some() {
+            if is_primary_allowed_down && self.last_translation.is_some() {
                 let last_active = self.last_translation.as_mut().unwrap();
                 let new_pos = vec2::new(x1, y1);
                 let aligned_pos = align_pos(new_pos);
@@ -360,7 +362,7 @@ impl QuadBrush {
                     let alter_anim_point = map.user.change_animations() && pos_anim.is_some();
 
                     if matches!(last_active.point, QuadPointerDownPoint::Center)
-                        && latest_modifiers.ctrl
+                        && latest_keys_down.contains(&egui::Key::R)
                     {
                         // handle rotation
                         let diff = new_pos - vec2::new(cursor_pos.x, cursor_pos.y);
@@ -431,11 +433,14 @@ impl QuadBrush {
         canvas_handle: &GraphicsCanvasHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
         client: &mut EditorClient,
     ) {
         let layer = map.active_layer().unwrap();
         let (offset, parallax) = layer.get_offset_and_parallax();
+
+        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
 
         // reset brush
         if latest_pointer.secondary_pressed() {
@@ -445,7 +450,7 @@ impl QuadBrush {
         else {
             let brush = self.brush.as_ref().unwrap();
 
-            if latest_pointer.primary_pressed() {
+            if is_primary_allowed_pressed {
                 let pos = current_pointer_pos;
 
                 let pos = vec2::new(pos.x, pos.y);
@@ -508,6 +513,7 @@ impl QuadBrush {
         stream_handle: &GraphicsStreamHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
     ) {
         let layer = map.active_layer();
@@ -516,9 +522,10 @@ impl QuadBrush {
         } else {
             Default::default()
         };
+        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
         // if pointer was already down
         if let QuadPointerDownState::Selection(pointer_down) = &self.pointer_down_state {
-            if latest_pointer.primary_down() {
+            if is_primary_allowed_pressed {
                 let pos = current_pointer_pos;
                 let pos = ui_pos_to_world_pos(
                     canvas_handle,
@@ -650,6 +657,7 @@ impl QuadBrush {
                         count,
                         cur_quad_offset.get(),
                     );
+                    cur_quad_offset.set(cur_quad_offset.get() + count);
                 }),
             );
         }
@@ -681,6 +689,7 @@ impl QuadBrush {
         latest_pointer: &egui::PointerState,
         current_pointer_pos: &egui::Pos2,
         latest_modifiers: &egui::Modifiers,
+        latest_keys_down: &HashSet<egui::Key>,
         client: &mut EditorClient,
     ) {
         let layer = map.active_layer();
@@ -700,6 +709,7 @@ impl QuadBrush {
                 latest_pointer,
                 current_pointer_pos,
                 latest_modifiers,
+                latest_keys_down,
                 client,
             );
         } else {
@@ -708,6 +718,7 @@ impl QuadBrush {
                 canvas_handle,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
                 client,
             );
@@ -721,6 +732,7 @@ impl QuadBrush {
         canvas_handle: &GraphicsCanvasHandle,
         map: &EditorMap,
         latest_pointer: &egui::PointerState,
+        latest_modifiers: &egui::Modifiers,
         current_pointer_pos: &egui::Pos2,
     ) {
         let layer = map.active_layer();
@@ -745,6 +757,7 @@ impl QuadBrush {
                 stream_handle,
                 map,
                 latest_pointer,
+                latest_modifiers,
                 current_pointer_pos,
             );
         } else {

@@ -7,7 +7,7 @@ Clicking the corner or center points of a quad has special meanings  \n\
 Center point:\n\
 - `Left click` allows dragging the whole quad.\n\
 - `Shift + Left click` allows dragging the center point itself.\n\
-- `Control + Left click` allows rotating the quad.\n\
+- `R + Left click` allows rotating the quad.\n\
 - `Right click` opens the quad property panel.\n\n\
 Corner points:\n\
 - `Left click` allows dragging the quad's corner.\n\
@@ -25,11 +25,11 @@ The quad selection is a specialized tool that focuses on making working with exi
 You can change many shared properties at once to many quads. E.g. the color of one of the quad corners.\n\
 Align many quads at once and so on similar to the `Quad brush`.  \n\
 First select your quad(s) using `left click`:\n\
-- `right click` on a quad _point_ to open the property \
+- `Right click` on a quad _point_ to open the property \
   window for all selected quads for the given _point_.\n\
-- `left click` on a center point to drag all quads.\n\
-- `shift + left click` on a center point to drag the center point of all quads.\n\
-- `ctrl + left click` on a center point to rotate all quads.\n\n\
+- `Left click` on a center point to drag all quads.\n\
+- `Shift + left click` on a center point to drag the center point of all quads.\n\
+- `R + left click` on a center point to rotate all quads.\n\n\
 Press `right click` on no quad to unset the selection.\n\n\
 If the grid is active, holding `alt`-key will always snap the above actions to the nearest grid point.\n\n\
 ### Animations\n\
@@ -54,10 +54,11 @@ pub const TEXT_TILE_BRUSH: &str =
 The tile brush allows to select a range of tiles (`left click`) and apply different actions on this selection:\n\
 - `Left click` -> Draws this selection anywhere within a tile layer.\n\
 - `Shift + left click selection` -> Creates a repeated pattern of the selected tiles.\n\n\
-- `Ctrl + left click` (single tile only) -> Fills the empty area with the given tile.\
+- `B + left click` (single tile only) -> Fills the empty area with the given tile.\
   (The fill tool is always destructive!)\n\n\
 ---\n\n\
 Press `right click` to unset the selection.  \n\
+Hold `shift` without any tile selected to delete a range of tiles.  \n\
 Hold `space` to open the tile picker, which is basically an overview of all tiles within a tile layer image.\
 ";
 

@@ -288,11 +288,11 @@ impl EditorBindsFile {
         );
         hotkey(
             EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Previous),
-            KeyboardShortcut::new(Modifiers::CTRL, Key::ArrowRight),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::ArrowLeft),
         );
         hotkey(
             EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Next),
-            KeyboardShortcut::new(Modifiers::CTRL, Key::ArrowLeft),
+            KeyboardShortcut::new(Modifiers::CTRL, Key::ArrowRight),
         );
         hotkey(
             EditorHotkeyEvent::Tabs(EditorHotkeyEventTabs::Close),

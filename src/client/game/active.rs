@@ -229,12 +229,14 @@ impl ActiveGame {
     ) {
         if let Some(player) = self.game_data.local.expected_local_players.get_mut(&id) {
             *player = match player {
-                ClientConnectedPlayer::Connecting { is_dummy } => {
-                    ClientConnectedPlayer::Connected {
-                        is_dummy: *is_dummy,
-                        player_id,
-                    }
-                }
+                ClientConnectedPlayer::Connecting {
+                    is_dummy,
+                    owns_dummies,
+                } => ClientConnectedPlayer::Connected {
+                    is_dummy: *is_dummy,
+                    owns_dummies: *owns_dummies,
+                    player_id,
+                },
                 ClientConnectedPlayer::Connected { .. } => {
                     notifications.add_err(
                         "Server send a player response to \
