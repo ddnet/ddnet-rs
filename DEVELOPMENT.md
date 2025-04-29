@@ -58,7 +58,7 @@ command source ${env:HOME}/.lldbinit
 in `~/.lldbinit`:
 ```
 target stop-hook add --one-liner "command script import  ~/lldbinit.py"
-``
+```
 
 in `~/lldbinit.py` (no dot!):
 
