@@ -58,7 +58,7 @@ pub struct Socket {
 
 async fn udp_socket(ipv4: bool) -> io::Result<Option<UdpSocket>> {
     let socket = if ipv4 {
-        UdpSocket::bind("0.0.0:0")
+        UdpSocket::bind("0.0.0.0:0")
     } else {
         UdpSocket::bind("[::]:0")
     };
