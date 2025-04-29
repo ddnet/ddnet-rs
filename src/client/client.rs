@@ -2417,6 +2417,30 @@ impl ClientNativeImpl {
                 LocalConsoleEvent::Echo { text } => {
                     self.notifications.add_info(text, Duration::from_secs(2));
                 }
+                LocalConsoleEvent::Say { ref text } | LocalConsoleEvent::SayTeam { ref text } => {
+                    if let Game::Active(game) = &mut self.game {
+                        if let Some((active_player_id, _)) =
+                            game.game_data.local.active_local_player()
+                        {
+                            let msg = if matches!(event, LocalConsoleEvent::Say { .. }) {
+                                MsgClChatMsg::Global {
+                                    msg: NetworkString::new_lossy(text),
+                                }
+                            } else {
+                                MsgClChatMsg::GameTeam {
+                                    msg: NetworkString::new_lossy(text),
+                                }
+                            };
+                            game.network.send_in_order_to_server(
+                                &ClientToServerMessage::PlayerMsg((
+                                    *active_player_id,
+                                    ClientToServerPlayerMessage::Chat(msg),
+                                )),
+                                NetworkInOrderChannel::Global,
+                            );
+                        }
+                    }
+                }
                 LocalConsoleEvent::ChangeDummy { dummy_index } => {
                     if let Game::Active(game) = &mut self.game {
                         if let Some(dummy_index) = dummy_index {

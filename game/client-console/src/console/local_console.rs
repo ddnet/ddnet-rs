@@ -57,6 +57,12 @@ pub enum LocalConsoleEvent {
     Echo {
         text: String,
     },
+    Say {
+        text: String,
+    },
+    SayTeam {
+        text: String,
+    },
     /// Switch to an dummy or the main player
     ChangeDummy {
         dummy_index: Option<usize>,
@@ -777,6 +783,46 @@ impl LocalConsoleBuilder {
 
                 console_events_cmd.push(LocalConsoleEvent::Echo { text: text.clone() });
                 Ok(format!("Echo: {text}"))
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "say".into(),
+            usage: "say <text>".into(),
+            description: "Sends the specified text as chat message to the server.".into(),
+            cmd: Rc::new(move |_, _, _, path| {
+                let Syn::Text(text) = &path[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+
+                console_events_cmd.push(LocalConsoleEvent::Say { text: text.clone() });
+                Ok(format!("Say: {text}"))
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "say_team".into(),
+            usage: "say_team <text>".into(),
+            description: "Sends the specified text as team chat message to the server.".into(),
+            cmd: Rc::new(move |_, _, _, path| {
+                let Syn::Text(text) = &path[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+
+                console_events_cmd.push(LocalConsoleEvent::SayTeam { text: text.clone() });
+                Ok(format!("Say (team): {text}"))
             }),
             args: vec![CommandArg {
                 ty: CommandArgType::Text,
