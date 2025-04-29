@@ -539,10 +539,12 @@ impl Client {
                 let vanilla_snap_pool = SnapshotPool::new(64, 64);
 
                 let event_id_generator: EventIdGenerator = Default::default();
-                log.log("Got initial server info");
 
                 let server_info = match server_info {
-                    Some(i) => i,
+                    Some(i) => {
+                        log.log("Got initial server info");
+                        i
+                    }
                     None => {
                         log::warn!("Got no server info at all, falling back to partial.");
                         ServerInfoTy::Partial {
