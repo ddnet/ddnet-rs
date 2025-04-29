@@ -290,6 +290,8 @@ struct ClientBase {
 
     join_password: String,
 
+    is_first_map_pkt: bool,
+
     // helpers
     input_deser: Pool<Vec<u8>>,
     player_snap_pool: Pool<Vec<u8>>,
@@ -604,6 +606,8 @@ impl Client {
                         loaded_misc_votes: false,
 
                         dummies_legacy_ids: Default::default(),
+
+                        is_first_map_pkt: true,
 
                         server_info,
 
@@ -2126,9 +2130,12 @@ impl Client {
                     .and_then(|s| ReducedAsciiString::try_from(s.as_str()).ok())
                 {
                     log.log("Proxy client received map details.");
-                    base.server_info = ServerInfoTy::Partial {
-                        requires_password: base.server_info.requires_password(),
-                    };
+                    if !base.is_first_map_pkt {
+                        base.server_info = ServerInfoTy::Partial {
+                            requires_password: base.server_info.requires_password(),
+                        };
+                    }
+                    base.is_first_map_pkt = false;
                     player.ready = Default::default();
                     // try to read file
                     let fs = io.fs.clone();
@@ -2197,9 +2204,12 @@ impl Client {
                     if is_main_connection {
                         log.log("Proxy client received map change packet (without map details).");
                         log.log("This is the legacy CRC map download, and thus cannot be skipped.");
-                        base.server_info = ServerInfoTy::Partial {
-                            requires_password: base.server_info.requires_password(),
-                        };
+                        if !base.is_first_map_pkt {
+                            base.server_info = ServerInfoTy::Partial {
+                                requires_password: base.server_info.requires_password(),
+                            };
+                        }
+                        base.is_first_map_pkt = false;
                         player.ready = Default::default();
                         // Since crc checks are not secure, the client will always download these maps
                         socket.sends(System::RequestMapData(system::RequestMapData { chunk: 0 }));
