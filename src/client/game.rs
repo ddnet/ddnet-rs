@@ -945,7 +945,7 @@ impl Game {
             Game::WaitingForFirstSnapshot(mut game) | Game::Active(mut game) => {
                 if let ServerToClientMessage::Load(info) = msg {
                     game.connect.log.log(
-                        "Server send new server info (map change).\
+                        "Server send new server info (map change). \
                         Client was waiting for snapshot",
                     );
                     self.on_load(

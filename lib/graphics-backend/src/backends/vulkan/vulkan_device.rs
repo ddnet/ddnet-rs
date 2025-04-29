@@ -120,7 +120,7 @@ impl Device {
     ) -> anyhow::Result<Arc<DescriptorSetLayout>> {
         VulkanAllocator::create_shader_storage_read_only_descriptor_set_layout(
             device,
-            vk::ShaderStageFlags::VERTEX,
+            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
         )
     }
 

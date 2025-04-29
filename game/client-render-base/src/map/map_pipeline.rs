@@ -22,13 +22,14 @@ use graphics_types::{
     rendering::{ColorRgba, GlColorf, State, StateTexture, StateTexture2dArray},
 };
 use hiarc::Hiarc;
-use math::math::vector::{ubvec2, ubvec4, vec2};
+use math::math::vector::{ubvec2, ubvec4, uvec2, vec2};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use pool::{
     mixed_datatypes::StringPool, mixed_pool::Pool, mt_datatypes::PoolVec, mt_pool::Pool as MtPool,
 };
 use serde::{Deserialize, Serialize};
+use strum::EnumCount;
 
 const MOD_NAME: &str = "internal::Map";
 
@@ -36,10 +37,11 @@ pub const GRAPHICS_MAX_QUADS_RENDER_COUNT: usize = (GRAPHICS_MAX_UNIFORM_RENDER_
     * GRAPHICS_DEFAULT_UNIFORM_SIZE)
     / std::mem::size_of::<QuadRenderInfo>();
 
-#[derive(Debug, FromPrimitive, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, FromPrimitive, PartialEq, Eq, PartialOrd, Ord, EnumCount)]
 #[repr(u64)]
 pub enum MapPipelineNames {
     TilePipeline,
+    EditorTilePipeline,
     TileBorderPipeline,
     QuadPipeline,
 }
@@ -60,6 +62,29 @@ pub struct CommandRenderTileLayer {
     pub color: SColorf, // the color of the whole tilelayer -- already enveloped
 
     pub draws: PoolVec<TileLayerDrawInfo>,
+
+    pub shader_storage_index: u128,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EditorTileLayerRenderProps {
+    // pos & size of the rendering rect
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+
+    pub layer_width: u32,
+    pub layer_height: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommandRenderEditorTileLayer {
+    pub state: State,
+    pub texture_index: StateTexture2dArray,
+    pub color: SColorf, // the color of the whole tilelayer -- already enveloped
+
+    pub render: EditorTileLayerRenderProps,
 
     pub shader_storage_index: u128,
 }
@@ -112,13 +137,15 @@ pub struct CommandRenderQuadLayer {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum CommandsRenderMap {
-    TileLayer(CommandRenderTileLayer),   // render a tilelayer
-    BorderTile(CommandRenderBorderTile), // render one tile multiple times
-    QuadLayer(CommandRenderQuadLayer),   // render a quad layer
+    TileLayer(CommandRenderTileLayer),             // render a tilelayer
+    EditorTileLayer(CommandRenderEditorTileLayer), // render a tilelayer for editor
+    BorderTile(CommandRenderBorderTile),           // render one tile multiple times
+    QuadLayer(CommandRenderQuadLayer),             // render a quad layer
 }
 
 type UniformTilePos = [f32; 4 * 2];
 
+// Tile
 #[derive(Default)]
 #[repr(C)]
 pub struct UniformTileGPos {
@@ -127,6 +154,7 @@ pub struct UniformTileGPos {
     pub alignment: f32,
 }
 
+// Tile border
 #[derive(Default)]
 #[repr(C)]
 pub struct UniformTileGPosBorder {
@@ -135,6 +163,7 @@ pub struct UniformTileGPosBorder {
     pub scale: vec2,
 }
 
+// Tile & border fragment
 pub type SUniformTileGVertColor = ColorRgba;
 
 #[derive(Default)]
@@ -143,6 +172,29 @@ pub struct UniformTileGVertColorAlign {
     pub pad: [f32; (64 - 56) / 4],
 }
 
+// Editor tile
+#[derive(Default)]
+#[repr(C)]
+pub struct UniformEditorTileGPos {
+    pub pos: UniformTilePos,
+    pub offset: vec2,
+    pub scale: vec2,
+}
+
+#[derive(Default)]
+#[repr(C)]
+pub struct UniformEditorTileGFrag {
+    pub color: SUniformTileGVertColor,
+    pub layer_size: uvec2,
+}
+
+#[derive(Default)]
+#[repr(C)]
+pub struct UniformEditorTileGFragOffset {
+    pub pad: [f32; 64 / 4],
+}
+
+// Quads
 #[derive(Default)]
 #[repr(C)]
 pub struct UniformQuadGPos {
@@ -203,6 +255,41 @@ impl MapPipeline {
                 offset: (std::mem::size_of::<UniformTileGPosBorder>()
                     + std::mem::size_of::<UniformTileGVertColorAlign>())
                     as u32,
+                size: frag_push_constant_size as u32,
+            },
+        ]
+        .to_vec();
+        BackendPipelineLayout {
+            vertex_attributes: attribute_descriptors,
+            descriptor_layouts: set_layouts,
+            push_constants,
+            stride: 0,
+            geometry_is_line: false,
+        }
+    }
+
+    fn editor_tile_pipeline_layout() -> BackendPipelineLayout {
+        let attribute_descriptors: Vec<BackendVertexInputAttributeDescription> = Default::default();
+
+        let set_layouts = [
+            BackendResourceDescription::Fragment2DArrayTexture,
+            BackendResourceDescription::VertexShaderStorage,
+        ]
+        .to_vec();
+
+        let vert_push_constant_size = std::mem::size_of::<UniformEditorTileGPos>();
+
+        let frag_push_constant_size = std::mem::size_of::<UniformEditorTileGFrag>();
+
+        let push_constants = [
+            BackendPushConstant {
+                stage_flags: BackendShaderStage::VERTEX,
+                offset: 0,
+                size: vert_push_constant_size as u32,
+            },
+            BackendPushConstant {
+                stage_flags: BackendShaderStage::FRAGMENT,
+                offset: std::mem::size_of::<UniformEditorTileGFragOffset>() as u32,
                 size: frag_push_constant_size as u32,
             },
         ]
@@ -389,6 +476,26 @@ impl MapPipeline {
         );
     }
 
+    fn cmd_render_editor_tile_layer_fill_execute_buffer(
+        render_execute_manager: &mut dyn BackendRenderExecuteInterface,
+        cmd: &CommandRenderEditorTileLayer,
+    ) {
+        render_execute_manager.set_shader_storage(cmd.shader_storage_index);
+
+        match &cmd.texture_index {
+            StateTexture2dArray::Texture(texture_index) => {
+                render_execute_manager.set_texture_3d(0, *texture_index);
+            }
+            StateTexture2dArray::None => {
+                // nothing to do
+            }
+        }
+
+        render_execute_manager.estimated_render_calls(1);
+
+        render_execute_manager.exec_buffer_fill_dynamic_states(&cmd.state);
+    }
+
     fn cmd_render_border_tile_fill_execute_buffer(
         render_execute_manager: &mut dyn BackendRenderExecuteInterface,
         cmd: &CommandRenderBorderTile,
@@ -564,6 +671,63 @@ impl MapPipeline {
         )
     }
 
+    fn cmd_render_editor_tile_layer(
+        &self,
+        render_manager: &mut dyn BackendRenderInterface,
+        cmd: &CommandRenderEditorTileLayer,
+    ) -> anyhow::Result<()> {
+        let mut m: [f32; 4 * 2] = Default::default();
+        render_manager.get_state_matrix(&cmd.state, &mut m);
+
+        render_manager.bind_pipeline_2d_array_texture(
+            &cmd.state,
+            &cmd.texture_index,
+            SubRenderPassAttributes::Additional(
+                MapPipelineNames::EditorTilePipeline as u64 + self.pipe_name_offset,
+            ),
+        );
+
+        render_manager.bind_shader_storage_descriptor_set(2);
+
+        if render_manager.is_textured() {
+            render_manager.bind_texture_descriptor_sets(0, 0);
+        }
+
+        let mut vertex_push_constants = UniformEditorTileGPos::default();
+        let vertex_push_constant_size: usize = std::mem::size_of::<UniformEditorTileGPos>();
+        let frag_push_constant_size: usize = std::mem::size_of::<UniformEditorTileGFrag>();
+
+        vertex_push_constants.pos = m;
+        vertex_push_constants.offset = vec2::new(cmd.render.x, cmd.render.y);
+        vertex_push_constants.scale = vec2::new(cmd.render.w, cmd.render.h);
+
+        let frag_push_constants = UniformEditorTileGFrag {
+            color: cmd.color,
+            layer_size: uvec2::new(cmd.render.layer_width, cmd.render.layer_height),
+        };
+
+        render_manager.push_constants(BackendShaderStage::VERTEX, 0, unsafe {
+            std::slice::from_raw_parts(
+                (&vertex_push_constants) as *const _ as *const u8,
+                vertex_push_constant_size,
+            )
+        });
+        render_manager.push_constants(
+            BackendShaderStage::FRAGMENT,
+            std::mem::size_of::<UniformEditorTileGFragOffset>() as u32,
+            unsafe {
+                std::slice::from_raw_parts(
+                    &frag_push_constants as *const _ as *const u8,
+                    frag_push_constant_size,
+                )
+            },
+        );
+
+        render_manager.draw(6, 1, 0, 0);
+
+        Ok(())
+    }
+
     fn cmd_render_border_tile(
         &self,
         render_manager: &mut dyn BackendRenderInterface,
@@ -670,7 +834,7 @@ impl BackendCustomPipeline for MapPipeline {
     }
 
     fn pipeline_count(&self) -> u64 {
-        3
+        MapPipelineNames::COUNT as u64
     }
 
     fn pipeline_names(&mut self, name_of_first: u64) {
@@ -681,6 +845,7 @@ impl BackendCustomPipeline for MapPipeline {
         let name = MapPipelineNames::from_u64(name - self.pipe_name_offset).unwrap();
         match name {
             MapPipelineNames::TilePipeline => Self::tile_pipeline_layout(),
+            MapPipelineNames::EditorTilePipeline => Self::editor_tile_pipeline_layout(),
             MapPipelineNames::TileBorderPipeline => Self::border_tile_pipeline_layout(is_textured),
             MapPipelineNames::QuadPipeline => Self::quad_pipeline_layout(is_textured),
         }
@@ -700,6 +865,16 @@ impl BackendCustomPipeline for MapPipeline {
                         "shader/vulkan/tile.vert.spv".into(),
                         "shader/vulkan/tile.frag.spv".into(),
                     ))
+                }
+            }
+            MapPipelineNames::EditorTilePipeline => {
+                if is_textured {
+                    Some((
+                        "shader/vulkan/editor_tile.vert.spv".into(),
+                        "shader/vulkan/editor_tile.frag.spv".into(),
+                    ))
+                } else {
+                    None
                 }
             }
             MapPipelineNames::TileBorderPipeline => {
@@ -745,6 +920,9 @@ impl BackendCustomPipeline for MapPipeline {
             CommandsRenderMap::TileLayer(cmd) => {
                 Self::cmd_render_tile_layer_fill_execute_buffer(render_execute, &cmd);
             }
+            CommandsRenderMap::EditorTileLayer(cmd) => {
+                Self::cmd_render_editor_tile_layer_fill_execute_buffer(render_execute, &cmd);
+            }
             CommandsRenderMap::BorderTile(cmd) => {
                 Self::cmd_render_border_tile_fill_execute_buffer(render_execute, &cmd);
             }
@@ -766,6 +944,9 @@ impl BackendCustomPipeline for MapPipeline {
         .unwrap();
         match command {
             CommandsRenderMap::TileLayer(cmd) => self.cmd_render_tile_layer(render, &cmd),
+            CommandsRenderMap::EditorTileLayer(cmd) => {
+                self.cmd_render_editor_tile_layer(render, &cmd)
+            }
             CommandsRenderMap::BorderTile(cmd) => self.cmd_render_border_tile(render, &cmd),
             CommandsRenderMap::QuadLayer(cmd) => self.cmd_render_quad_layer(render, &cmd),
         }
@@ -802,6 +983,33 @@ impl BackendCustomPipeline for MapPipeline {
                                 },
                                 alignment: 4.try_into().unwrap(),
                             });
+                        });
+
+                        accesses
+                    },
+                }],
+                textures_2d_array: &mut [&mut cmd.texture_index],
+            }),
+            CommandsRenderMap::EditorTileLayer(cmd) => f(GraphicsObjectRewriteFunc {
+                textures: &mut [],
+                buffer_objects: &mut [],
+                uniform_instances: &mut [],
+                shader_storages: &mut [GraphicsShaderStorageAccessAndRewrite {
+                    shader_storage_index: &mut cmd.shader_storage_index,
+                    accesses: {
+                        let mut accesses = self.shader_storage_accesses_pool.new();
+
+                        accesses.push(GraphicsShaderStorageAccess::IndicedQuad {
+                            quad_offset: 0,
+                            quad_count: (cmd.render.layer_width as usize)
+                                .checked_mul(cmd.render.layer_height as usize)
+                                .unwrap(),
+                            entry_byte_size: if cmd.texture_index.is_textured() {
+                                TILE_LAYER_TEXTURED_VERTEX_SIZE
+                            } else {
+                                TILE_LAYER_VERTEX_SIZE
+                            },
+                            alignment: 4.try_into().unwrap(),
                         });
 
                         accesses
@@ -921,6 +1129,42 @@ impl MapGraphics {
         let mut pooled_cmd = self.cmd_pool.new();
         bincode::serde::encode_into_std_write(
             CommandsRenderMap::TileLayer(cmd),
+            pooled_cmd.deref_mut(),
+            bincode::config::standard(),
+        )
+        .unwrap();
+        let mut mod_name = self.mod_name.new();
+        mod_name.push_str(MOD_NAME);
+        self.backend_handle
+            .add_cmd(AllCommands::Render(CommandsRender::Mod(
+                CommandsRenderMod {
+                    cmd: pooled_cmd,
+                    mod_name,
+                },
+            )));
+    }
+
+    pub fn render_editor_tile_layer(
+        &self,
+        state: &State,
+        texture: TextureType2dArray,
+        shader_storage: &ShaderStorage,
+        color: &ColorRgba,
+        render: EditorTileLayerRenderProps,
+    ) {
+        // add the VertexArrays and draw
+        let cmd = CommandRenderEditorTileLayer {
+            state: *state,
+            texture_index: texture.into(),
+            shader_storage_index: shader_storage.get_index_unsafe(),
+            color: *color,
+
+            render,
+        };
+
+        let mut pooled_cmd = self.cmd_pool.new();
+        bincode::serde::encode_into_std_write(
+            CommandsRenderMap::EditorTileLayer(cmd),
             pooled_cmd.deref_mut(),
             bincode::config::standard(),
         )

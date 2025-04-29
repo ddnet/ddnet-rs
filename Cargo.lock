@@ -1745,6 +1745,7 @@ dependencies = [
  "rayon",
  "serde",
  "sound",
+ "strum 0.27.1",
  "time",
  "url",
  "vanilla",

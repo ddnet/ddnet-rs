@@ -378,6 +378,8 @@ pub type ivec2 = vec2_base<i32>;
 #[allow(non_camel_case_types)]
 pub type ivec4 = vec4_base<i32>;
 #[allow(non_camel_case_types)]
+pub type uvec2 = vec2_base<u32>;
+#[allow(non_camel_case_types)]
 pub type ubvec2 = vec2_base<u8>;
 #[allow(non_camel_case_types)]
 pub type ubvec4 = vec4_base<u8>;
