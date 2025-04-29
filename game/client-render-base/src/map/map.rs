@@ -7,7 +7,7 @@ use super::{
         MapPhysicsRenderInfo, PhysicsTileLayerVisuals, QuadLayerVisuals, TileLayerBufferedVisuals,
         TileLayerVisuals, TileLayerVisualsBase,
     },
-    map_pipeline::{MapGraphics, QuadRenderInfo, TileLayerDrawInfo},
+    map_pipeline::{EditorTileLayerRenderProps, MapGraphics, QuadRenderInfo, TileLayerDrawInfo},
     map_sound::MapSoundProcess,
     map_with_visual::{MapVisual, MapVisualLayerBase},
     render_pipe::{Camera, RenderPipeline, RenderPipelineBase},
@@ -232,75 +232,103 @@ impl RenderMap {
         if y0 >= height {
             draw_layer = false;
         }
-        if let Some(shader_storage) = shader_storage {
-            if draw_layer {
-                // indices buffers we want to draw
-                let mut draws = self.tile_layer_render_info_pool.new();
 
-                let reserve: usize = (y1 - y0).unsigned_abs() as usize + 1;
-                draws.reserve(reserve);
+        if visuals.ignored_tile_index_and_is_textured_check {
+            let shader_storage = shader_storage.as_ref().expect(
+                "An empty shader storage for when tile index was ignored \
+                is considered a higher level bug in the code.",
+            );
+            assert!(
+                matches!(texture, TextureType2dArray::Texture(_)),
+                "When texture check is ignored, it is assumed that \
+                a valid texture is always passed down, this is a bug \
+                in higher level code."
+            );
+            self.map_graphics.render_editor_tile_layer(
+                state,
+                texture,
+                shader_storage,
+                &color,
+                EditorTileLayerRenderProps {
+                    x: border_x0 as f32,
+                    y: border_y0 as f32,
+                    w: border_x1 as f32 - border_x0 as f32,
+                    h: border_y1 as f32 - border_y0 as f32,
+                    layer_width: visuals.width,
+                    layer_height: visuals.height,
+                },
+            );
+        } else {
+            if let Some(shader_storage) = shader_storage {
+                if draw_layer {
+                    // indices buffers we want to draw
+                    let mut draws = self.tile_layer_render_info_pool.new();
 
-                for y in y0..y1 {
-                    if x0 > x1 {
-                        continue;
+                    let reserve: usize = (y1 - y0).unsigned_abs() as usize + 1;
+                    draws.reserve(reserve);
+
+                    for y in y0..y1 {
+                        if x0 > x1 {
+                            continue;
+                        }
+                        let xr = x1 - 1;
+
+                        if visuals.tiles_of_layer[(y * width + xr) as usize].quad_offset()
+                            < visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset()
+                        {
+                            panic!("Tile count wrong.");
+                        }
+
+                        let num_quads = (visuals.tiles_of_layer[(y * width + xr) as usize]
+                            .quad_offset()
+                            - visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset())
+                            + (if visuals.tiles_of_layer[(y * width + xr) as usize].drawable() {
+                                1
+                            } else {
+                                0
+                            });
+
+                        if num_quads > 0 {
+                            draws.push(TileLayerDrawInfo {
+                                quad_offset: visuals.tiles_of_layer[(y * width + x0) as usize]
+                                    .quad_offset(),
+                                quad_count: num_quads,
+                                pos_y: y as f32,
+                            });
+                        }
                     }
-                    let xr = x1 - 1;
 
-                    if visuals.tiles_of_layer[(y * width + xr) as usize].quad_offset()
-                        < visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset()
-                    {
-                        panic!("Tile count wrong.");
+                    color.r *= channels.r().to_num::<f32>();
+                    color.g *= channels.g().to_num::<f32>();
+                    color.b *= channels.b().to_num::<f32>();
+                    color.a *= channels.a().to_num::<f32>();
+
+                    let draw_count = draws.len();
+                    if draw_count != 0 {
+                        self.map_graphics.render_tile_layer(
+                            state,
+                            texture.clone(),
+                            shader_storage,
+                            &color,
+                            draws,
+                        );
                     }
-
-                    let num_quads = (visuals.tiles_of_layer[(y * width + xr) as usize]
-                        .quad_offset()
-                        - visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset())
-                        + (if visuals.tiles_of_layer[(y * width + xr) as usize].drawable() {
-                            1
-                        } else {
-                            0
-                        });
-
-                    if num_quads > 0 {
-                        draws.push(TileLayerDrawInfo {
-                            quad_offset: visuals.tiles_of_layer[(y * width + x0) as usize]
-                                .quad_offset(),
-                            quad_count: num_quads,
-                            pos_y: y as f32,
-                        });
-                    }
-                }
-
-                color.r *= channels.r().to_num::<f32>();
-                color.g *= channels.g().to_num::<f32>();
-                color.b *= channels.b().to_num::<f32>();
-                color.a *= channels.a().to_num::<f32>();
-
-                let draw_count = draws.len();
-                if draw_count != 0 {
-                    self.map_graphics.render_tile_layer(
-                        state,
-                        texture.clone(),
-                        shader_storage,
-                        &color,
-                        draws,
-                    );
                 }
             }
-        }
 
-        if draw_border {
-            self.render_tile_border(
-                state,
-                texture.clone(),
-                visuals,
-                buffer_object,
-                &color,
-                border_x0,
-                border_y0,
-                border_x1,
-                border_y1,
-            );
+            if draw_border {
+                self.render_tile_border(
+                    state,
+                    texture.clone(),
+                    visuals,
+                    buffer_object,
+                    &color,
+                    border_x0,
+                    border_y0,
+                    border_x1,
+                    border_y1,
+                );
+            }
         }
     }
 

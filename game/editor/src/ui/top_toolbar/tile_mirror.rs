@@ -93,6 +93,8 @@ pub fn mirror_tiles_y(
         },
     }
 
+    brush.last_apply.set(None);
+
     if upload_new_layer {
         upload_brush(
             tp,
@@ -157,6 +159,8 @@ pub fn mirror_tiles_x(
             }
         },
     }
+
+    brush.last_apply.set(None);
 
     if upload_new_layer {
         upload_brush(
@@ -252,6 +256,8 @@ pub fn rotate_tiles_plus_90(
     brush.negative_offsetf = dvec2::new(new_x, new_y);
     std::mem::swap(&mut brush.w, &mut brush.h);
 
+    brush.last_apply.set(None);
+
     if upload_new_layer {
         upload_brush(
             tp,
@@ -312,6 +318,8 @@ pub fn rotate_tile_flags_plus_90(
             }
         },
     }
+
+    brush.last_apply.set(None);
 
     if upload_new_layer {
         upload_brush(

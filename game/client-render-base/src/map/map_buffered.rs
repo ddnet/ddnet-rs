@@ -108,8 +108,8 @@ impl TileVisual {
 pub struct TileLayerVisualsBase {
     pub tiles_of_layer: Vec<TileVisual>,
 
-    /// the size of all tiles that aren't part of the border
-    pub buffer_size_all_tiles: usize,
+    /// Basically also uploaded air tiles
+    pub ignored_tile_index_and_is_textured_check: bool,
 
     pub corner_top_left: TileVisual,
     pub corner_top_right: TileVisual,
@@ -1231,7 +1231,8 @@ impl ClientMapBuffered {
                             tile.copy_into_slice(data);
                         });
 
-                    visuals.buffer_size_all_tiles = tmp_tiles.len() * tile_size;
+                    visuals.ignored_tile_index_and_is_textured_check =
+                        ignore_tile_index_and_is_textured_check;
                 }
                 if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                     // Ignore the error, but log it.
