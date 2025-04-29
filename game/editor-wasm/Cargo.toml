@@ -24,8 +24,3 @@ anyhow = { version = "1.0.98", features = ["backtrace"] }
 rayon = "1.10.0"
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 libloading = "0.8.6"
-
-[features]
-legacy = ["editor/legacy"]
-
-default = ["legacy"]

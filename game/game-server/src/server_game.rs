@@ -73,7 +73,6 @@ pub struct ServerMap {
     pub resource_files: HashMap<String, Vec<u8>>,
 }
 
-#[cfg(feature = "legacy")]
 pub type LegacyToNewResult = (Vec<u8>, HashMap<String, Vec<u8>>);
 
 impl ServerMap {
@@ -156,12 +155,9 @@ impl ServerMap {
         // try to load legacy map with that name, convert it to new format
         let (map_file, resource_files) = match map_res {
             Ok((map_file, resource_files)) => anyhow::Ok((map_file, resource_files)),
-            #[cfg(feature = "legacy")]
             Err(map_res_err) => {
                 Self::legacy_to_new(None, runtime_thread_pool, io, map_name, None, map_res_err)
             }
-            #[cfg(not(feature = "legacy"))]
-            Err(err) => Err(err),
         }?;
 
         Ok(Self {
@@ -171,7 +167,6 @@ impl ServerMap {
         })
     }
 
-    #[cfg(feature = "legacy")]
     pub fn legacy_to_new(
         base_path: Option<&Path>,
         runtime_thread_pool: &Arc<rayon::ThreadPool>,

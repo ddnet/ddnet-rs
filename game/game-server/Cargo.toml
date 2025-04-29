@@ -33,7 +33,7 @@ http-accounts = { path = "../http-accounts" }
 demo = { path = "../demo", features = ["recorder"] }
 
 game-state-wasm = { path = "../game-state-wasm" }
-map-convert-lib = { path = "../map-convert-lib", optional = true }
+map-convert-lib = { path = "../map-convert-lib" }
 
 ddnet-account-game-server = { version = "0.3.0", features = ["sqlite"] }
 ddnet-accounts-shared = { version = "0.2.0" }
@@ -55,8 +55,3 @@ async-trait = "0.1.88"
 rustc-hash = "2.1.1"
 futures = "0.3.31"
 either = "1.15.0"
-
-[features]
-legacy = ["map-convert-lib"]
-
-default = ["legacy"]

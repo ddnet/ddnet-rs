@@ -1132,7 +1132,6 @@ impl Editor {
             .to_string())
     }
 
-    #[cfg(feature = "legacy")]
     fn load_legacy_map(
         &mut self,
         path: &Path,
@@ -1231,15 +1230,6 @@ impl Editor {
         self.active_tab = name;
 
         Ok(())
-    }
-
-    #[cfg(not(feature = "legacy"))]
-    fn load_legacy_map(
-        &mut self,
-        _path: &Path,
-        _options: MapLoadWithServerOptions,
-    ) -> anyhow::Result<()> {
-        Err(anyhow!("loading legacy maps is not supported"))
     }
 
     fn map_resource_path(ty: ReadFileTy, name: &str, meta: &MapResourceMetaData) -> String {
@@ -1401,7 +1391,6 @@ impl Editor {
         }
     }
 
-    #[cfg(feature = "legacy")]
     pub fn save_map_legacy(
         tab: &mut EditorTab,
         io: &Io,
@@ -1447,16 +1436,6 @@ impl Editor {
             write_file_editor(&fs, &path, map_legacy.map).await?;
             Ok(())
         }))
-    }
-
-    #[cfg(not(feature = "legacy"))]
-    pub fn save_map_legacy(
-        tab: &mut EditorTab,
-        io: &Io,
-        tp: &Arc<rayon::ThreadPool>,
-        path: &Path,
-    ) -> anyhow::Result<IoRuntimeTask<()>> {
-        Err(anyhow!("saving as legacy map is not supported"))
     }
 
     fn save_map_tab_impl(

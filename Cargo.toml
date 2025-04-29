@@ -240,15 +240,12 @@ opt-level = 3
 
 [features]
 bundled_data_dir = ["base-fs/bundled_data_dir"]
-legacy = ["game-server/legacy", "editor-wasm/legacy", "editor/legacy"]
 enable_steam = ["steam/runtime"]
 microphone = ["microphone/cpal_opus"]
 ffmpeg = ["client-demo/ffmpeg"]
 
 alloc_track = ["dep:alloc-track"]
 alloc_stats = ["dep:stats_alloc"]
-
-default = ["legacy"]
 
 #[profile.release]
 #lto = true
