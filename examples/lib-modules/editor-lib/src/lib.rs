@@ -1,4 +1,4 @@
-use std::{cell::RefCell, num::NonZeroUsize, sync::Arc};
+use std::{cell::RefCell, num::NonZeroUsize, path::PathBuf, sync::Arc};
 
 use base_io::io::Io;
 use config::config::ConfigEngine;
@@ -51,6 +51,16 @@ pub fn editor_new(sound: &SoundManager, graphics: &Graphics, io: &Io, font_data:
 #[no_mangle]
 pub fn editor_render(input: egui::RawInput, config: &ConfigEngine) -> EditorResult {
     API_EDITOR.with(|g| g.state.borrow_mut().as_mut().unwrap().render(input, config))
+}
+
+#[no_mangle]
+pub fn editor_file_dropped(file: PathBuf) {
+    API_EDITOR.with(|g| g.state.borrow_mut().as_mut().unwrap().file_dropped(file))
+}
+
+#[no_mangle]
+pub fn editor_file_hovered(file: Option<PathBuf>) {
+    API_EDITOR.with(|g| g.state.borrow_mut().as_mut().unwrap().file_hovered(file))
 }
 
 #[no_mangle]

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{collections::HashSet, path::PathBuf, sync::Arc, time::Duration};
 
 use base_io::io::Io;
 use config::config::ConfigEngine;
@@ -62,6 +62,9 @@ pub struct EditorUiRenderPipe<'a> {
     pub hotkeys: &'a mut EditorBindsFile,
     pub cur_hotkey_events: &'a mut HashSet<EditorHotkeyEvent>,
     pub cached_binds_per_event: &'a mut Option<BindsPerEvent>,
+
+    pub hovered_file: &'a Option<PathBuf>,
+    pub current_client_pointer_pos: &'a egui::Pos2,
 }
 
 pub struct EditorUiRender {
@@ -157,6 +160,9 @@ impl EditorUiRender {
                     hotkeys: pipe.hotkeys,
                     cur_hotkey_events: pipe.cur_hotkey_events,
                     cached_binds_per_event: pipe.cached_binds_per_event,
+
+                    hovered_file: pipe.hovered_file,
+                    current_client_pointer_pos: pipe.current_client_pointer_pos,
                 },
             ),
             pipe.inp,

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use app::NativeApp;
@@ -66,6 +67,15 @@ pub trait FromNativeImpl: InputEventHandler {
     /// But if it wants to serialize the current options it can do so.
     fn window_options_changed(&mut self, wnd: NativeWindowOptions);
     fn destroy(self);
+
+    /// The app lost or gained focus.
+    fn focus_changed(&mut self, _focused: bool) {}
+
+    /// File was dropped into the app.
+    fn file_dropped(&mut self, _file: PathBuf) {}
+
+    /// None if hovered was ended.
+    fn file_hovered(&mut self, _file: Option<PathBuf>) {}
 
     fn window_created_ntfy(&mut self, native: &mut dyn NativeImpl) -> anyhow::Result<()>;
     fn window_destroyed_ntfy(&mut self, native: &mut dyn NativeImpl) -> anyhow::Result<()>;

@@ -123,6 +123,14 @@ impl EditorInterface for EditorWasmManager {
     fn render(&mut self, input: egui::RawInput, config: &ConfigEngine) -> EditorResult {
         self.state.as_mut().render(input, config)
     }
+
+    fn file_dropped(&mut self, file: PathBuf) {
+        self.state.as_mut().file_dropped(file)
+    }
+
+    fn file_hovered(&mut self, file: Option<PathBuf>) {
+        self.state.as_mut().file_hovered(file)
+    }
 }
 
 #[derive(Default)]

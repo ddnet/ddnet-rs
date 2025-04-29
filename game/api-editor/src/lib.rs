@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use api::read_param_from_host;
@@ -60,4 +61,10 @@ impl EditorInterface for ApiEditor {
         GRAPHICS_BACKEND.with(|g| g.actual_run_cmds.set(true));
         SOUND.with(|g| g.backend_handle.run_cmds())
     }
+
+    #[guest_func_call_from_host_auto(option)]
+    fn file_dropped(&mut self, file: PathBuf) {}
+
+    #[guest_func_call_from_host_auto(option)]
+    fn file_hovered(&mut self, file: Option<PathBuf>) {}
 }

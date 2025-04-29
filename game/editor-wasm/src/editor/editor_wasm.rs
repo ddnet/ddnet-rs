@@ -2,7 +2,7 @@ use api_wasm_macros::wasm_mod_prepare_editor;
 
 #[wasm_mod_prepare_editor]
 pub mod editor_wasm {
-    use std::rc::Rc;
+    use std::{path::PathBuf, rc::Rc};
 
     use anyhow::anyhow;
     use api_wasm_macros::wasm_func_auto_call;
@@ -66,5 +66,11 @@ pub mod editor_wasm {
     impl EditorInterface for EditorWasm {
         #[wasm_func_auto_call]
         fn render(&mut self, input: egui::RawInput, config: &ConfigEngine) -> EditorResult {}
+
+        #[wasm_func_auto_call]
+        fn file_dropped(&mut self, file: PathBuf) {}
+
+        #[wasm_func_auto_call]
+        fn file_hovered(&mut self, file: Option<PathBuf>) {}
     }
 }

@@ -1,4 +1,6 @@
 pub mod editor_lib {
+    use std::path::PathBuf;
+
     use base_io::io::Io;
     use config::config::ConfigEngine;
     use editor::editor::{EditorInterface, EditorResult};
@@ -52,6 +54,32 @@ pub mod editor_lib {
                 > = self.lib.as_ref().unwrap().get(b"editor_render").unwrap();
 
                 func(input, config)
+            }
+        }
+
+        fn file_dropped(&mut self, file: PathBuf) {
+            unsafe {
+                let func: libloading::Symbol<unsafe extern "Rust" fn(PathBuf) -> ()> = self
+                    .lib
+                    .as_ref()
+                    .unwrap()
+                    .get(b"editor_file_dropped")
+                    .unwrap();
+
+                func(file);
+            }
+        }
+
+        fn file_hovered(&mut self, file: Option<PathBuf>) {
+            unsafe {
+                let func: libloading::Symbol<unsafe extern "Rust" fn(Option<PathBuf>) -> ()> = self
+                    .lib
+                    .as_ref()
+                    .unwrap()
+                    .get(b"editor_file_hovered")
+                    .unwrap();
+
+                func(file);
             }
         }
     }

@@ -1,9 +1,12 @@
-use egui::{Align2, ModifierNames, Window};
+use egui::{Align2, Color32, FontId, Modal, ModifierNames, Window};
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::network::{NetworkClientState, NetworkState};
 
-use super::user_data::{UserData, UserDataWithTab};
+use super::{
+    dotted_rect::draw_dotted_rect,
+    user_data::{UserData, UserDataWithTab},
+};
 
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     super::mapper_cursors::main_frame::render(
@@ -117,6 +120,84 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
 
     *pipe.user_data.input_state = Some(ui.ctx().input(|inp| inp.clone()));
     *pipe.user_data.canvas_size = Some(ui.ctx().input(|inp| inp.screen_rect()));
+
+    if let Some(hovered_file) = pipe.user_data.hovered_file.as_ref() {
+        Modal::new("hovered-file-drag-zones".into()).show(ui.ctx(), |ui| {
+            ui.set_width(ui.ctx().screen_rect().width());
+            ui.set_height(ui.ctx().screen_rect().height());
+            let ext = hovered_file
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+
+            let drop_areas = match ext {
+                "map" => vec!["Drop the legacy map file here to open a new tab."],
+                "twmap" => vec!["Drop the map file here to open a new tab."],
+                "png" => vec![
+                    "Drop the quad texture here to add it to the current map.",
+                    "Drop the tile texture here to add it to the current map.",
+                ],
+                "ogg" => vec!["Drop the sound here to add it to the current map."],
+                _ => Default::default(),
+            };
+
+            if drop_areas.len() == 1 {
+                draw_dotted_rect(
+                    ui,
+                    ui.ctx().screen_rect().expand(-50.0),
+                    10.0,
+                    Color32::WHITE,
+                );
+                ui.painter().text(
+                    ui.ctx().screen_rect().center(),
+                    Align2::CENTER_CENTER,
+                    drop_areas[0],
+                    FontId::proportional(30.0),
+                    Color32::WHITE,
+                );
+            } else if drop_areas.len() == 2 {
+                let pointer = ui
+                    .input(|i| {
+                        i.pointer
+                            .hover_pos()
+                            .or(i.pointer.interact_pos())
+                            .or(i.pointer.latest_pos())
+                    })
+                    .unwrap_or(*pipe.user_data.current_client_pointer_pos);
+                let left_active = pointer.x < ui.ctx().screen_rect().width() / 2.0;
+                let (left_color, right_color) = if left_active {
+                    (Color32::LIGHT_BLUE, Color32::WHITE)
+                } else {
+                    (Color32::WHITE, Color32::LIGHT_BLUE)
+                };
+
+                let mut rect = ui.ctx().screen_rect();
+                rect.set_width(rect.width() / 2.0);
+                draw_dotted_rect(ui, rect.expand(-50.0), 10.0, left_color);
+                ui.painter().text(
+                    rect.center(),
+                    Align2::CENTER_CENTER,
+                    drop_areas[0],
+                    FontId::proportional(25.0),
+                    left_color,
+                );
+
+                let mut rect = ui.ctx().screen_rect();
+                rect = rect.translate((rect.width() / 2.0, 0.0).into());
+                rect.set_width(rect.width() / 2.0);
+                draw_dotted_rect(ui, rect.expand(-50.0), 10.0, right_color);
+                ui.painter().text(
+                    rect.center(),
+                    Align2::CENTER_CENTER,
+                    drop_areas[1],
+                    FontId::proportional(25.0),
+                    right_color,
+                );
+            }
+        });
+
+        *pipe.user_data.pointer_is_used = true;
+    }
 
     // clear and handle new hotkeys
     *pipe.user_data.cached_binds_per_event = None;

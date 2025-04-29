@@ -645,9 +645,16 @@ impl WinitWrapper {
                                 event_loop.exit();
                             }
                             winit::event::WindowEvent::Destroyed => {} // TODO: important for android
-                            winit::event::WindowEvent::DroppedFile(_) => todo!(),
-                            winit::event::WindowEvent::HoveredFile(_) => todo!(),
-                            winit::event::WindowEvent::HoveredFileCancelled => todo!(),
+                            winit::event::WindowEvent::DroppedFile(path) => {
+                                native_user.file_dropped(path);
+                                native_user.file_hovered(None);
+                            }
+                            winit::event::WindowEvent::HoveredFile(path) => {
+                                native_user.file_hovered(Some(path));
+                            }
+                            winit::event::WindowEvent::HoveredFileCancelled => {
+                                native_user.file_hovered(None);
+                            }
                             winit::event::WindowEvent::Focused(has_focus) => {
                                 if !has_focus {
                                     window.mouse.mouse_grab_internal(
@@ -679,6 +686,7 @@ impl WinitWrapper {
                                     );
                                 }
                                 native_user.window_options_changed(window.window_options());
+                                native_user.focus_changed(has_focus);
                             } // TODO: also important for android
                             winit::event::WindowEvent::KeyboardInput {
                                 device_id,

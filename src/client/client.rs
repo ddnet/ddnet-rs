@@ -3728,6 +3728,23 @@ impl FromNativeImpl for ClientNativeImpl {
         game_config_fs::fs::save(&self.config.game, &self.io);
     }
 
+    fn focus_changed(&mut self, _focused: bool) {
+        // global binds don't allow keeping keys by tabbing out
+        self.global_binds.reset_cur_keys();
+    }
+
+    fn file_dropped(&mut self, file: PathBuf) {
+        if let EditorState::Open(editor) = &mut self.editor {
+            editor.file_dropped(file);
+        }
+    }
+
+    fn file_hovered(&mut self, file: Option<PathBuf>) {
+        if let EditorState::Open(editor) = &mut self.editor {
+            editor.file_hovered(file);
+        }
+    }
+
     fn window_created_ntfy(&mut self, native: &mut dyn NativeImpl) -> anyhow::Result<()> {
         self.graphics_backend.window_created_ntfy(
             BackendWindow::Winit {
