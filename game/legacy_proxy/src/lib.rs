@@ -1643,11 +1643,13 @@ impl Client {
                     debug!("[NOT IMPLEMENTED] common: {:?}", common);
                 }
                 SnapObj::Explosion(explosion) => {
-                    let events = base.events.worlds.entry(player_stage).or_insert_with(|| {
-                        events::GameWorldEvents {
+                    let events = base
+                        .events
+                        .worlds
+                        .entry(player_stage)
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
-                        }
-                    });
+                        });
                     events.events.insert(
                         base.event_id_generator.next_id(),
                         events::GameWorldEvent::Effect(events::GameWorldEffectEvent {
@@ -1661,11 +1663,13 @@ impl Client {
                     );
                 }
                 SnapObj::Spawn(spawn) => {
-                    let events = base.events.worlds.entry(player_stage).or_insert_with(|| {
-                        events::GameWorldEvents {
+                    let events = base
+                        .events
+                        .worlds
+                        .entry(player_stage)
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
-                        }
-                    });
+                        });
                     events.events.insert(
                         base.event_id_generator.next_id(),
                         events::GameWorldEvent::Effect(events::GameWorldEffectEvent {
@@ -1680,11 +1684,13 @@ impl Client {
                     );
                 }
                 SnapObj::HammerHit(hammer_hit) => {
-                    let events = base.events.worlds.entry(player_stage).or_insert_with(|| {
-                        events::GameWorldEvents {
+                    let events = base
+                        .events
+                        .worlds
+                        .entry(player_stage)
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
-                        }
-                    });
+                        });
                     events.events.insert(
                         base.event_id_generator.next_id(),
                         events::GameWorldEvent::Effect(events::GameWorldEffectEvent {
@@ -1700,11 +1706,13 @@ impl Client {
                     );
                 }
                 SnapObj::Death(death) => {
-                    let events = base.events.worlds.entry(player_stage).or_insert_with(|| {
-                        events::GameWorldEvents {
+                    let events = base
+                        .events
+                        .worlds
+                        .entry(player_stage)
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
-                        }
-                    });
+                        });
                     events.events.insert(
                         base.event_id_generator.next_id(),
                         events::GameWorldEvent::Effect(events::GameWorldEffectEvent {
@@ -1720,11 +1728,13 @@ impl Client {
                 }
                 SnapObj::SoundGlobal(snap_obj::SoundGlobal { common, sound_id })
                 | SnapObj::SoundWorld(snap_obj::SoundWorld { common, sound_id }) => {
-                    let events = base.events.worlds.entry(player_stage).or_insert_with(|| {
-                        events::GameWorldEvents {
+                    let events = base
+                        .events
+                        .worlds
+                        .entry(player_stage)
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
-                        }
-                    });
+                        });
                     events.events.insert(
                         base.event_id_generator.next_id(),
                         events::GameWorldEvent::Sound(events::GameWorldSoundEvent {
@@ -1997,11 +2007,13 @@ impl Client {
                     );
                 }
                 SnapObj::DamageInd(damage_ind) => {
-                    let events = base.events.worlds.entry(player_stage).or_insert_with(|| {
-                        events::GameWorldEvents {
+                    let events = base
+                        .events
+                        .worlds
+                        .entry(player_stage)
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
-                        }
-                    });
+                        });
                     let angle = PI + damage_ind.angle as f32 / 256.0;
                     events.events.insert(
                         base.event_id_generator.next_id(),
@@ -2922,7 +2934,7 @@ impl Client {
                         .events
                         .worlds
                         .entry(base.stage_0_id)
-                        .or_insert_with(|| events::GameWorldEvents {
+                        .or_insert_with_keep_order(|| events::GameWorldEvents {
                             events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
                         });
                     events.events.insert(
@@ -2997,7 +3009,7 @@ impl Client {
                     .events
                     .worlds
                     .entry(base.stage_0_id)
-                    .or_insert_with(|| events::GameWorldEvents {
+                    .or_insert_with_keep_order(|| events::GameWorldEvents {
                         events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
                     });
                 events.events.insert(
@@ -3018,7 +3030,7 @@ impl Client {
                     .events
                     .worlds
                     .entry(base.stage_0_id)
-                    .or_insert_with(|| events::GameWorldEvents {
+                    .or_insert_with_keep_order(|| events::GameWorldEvents {
                         events: mt_datatypes::PoolFxLinkedHashMap::new_without_pool(),
                     });
                 const WEAPON_GAME: i32 = -3; // team switching etc

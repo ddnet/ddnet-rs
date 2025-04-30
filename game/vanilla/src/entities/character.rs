@@ -628,7 +628,7 @@ pub mod character {
         pub fn give_ninja(&mut self) {
             let buff = self.reusable_core.buffs.entry(CharacterBuff::Ninja);
             let had_ninja = matches!(buff, hashlink::lru_cache::Entry::Occupied(_));
-            let buff = buff.or_insert_with(|| BuffProps {
+            let buff = buff.or_insert_with_keep_order(|| BuffProps {
                 remaining_tick: 0.into(),
                 interact_tick: 0.into(),
                 interact_cursor_dir: vec2::default(),
@@ -1762,7 +1762,10 @@ pub mod character {
     #[hiarc_safer_rc_refcell]
     impl PhasedCharacters {
         pub(super) fn insert(&mut self, id: CharacterId) {
-            let counter = self.ids.entry(id).or_insert_with(Default::default);
+            let counter = self
+                .ids
+                .entry(id)
+                .or_insert_with_keep_order(Default::default);
             *counter += 1;
         }
         pub(super) fn remove(&mut self, id: &CharacterId) {

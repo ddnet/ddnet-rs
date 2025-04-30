@@ -2890,7 +2890,7 @@ pub mod state {
                     .map(|i| i.stage_id())
                     .unwrap_or(self.stage_0_id);
                 for event in events.take().drain(..) {
-                    let evs = worlds_events.entry(stage_id).or_insert_with(|| {
+                    let evs = worlds_events.entry(stage_id).or_insert_with_keep_order(|| {
                         let world_events = self.game_pools.world_events_pool.new();
                         GameWorldEvents {
                             events: world_events,

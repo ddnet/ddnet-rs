@@ -628,7 +628,7 @@ impl GameData {
 
                     let player_input_chains = player_inputs
                         .entry(*local_player_id)
-                        .or_insert_with(|| player_inputs_chainable_pool.new());
+                        .or_insert_with_keep_order(|| player_inputs_chainable_pool.new());
 
                     for tick in
                         tick_of_inp.saturating_sub(ticks_to_send.saturating_sub(1))..=tick_of_inp

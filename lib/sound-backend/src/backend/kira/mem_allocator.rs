@@ -38,7 +38,10 @@ impl MemoryAllocatorInner {
     }
 
     pub fn add_hashed(&mut self, hash: Hash, data: StaticSoundData) {
-        let entry = self.hashed_sound_memory.entry(hash).or_insert((0, data));
+        let entry = self
+            .hashed_sound_memory
+            .entry(hash)
+            .or_insert_keep_order((0, data));
         entry.0 += 1;
     }
 

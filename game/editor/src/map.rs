@@ -185,6 +185,28 @@ pub struct EditorPhysicsLayerNumberExtra {
     pub leave_extra: Option<String>,
 }
 
+#[derive(Debug, Hiarc, Default, Clone, PartialEq, Eq)]
+pub struct TuneZoneEdit {
+    pub name: Option<String>,
+    pub tunes: FxLinkedHashMap<String, CommandValue>,
+
+    /// Message a server/client _can_ display, if the tee enters this tune zone.
+    pub enter_msg: Option<String>,
+    /// Message a server/client _can_ display, if the tee leaves this tune zone.
+    pub leave_msg: Option<String>,
+}
+
+impl TuneZoneEdit {
+    pub fn in_use(&self) -> bool {
+        self.name.is_some()
+            || !self.tunes.is_empty()
+            || self.enter_msg.is_some()
+            || self.leave_msg.is_some()
+    }
+}
+
+pub type TuneOverviewExtra = FxLinkedHashMap<u8, TuneZoneEdit>;
+
 #[derive(Debug, Clone)]
 pub struct EditorPhysicsLayerProps {
     pub visuals: PhysicsTileLayerVisuals,
@@ -197,6 +219,10 @@ pub struct EditorPhysicsLayerProps {
     pub number_extra_text: String,
     pub enter_extra_text: String,
     pub leave_extra_text: String,
+
+    // TODO: clean this up into own props for tune layers etc.
+    pub tune_overview_extra: TuneOverviewExtra,
+    pub number_extra_zone: u8,
 
     pub switch_delay: u8,
 

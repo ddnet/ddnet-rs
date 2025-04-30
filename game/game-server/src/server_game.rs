@@ -676,8 +676,10 @@ impl ServerGame {
                 let inp = self
                     .queued_inputs
                     .entry(for_monotonic_tick)
-                    .or_insert_with(Default::default);
-                let entry = inp.entry(*player_id).or_insert_with(Default::default);
+                    .or_insert_with_keep_order(Default::default);
+                let entry = inp
+                    .entry(*player_id)
+                    .or_insert_with_keep_order(Default::default);
                 entry.try_overwrite(&player_input.inp, player_input.version(), false);
             }
         }

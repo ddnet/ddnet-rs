@@ -98,7 +98,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     .user
                                     .number_extra
                                     .entry(i)
-                                    .or_insert_with(Default::default);
+                                    .or_insert_with_keep_order(Default::default);
 
                                 if switch.name != switch_name {
                                     let old_name = layer

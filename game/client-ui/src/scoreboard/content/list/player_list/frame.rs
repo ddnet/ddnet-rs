@@ -64,7 +64,7 @@ pub fn render<'a>(
                             let rect = ui.available_rect_before_wrap();
                             frame_rect
                                 .entry(stage_id)
-                                .or_insert_with(|| FrameRect {
+                                .or_insert_with_keep_order(|| FrameRect {
                                     rects: Default::default(),
                                     shape_id: ui.painter().add(Shape::Noop),
                                 })
