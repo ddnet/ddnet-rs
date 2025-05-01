@@ -918,7 +918,7 @@ impl InputHandling {
                         },
                         InputEv::Move(move_ev)
                             if !local_player.emote_wheel_active
-                                || !local_player.spectator_selection_active =>
+                                && !local_player.spectator_selection_active =>
                         {
                             let factor = config_game.inp.sensitivity() / 100.0;
 
