@@ -53,7 +53,7 @@ pub const TEXT_TILE_BRUSH: &str =
 \n\
 The tile brush allows to select a range of tiles (`left click`) and apply different actions on this selection:\n\
 - `Left click` -> Draws this selection anywhere within a tile layer.\n\
-- `Shift + left click selection` -> Creates a repeated pattern of the selected tiles.\n\n\
+- `Shift + left click selection` -> Creates a repeated pattern of the selected tiles by dragging.\n\n\
 - `B + left click` (single tile only) -> Fills the empty area with the given tile.\
   (The fill tool is always destructive!)\n\n\
 ---\n\n\
@@ -66,8 +66,8 @@ pub const TEXT_TILE_SELECT: &str =
 "\
 # Tile selection\n\
 \n\
-The tile selection allows to select a range of tiles (`left click`) and apply different actions on this selection,
-which can be found in the tool bar below.  \n\
+The tile selection allows to select a range of tiles (`left click`) and apply different actions on this selection \n
+such as flipping and rotating, which can be found in the tool bar below.  \n\
 Press `right click` to unset the selection.\
 ";
 
@@ -99,7 +99,7 @@ pub const TEXT_LAYER_PROPS_ANIM_COLOR: &str = "\
 # Layer's animation color\n\
 \n\
 If the `Animations`-panel is open and this layer has a color \
-animation active, then you can change this property and \
+animation active, you can change this property and \
 insert a new animation point at the current `Animations`-panel's \
 time value (move the time dragger) instead of changing the animation points inside
 the `Animations`-panel.\n\
@@ -111,13 +111,13 @@ The rendered color value is the result of `color = base-color * animation-point-
 pub const TEXT_ANIM_PANEL_OPEN: &str =
 "\
 # Animations panel + properties\n\n\
-To make animating easier to use, properties that are affected by animations like position, color & sound volume \
+To make animating easier, properties that are affected by animations like position, color & sound volume \
 are entering a different mode when the `Animations`-panel is open.  \n\
 The final product of animation values are applied like following:\n\
 - position: `pos = base_pos + anim_pos`\n\
 - color: `color = base_color * anim_color`\n\
 - volume: `volume = base_volume * anim_volume`\n\n\
-The conclusion of this is that if you insert a new animation key point, then this key point can automatically \
+The conclusion of this is that if you insert a new animation key point this key point can automatically \
 calculate the animation point values using the above equasion.\n\n\
 > - You can opt-out of this animations handling in the global settings.\n\
 > - Color values are always in the range [0-1] (or [0-255]), so e.g. if the base color for the red channel is 0 \
@@ -147,8 +147,8 @@ Groups are separated into 3 main categories:\n\
 - __Background__: the layers that will be rendered behind the Tees and other ingame objects.\n\
 - __Physics__: the layers that control how the game works.\n\
 - __Foreground__: the layers that will be rendered in front of ingame objects.\n\n\
-All groups & layers can be hidden pressing the eye-symbol. This will not affect how they are displayed in the client!\n\n\
-To open group & layer properties `right click` on their names. To select multiple groups __or__ layers hold `shift`.  \n\
+All groups & layers can be hidden by pressing the eye-symbol. This will not affect how they are displayed in the client!\n\n\
+To open the group & layer properties `right click` on their names. To select multiple groups __or__ layers hold `shift`.  \n\
 This will allow to modify the overlapping properties of multiple groups/layers at once.  \n\
 To activate a layer `left click` the name.\n\
 ";
@@ -180,7 +180,7 @@ pub const TEXT_ANIM_PANEL_AND_PROPS: &str = "\
 To make animations easier to use, you can use the properties of e.g. quads \
 to animate your quads while the animations panel is open.  \n\
 That however means that the _base_ properties will not be overwritten when \
-changing the properties, because instead it will write to temporary properties\
+changing the properties, because it will instead write to temporary properties\
 that are influenced by the current animation time and allow to insert new animation points.  \n\
 To opt-out of this behavior, enable this option.\
 ";
@@ -194,13 +194,14 @@ Mirrors the tile brush horizontal or vertically.\
 pub const TEXT_TILE_DESTRUCTIVE: &str = "\
 # Destructive tiles\n\
 \n\
-If active, then tiles that are non-air will be overwritten by the brush.\
+If active, tiles that are non-air will be overwritten by the brush.\
 ";
 
 pub const TEXT_TILE_ALLOW_UNUSED: &str = "\
 # Allow unused tiles\n\
 \n\
-Allows to select and draw unused tiles, so those tiles that are not known to the game.\
+Allows to select and draw unused tiles, so those tiles are not known to the game.\
+(unused tiles can be used for modding purposes)
 ";
 
 pub const AUTO_MAPPER_CREATOR_EXPLAIN: &str = "\
@@ -216,7 +217,7 @@ the given conditions (tile index & optional flags).\n\
 - A condition can be negated or not. It can optionally be used as \
 expression using an OR or NOT boolean operand\
 and a second condition. (So it allows basic boolean algebra).\n\
-- If the given condition fully evaluates to _true_, then the tile is spawned/changed.\n\
+- If the given condition fully evaluates to _true_, the tile is spawned/changed.\n\
 - Optionally a randomness parameter can be used to skip the above \
 calculation based on the random probability.\n\
 ";
