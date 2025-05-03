@@ -36,7 +36,8 @@ pub enum LocalConsoleEvent {
     Connect {
         addresses: Vec<SocketAddr>,
         cert: ServerCertMode,
-        can_start_local_server: bool,
+        can_start_internal_server: bool,
+        can_connect_internal_server: bool,
     },
     ConnectLegacy {
         addresses: Vec<SocketAddr>,
@@ -843,16 +844,17 @@ impl LocalConsoleBuilder {
                 else {
                     return Err(anyhow!("Expected a text that represents the ip+port"));
                 };
-                let text = if !text.contains(":") {
-                    format!("{text}:8303")
+                let (text, had_port) = if !text.contains(":") {
+                    (format!("{text}:8303"), false)
                 } else {
-                    text.clone()
+                    (text.clone(), true)
                 };
                 let addresses = text.to_socket_addrs()?.collect();
                 console_events_cmd.push(LocalConsoleEvent::Connect {
                     addresses,
                     cert: ServerCertMode::Unknown,
-                    can_start_local_server: true,
+                    can_start_internal_server: !had_port,
+                    can_connect_internal_server: !had_port,
                 });
                 Ok(format!("Trying to connect to {text}"))
             }),

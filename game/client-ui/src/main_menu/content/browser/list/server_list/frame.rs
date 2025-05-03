@@ -35,6 +35,7 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
     struct LanServer {
         server: ServerBrowserServer,
         rcon_secret: Option<[u8; 32]>,
+        is_internal_server: bool,
     }
     let server_info = &pipe.user_data.server_info;
     let (sock_addr, rcon_secret, server_cert_hash, server_browser_info, starting) =
@@ -93,6 +94,7 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
             legacy_server: false,
         },
         rcon_secret,
+        is_internal_server: true,
     }];
 
     if cur_page == MENU_LAN_NAME {
@@ -132,10 +134,13 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
         |mut row| {
             let row_index = row.index();
 
-            let server = if cur_page != MENU_LAN_NAME {
-                &servers[row_index]
+            let (server, is_internal_server) = if cur_page != MENU_LAN_NAME {
+                (&servers[row_index], false)
             } else {
-                &lan_server[row_index].server
+                (
+                    &lan_server[row_index].server,
+                    lan_server[row_index].is_internal_server,
+                )
             };
 
             let select_index = if select_prev {
@@ -193,6 +198,9 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
                         server_cert_hash
                     },
                 );
+                pipe.user_data
+                    .config
+                    .set_storage("server-is-internal", &is_internal_server);
                 pipe.user_data
                     .config
                     .set_storage("server-is-legacy", &server.legacy_server);

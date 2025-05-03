@@ -168,6 +168,18 @@ unsafe impl HiarcTrait for std::net::SocketAddrV6 {
     const HI_VAL: u64 = 0;
 }
 
+unsafe impl HiarcTrait for std::net::IpAddr {
+    const HI_VAL: u64 = 0;
+}
+
+unsafe impl HiarcTrait for std::net::Ipv4Addr {
+    const HI_VAL: u64 = 0;
+}
+
+unsafe impl HiarcTrait for std::net::Ipv6Addr {
+    const HI_VAL: u64 = 0;
+}
+
 unsafe impl<'a, T: HiarcTrait> HiarcTrait for std::borrow::Cow<'a, T>
 where
     T: ?Sized + 'a + ToOwned,

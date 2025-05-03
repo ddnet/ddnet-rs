@@ -483,12 +483,15 @@ impl ClientNativeImpl {
         Ok(())
     }
 
-    fn connect_local_server(
+    fn connect_internal_server(
         &mut self,
         addresses: Vec<SocketAddr>,
-        can_start_local_server: bool,
+        can_start_internal_server: bool,
+        can_connect_internal_server: bool,
     ) -> ConnectLocalServerResult {
-        if addresses.iter().any(|addr| addr.ip().is_loopback()) {
+        if !can_connect_internal_server {
+            ConnectLocalServerResult::ErrOrNotLocalServerAddr { addresses }
+        } else if addresses.iter().any(|addr| addr.ip().is_loopback()) {
             let mut state = self.shared_info.state.lock().unwrap();
             if let LocalServerState::Ready { connect_info, .. } = &mut *state {
                 let rcon_secret = Some(connect_info.rcon_secret);
@@ -506,10 +509,10 @@ impl ClientNativeImpl {
                     rcon_secret,
                 }
             } else {
-                let keep_connecting =
-                    can_start_local_server || matches!(*state, LocalServerState::Starting { .. });
+                let keep_connecting = can_start_internal_server
+                    || matches!(*state, LocalServerState::Starting { .. });
                 drop(state);
-                if can_start_local_server {
+                if can_start_internal_server {
                     // try to start the local server
                     start_local_server(
                         &self.sys,
@@ -1601,10 +1604,15 @@ impl ClientNativeImpl {
                             addr,
                             rcon_secret,
                             cert_hash,
-                            can_start_local_server,
+                            can_start_internal_server,
+                            can_connect_internal_server,
                         } => {
                             // if localhost, then get the cert, rcon pw & port from the shared info
-                            match self.connect_local_server(vec![addr], can_start_local_server) {
+                            match self.connect_internal_server(
+                                vec![addr],
+                                can_start_internal_server,
+                                can_connect_internal_server,
+                            ) {
                                 ConnectLocalServerResult::Connect {
                                     addr,
                                     server_cert,
@@ -1617,7 +1625,8 @@ impl ClientNativeImpl {
                                         addr,
                                         rcon_secret,
                                         cert_hash,
-                                        can_start_local_server: false,
+                                        can_start_internal_server: false,
+                                        can_connect_internal_server: true,
                                     });
                                 }
                                 ConnectLocalServerResult::ErrOrNotLocalServerAddr { .. } => {
@@ -2013,7 +2022,8 @@ impl ClientNativeImpl {
                                         NetworkServerCertModeResult::PubKeyHash { hash } => *hash,
                                     },
                                     rcon_secret: Default::default(),
-                                    can_start_local_server: false,
+                                    can_start_internal_server: false,
+                                    can_connect_internal_server: false,
                                 });
                                 self.legacy_proxy_thread = Some(legacy_proxy);
                             }
@@ -2314,10 +2324,15 @@ impl ClientNativeImpl {
                 LocalConsoleEvent::Connect {
                     addresses,
                     cert,
-                    can_start_local_server,
+                    can_start_internal_server,
+                    can_connect_internal_server,
                 } => {
                     // if localhost, then get the cert, rcon pw & port from the shared info
-                    match self.connect_local_server(addresses, can_start_local_server) {
+                    match self.connect_internal_server(
+                        addresses,
+                        can_start_internal_server,
+                        can_connect_internal_server,
+                    ) {
                         ConnectLocalServerResult::Connect {
                             addr,
                             server_cert,
@@ -2329,7 +2344,8 @@ impl ClientNativeImpl {
                             self.local_console.add_event(LocalConsoleEvent::Connect {
                                 addresses,
                                 cert: ServerCertMode::Unknown,
-                                can_start_local_server: false,
+                                can_start_internal_server: false,
+                                can_connect_internal_server: true,
                             });
                         }
                         ConnectLocalServerResult::ErrOrNotLocalServerAddr { addresses } => {
@@ -2367,7 +2383,8 @@ impl ClientNativeImpl {
                     ) {
                         self.local_console.add_event(LocalConsoleEvent::Connect {
                             addresses: legacy_proxy.addresses.clone(),
-                            can_start_local_server: false,
+                            can_start_internal_server: false,
+                            can_connect_internal_server: false,
                             cert: match &legacy_proxy.cert {
                                 NetworkServerCertModeResult::Cert { cert } => {
                                     ServerCertMode::Cert(cert.to_der().unwrap())

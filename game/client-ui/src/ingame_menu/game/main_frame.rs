@@ -246,7 +246,8 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                                     cert_hash: config.storage("server-cert"),
 
                                     rcon_secret: config.storage("rcon-secret"),
-                                    can_start_local_server: true,
+                                    can_start_internal_server: true,
+                                    can_connect_internal_server: true,
                                 });
                             }
                             if ui
