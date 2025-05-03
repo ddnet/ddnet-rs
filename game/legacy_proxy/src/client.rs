@@ -4,7 +4,10 @@ use anyhow::anyhow;
 use arrayvec::ArrayVec;
 use base::{hash::Hash, reduced_ascii_str::ReducedAsciiString};
 use base_io::io::Io;
-use game_interface::types::{character_info::NetworkCharacterInfo, input::CharacterInput};
+use game_interface::types::{
+    character_info::NetworkCharacterInfo,
+    input::{CharacterInput, CharacterInputMethodFlags},
+};
 use game_server::client::ServerClientPlayer;
 use hexdump::hexdump_iter;
 use libtw2_gamenet_ddnet::{
@@ -227,6 +230,7 @@ impl ProxyClient {
         socket: SocketClient,
         connect_time: Duration,
         id: u64,
+        secondary_player: bool,
     ) -> Self {
         ProxyClient {
             socket,
@@ -240,7 +244,18 @@ impl ProxyClient {
 
                 snap_manager: Default::default(),
                 latest_input: Default::default(),
-                latest_char_input: Default::default(),
+                latest_char_input: {
+                    let mut inp = CharacterInput::default();
+
+                    // assume dummy first, so snapshots are handled correctly.
+                    if secondary_player {
+                        inp.state
+                            .input_method_flags
+                            .set(CharacterInputMethodFlags::DUMMY);
+                    }
+
+                    inp
+                },
 
                 connect_time,
 

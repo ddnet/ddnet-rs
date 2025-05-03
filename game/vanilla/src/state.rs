@@ -91,7 +91,7 @@ pub mod state {
     use crate::collision::collision::Tunings;
     use crate::command_chain::{Command, CommandChain};
     use crate::config::config::{ConfigGameType, ConfigVanilla, ConfigVanillaWrapper};
-    use crate::entities::character::character::{self, CharacterPlayerTy};
+    use crate::entities::character::character::{self, CharacterPlayerTy, CharacterSpectateMode};
     use crate::entities::character::core::character_core::Core;
     use crate::entities::character::player::player::{
         Player, PlayerInfo, Players, SpectatorPlayer, SpectatorPlayers,
@@ -1545,25 +1545,20 @@ pub mod state {
             render_infos.extend(prev_stage.world.characters.iter().filter_map(
                 |(id, prev_character)| {
                     let character = stage.world.characters.get(id).unwrap_or(prev_character);
-                    (!matches!(
-                        prev_character.phased,
-                        character::CharacterPhasedState::Dead { .. }
-                    ) && !matches!(
-                        character.phased,
-                        character::CharacterPhasedState::Dead { .. }
-                    ))
-                    .then(|| {
-                        (
-                            *id,
-                            self.stage_character_render_info(
-                                prev_stage,
-                                stage,
-                                prev_character,
-                                character,
-                                intra_tick_ratio,
-                            ),
-                        )
-                    })
+                    (!prev_character.phased.is_phased() && !character.phased.is_phased()).then(
+                        || {
+                            (
+                                *id,
+                                self.stage_character_render_info(
+                                    prev_stage,
+                                    stage,
+                                    prev_character,
+                                    character,
+                                    intra_tick_ratio,
+                                ),
+                            )
+                        },
+                    )
                 },
             ));
             render_infos
@@ -1728,21 +1723,39 @@ pub mod state {
                         (
                             Some(*stage_id),
                             (id, Some(character.core.side), &character.player_info),
-                            self.game
-                                .players
-                                .player(id)
-                                .is_some()
-                                .then_some(CharacterPlayerInfo {
-                                    cam_mode: if matches!(
-                                        character.phased,
-                                        character::CharacterPhasedState::Dead { .. }
-                                    ) {
-                                        PlayerCameraMode::LockedTo {
-                                            pos: *character.pos.pos() / 32.0,
+                            self.game.players.player(id).is_some().then(|| {
+                                let mode_to_spec = |s: &CharacterSpectateMode| match s {
+                                    character::CharacterSpectateMode::Free(_) => {
+                                        PlayerCameraMode::Free
+                                    }
+                                    character::CharacterSpectateMode::Follows(ids) => {
+                                        PlayerCameraMode::LockedOn {
+                                            character_ids: {
+                                                let mut res_ids =
+                                                    self.game_pools.character_id_hashset_pool.new();
+                                                res_ids.extend(ids);
+                                                res_ids
+                                            },
                                             locked_ingame: true,
                                         }
-                                    } else {
-                                        PlayerCameraMode::Default
+                                    }
+                                };
+                                CharacterPlayerInfo {
+                                    cam_mode: match &character.phased {
+                                        character::CharacterPhasedState::Normal(normal) => normal
+                                            .ingame_spectate
+                                            .as_ref()
+                                            .map(mode_to_spec)
+                                            .unwrap_or(PlayerCameraMode::Default),
+                                        character::CharacterPhasedState::Dead(_) => {
+                                            PlayerCameraMode::LockedTo {
+                                                pos: *character.pos.pos() / 32.0,
+                                                locked_ingame: true,
+                                            }
+                                        }
+                                        character::CharacterPhasedState::PhasedSpectate(mode) => {
+                                            mode_to_spec(mode)
+                                        }
                                     },
                                     force_scoreboard_visible: matches!(
                                         stage.match_manager.game_match.state,
@@ -1751,7 +1764,8 @@ pub mod state {
                                     ingame_mode: PlayerIngameMode::InGame {
                                         in_custom_stage: *stage_id != self.stage_0_id,
                                     },
-                                }),
+                                }
+                            }),
                             {
                                 let mut str = self.game_pools.network_string_score_pool.new();
                                 str.try_set(format!("{}", character.score.get())).unwrap();

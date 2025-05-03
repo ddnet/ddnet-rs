@@ -52,7 +52,7 @@ use game_interface::{
         pickup::PickupType,
         player_info::PlayerUniqueId,
         render::{
-            character::{CharacterBuff, CharacterDebuff, PlayerCameraMode, TeeEye},
+            character::{CharacterBuff, CharacterDebuff, TeeEye},
             game::game_match::MatchSide,
             projectiles::WeaponWithProjectile,
         },
@@ -141,6 +141,7 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
+use tokio::sync::Notify;
 use vanilla::{
     collision::collision::{Collision, Tunings},
     entities::{
@@ -164,10 +165,10 @@ use vanilla::{
     simulation_pipe::simulation_pipe::SimulationPipeCharactersGetter,
     snapshot::snapshot::{
         Snapshot, SnapshotCharacter, SnapshotCharacterPhasedState, SnapshotCharacterPlayerTy,
-        SnapshotCharacters, SnapshotFlag, SnapshotFlags, SnapshotInactiveObject, SnapshotLaser,
-        SnapshotLasers, SnapshotMatchManager, SnapshotPickup, SnapshotPickups, SnapshotPool,
-        SnapshotProjectile, SnapshotProjectiles, SnapshotSpectatorPlayer, SnapshotStage,
-        SnapshotWorld,
+        SnapshotCharacterSpectateMode, SnapshotCharacters, SnapshotFlag, SnapshotFlags,
+        SnapshotInactiveObject, SnapshotLaser, SnapshotLasers, SnapshotMatchManager,
+        SnapshotPickup, SnapshotPickups, SnapshotPool, SnapshotProjectile, SnapshotProjectiles,
+        SnapshotSpectatorPlayer, SnapshotStage, SnapshotWorld,
     },
     weapons::definitions::weapon_def::Weapon,
 };
@@ -178,12 +179,16 @@ pub struct LegacyProxy {
     pub addresses: Vec<SocketAddr>,
     pub cert: NetworkServerCertModeResult,
 
+    pub notifier: Arc<Notify>,
+
     // purposely last element, for drop order
     pub thread: JoinThread<()>,
 }
 
 impl Drop for LegacyProxy {
     fn drop(&mut self) {
+        self.notifier.notify_one();
+
         self.is_finished
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
@@ -216,7 +221,7 @@ pub struct ServerMapVotes {
     pub has_unfinished_map_votes: bool,
 }
 
-struct Dummy {
+struct LocalPlayer {
     pub client_id: u64,
     pub player_id: PlayerId,
     pub player_info: NetworkCharacterInfo,
@@ -286,7 +291,7 @@ struct ClientBase {
     loaded_map_votes: bool,
     loaded_misc_votes: bool,
 
-    dummies_legacy_ids: BTreeMap<i32, Dummy>,
+    local_players: BTreeMap<i32, LocalPlayer>,
 
     join_password: String,
 
@@ -317,6 +322,7 @@ struct Client {
     server_network: QuinnNetworks,
     notifier_server: Arc<NetworkEventNotifier>,
 
+    finish_notifier: Arc<Notify>,
     is_finished: Arc<AtomicBool>,
 
     log: ConnectingLog,
@@ -389,6 +395,10 @@ impl Client {
 
         let is_finished: Arc<AtomicBool> = Default::default();
         let is_finished_thread = is_finished.clone();
+
+        let finish_notifier = Arc::new(Notify::default());
+        let finish_notifier_thread = finish_notifier.clone();
+
         let thread = std::thread::Builder::new()
             .name("legacy-proxy".into())
             .spawn(move || {
@@ -607,7 +617,7 @@ impl Client {
                         loaded_map_votes: false,
                         loaded_misc_votes: false,
 
-                        dummies_legacy_ids: Default::default(),
+                        local_players: Default::default(),
 
                         is_first_map_pkt: true,
 
@@ -639,6 +649,7 @@ impl Client {
                     notifier_server: Arc::new(notifier_server),
                     players: PoolFxLinkedHashMap::new_without_pool(),
 
+                    finish_notifier: finish_notifier_thread,
                     is_finished: is_finished_thread,
 
                     log,
@@ -651,6 +662,7 @@ impl Client {
             thread: JoinThread::new(thread),
             addresses: sock_addrs,
             cert,
+            notifier: finish_notifier,
             is_finished,
         })
     }
@@ -965,7 +977,7 @@ impl Client {
                         unique_identifier: PlayerUniqueId::CertFingerprint(Default::default()),
                         account_name: None,
                         id: base
-                            .dummies_legacy_ids
+                            .local_players
                             .get(&id)
                             .map(|d| d.client_id)
                             .unwrap_or(player.server_client.id),
@@ -1367,6 +1379,7 @@ impl Client {
                             pos,
                             phased: SnapshotCharacterPhasedState::Normal {
                                 hook: (hook, hooked_char),
+                                ingame_spectate: None,
                             },
                             score: 0,
                             game_el_id: char_id,
@@ -1379,17 +1392,18 @@ impl Client {
                         Paused = 1 << 1,
                         Spec = 1 << 2,
                     }
-                    let is_spec_or_pause =
-                        ddnet_players.get(&player_info.client_id).is_some_and(|p| {
-                            (p.flags & (PlayerFlagEx::Paused as i32 | PlayerFlagEx::Spec as i32))
-                                != 0
-                        });
+                    let (is_pause, is_spec) = ddnet_players
+                        .get(&player_info.client_id)
+                        .map(|p| {
+                            (
+                                (p.flags & PlayerFlagEx::Paused as i32) != 0,
+                                (p.flags & PlayerFlagEx::Spec as i32) != 0,
+                            )
+                        })
+                        .unwrap_or_default();
+
+                    let is_spec_or_pause = is_spec || is_pause;
                     let is_spectator = player_info.team == Team::Spectators;
-                    let cam_mode = if is_spectator || is_spec_or_pause {
-                        PlayerCameraMode::Free
-                    } else {
-                        PlayerCameraMode::Default
-                    };
                     if is_spectator && !is_spec_or_pause {
                         let player_id = base
                             .char_legacy_to_new_id
@@ -1404,7 +1418,7 @@ impl Client {
                             unique_identifier: PlayerUniqueId::CertFingerprint(Default::default()),
                             account_name: None,
                             id: base
-                                .dummies_legacy_ids
+                                .local_players
                                 .get(&id)
                                 .map(|d| d.client_id)
                                 .unwrap_or(player.server_client.id),
@@ -1451,6 +1465,32 @@ impl Client {
                                 );
                             }
                             character.score = player_info.score as i64;
+                            let mode = SnapshotCharacterSpectateMode::Free(Default::default());
+                            match &mut character.phased {
+                                SnapshotCharacterPhasedState::Normal {
+                                    ingame_spectate, ..
+                                } => {
+                                    if is_pause {
+                                        *ingame_spectate = Some(mode);
+                                    } else if is_spec {
+                                        character.phased =
+                                            SnapshotCharacterPhasedState::PhasedSpectate(mode);
+                                    } else {
+                                        *ingame_spectate = None;
+                                    }
+                                }
+                                SnapshotCharacterPhasedState::Dead { .. } => {}
+                                SnapshotCharacterPhasedState::PhasedSpectate(spec_mode) => {
+                                    if is_pause {
+                                        character.phased = SnapshotCharacterPhasedState::Normal {
+                                            hook: Default::default(),
+                                            ingame_spectate: Some(mode),
+                                        };
+                                    } else {
+                                        *spec_mode = mode;
+                                    }
+                                }
+                            }
                         } else {
                             let char_player_info = VanillaPlayerInfo {
                                 player_info: <PoolRc<NetworkCharacterInfo>>::from_item_without_pool(
@@ -1462,7 +1502,7 @@ impl Client {
                                 ),
                                 account_name: None,
                                 id: base
-                                    .dummies_legacy_ids
+                                    .local_players
                                     .get(&id)
                                     .map(|d| d.client_id)
                                     .unwrap_or(player.server_client.id),
@@ -1476,13 +1516,27 @@ impl Client {
                             stage.world.characters.insert(
                                 *char_id,
                                 SnapshotCharacter {
-                                    core: Default::default(),
-                                    reusable_core: PoolCharacterReusableCore::new_without_pool(),
+                                    core: CharacterCore {
+                                        active_weapon: WeaponType::Hammer,
+                                        ..Default::default()
+                                    },
+                                    reusable_core: {
+                                        let mut core =
+                                            PoolCharacterReusableCore::new_without_pool();
+                                        core.weapons.insert(WeaponType::Hammer, Weapon::default());
+                                        core
+                                    },
                                     player_info: char_player_info,
                                     ty,
                                     pos: Default::default(),
-                                    phased: SnapshotCharacterPhasedState::Dead {
-                                        respawn_in_ticks: 10000.into(),
+                                    phased: if is_spec_or_pause {
+                                        SnapshotCharacterPhasedState::PhasedSpectate(
+                                            SnapshotCharacterSpectateMode::Free(Default::default()),
+                                        )
+                                    } else {
+                                        SnapshotCharacterPhasedState::Dead {
+                                            respawn_in_ticks: 10000.into(),
+                                        }
                                     },
                                     score: player_info.score as i64,
                                     game_el_id: *char_id,
@@ -1493,19 +1547,15 @@ impl Client {
                     }
 
                     if let Some((client_id, local_char_id)) = base
-                        .dummies_legacy_ids
+                        .local_players
                         .get(&id)
                         .map(|d| (d.client_id, d.player_id))
                         .or((player_info.local == 1)
                             .then_some((player.server_client.id, player_id)))
                     {
-                        snapshot.local_players.insert(
-                            local_char_id,
-                            SnapshotLocalPlayer {
-                                id: client_id,
-                                input_cam_mode: cam_mode,
-                            },
-                        );
+                        snapshot
+                            .local_players
+                            .insert(local_char_id, SnapshotLocalPlayer { id: client_id });
                     }
                 }
                 SnapObj::ClientInfo(client_info) => {
@@ -1524,10 +1574,10 @@ impl Client {
                         let mut player_info = (*info.player_info).clone();
 
                         // Apply as much info from known player info as possible
-                        if let Some(dummy) = base.dummies_legacy_ids.get(&id) {
-                            player_info = dummy.player_info.clone();
-                        } else if character_id == player_id {
+                        if character_id == player_id {
                             player_info = player.player_info.clone();
+                        } else if let Some(dummy) = base.local_players.get(&id) {
+                            player_info = dummy.player_info.clone();
                         }
 
                         // Then overwrite the info the server knows about
@@ -1553,18 +1603,48 @@ impl Client {
                     }
                 }
                 SnapObj::SpectatorInfo(spectator_info) => {
-                    if let Some(local_player) = snapshot.local_players.get_mut(&player_id) {
-                        if let Some(char_id) =
-                            base.char_legacy_to_new_id.get(&spectator_info.spectator_id)
-                        {
-                            local_player.input_cam_mode = PlayerCameraMode::LockedOn {
-                                character_ids: PoolFxHashSet::from_without_pool(
-                                    vec![*char_id].into_iter().collect(),
+                    let spectator_id = base.char_legacy_to_new_id.get(&spectator_info.spectator_id);
+                    let own_char_id = base.char_legacy_to_new_id.get(&id);
+                    if let Some(own_character) = own_char_id.and_then(|char_id| {
+                        base.legacy_id_in_stage_id.get(&id).and_then(|stage_id| {
+                            snapshot
+                                .stages
+                                .get_mut(stage_id)
+                                .and_then(|s| s.world.characters.get_mut(char_id))
+                        })
+                    }) {
+                        let mode = if let Some(spectator_id) = spectator_id {
+                            SnapshotCharacterSpectateMode::Follows(
+                                PoolFxHashSet::from_without_pool(
+                                    vec![*spectator_id].into_iter().collect(),
                                 ),
-                                locked_ingame: false,
-                            };
+                            )
                         } else {
-                            local_player.input_cam_mode = PlayerCameraMode::Free;
+                            SnapshotCharacterSpectateMode::Free(vec2::new(
+                                spectator_info.x as f32,
+                                spectator_info.y as f32,
+                            ))
+                        };
+                        match &mut own_character.phased {
+                            SnapshotCharacterPhasedState::Normal {
+                                ingame_spectate, ..
+                            } => {
+                                *ingame_spectate = Some(mode);
+                            }
+                            SnapshotCharacterPhasedState::Dead { .. } => {}
+                            SnapshotCharacterPhasedState::PhasedSpectate(spec_mode) => {
+                                *spec_mode = mode;
+                            }
+                        }
+                    } else if let Some(own_character) =
+                        own_char_id.and_then(|id| snapshot.spectator_players.get_mut(id))
+                    {
+                        own_character.player.spectated_characters.clear();
+                        if let Some(spectator_id) = spectator_id {
+                            own_character
+                                .player
+                                .spectated_characters
+                                .extend([*spectator_id]);
                         }
                     }
                 }
@@ -2510,11 +2590,10 @@ impl Client {
                         .collect();
 
                     // We always want character snapshot items
-                    // first followed by player info. (opposite for non main connections)
+                    // first followed by player info.
                     // Rest does not really matter.
                     items.sort_by(|(s1, id1, ptr1), (s2, id2, ptr2)| {
-                        let (char_score, player_score) =
-                            if is_active_connection { (0, 1) } else { (1, 0) };
+                        let (char_score, player_score) = (0, 1);
                         let score1 = if matches!(s1, SnapObj::Character(_)) {
                             char_score
                         } else if matches!(s1, SnapObj::PlayerInfo(_)) {
@@ -2554,6 +2633,36 @@ impl Client {
 
                     let mut items: Vec<_> = items.into_iter().map(|(i, id, _)| (i, id)).collect();
 
+                    // update local players
+                    // only look for players which are local
+                    // reverse iterator intended because of above sorting
+                    for (item, id) in items.iter().rev() {
+                        if let SnapObj::PlayerInfo(info) = item {
+                            if info.local == 1 {
+                                let mut dummy = LocalPlayer {
+                                    client_id: player.server_client.id,
+                                    player_id,
+                                    player_info: player.player_info.clone(),
+
+                                    character_snap: Default::default(),
+                                    ddnet_character_snap: Default::default(),
+                                    ddnet_player_snap: Default::default(),
+                                };
+                                if let Some(ddnet_player) = ddnet_players.get(id).copied() {
+                                    dummy.ddnet_player_snap = Some(ddnet_player);
+                                }
+                                base.local_players.insert(*id, dummy);
+                            }
+                        } else if let SnapObj::Character(char) = item {
+                            if let Some(dummy) = base.local_players.get_mut(id) {
+                                dummy.character_snap = Some(*char);
+                                if let Some(ddnet_char) = ddnet_characters.get(id).copied() {
+                                    dummy.ddnet_character_snap = Some(ddnet_char);
+                                }
+                            }
+                        }
+                    }
+
                     if is_active_connection {
                         base.last_snap_tick = tick;
                         *snapshot = Snapshot::new(
@@ -2588,7 +2697,7 @@ impl Client {
                                     }
                                     base.confirmed_player_ids.insert(*id);
                                     if let Some(char_id) = base
-                                        .dummies_legacy_ids
+                                        .local_players
                                         .get(id)
                                         .map(|d| d.player_id)
                                         .or_else(|| (info.local == 1).then_some(player_id))
@@ -2675,7 +2784,7 @@ impl Client {
                             });
 
                             // add dummy snaps if they were not found
-                            for (id, dummy) in &base.dummies_legacy_ids {
+                            for (id, dummy) in &base.local_players {
                                 if !character_snaps.contains(id) {
                                     if let Some(char) = dummy.character_snap {
                                         if let Some(ddnet_char) = dummy.ddnet_character_snap {
@@ -2863,34 +2972,6 @@ impl Client {
                             },
                             &con_id,
                         );
-                    } else {
-                        // only look for which player id is local
-                        for (item, id) in items {
-                            if let SnapObj::PlayerInfo(info) = item {
-                                if info.local == 1 {
-                                    let mut dummy = Dummy {
-                                        client_id: player.server_client.id,
-                                        player_id,
-                                        player_info: player.player_info.clone(),
-
-                                        character_snap: Default::default(),
-                                        ddnet_character_snap: Default::default(),
-                                        ddnet_player_snap: Default::default(),
-                                    };
-                                    if let Some(ddnet_player) = ddnet_players.remove(&id) {
-                                        dummy.ddnet_player_snap = Some(ddnet_player);
-                                    }
-                                    base.dummies_legacy_ids.insert(id, dummy);
-                                }
-                            } else if let SnapObj::Character(char) = item {
-                                if let Some(dummy) = base.dummies_legacy_ids.get_mut(&id) {
-                                    dummy.character_snap = Some(char);
-                                    if let Some(ddnet_char) = ddnet_characters.remove(&id) {
-                                        dummy.ddnet_character_snap = Some(ddnet_char);
-                                    }
-                                }
-                            }
-                        }
                     }
                 } else {
                     processed = false;
@@ -3317,6 +3398,7 @@ impl Client {
                                         sock_loop,
                                         self.sys.time_get(),
                                         0,
+                                        false,
                                     ),
                                 );
                             }
@@ -3354,6 +3436,7 @@ impl Client {
                                     sock_loop,
                                     self.sys.time_get(),
                                     0,
+                                    false,
                                 ),
                             );
                         }
@@ -3408,6 +3491,7 @@ impl Client {
                                         sock_loop,
                                         self.sys.time_get(),
                                         ev.id,
+                                        true,
                                     ),
                                 );
                                 if let Some(con_id) = self.con_id {
@@ -3524,15 +3608,30 @@ impl Client {
                                             player.flush();
                                         } else {
                                             let is_spec_or_pause = self
-                                                .last_snapshot
-                                                .local_players
+                                                .base
+                                                .char_new_id_to_legacy
                                                 .get(&player_id)
-                                                .is_some_and(|p| {
-                                                    !matches!(
-                                                        p.input_cam_mode,
-                                                        PlayerCameraMode::Default
-                                                    )
-                                                });
+                                                .and_then(|id| {
+                                                    self.base.legacy_id_in_stage_id.get(id)
+                                                })
+                                                .and_then(|stage_id| {
+                                                    self.last_snapshot.stages.get(stage_id)
+                                                })
+                                                .and_then(|stage| {
+                                                    stage.world.characters.get(&player_id)
+                                                })
+                                                .map(|c| {
+                                                    type PhState = SnapshotCharacterPhasedState;
+                                                    match &c.phased {
+                                                        PhState::Normal {
+                                                            ingame_spectate, ..
+                                                        } => ingame_spectate.is_some(),
+                                                        PhState::Dead { .. } => false,
+                                                        PhState::PhasedSpectate(_) => true,
+                                                    }
+                                                })
+                                                .unwrap_or_default();
+
                                             let prefix = if let ClientCameraMode::FreeCam(_) = mode
                                             {
                                                 "pause"
@@ -4330,11 +4429,10 @@ impl Client {
                 }
             }
 
-            // check if dummies are not connected anymore
-            self.base.dummies_legacy_ids.retain(|id, dummy| {
-                is_active_connection.is_none_or(|(_, p)| p != dummy.player_id)
-                    && self.base.confirmed_player_ids.contains(id)
-            });
+            // check if local players are not connected anymore
+            self.base
+                .local_players
+                .retain(|id, _| self.base.confirmed_player_ids.contains(id));
 
             if !self.base.events.worlds.is_empty() {
                 let mut events = self.base.events.clone();
@@ -4381,6 +4479,7 @@ impl Client {
             });
 
             let net = self.notifier_server.clone();
+            let finish_notify = self.finish_notifier.clone();
             let receivers: Vec<_> = self
                 .players
                 .values()
@@ -4392,10 +4491,16 @@ impl Client {
                 .spawn(async move {
                     type SockFuture =
                         Pin<Box<dyn Future<Output = Option<(Vec<u8>, SocketAddr)>> + Send>>;
-                    let mut futures: Vec<SockFuture> = vec![Box::pin(async move {
-                        net.wait_for_event_async(None).await;
-                        None
-                    })];
+                    let mut futures: Vec<SockFuture> = vec![
+                        Box::pin(async move {
+                            net.wait_for_event_async(None).await;
+                            None
+                        }),
+                        Box::pin(async move {
+                            finish_notify.notified().await;
+                            None
+                        }),
+                    ];
                     futures.extend(receivers.into_iter().map(|(v4, v6)| {
                         let future: SockFuture =
                             Box::pin(async move { Socket::recv_from(v4, v6).await });
@@ -4407,8 +4512,8 @@ impl Client {
                 .get_storage()
                 .unwrap();
             if let Some((data, addr)) = pkt {
-                if index > 0 {
-                    let index = index - 1;
+                if index > 1 {
+                    let index = index - 2;
 
                     let other_active = if index > 0 {
                         self.players
@@ -4437,7 +4542,19 @@ impl Client {
                 }
             }
         } else {
-            self.notifier_server.wait_for_event(None);
+            let notify = self.notifier_server.clone();
+            let finish_notify = self.finish_notifier.clone();
+            let _ = self
+                .io
+                .rt
+                .spawn(async move {
+                    tokio::select! {
+                        _ = notify.wait_for_event_async(None) => {}
+                        _ = finish_notify.notified() => {}
+                    }
+                    Ok(())
+                })
+                .get_storage();
         }
 
         Ok(())

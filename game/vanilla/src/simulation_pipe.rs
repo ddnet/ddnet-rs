@@ -490,13 +490,13 @@ pub mod simulation_pipe {
             CharactersViewMut::new(
                 self.characters,
                 |id| *id != self.owner_character,
-                |c| !c.phased.is_dead(),
+                |c| !c.phased.is_phased(),
             )
         }
         pub fn get_characters(
             &mut self,
         ) -> CharactersViewMut<impl Fn(&CharacterId) -> bool, impl Fn(&Character) -> bool> {
-            CharactersViewMut::new(self.characters, |_| true, |c| !c.phased.is_dead())
+            CharactersViewMut::new(self.characters, |_| true, |c| !c.phased.is_phased())
         }
         pub fn get_owner_character_view(
             &mut self,
@@ -505,7 +505,7 @@ pub mod simulation_pipe {
             CharactersViewMut::new(
                 self.characters,
                 |id| *id == self.owner_character,
-                |c| !c.phased.is_dead(),
+                |c| !c.phased.is_phased(),
             )
         }
     }
@@ -544,14 +544,14 @@ pub mod simulation_pipe {
             &self,
         ) -> CharactersView<impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
         {
-            CharactersView::new(self.characters, |_| true, |v| !v.phased.is_dead())
+            CharactersView::new(self.characters, |_| true, |v| !v.phased.is_phased())
         }
 
         pub fn characters_mut(
             &mut self,
         ) -> CharactersViewMut<impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
         {
-            CharactersViewMut::new(self.characters, |_| true, |v| !v.phased.is_dead())
+            CharactersViewMut::new(self.characters, |_| true, |v| !v.phased.is_phased())
         }
     }
 

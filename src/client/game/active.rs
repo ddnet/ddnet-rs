@@ -29,7 +29,8 @@ use game_interface::{
         character_info::NetworkCharacterInfo,
         game::{GameTickType, NonZeroGameTickType},
         id_types::PlayerId,
-        input::CharacterInputInfo,
+        input::{cursor::CharacterInputCursor, CharacterInputInfo},
+        render::character::PlayerCameraMode,
         snapshot::SnapshotClientInfo,
     },
 };
@@ -560,6 +561,9 @@ impl ActiveGame {
                     {
                         self.game_data.input_per_tick.pop_front();
                     }
+
+                    // update cached character infos
+                    self.game_data.cached_character_infos = game.collect_characters_info();
                 }
                 let prediction_timer = &mut self.game_data.prediction_timer;
                 let predict_max = prediction_timer.pred_max_smoothing(tick_time);
@@ -922,7 +926,7 @@ impl ActiveGame {
             }
         }
 
-        for local_player in self.game_data.local.local_players.values_mut() {
+        for (local_player_id, local_player) in self.game_data.local.local_players.iter_mut() {
             if let Some(state) = &mut local_player.zoom_state {
                 const UPDATE_TIME: Duration = Duration::from_millis(50);
                 const FIRST_UPDATE_TIME: Duration = Duration::from_millis(250);
@@ -948,6 +952,41 @@ impl ActiveGame {
 
                     state.last_apply_time = Some(apply_time);
                 }
+            }
+            if let Some(player_info) = self
+                .game_data
+                .cached_character_infos
+                .get(local_player_id)
+                .and_then(|c| c.player_info.as_ref())
+            {
+                if local_player.cursor_last_cam_mode.as_ref().is_none_or(|i| {
+                    let is_free1 = matches!(i, PlayerCameraMode::Free);
+                    let is_free2 = matches!(player_info.cam_mode, PlayerCameraMode::Free);
+                    is_free1 != is_free2
+                }) {
+                    // update the input with the given cursor
+                    match player_info.cam_mode {
+                        PlayerCameraMode::Default
+                        | PlayerCameraMode::LockedTo { .. }
+                        | PlayerCameraMode::LockedOn { .. } => {
+                            local_player
+                                .input
+                                .inp
+                                .cursor
+                                .set(CharacterInputCursor::from_vec2(
+                                    &(local_player.cursor_pos / 32.0),
+                                ));
+                        }
+                        PlayerCameraMode::Free => {
+                            local_player
+                                .input
+                                .inp
+                                .cursor
+                                .set(CharacterInputCursor::from_vec2(&local_player.free_cam_pos));
+                        }
+                    }
+                }
+                local_player.cursor_last_cam_mode = Some(player_info.cam_mode.clone());
             }
         }
     }

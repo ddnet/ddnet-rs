@@ -232,6 +232,12 @@ pub mod character {
         NoDmgTeam,
     }
 
+    #[derive(Debug, Hiarc, Serialize, Deserialize)]
+    pub enum CharacterSpectateMode {
+        Free(vec2),
+        Follows(FxHashSet<CharacterId>),
+    }
+
     #[derive(Debug, Hiarc)]
     pub struct CharacterPhaseDead {
         pub respawn_in_ticks: GameTickCooldown,
@@ -325,6 +331,8 @@ pub mod character {
     #[derive(Debug, Hiarc)]
     pub struct CharacterPhaseNormal {
         pub hook: CharacterHook,
+
+        pub ingame_spectate: Option<CharacterSpectateMode>,
         /// Please use the constructor
         _dont_construct: PhantomData<()>,
     }
@@ -335,6 +343,7 @@ pub mod character {
             pos: vec2,
             game_pending_events: &GameWorldPendingEvents,
             hook: CharacterHook,
+            ingame_spectate: Option<CharacterSpectateMode>,
             silent: bool,
         ) -> Self {
             if !silent {
@@ -355,6 +364,7 @@ pub mod character {
             }
             Self {
                 hook,
+                ingame_spectate,
                 _dont_construct: PhantomData,
             }
         }
@@ -364,6 +374,7 @@ pub mod character {
     pub enum CharacterPhasedState {
         Normal(CharacterPhaseNormal),
         Dead(CharacterPhaseDead),
+        PhasedSpectate(CharacterSpectateMode),
     }
 
     impl CharacterPhasedState {
@@ -376,6 +387,9 @@ pub mod character {
             match self {
                 CharacterPhasedState::Normal(normal) => &mut normal.hook,
                 CharacterPhasedState::Dead(_) => panic!("Called hook_mut on a dead character."),
+                CharacterPhasedState::PhasedSpectate(_) => {
+                    panic!("Called hook_mut on a phased character.")
+                }
             }
         }
         /// Get the character hook
@@ -386,14 +400,17 @@ pub mod character {
         pub fn hook(&self) -> &CharacterHook {
             match self {
                 CharacterPhasedState::Normal(normal) => &normal.hook,
-                CharacterPhasedState::Dead(_) => panic!("Called hook_mut on a dead character."),
+                CharacterPhasedState::Dead(_) => panic!("Called hook on a dead character."),
+                CharacterPhasedState::PhasedSpectate(_) => {
+                    panic!("Called hook on a phased character.")
+                }
             }
         }
-        /// Returns `true` if the character is dead.
-        pub fn is_dead(&self) -> bool {
+        /// Returns `true` if the character is phased.
+        pub fn is_phased(&self) -> bool {
             match self {
                 CharacterPhasedState::Normal(_) => false,
-                CharacterPhasedState::Dead(_) => true,
+                CharacterPhasedState::Dead(_) | CharacterPhasedState::PhasedSpectate(_) => true,
             }
         }
     }
@@ -463,6 +480,7 @@ pub mod character {
                     pos,
                     game_pending_events,
                     hooks.get_new_hook(*id),
+                    Default::default(),
                     false,
                 )),
                 score: scores.get_new_score(*id, 0),

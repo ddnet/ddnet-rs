@@ -646,11 +646,21 @@ impl ClientNativeImpl {
                 game_state.game_tick_speed(),
             );
 
-            let main_local_char_spec = game
+            let active_local_player_id = game
                 .game_data
                 .local
                 .active_local_player()
-                .map(|(_, p)| match &p.input_cam_mode {
+                .map(|(id, _)| *id);
+
+            let active_local_player_info = active_local_player_id.and_then(|id| {
+                game.game_data
+                    .cached_character_infos
+                    .get(&id)
+                    .and_then(|info| info.player_info.as_ref())
+            });
+
+            let main_local_char_spec = active_local_player_info
+                .map(|p| match &p.cam_mode {
                     PlayerCameraMode::Default => false,
                     PlayerCameraMode::Free => true,
                     PlayerCameraMode::LockedTo { locked_ingame, .. }
@@ -738,11 +748,7 @@ impl ClientNativeImpl {
                 );
             }
             if self.client_info.wants_active_client_info() {
-                let active_player = game.game_data.local.active_local_player();
-                if let Some(player_info) = active_player
-                    .and_then(|(id, _)| character_infos.get(id))
-                    .and_then(|c| c.player_info.as_ref())
-                {
+                if let Some(player_info) = active_local_player_info {
                     let scoreboard_info = main_game.collect_scoreboard_info();
                     self.client_info.set_active_client_info(ActiveClientInfo {
                         ingame_mode: player_info.ingame_mode,
@@ -759,9 +765,9 @@ impl ClientNativeImpl {
                             };
                             it.map(|s| s.name.to_string()).collect()
                         },
-                        camera_mode: active_player
-                            .map(|(_, p)| p.input_cam_mode.clone())
-                            .unwrap_or_else(|| player_info.cam_mode.clone()),
+                        camera_mode: active_local_player_info
+                            .map(|p| p.cam_mode.clone())
+                            .unwrap_or_else(|| PlayerCameraMode::Default),
                     });
                 }
             }
@@ -908,21 +914,27 @@ impl ClientNativeImpl {
                  stages_render_infos: &mut StageRenderInfos|
                  -> (PlayerId, RenderGameForPlayer) {
                     let (&player_id, client_player) = client_player;
-                    let (camera_player_id, is_free_cam) = match &client_player.input_cam_mode {
-                        PlayerCameraMode::Default | PlayerCameraMode::LockedTo { .. } => {
-                            (player_id, false)
+                    let character_info = character_infos.get(&player_id);
+                    let player_info = character_info.and_then(|c| c.player_info.as_ref());
+                    let (camera_player_id, is_free_cam) = if let Some(player_info) = player_info {
+                        match &player_info.cam_mode {
+                            PlayerCameraMode::Default | PlayerCameraMode::LockedTo { .. } => {
+                                (player_id, false)
+                            }
+                            PlayerCameraMode::Free => (player_id, true),
+                            PlayerCameraMode::LockedOn { character_ids, .. } => (
+                                {
+                                    if character_ids.len() == 1 {
+                                        *character_ids.iter().next().unwrap()
+                                    } else {
+                                        player_id
+                                    }
+                                },
+                                false,
+                            ),
                         }
-                        PlayerCameraMode::Free => (player_id, true),
-                        PlayerCameraMode::LockedOn { character_ids, .. } => (
-                            {
-                                if character_ids.len() == 1 {
-                                    *character_ids.iter().next().unwrap()
-                                } else {
-                                    player_id
-                                }
-                            },
-                            false,
-                        ),
+                    } else {
+                        (player_id, false)
                     };
                     let local_player_render_info = if let Some(local_predicted_game) =
                         local_predicted_game.as_deref_mut()
@@ -933,7 +945,6 @@ impl ClientNativeImpl {
                         main_game.collect_character_local_render_info(&camera_player_id)
                     };
 
-                    let character_info = character_infos.get(&player_id);
                     if let Some(player) = character_info.and_then(|c| {
                         c.stage_id
                             .and_then(|stage_id| stages_render_infos.get_mut(&stage_id))
@@ -966,39 +977,38 @@ impl ClientNativeImpl {
                         }
                     }
 
-                    let (cam_mode, force_scoreboard_visible, is_spectator) =
-                        match character_info.and_then(|c| c.player_info.as_ref()) {
-                            Some(info) => (
-                                match &client_player.input_cam_mode {
-                                    PlayerCameraMode::Default => RenderPlayerCameraMode::Default,
-                                    PlayerCameraMode::Free => RenderPlayerCameraMode::AtPos {
-                                        pos: vec2::new(
+                    let (cam_mode, force_scoreboard_visible, is_spectator) = match player_info {
+                        Some(info) => (
+                            match &info.cam_mode {
+                                PlayerCameraMode::Default => RenderPlayerCameraMode::Default,
+                                PlayerCameraMode::Free => RenderPlayerCameraMode::AtPos {
+                                    pos: vec2::new(
+                                        client_player.free_cam_pos.x as f32,
+                                        client_player.free_cam_pos.y as f32,
+                                    ),
+                                    locked_ingame: false,
+                                },
+                                PlayerCameraMode::LockedTo { pos, locked_ingame } => {
+                                    RenderPlayerCameraMode::AtPos {
+                                        pos: *pos,
+                                        locked_ingame: *locked_ingame,
+                                    }
+                                }
+                                PlayerCameraMode::LockedOn { character_ids, .. } => {
+                                    RenderPlayerCameraMode::OnCharacters {
+                                        character_ids: character_ids.clone(),
+                                        fallback_pos: vec2::new(
                                             client_player.free_cam_pos.x as f32,
                                             client_player.free_cam_pos.y as f32,
                                         ),
-                                        locked_ingame: false,
-                                    },
-                                    PlayerCameraMode::LockedTo { pos, locked_ingame } => {
-                                        RenderPlayerCameraMode::AtPos {
-                                            pos: *pos,
-                                            locked_ingame: *locked_ingame,
-                                        }
                                     }
-                                    PlayerCameraMode::LockedOn { character_ids, .. } => {
-                                        RenderPlayerCameraMode::OnCharacters {
-                                            character_ids: character_ids.clone(),
-                                            fallback_pos: vec2::new(
-                                                client_player.free_cam_pos.x as f32,
-                                                client_player.free_cam_pos.y as f32,
-                                            ),
-                                        }
-                                    }
-                                },
-                                info.force_scoreboard_visible,
-                                matches!(info.ingame_mode, PlayerIngameMode::Spectator),
-                            ),
-                            None => (RenderPlayerCameraMode::Default, false, true),
-                        };
+                                }
+                            },
+                            info.force_scoreboard_visible,
+                            matches!(info.ingame_mode, PlayerIngameMode::Spectator),
+                        ),
+                        None => (RenderPlayerCameraMode::Default, false, true),
+                    };
                     (
                         player_id,
                         RenderGameForPlayer {
@@ -1076,14 +1086,18 @@ impl ClientNativeImpl {
                                 local_player_info: local_player_render_info,
 
                                 zoom: {
-                                    let ingame_camera = match client_player.input_cam_mode {
-                                        PlayerCameraMode::Default => true,
-                                        PlayerCameraMode::Free => false,
-                                        PlayerCameraMode::LockedTo { locked_ingame, .. }
-                                        | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
-                                            locked_ingame
-                                        }
-                                    };
+                                    let ingame_camera = player_info
+                                        .map(|p| match p.cam_mode {
+                                            PlayerCameraMode::Default => true,
+                                            PlayerCameraMode::Free => false,
+                                            PlayerCameraMode::LockedTo {
+                                                locked_ingame, ..
+                                            }
+                                            | PlayerCameraMode::LockedOn {
+                                                locked_ingame, ..
+                                            } => locked_ingame,
+                                        })
+                                        .unwrap_or(true);
                                     if let Some(zoom) = ingame_camera
                                         .then_some(main_game.info.options.forced_ingame_camera_zoom)
                                         .flatten()
@@ -3389,18 +3403,25 @@ impl FromNativeImpl for ClientNativeImpl {
                 }
 
                 let player = game.game_data.local.active_local_player();
-                let needs_abs_cursor = player.is_some_and(|(_, p)| {
-                    p.spectator_selection_active
-                        && (game.map.game.info.options.has_ingame_freecam
-                            || match p.input_cam_mode {
-                                PlayerCameraMode::Default => false,
-                                PlayerCameraMode::Free => true,
-                                PlayerCameraMode::LockedTo { locked_ingame, .. }
-                                | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
-                                    !locked_ingame
-                                }
-                            })
-                });
+                let needs_abs_cursor = player
+                    .and_then(|(id, client_player)| {
+                        game.game_data
+                            .cached_character_infos
+                            .get(id)
+                            .and_then(|c| c.player_info.as_ref().map(|p| (client_player, p)))
+                    })
+                    .is_some_and(|(client_player, p)| {
+                        client_player.spectator_selection_active
+                            && (game.map.game.info.options.has_ingame_freecam
+                                || match p.cam_mode {
+                                    PlayerCameraMode::Default => false,
+                                    PlayerCameraMode::Free => true,
+                                    PlayerCameraMode::LockedTo { locked_ingame, .. }
+                                    | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
+                                        !locked_ingame
+                                    }
+                                })
+                    });
                 native.relative_mouse(!needs_abs_cursor);
 
                 self.inp_manager.set_last_known_cursor(
@@ -3541,6 +3562,9 @@ impl FromNativeImpl for ClientNativeImpl {
 
                 game_state.predicted_game_monotonic_tick += 1;
                 game_state.tick(Default::default());
+
+                // Update the cached character infos
+                game.game_data.cached_character_infos = game_state.collect_characters_info();
 
                 Server::dbg_game(
                     &self.config.game.dbg,

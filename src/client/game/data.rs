@@ -27,6 +27,7 @@ use game_interface::{
         game::GameTickType,
         id_types::{CharacterId, PlayerId},
         input::{cursor::CharacterInputCursor, CharacterInputInfo, CharacterInputMethodFlags},
+        render::character::CharacterInfo,
         snapshot::SnapshotLocalPlayers,
         weapons::WeaponType,
     },
@@ -36,7 +37,7 @@ use input_binds::binds::{BindKey, Binds, MouseExtra};
 use math::math::vector::luffixed;
 use native::native::{KeyCode, MouseButton, PhysicalKey};
 use pool::{
-    datatypes::{PoolVec, PoolVecDeque},
+    datatypes::{PoolFxLinkedHashMap, PoolVec, PoolVecDeque},
     mt_datatypes::PoolCow,
     pool::Pool,
     rc::PoolRc,
@@ -188,6 +189,8 @@ pub struct GameData {
     pub map_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MapVoteKey, MapVote>>,
     pub has_unfinished_map_votes: bool,
     pub misc_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MiscVoteKey, MiscVote>>,
+
+    pub cached_character_infos: PoolFxLinkedHashMap<CharacterId, CharacterInfo>,
 }
 
 impl GameData {
@@ -238,6 +241,8 @@ impl GameData {
             map_votes: Default::default(),
             has_unfinished_map_votes: false,
             misc_votes: Default::default(),
+
+            cached_character_infos: PoolFxLinkedHashMap::new_without_pool(),
         }
     }
 }
@@ -557,9 +562,7 @@ impl GameData {
                 local_players.insert(id, local_player);
             }
             // sort
-            if let Some(local_player) = local_players.to_back(&id) {
-                local_player.input_cam_mode = snap_player.input_cam_mode;
-            }
+            local_players.to_back(&id);
         });
     }
 
