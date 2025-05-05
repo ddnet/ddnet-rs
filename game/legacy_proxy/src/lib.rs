@@ -3221,7 +3221,7 @@ impl Client {
                     | Game::SvTeamsStateLegacy(SvTeamsStateLegacy { teams }),
                 ),
             ) => {
-                let cur_teams: HashMap<_, _> = std::mem::take(&mut base.teams)
+                let mut cur_teams: HashMap<_, _> = std::mem::take(&mut base.teams)
                     .into_iter()
                     .map(|(_, (team_index, stage_id))| (team_index, stage_id))
                     .collect();
@@ -3235,6 +3235,9 @@ impl Client {
                             .unwrap_or_else(|| base.id_generator.next_id())
                     };
                     base.teams.insert(client_id as i32, (team, stage_id));
+                    // add the current teams here too, so on team duplication
+                    // it reuses the existing stage id, instead of generating a new.
+                    cur_teams.insert(team, stage_id);
                 }
             }
             _ => {
