@@ -136,7 +136,7 @@ use std::{
     ffi::CStr,
     future::Future,
     net::SocketAddr,
-    num::{NonZeroU16, NonZeroU64},
+    num::{NonZeroI64, NonZeroU16, NonZeroU64},
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
@@ -3282,7 +3282,13 @@ impl Client {
         None
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn input_to_legacy_input(
+        self_char_id: CharacterId,
+        latest_snapshot: &Snapshot,
+        base: &ClientBase,
+        latest_inputs: &BTreeMap<i32, (CharacterInput, snap_obj::PlayerInput)>,
+        intended_tick: i32,
         prev_inp: &snap_obj::PlayerInput,
         inp: &CharacterInput,
         diff: CharacterInputConsumableDiff,
@@ -3298,21 +3304,82 @@ impl Client {
         let (target_x, target_y) = ((cursor.x * 32.0) as i32, (cursor.y * 32.0) as i32);
         let state = &inp.state;
 
-        let next_weapon_diff = diff
-            .weapon_diff
-            .map(|diff| diff.get().clamp(0, i64::MAX))
-            .unwrap_or_default() as i32
-            * 2;
-        let prev_weapon_diff = diff
-            .weapon_diff
-            .map(|diff| diff.get().clamp(i64::MIN, 0).abs())
-            .unwrap_or_default() as i32
-            * 2;
-        let wanted_weapon_fallback = if next_weapon_diff != 0 || prev_weapon_diff != 0 {
-            0
-        } else {
-            prev_inp.wanted_weapon
-        };
+        fn to_diff(weapon_diff: Option<NonZeroI64>) -> (i32, i32) {
+            (
+                weapon_diff
+                    .map(|diff| diff.get().clamp(0, i64::MAX))
+                    .unwrap_or_default() as i32
+                    * 2,
+                weapon_diff
+                    .map(|diff| diff.get().clamp(i64::MIN, 0).abs())
+                    .unwrap_or_default() as i32
+                    * 2,
+            )
+        }
+        let (mut next_weapon_diff, mut prev_weapon_diff) = to_diff(diff.weapon_diff);
+
+        // simulate wanted weapon with weapon diff instead
+        if let Some(wanted_weapon) = diff.weapon_req {
+            // get latest char
+            let char = base
+                .char_new_id_to_legacy
+                .get(&self_char_id)
+                .and_then(|legacy_id| base.legacy_id_in_stage_id.get(legacy_id))
+                .and_then(|stage_id| latest_snapshot.stages.get(stage_id))
+                .and_then(|stage| stage.world.characters.get(&self_char_id));
+            if let Some(char) = char {
+                // advance active weapon to whatever is wanted
+                let weapons = &char.reusable_core.weapons;
+                let wanted_weapon = weapons
+                    .keys()
+                    .enumerate()
+                    .find(|&(_, k)| *k == wanted_weapon);
+
+                let mut extra_weapon_diff = 0;
+                let rstart = base.last_snap_tick + 1;
+                let rend = intended_tick;
+                for (old_tick, (_, inp)) in latest_inputs.range(rstart.min(rend)..rstart.max(rend))
+                {
+                    if let Some(prev_inp) = latest_inputs
+                        .range(0..*old_tick)
+                        .next_back()
+                        .map(|(_, (_, prev_inp))| prev_inp)
+                    {
+                        extra_weapon_diff +=
+                            inp.next_weapon.saturating_sub(prev_inp.next_weapon) as i64 / 2
+                                - inp.prev_weapon.saturating_sub(prev_inp.prev_weapon) as i64 / 2;
+                    }
+                }
+                let cur_weapon = weapons
+                    .keys()
+                    .enumerate()
+                    .find(|&(_, k)| *k == char.core.active_weapon)
+                    .map(|(index, _)| index);
+
+                let cur_weapon = cur_weapon.and_then(|index| {
+                    let index = (index as i64
+                        + (extra_weapon_diff % weapons.len() as i64)
+                        + weapons.len() as i64) as usize
+                        % weapons.len();
+                    weapons
+                        .keys()
+                        .enumerate()
+                        .nth(index)
+                        .map(|(index, _)| index)
+                });
+
+                if let Some((cur_weapon_index, (wanted_weapon_index, _))) =
+                    cur_weapon.zip(wanted_weapon)
+                {
+                    if wanted_weapon_index > cur_weapon_index {
+                        next_weapon_diff += (wanted_weapon_index - cur_weapon_index) as i32 * 2;
+                    } else {
+                        prev_weapon_diff += (cur_weapon_index - wanted_weapon_index) as i32 * 2;
+                    }
+                }
+            }
+        }
+        let wanted_weapon = 0;
 
         let mut input = snap_obj::PlayerInput {
             direction: *state.dir,
@@ -3326,10 +3393,7 @@ impl Client {
                     .unwrap_or_default() as i32,
             hook: *state.hook as i32,
             player_flags: 0,
-            wanted_weapon: diff
-                .weapon_req
-                .map(|w| w as i32 + 1)
-                .unwrap_or(wanted_weapon_fallback),
+            wanted_weapon,
             next_weapon: prev_inp.next_weapon + next_weapon_diff,
             prev_weapon: prev_inp.prev_weapon + prev_weapon_diff,
         };
@@ -3977,6 +4041,7 @@ impl Client {
                                     let mut old = def;
                                     let mut offset = 0;
 
+                                    let mut latest_inp = None;
                                     while let Some(patch) =
                                         inp_chain.data.get(offset..offset + def_len)
                                     {
@@ -4018,14 +4083,7 @@ impl Client {
                                                 as i32;
                                             let intended_tick =
                                                 self.base.last_snap_tick + pred_tick_diff;
-                                            player.data.latest_input = Self::input_to_legacy_input(
-                                                &player.data.latest_input,
-                                                &inp.inp.inp,
-                                                inp.inp.inp.consumable.diff(
-                                                    &player.data.latest_char_input.consumable,
-                                                ),
-                                            );
-                                            player.data.latest_char_input = inp.inp.inp;
+                                            latest_inp = Some(inp.inp.inp);
                                             highest_intended_tick =
                                                 highest_intended_tick.max(intended_tick);
                                             highest_player_intended_tick =
@@ -4035,23 +4093,41 @@ impl Client {
                                         offset += def_len;
                                         old = new;
                                     }
-                                    while player.data.latest_inputs.len()
-                                        > TICKS_PER_SECOND as usize * 5
-                                    {
-                                        player.data.latest_inputs.pop_first();
+                                    if let Some(latest_inp) = latest_inp {
+                                        player.data.latest_input = Self::input_to_legacy_input(
+                                            *player_id,
+                                            &self.last_snapshot,
+                                            &self.base,
+                                            &player.data.latest_inputs,
+                                            highest_player_intended_tick,
+                                            &player.data.latest_input,
+                                            &latest_inp,
+                                            latest_inp
+                                                .consumable
+                                                .diff(&player.data.latest_char_input.consumable),
+                                        );
+                                        player.data.latest_char_input = latest_inp;
+                                        while player.data.latest_inputs.len()
+                                            > TICKS_PER_SECOND as usize * 5
+                                        {
+                                            player.data.latest_inputs.pop_first();
+                                        }
+                                        player.data.latest_inputs.insert(
+                                            highest_player_intended_tick,
+                                            (
+                                                player.data.latest_char_input,
+                                                player.data.latest_input,
+                                            ),
+                                        );
+                                        player.sends(System::Input(system::Input {
+                                            ack_snapshot: self.base.last_snap_tick,
+                                            intended_tick: highest_player_intended_tick,
+                                            input_size: std::mem::size_of::<snap_obj::PlayerInput>()
+                                                as i32,
+                                            input: player.data.latest_input,
+                                        }));
+                                        player.flush();
                                     }
-                                    player.data.latest_inputs.insert(
-                                        highest_player_intended_tick,
-                                        (player.data.latest_char_input, player.data.latest_input),
-                                    );
-                                    player.sends(System::Input(system::Input {
-                                        ack_snapshot: self.base.last_snap_tick,
-                                        intended_tick: highest_player_intended_tick,
-                                        input_size: std::mem::size_of::<snap_obj::PlayerInput>()
-                                            as i32,
-                                        input: player.data.latest_input,
-                                    }));
-                                    player.flush();
                                 }
                             }
 
