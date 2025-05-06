@@ -973,9 +973,7 @@ impl ActiveGame {
                                 .input
                                 .inp
                                 .cursor
-                                .set(CharacterInputCursor::from_vec2(
-                                    &(local_player.cursor_pos / 32.0),
-                                ));
+                                .set(CharacterInputCursor::from_vec2(&local_player.cursor_pos));
                         }
                         PlayerCameraMode::Free => {
                             local_player

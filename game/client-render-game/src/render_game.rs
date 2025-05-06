@@ -589,12 +589,13 @@ impl RenderGame {
             parallax_aware_zoom: true,
         };
 
-        let camera_player_id = player_info.and_then(|(player_id, p)| match &p.cam_mode {
-            RenderPlayerCameraMode::Default | RenderPlayerCameraMode::AtPos { .. } => {
-                Some(player_id)
-            }
+        let camera_player = player_info.and_then(|(player_id, p)| match &p.cam_mode {
+            RenderPlayerCameraMode::Default | RenderPlayerCameraMode::AtPos { .. } => Some((
+                player_id,
+                matches!(p.cam_mode, RenderPlayerCameraMode::Default),
+            )),
             RenderPlayerCameraMode::OnCharacters { character_ids, .. } => {
-                character_ids.iter().next()
+                character_ids.iter().next().map(|p| (p, true))
             }
         });
 
@@ -608,11 +609,11 @@ impl RenderGame {
             .unwrap_or_default();
 
         let camera_character_info =
-            camera_player_id.and_then(|player_id| render_info.character_infos.get(player_id));
+            camera_player.and_then(|(player_id, _)| render_info.character_infos.get(player_id));
 
         let camera_character_render_info = camera_character_info
-            .zip(camera_player_id)
-            .and_then(|(c, player_id)| {
+            .zip(camera_player)
+            .and_then(|(c, (player_id, _))| {
                 c.stage_id
                     .and_then(|id| render_info.stages.get(&id).map(|p| (p, player_id)))
             })
@@ -733,7 +734,7 @@ impl RenderGame {
 
                 camera: &cam,
 
-                local_character_id: camera_player_id,
+                local_character_id: camera_player.map(|(id, _)| id),
 
                 phased_alpha: render_info.settings.phased_alpha,
                 phased: !local_characters_stage && !forced_non_phased_rendering,
@@ -756,7 +757,7 @@ impl RenderGame {
                 collision: &render_map.data.collision,
                 camera: &cam,
 
-                own_character: camera_player_id,
+                own_character: camera_player.map(|(id, _)| id),
 
                 spatial_sound: render_info.settings.spatial_sound,
                 sound_playback_speed: render_info.settings.sound_playback_speed,
@@ -809,7 +810,7 @@ impl RenderGame {
             &cam,
         );
         // cursor
-        if let Some(player) = camera_character_render_info {
+        if let Some((player, (_, true))) = camera_character_render_info.zip(camera_player) {
             self.cursor_render.render(&mut RenderCursorPipe {
                 mouse_cursor: player.lerped_cursor_pos,
                 weapon_container: &mut self.containers.weapon_container,

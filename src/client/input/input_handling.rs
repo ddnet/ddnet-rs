@@ -625,13 +625,13 @@ impl InputHandling {
             let will_hook = (*local_dummy.input.inp.state.hook && !dummy.hook_change)
                 || (dummy.hook && dummy.hook_change);
             if dummy_fire_aim_character && !will_hook {
-                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy * 32.0;
+                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy;
                 let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
                 local_dummy.input.inp.cursor.set(cursor);
             } else if will_hook || !dummy_fire_aim_character {
                 // For hooks reset to human input cursor
                 local_dummy.cursor_pos = local_dummy.player_cursor_pos;
-                let cursor = local_dummy.cursor_pos / 32.0;
+                let cursor = local_dummy.cursor_pos;
                 let cursor = CharacterInputCursor::from_vec2(&cursor);
                 local_dummy.input.inp.cursor.set(cursor);
             }
@@ -932,7 +932,7 @@ impl InputHandling {
                             {
                                 match cam_mode {
                                     PlayerCameraMode::Default => {
-                                        let cur = local_player.player_cursor_pos;
+                                        let cur = local_player.player_cursor_pos * 32.0;
                                         local_player.input.inp.cursor.set(
                                             CharacterInputCursor::from_vec2(
                                                 &((cur
@@ -943,7 +943,7 @@ impl InputHandling {
                                         );
                                         Self::clamp_cursor(config_game, local_player);
                                         local_player.cursor_pos =
-                                            local_player.input.inp.cursor.to_vec2() * 32.0;
+                                            local_player.input.inp.cursor.to_vec2();
                                         local_player.player_cursor_pos = local_player.cursor_pos;
                                     }
                                     PlayerCameraMode::Free => {

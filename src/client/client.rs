@@ -952,7 +952,7 @@ impl ClientNativeImpl {
                             .and_then(|stage_id| stages_render_infos.get_mut(&stage_id))
                             .and_then(|s| s.world.characters.get_mut(&player_id))
                     }) {
-                        player.lerped_cursor_pos = client_player.input.inp.cursor.to_vec2();
+                        player.lerped_cursor_pos = client_player.cursor_pos;
                         player.lerped_dyn_cam_offset =
                             client_player.input.inp.dyn_cam_offset.to_vec2();
 
@@ -2550,8 +2550,7 @@ impl ClientNativeImpl {
                             // make sure all cursors are updated
                             for local_player in game.game_data.local.local_players.values_mut() {
                                 InputHandling::clamp_cursor(&self.config.game, local_player);
-                                local_player.cursor_pos =
-                                    local_player.input.inp.cursor.to_vec2() * 32.0;
+                                local_player.cursor_pos = local_player.input.inp.cursor.to_vec2();
                                 local_player.input.inp.dyn_cam_offset.set(
                                     CharacterInputDynCamOffset::from_vec2(
                                         InputHandling::dyn_camera_offset(
