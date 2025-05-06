@@ -173,6 +173,15 @@ use vanilla::{
     weapons::definitions::weapon_def::Weapon,
 };
 
+enum LegacyInputFlags {
+    // Playing = 1 << 0,
+    InMenu = 1 << 1,
+    Chatting = 1 << 2,
+    Scoreboard = 1 << 3,
+    Aim = 1 << 4,
+    // SpecCam = 1 << 5,
+}
+
 #[derive(Debug)]
 pub struct LegacyProxy {
     pub is_finished: Arc<AtomicBool>,
@@ -1094,14 +1103,6 @@ impl Client {
                             }
 
                             let mut flags = CharacterInputFlags::empty();
-                            enum LegacyInputFlags {
-                                // Playing = 1 << 0,
-                                InMenu = 1 << 1,
-                                Chatting = 1 << 2,
-                                Scoreboard = 1 << 3,
-                                Aim = 1 << 4,
-                                // SpecCam = 1 << 5,
-                            }
                             if (character.player_flags & LegacyInputFlags::Aim as i32) != 0 {
                                 flags.insert(CharacterInputFlags::HOOK_COLLISION_LINE);
                             }
@@ -3385,6 +3386,23 @@ impl Client {
         }
         let wanted_weapon = 0;
 
+        let mut player_flags = 0;
+        if inp.state.flags.contains(CharacterInputFlags::CHATTING) {
+            player_flags |= LegacyInputFlags::Chatting as i32;
+        }
+        if inp
+            .state
+            .flags
+            .contains(CharacterInputFlags::HOOK_COLLISION_LINE)
+        {
+            player_flags |= LegacyInputFlags::Aim as i32;
+        }
+        if inp.state.flags.contains(CharacterInputFlags::SCOREBOARD) {
+            player_flags |= LegacyInputFlags::Scoreboard as i32;
+        }
+        if inp.state.flags.contains(CharacterInputFlags::MENU_UI) {
+            player_flags |= LegacyInputFlags::InMenu as i32;
+        }
         let mut input = snap_obj::PlayerInput {
             direction: *state.dir,
             target_x,
@@ -3396,7 +3414,7 @@ impl Client {
                     .map(|(v, _)| (v.get() * 2).saturating_sub(*state.fire as u64))
                     .unwrap_or_default() as i32,
             hook: *state.hook as i32,
-            player_flags: 0,
+            player_flags,
             wanted_weapon,
             next_weapon: prev_inp.next_weapon + next_weapon_diff,
             prev_weapon: prev_inp.prev_weapon + prev_weapon_diff,
