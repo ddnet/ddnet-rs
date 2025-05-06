@@ -11,5 +11,5 @@ graphics-backend-traits = { path = "../graphics-backend-traits" }
 hiarc = { path = "../hiarc", features = ["derive"] }
 wasm-runtime-types = { path = "../wasm-runtime-types" }
 
-wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "5.0.6", default-features = false, features = ["sys", "cranelift"] }
 sendable = "0.6.1"

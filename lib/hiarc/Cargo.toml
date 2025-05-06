@@ -11,7 +11,7 @@ hiarc-macro = { path = "../hiarc-macro", optional = true }
 parking_lot = { version = "0.12.3", default-features = false, optional = true }
 spin = { version = "0.10.0", default-features = false, features = ["spin_mutex", "rwlock"], optional = true }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", default-features = false, features = ["serde", "serde_impl"], optional = true }
-tokio = { version = "1.44.2", default-features = false, features = ["sync"], optional = true }
+tokio = { version = "1.45.0", default-features = false, features = ["sync"], optional = true }
 anyhow = { version = "1.0.98", default-features = false, optional = true }
 egui = { version = "0.31.1", default-features = false, optional = true }
 fixed = { version = "1.29.0", default-features = false, optional = true }
@@ -27,8 +27,8 @@ ascii = { version = "1.1.0", default-features = false, optional = true }
 rustc-hash = { version = "2.1.1", default-features = false, optional = true }
 crossbeam = { version = "0.8.4", default-features = false, optional = true }
 ash = { version = "0.38.0", default-features = false, optional = true }
-chrono = { version = "0.4.40", default-features = false, optional = true }
-winit = { version = "0.30.9", default-features = false, optional = true }
+chrono = { version = "0.4.41", default-features = false, optional = true }
+winit = { version = "0.30.10", default-features = false, optional = true }
 serde_json = { version = "1.0.140", default-features = false, optional = true }
 
 [features]

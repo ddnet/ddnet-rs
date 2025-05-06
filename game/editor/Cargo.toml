@@ -42,10 +42,10 @@ async-trait = "0.1.88"
 bincode = { version = "2.0.1", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_with = "3.12.0"
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 rayon = "1.10.0"
-rand = { version = "0.9.0", features = ["thread_rng"] }
+rand = { version = "0.9.1", features = ["thread_rng"] }
 time = { version = "0.3.41", features = ["serde"] }
 serde_json = "1.0.140"
 ed25519-dalek = { version = "2.1.1", features = ["serde"] }

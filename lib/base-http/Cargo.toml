@@ -11,10 +11,10 @@ base-io = { path = "../base-io" }
 base-io-traits = { path = "../base-io-traits" }
 
 anyhow = { version = "1.0.98", features = ["backtrace"] }
-axum = "0.8.3"
+axum = "0.8.4"
 bytes = "1.10.1"
 reqwest = { version = "0.12.15", default-features = false, features = ["rustls-tls"] }
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync"] }
 url = "2.5.4"
 async-trait = "0.1.88"
 http-body-util = "0.1.3"

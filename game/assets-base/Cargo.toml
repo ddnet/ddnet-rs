@@ -9,7 +9,7 @@ hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_chrono", "enab
 
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-chrono = { version = "0.4.40", default-features = false, features = ["serde"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 tar = "0.4.44"
 rustc-hash = "2.1.1"

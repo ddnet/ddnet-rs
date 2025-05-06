@@ -182,7 +182,7 @@ editor = { path = "game/editor", default-features = false }
 legacy_proxy = { path = "game/legacy_proxy" }
 
 egui-winit = { version = "0.31.1", default-features = false, features = ["x11", "arboard", "links"] }
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 num = "0.4.3"
 arrayvec = "0.7.6"
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
@@ -202,12 +202,12 @@ thread-priority = "1.2.0"
 hiarc = { path = "lib/hiarc", features = ["derive"] }
 trybuild = "1.0"
 env_logger = "0.11.8"
-rand = { version = "0.9.0", features = ["std_rng"], default-features = false }
+rand = { version = "0.9.1", features = ["std_rng"], default-features = false }
 url = "2.5.4"
 log = "0.4.27"
 x509-cert = { version = "0.2.5" }
 crossbeam = "0.8.4"
-chrono = { version = "0.4.40", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["serde"] }
 
 alloc-track = { version = "0.3.1", optional = true }
 stats_alloc = { version = "0.1.10", optional = true }
