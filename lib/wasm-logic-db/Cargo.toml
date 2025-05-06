@@ -8,5 +8,5 @@ base-io = { path = "../base-io" }
 wasm-runtime-types = { path = "../wasm-runtime-types" }
 game-database = { path = "../game-database" }
 
-wasmer = { version = "5.0.6", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "6.0.0", default-features = false, features = ["sys", "cranelift"] }
 sendable = "0.6.1"

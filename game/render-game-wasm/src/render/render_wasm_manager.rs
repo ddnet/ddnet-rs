@@ -63,7 +63,7 @@ impl RenderGameWasmManager {
         fs: &Arc<dyn FileSystemInterface>,
         file: Vec<u8>,
     ) -> anyhow::Result<Vec<u8>> {
-        let cache = Arc::new(Cache::<0>::new_async(RENDER_MODS_PATH, fs).await);
+        let cache = Arc::new(Cache::<20250506>::new_async(RENDER_MODS_PATH, fs).await);
 
         cache
             .load_from_binary(file, |wasm_bytes| {

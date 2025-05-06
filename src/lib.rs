@@ -30,12 +30,13 @@ static GLOBAL: &stats_alloc::StatsAlloc<std::alloc::System> = &stats_alloc::INST
 
 #[cfg(not(target_os = "android"))]
 fn show_message_box(title: &str, message: &str) {
-    use native_dialog::{MessageDialog, MessageType};
-    let _ = MessageDialog::new()
-        .set_type(MessageType::Error)
+    use native_dialog::{MessageDialogBuilder, MessageLevel};
+    let _ = MessageDialogBuilder::default()
+        .set_level(MessageLevel::Error)
         .set_title(title)
         .set_text(message)
-        .show_alert();
+        .alert()
+        .show();
 }
 
 #[cfg(target_os = "android")]

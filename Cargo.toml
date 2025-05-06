@@ -222,7 +222,7 @@ android_logger = "0.15.0"
 ndk = { version = "0.9.0", default-features = false }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
-native-dialog = "0.7.0"
+native-dialog = "0.9.0"
 
 [dev-dependencies]
 graphics-base-traits = { path = "lib/graphics-base-traits" }

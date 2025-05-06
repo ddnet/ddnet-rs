@@ -57,7 +57,7 @@ impl EditorWasmManager {
         thread_pool: &Arc<ThreadPool>,
         font_data: &FontDefinitions,
     ) -> Self {
-        let cache = Arc::new(Cache::<0>::new(MODS_PATH, io));
+        let cache = Arc::new(Cache::<20250506>::new(MODS_PATH, io));
         // check if loading was finished
         let path_str = MODS_PATH.to_string() + "/editor.wasm";
         let fs_change_watcher = io

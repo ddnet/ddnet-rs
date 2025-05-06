@@ -31,6 +31,6 @@ base-fs = { path = "../../lib/base-fs" }
 base-io = { path = "../../lib/base-io" }
 difference = "2.0"
 lz4_flex = { version = "0.11" }
-brotli = "7.0.0"
+brotli = "8.0.1"
 #rust-lzma = "0.6.0"
 flate2 = "1.1.1"
