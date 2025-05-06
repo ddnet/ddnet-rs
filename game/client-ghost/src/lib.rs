@@ -185,19 +185,19 @@ impl GhostViewer {
                         let stage_id = self
                             .ids
                             .next_id(|id| !input.stages.contains_key(&id.into()));
-                        let render_stage =
-                            input.stages.entry(stage_id.into()).or_insert_with(|| {
-                                StageRenderInfo {
-                                    world: WorldRenderInfo {
-                                        projectiles: PoolFxLinkedHashMap::new_without_pool(),
-                                        ctf_flags: PoolFxLinkedHashMap::new_without_pool(),
-                                        lasers: PoolFxLinkedHashMap::new_without_pool(),
-                                        pickups: PoolFxLinkedHashMap::new_without_pool(),
-                                        characters: PoolFxLinkedHashMap::new_without_pool(),
-                                    },
-                                    game: GameRenderInfo::Race {},
-                                    game_ticks_passed: 0,
-                                }
+                        let render_stage = input
+                            .stages
+                            .entry(stage_id.into())
+                            .or_insert_with_keep_order(|| StageRenderInfo {
+                                world: WorldRenderInfo {
+                                    projectiles: PoolFxLinkedHashMap::new_without_pool(),
+                                    ctf_flags: PoolFxLinkedHashMap::new_without_pool(),
+                                    lasers: PoolFxLinkedHashMap::new_without_pool(),
+                                    pickups: PoolFxLinkedHashMap::new_without_pool(),
+                                    characters: PoolFxLinkedHashMap::new_without_pool(),
+                                },
+                                game: GameRenderInfo::Race {},
+                                game_ticks_passed: 0,
                             });
 
                         for (real_id, char_info) in render_input.character_infos.drain() {

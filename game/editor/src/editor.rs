@@ -29,6 +29,7 @@ use client_render_base::map::{
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
 use egui::{pos2, vec2, FontDefinitions, InputState, OutputCommand, Pos2, Rect};
+use egui_file_dialog::FileDialog;
 use game_config::config::ConfigMap;
 use graphics::{
     graphics::graphics::Graphics,
@@ -97,9 +98,10 @@ use crate::{
     map::{
         EditorActiveAnimationProps, EditorAnimationProps, EditorAnimations, EditorAnimationsProps,
         EditorArbitraryLayerProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr,
-        EditorCommonLayerOrGroupAttrInterface, EditorConfig, EditorGroup, EditorGroupPhysics,
-        EditorGroupProps, EditorGroups, EditorGroupsProps, EditorImage, EditorImage2dArray,
-        EditorLayer, EditorLayerArbitrary, EditorLayerQuad, EditorLayerSound, EditorLayerTile,
+        EditorCommonLayerOrGroupAttrInterface, EditorConfig, EditorGroup,
+        EditorGroupPanelResources, EditorGroupPanelTab, EditorGroupPhysics, EditorGroupProps,
+        EditorGroups, EditorGroupsProps, EditorImage, EditorImage2dArray, EditorLayer,
+        EditorLayerArbitrary, EditorLayerQuad, EditorLayerSound, EditorLayerTile,
         EditorLayerUnionRef, EditorMap, EditorMapInterface, EditorMapProps, EditorMetadata,
         EditorPhysicsGroupProps, EditorPhysicsLayer, EditorPhysicsLayerProps, EditorPosAnimation,
         EditorQuadLayerProps, EditorQuadLayerPropsPropsSelection, EditorResource,
@@ -234,6 +236,8 @@ pub struct Editor {
     // misc
     io: Io,
     thread_pool: Arc<rayon::ThreadPool>,
+
+    hovered_file: Option<PathBuf>,
 
     save_tasks: Vec<IoRuntimeTask<()>>,
 }
@@ -411,6 +415,8 @@ impl Editor {
 
             save_tasks: Default::default(),
 
+            hovered_file: Default::default(),
+
             sys,
         };
         res.load_map("map/maps/ctf1.twmap".as_ref(), Default::default());
@@ -564,6 +570,8 @@ impl Editor {
                                         number_extra_text: Default::default(),
                                         enter_extra_text: Default::default(),
                                         leave_extra_text: Default::default(),
+                                        tune_overview_extra: Default::default(),
+                                        number_extra_zone: 1,
                                         context_menu_open: false,
                                         context_menu_extra_open: false,
                                         switch_delay: Default::default(),
@@ -1031,6 +1039,8 @@ impl Editor {
                                 number_extra_text: Default::default(),
                                 enter_extra_text: Default::default(),
                                 leave_extra_text: Default::default(),
+                                tune_overview_extra: Default::default(),
+                                number_extra_zone: 1,
                                 context_menu_open: false,
                                 context_menu_extra_open: false,
                                 switch_delay: Default::default(),
@@ -1126,7 +1136,6 @@ impl Editor {
             .to_string())
     }
 
-    #[cfg(feature = "legacy")]
     fn load_legacy_map(
         &mut self,
         path: &Path,
@@ -1225,15 +1234,6 @@ impl Editor {
         self.active_tab = name;
 
         Ok(())
-    }
-
-    #[cfg(not(feature = "legacy"))]
-    fn load_legacy_map(
-        &mut self,
-        _path: &Path,
-        _options: MapLoadWithServerOptions,
-    ) -> anyhow::Result<()> {
-        Err(anyhow!("loading legacy maps is not supported"))
     }
 
     fn map_resource_path(ty: ReadFileTy, name: &str, meta: &MapResourceMetaData) -> String {
@@ -1395,7 +1395,6 @@ impl Editor {
         }
     }
 
-    #[cfg(feature = "legacy")]
     pub fn save_map_legacy(
         tab: &mut EditorTab,
         io: &Io,
@@ -1441,16 +1440,6 @@ impl Editor {
             write_file_editor(&fs, &path, map_legacy.map).await?;
             Ok(())
         }))
-    }
-
-    #[cfg(not(feature = "legacy"))]
-    pub fn save_map_legacy(
-        tab: &mut EditorTab,
-        io: &Io,
-        tp: &Arc<rayon::ThreadPool>,
-        path: &Path,
-    ) -> anyhow::Result<IoRuntimeTask<()>> {
-        Err(anyhow!("saving as legacy map is not supported"))
     }
 
     fn save_map_tab_impl(
@@ -2678,6 +2667,9 @@ impl Editor {
             hotkeys: &mut self.hotkeys,
             cur_hotkey_events: &mut self.cur_hotkey_events,
             cached_binds_per_event: &mut self.cached_binds_per_event,
+
+            hovered_file: &self.hovered_file,
+            current_client_pointer_pos: &self.current_pointer_pos,
         });
 
         let mut forced_result = None;
@@ -2858,6 +2850,9 @@ pub enum EditorResult {
 
 pub trait EditorInterface {
     fn render(&mut self, input: egui::RawInput, config: &ConfigEngine) -> EditorResult;
+
+    fn file_dropped(&mut self, file: PathBuf);
+    fn file_hovered(&mut self, file: Option<PathBuf>);
 }
 
 impl EditorInterface for Editor {
@@ -2994,5 +2989,88 @@ impl EditorInterface for Editor {
         } else {
             EditorResult::PlatformOutput(ui_output)
         }
+    }
+
+    fn file_dropped(&mut self, file: PathBuf) {
+        let Some(ext) = file.extension().and_then(|e| e.to_str()) else {
+            return;
+        };
+
+        let fs = self.io.fs.clone();
+        match ext {
+            "map" | "twmap" => {
+                self.load_map(&file, Default::default());
+            }
+            "png" => {
+                if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
+                    if self.current_pointer_pos.x < self.latest_canvas_rect.width() / 2.0 {
+                        let group_tab = &mut tab.map.user.ui_values.group_panel_active_tab;
+                        if !matches!(group_tab, EditorGroupPanelTab::Images(_)) {
+                            *group_tab = EditorGroupPanelTab::Images(EditorGroupPanelResources {
+                                file_dialog: FileDialog::new(),
+                                loading_tasks: Default::default(),
+                            });
+                        }
+                        let EditorGroupPanelTab::Images(tab) = group_tab else {
+                            unreachable!()
+                        };
+                        tab.loading_tasks.insert(
+                            file.clone(),
+                            self.io
+                                .rt
+                                .spawn(async move { read_file_editor(&fs, file.as_ref()).await }),
+                        );
+                    } else {
+                        let group_tab = &mut tab.map.user.ui_values.group_panel_active_tab;
+                        if !matches!(group_tab, EditorGroupPanelTab::ArrayImages(_)) {
+                            *group_tab =
+                                EditorGroupPanelTab::ArrayImages(EditorGroupPanelResources {
+                                    file_dialog: FileDialog::new(),
+                                    loading_tasks: Default::default(),
+                                });
+                        }
+                        let EditorGroupPanelTab::ArrayImages(tab) = group_tab else {
+                            unreachable!()
+                        };
+                        tab.loading_tasks.insert(
+                            file.clone(),
+                            self.io
+                                .rt
+                                .spawn(async move { read_file_editor(&fs, file.as_ref()).await }),
+                        );
+                    }
+                }
+            }
+            "ogg" => {
+                if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
+                    let group_tab = &mut tab.map.user.ui_values.group_panel_active_tab;
+                    if !matches!(group_tab, EditorGroupPanelTab::Sounds(_)) {
+                        *group_tab = EditorGroupPanelTab::Sounds(EditorGroupPanelResources {
+                            file_dialog: FileDialog::new(),
+                            loading_tasks: Default::default(),
+                        });
+                    }
+                    let EditorGroupPanelTab::Sounds(tab) = group_tab else {
+                        unreachable!()
+                    };
+                    tab.loading_tasks.insert(
+                        file.clone(),
+                        self.io
+                            .rt
+                            .spawn(async move { read_file_editor(&fs, file.as_ref()).await }),
+                    );
+                }
+            }
+            _ => {
+                self.notifications.push(EditorNotification::Error(format!(
+                    "The dropped file with extension: {ext} \
+                    is not supported by the editor"
+                )));
+            }
+        }
+    }
+
+    fn file_hovered(&mut self, file: Option<PathBuf>) {
+        self.hovered_file = file;
     }
 }

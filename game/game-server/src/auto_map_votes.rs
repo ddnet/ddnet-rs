@@ -16,7 +16,6 @@ impl AutoMapVotes {
             .filter_map(|(p, _)| p.ends_with(".twmap").then::<PathBuf, _>(|| p.into()))
             .collect();
 
-        #[cfg(feature = "legacy")]
         let map_files = {
             let mut map_files = map_files;
             let dir = fs.entries_in_dir("legacy/maps".as_ref()).await?;

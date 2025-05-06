@@ -483,12 +483,15 @@ impl ClientNativeImpl {
         Ok(())
     }
 
-    fn connect_local_server(
+    fn connect_internal_server(
         &mut self,
         addresses: Vec<SocketAddr>,
-        can_start_local_server: bool,
+        can_start_internal_server: bool,
+        can_connect_internal_server: bool,
     ) -> ConnectLocalServerResult {
-        if addresses.iter().any(|addr| addr.ip().is_loopback()) {
+        if !can_connect_internal_server {
+            ConnectLocalServerResult::ErrOrNotLocalServerAddr { addresses }
+        } else if addresses.iter().any(|addr| addr.ip().is_loopback()) {
             let mut state = self.shared_info.state.lock().unwrap();
             if let LocalServerState::Ready { connect_info, .. } = &mut *state {
                 let rcon_secret = Some(connect_info.rcon_secret);
@@ -506,10 +509,10 @@ impl ClientNativeImpl {
                     rcon_secret,
                 }
             } else {
-                let keep_connecting =
-                    can_start_local_server || matches!(*state, LocalServerState::Starting { .. });
+                let keep_connecting = can_start_internal_server
+                    || matches!(*state, LocalServerState::Starting { .. });
                 drop(state);
-                if can_start_local_server {
+                if can_start_internal_server {
                     // try to start the local server
                     start_local_server(
                         &self.sys,
@@ -646,15 +649,24 @@ impl ClientNativeImpl {
                 game_state.game_tick_speed(),
             );
 
-            let main_local_char_spec = game
+            let active_local_player_id = game
                 .game_data
                 .local
                 .active_local_player()
-                .map(|(_, p)| match &p.input_cam_mode {
+                .map(|(id, _)| *id);
+
+            let active_local_player_info = active_local_player_id.and_then(|id| {
+                game.game_data
+                    .cached_character_infos
+                    .get(&id)
+                    .and_then(|info| info.player_info.as_ref())
+            });
+
+            let main_local_char_prefer_unpredicted = active_local_player_info
+                .map(|p| match &p.cam_mode {
                     PlayerCameraMode::Default => false,
                     PlayerCameraMode::Free => true,
-                    PlayerCameraMode::LockedTo { locked_ingame, .. }
-                    | PlayerCameraMode::LockedOn { locked_ingame, .. } => !*locked_ingame,
+                    PlayerCameraMode::LockedTo { .. } | PlayerCameraMode::LockedOn { .. } => true,
                 })
                 .unwrap_or_default();
 
@@ -663,7 +675,7 @@ impl ClientNativeImpl {
                 mut local_predicted_game,
                 main_intra_tick_ratio,
                 predicted_intra_tick_ratio,
-            ) = if self.config.game.cl.anti_ping && !main_local_char_spec {
+            ) = if self.config.game.cl.anti_ping && !main_local_char_prefer_unpredicted {
                 (game_state, None, intra_tick_ratio, intra_tick_ratio)
             } else {
                 let ticks_per_second = game_state.game_tick_speed();
@@ -708,7 +720,7 @@ impl ClientNativeImpl {
                 unpredicted_game.from_snapshots(&game.game_data.last_snaps, prev_tick + first_tick);
                 (
                     &mut unpredicted_game.state,
-                    (!main_local_char_spec).then_some(game_state),
+                    (!main_local_char_prefer_unpredicted).then_some(game_state),
                     unpredicted_intra_tick_ratio,
                     intra_tick_ratio,
                 )
@@ -738,11 +750,7 @@ impl ClientNativeImpl {
                 );
             }
             if self.client_info.wants_active_client_info() {
-                let active_player = game.game_data.local.active_local_player();
-                if let Some(player_info) = active_player
-                    .and_then(|(id, _)| character_infos.get(id))
-                    .and_then(|c| c.player_info.as_ref())
-                {
+                if let Some(player_info) = active_local_player_info {
                     let scoreboard_info = main_game.collect_scoreboard_info();
                     self.client_info.set_active_client_info(ActiveClientInfo {
                         ingame_mode: player_info.ingame_mode,
@@ -759,9 +767,9 @@ impl ClientNativeImpl {
                             };
                             it.map(|s| s.name.to_string()).collect()
                         },
-                        camera_mode: active_player
-                            .map(|(_, p)| p.input_cam_mode.clone())
-                            .unwrap_or_else(|| player_info.cam_mode.clone()),
+                        camera_mode: active_local_player_info
+                            .map(|p| p.cam_mode.clone())
+                            .unwrap_or_else(|| PlayerCameraMode::Default),
                     });
                 }
             }
@@ -908,21 +916,27 @@ impl ClientNativeImpl {
                  stages_render_infos: &mut StageRenderInfos|
                  -> (PlayerId, RenderGameForPlayer) {
                     let (&player_id, client_player) = client_player;
-                    let (camera_player_id, is_free_cam) = match &client_player.input_cam_mode {
-                        PlayerCameraMode::Default | PlayerCameraMode::LockedTo { .. } => {
-                            (player_id, false)
+                    let character_info = character_infos.get(&player_id);
+                    let player_info = character_info.and_then(|c| c.player_info.as_ref());
+                    let (camera_player_id, is_free_cam) = if let Some(player_info) = player_info {
+                        match &player_info.cam_mode {
+                            PlayerCameraMode::Default | PlayerCameraMode::LockedTo { .. } => {
+                                (player_id, false)
+                            }
+                            PlayerCameraMode::Free => (player_id, true),
+                            PlayerCameraMode::LockedOn { character_ids, .. } => (
+                                {
+                                    if character_ids.len() == 1 {
+                                        *character_ids.iter().next().unwrap()
+                                    } else {
+                                        player_id
+                                    }
+                                },
+                                false,
+                            ),
                         }
-                        PlayerCameraMode::Free => (player_id, true),
-                        PlayerCameraMode::LockedOn { character_ids, .. } => (
-                            {
-                                if character_ids.len() == 1 {
-                                    *character_ids.iter().next().unwrap()
-                                } else {
-                                    player_id
-                                }
-                            },
-                            false,
-                        ),
+                    } else {
+                        (player_id, false)
                     };
                     let local_player_render_info = if let Some(local_predicted_game) =
                         local_predicted_game.as_deref_mut()
@@ -933,13 +947,12 @@ impl ClientNativeImpl {
                         main_game.collect_character_local_render_info(&camera_player_id)
                     };
 
-                    let character_info = character_infos.get(&player_id);
                     if let Some(player) = character_info.and_then(|c| {
                         c.stage_id
                             .and_then(|stage_id| stages_render_infos.get_mut(&stage_id))
                             .and_then(|s| s.world.characters.get_mut(&player_id))
                     }) {
-                        player.lerped_cursor_pos = client_player.input.inp.cursor.to_vec2();
+                        player.lerped_cursor_pos = client_player.cursor_pos;
                         player.lerped_dyn_cam_offset =
                             client_player.input.inp.dyn_cam_offset.to_vec2();
 
@@ -966,39 +979,38 @@ impl ClientNativeImpl {
                         }
                     }
 
-                    let (cam_mode, force_scoreboard_visible, is_spectator) =
-                        match character_info.and_then(|c| c.player_info.as_ref()) {
-                            Some(info) => (
-                                match &client_player.input_cam_mode {
-                                    PlayerCameraMode::Default => RenderPlayerCameraMode::Default,
-                                    PlayerCameraMode::Free => RenderPlayerCameraMode::AtPos {
-                                        pos: vec2::new(
+                    let (cam_mode, force_scoreboard_visible, is_spectator) = match player_info {
+                        Some(info) => (
+                            match &info.cam_mode {
+                                PlayerCameraMode::Default => RenderPlayerCameraMode::Default,
+                                PlayerCameraMode::Free => RenderPlayerCameraMode::AtPos {
+                                    pos: vec2::new(
+                                        client_player.free_cam_pos.x as f32,
+                                        client_player.free_cam_pos.y as f32,
+                                    ),
+                                    locked_ingame: false,
+                                },
+                                PlayerCameraMode::LockedTo { pos, locked_ingame } => {
+                                    RenderPlayerCameraMode::AtPos {
+                                        pos: *pos,
+                                        locked_ingame: *locked_ingame,
+                                    }
+                                }
+                                PlayerCameraMode::LockedOn { character_ids, .. } => {
+                                    RenderPlayerCameraMode::OnCharacters {
+                                        character_ids: character_ids.clone(),
+                                        fallback_pos: vec2::new(
                                             client_player.free_cam_pos.x as f32,
                                             client_player.free_cam_pos.y as f32,
                                         ),
-                                        locked_ingame: false,
-                                    },
-                                    PlayerCameraMode::LockedTo { pos, locked_ingame } => {
-                                        RenderPlayerCameraMode::AtPos {
-                                            pos: *pos,
-                                            locked_ingame: *locked_ingame,
-                                        }
                                     }
-                                    PlayerCameraMode::LockedOn { character_ids, .. } => {
-                                        RenderPlayerCameraMode::OnCharacters {
-                                            character_ids: character_ids.clone(),
-                                            fallback_pos: vec2::new(
-                                                client_player.free_cam_pos.x as f32,
-                                                client_player.free_cam_pos.y as f32,
-                                            ),
-                                        }
-                                    }
-                                },
-                                info.force_scoreboard_visible,
-                                matches!(info.ingame_mode, PlayerIngameMode::Spectator),
-                            ),
-                            None => (RenderPlayerCameraMode::Default, false, true),
-                        };
+                                }
+                            },
+                            info.force_scoreboard_visible,
+                            matches!(info.ingame_mode, PlayerIngameMode::Spectator),
+                        ),
+                        None => (RenderPlayerCameraMode::Default, false, true),
+                    };
                     (
                         player_id,
                         RenderGameForPlayer {
@@ -1076,14 +1088,18 @@ impl ClientNativeImpl {
                                 local_player_info: local_player_render_info,
 
                                 zoom: {
-                                    let ingame_camera = match client_player.input_cam_mode {
-                                        PlayerCameraMode::Default => true,
-                                        PlayerCameraMode::Free => false,
-                                        PlayerCameraMode::LockedTo { locked_ingame, .. }
-                                        | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
-                                            locked_ingame
-                                        }
-                                    };
+                                    let ingame_camera = player_info
+                                        .map(|p| match p.cam_mode {
+                                            PlayerCameraMode::Default => true,
+                                            PlayerCameraMode::Free => false,
+                                            PlayerCameraMode::LockedTo {
+                                                locked_ingame, ..
+                                            }
+                                            | PlayerCameraMode::LockedOn {
+                                                locked_ingame, ..
+                                            } => locked_ingame,
+                                        })
+                                        .unwrap_or(true);
                                     if let Some(zoom) = ingame_camera
                                         .then_some(main_game.info.options.forced_ingame_camera_zoom)
                                         .flatten()
@@ -1587,10 +1603,15 @@ impl ClientNativeImpl {
                             addr,
                             rcon_secret,
                             cert_hash,
-                            can_start_local_server,
+                            can_start_internal_server,
+                            can_connect_internal_server,
                         } => {
                             // if localhost, then get the cert, rcon pw & port from the shared info
-                            match self.connect_local_server(vec![addr], can_start_local_server) {
+                            match self.connect_internal_server(
+                                vec![addr],
+                                can_start_internal_server,
+                                can_connect_internal_server,
+                            ) {
                                 ConnectLocalServerResult::Connect {
                                     addr,
                                     server_cert,
@@ -1603,7 +1624,8 @@ impl ClientNativeImpl {
                                         addr,
                                         rcon_secret,
                                         cert_hash,
-                                        can_start_local_server: false,
+                                        can_start_internal_server: false,
+                                        can_connect_internal_server: true,
                                     });
                                 }
                                 ConnectLocalServerResult::ErrOrNotLocalServerAddr { .. } => {
@@ -1999,7 +2021,8 @@ impl ClientNativeImpl {
                                         NetworkServerCertModeResult::PubKeyHash { hash } => *hash,
                                     },
                                     rcon_secret: Default::default(),
-                                    can_start_local_server: false,
+                                    can_start_internal_server: false,
+                                    can_connect_internal_server: false,
                                 });
                                 self.legacy_proxy_thread = Some(legacy_proxy);
                             }
@@ -2300,10 +2323,15 @@ impl ClientNativeImpl {
                 LocalConsoleEvent::Connect {
                     addresses,
                     cert,
-                    can_start_local_server,
+                    can_start_internal_server,
+                    can_connect_internal_server,
                 } => {
                     // if localhost, then get the cert, rcon pw & port from the shared info
-                    match self.connect_local_server(addresses, can_start_local_server) {
+                    match self.connect_internal_server(
+                        addresses,
+                        can_start_internal_server,
+                        can_connect_internal_server,
+                    ) {
                         ConnectLocalServerResult::Connect {
                             addr,
                             server_cert,
@@ -2315,7 +2343,8 @@ impl ClientNativeImpl {
                             self.local_console.add_event(LocalConsoleEvent::Connect {
                                 addresses,
                                 cert: ServerCertMode::Unknown,
-                                can_start_local_server: false,
+                                can_start_internal_server: false,
+                                can_connect_internal_server: true,
                             });
                         }
                         ConnectLocalServerResult::ErrOrNotLocalServerAddr { addresses } => {
@@ -2353,7 +2382,8 @@ impl ClientNativeImpl {
                     ) {
                         self.local_console.add_event(LocalConsoleEvent::Connect {
                             addresses: legacy_proxy.addresses.clone(),
-                            can_start_local_server: false,
+                            can_start_internal_server: false,
+                            can_connect_internal_server: false,
                             cert: match &legacy_proxy.cert {
                                 NetworkServerCertModeResult::Cert { cert } => {
                                     ServerCertMode::Cert(cert.to_der().unwrap())
@@ -2416,6 +2446,30 @@ impl ClientNativeImpl {
                 ),
                 LocalConsoleEvent::Echo { text } => {
                     self.notifications.add_info(text, Duration::from_secs(2));
+                }
+                LocalConsoleEvent::Say { ref text } | LocalConsoleEvent::SayTeam { ref text } => {
+                    if let Game::Active(game) = &mut self.game {
+                        if let Some((active_player_id, _)) =
+                            game.game_data.local.active_local_player()
+                        {
+                            let msg = if matches!(event, LocalConsoleEvent::Say { .. }) {
+                                MsgClChatMsg::Global {
+                                    msg: NetworkString::new_lossy(text),
+                                }
+                            } else {
+                                MsgClChatMsg::GameTeam {
+                                    msg: NetworkString::new_lossy(text),
+                                }
+                            };
+                            game.network.send_in_order_to_server(
+                                &ClientToServerMessage::PlayerMsg((
+                                    *active_player_id,
+                                    ClientToServerPlayerMessage::Chat(msg),
+                                )),
+                                NetworkInOrderChannel::Global,
+                            );
+                        }
+                    }
                 }
                 LocalConsoleEvent::ChangeDummy { dummy_index } => {
                     if let Game::Active(game) = &mut self.game {
@@ -2496,8 +2550,7 @@ impl ClientNativeImpl {
                             // make sure all cursors are updated
                             for local_player in game.game_data.local.local_players.values_mut() {
                                 InputHandling::clamp_cursor(&self.config.game, local_player);
-                                local_player.cursor_pos =
-                                    local_player.input.inp.cursor.to_vec2() * 32.0;
+                                local_player.cursor_pos = local_player.input.inp.cursor.to_vec2();
                                 local_player.input.inp.dyn_cam_offset.set(
                                     CharacterInputDynCamOffset::from_vec2(
                                         InputHandling::dyn_camera_offset(
@@ -3365,18 +3418,25 @@ impl FromNativeImpl for ClientNativeImpl {
                 }
 
                 let player = game.game_data.local.active_local_player();
-                let needs_abs_cursor = player.is_some_and(|(_, p)| {
-                    p.spectator_selection_active
-                        && (game.map.game.info.options.has_ingame_freecam
-                            || match p.input_cam_mode {
-                                PlayerCameraMode::Default => false,
-                                PlayerCameraMode::Free => true,
-                                PlayerCameraMode::LockedTo { locked_ingame, .. }
-                                | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
-                                    !locked_ingame
-                                }
-                            })
-                });
+                let needs_abs_cursor = player
+                    .and_then(|(id, client_player)| {
+                        game.game_data
+                            .cached_character_infos
+                            .get(id)
+                            .and_then(|c| c.player_info.as_ref().map(|p| (client_player, p)))
+                    })
+                    .is_some_and(|(client_player, p)| {
+                        client_player.spectator_selection_active
+                            && (game.map.game.info.options.has_ingame_freecam
+                                || match p.cam_mode {
+                                    PlayerCameraMode::Default => false,
+                                    PlayerCameraMode::Free => true,
+                                    PlayerCameraMode::LockedTo { locked_ingame, .. }
+                                    | PlayerCameraMode::LockedOn { locked_ingame, .. } => {
+                                        !locked_ingame
+                                    }
+                                })
+                    });
                 native.relative_mouse(!needs_abs_cursor);
 
                 self.inp_manager.set_last_known_cursor(
@@ -3517,6 +3577,9 @@ impl FromNativeImpl for ClientNativeImpl {
 
                 game_state.predicted_game_monotonic_tick += 1;
                 game_state.tick(Default::default());
+
+                // Update the cached character infos
+                game.game_data.cached_character_infos = game_state.collect_characters_info();
 
                 Server::dbg_game(
                     &self.config.game.dbg,
@@ -3726,6 +3789,23 @@ impl FromNativeImpl for ClientNativeImpl {
         // destroy everything
         config_fs::save(&self.config.engine, &self.io);
         game_config_fs::fs::save(&self.config.game, &self.io);
+    }
+
+    fn focus_changed(&mut self, _focused: bool) {
+        // global binds don't allow keeping keys by tabbing out
+        self.global_binds.reset_cur_keys();
+    }
+
+    fn file_dropped(&mut self, file: PathBuf) {
+        if let EditorState::Open(editor) = &mut self.editor {
+            editor.file_dropped(file);
+        }
+    }
+
+    fn file_hovered(&mut self, file: Option<PathBuf>) {
+        if let EditorState::Open(editor) = &mut self.editor {
+            editor.file_hovered(file);
+        }
     }
 
     fn window_created_ntfy(&mut self, native: &mut dyn NativeImpl) -> anyhow::Result<()> {

@@ -26,7 +26,8 @@ pub enum UiEvent {
         addr: SocketAddr,
         cert_hash: [u8; 32],
         rcon_secret: Option<[u8; 32]>,
-        can_start_local_server: bool,
+        can_start_internal_server: bool,
+        can_connect_internal_server: bool,
     },
     Disconnect,
     ConnectLocalPlayer {

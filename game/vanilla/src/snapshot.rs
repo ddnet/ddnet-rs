@@ -1,7 +1,9 @@
 pub mod snapshot {
     use std::{num::NonZeroU16, rc::Rc};
 
-    use crate::reusable::CloneWithCopyableElements;
+    use crate::{
+        entities::character::character::CharacterSpectateMode, reusable::CloneWithCopyableElements,
+    };
     use base::{
         linked_hash_map_view::FxLinkedHashMap,
         network_string::{NetworkStringPool, PoolNetworkString},
@@ -18,13 +20,13 @@ pub mod snapshot {
                 CharacterId, CtfFlagId, LaserId, PickupId, PlayerId, ProjectileId, StageId,
             },
             network_stats::PlayerNetworkStats,
-            render::character::PlayerCameraMode,
             snapshot::{SnapshotClientInfo, SnapshotLocalPlayer, SnapshotLocalPlayers},
             weapons::WeaponType,
         },
     };
     use hiarc::{hi_closure, Hiarc};
     use math::math::vector::{ubvec4, vec2};
+    use rustc_hash::FxHashSet;
 
     use crate::{
         collision::collision::Tunings,
@@ -63,7 +65,7 @@ pub mod snapshot {
         state::state::GameState,
     };
     use pool::{
-        datatypes::{PoolFxLinkedHashMap, PoolVec},
+        datatypes::{PoolFxHashSet, PoolFxLinkedHashMap, PoolVec},
         pool::Pool,
     };
     use serde::{Deserialize, Serialize};
@@ -79,10 +81,27 @@ pub mod snapshot {
         Player(PlayerNetworkStats),
     }
 
+    #[derive(Debug, Hiarc, Serialize, Deserialize)]
+    pub enum SnapshotCharacterSpectateMode {
+        Free(vec2),
+        Follows {
+            ids: PoolFxHashSet<CharacterId>,
+            /// Disallow zooming if forced
+            /// zoom level is set.
+            locked_zoom: bool,
+        },
+    }
+
     #[derive(Debug, Serialize, Deserialize)]
     pub enum SnapshotCharacterPhasedState {
-        Normal { hook: (Hook, Option<CharacterId>) },
-        Dead { respawn_in_ticks: GameTickCooldown },
+        Normal {
+            hook: (Hook, Option<CharacterId>),
+            ingame_spectate: Option<SnapshotCharacterSpectateMode>,
+        },
+        Dead {
+            respawn_in_ticks: GameTickCooldown,
+        },
+        PhasedSpectate(SnapshotCharacterSpectateMode),
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -246,6 +265,7 @@ pub mod snapshot {
         flags_pool: Pool<PoolSnapshotFlags>,
         pub flag_reusable_cores_pool: Pool<FlagReusableCore>,
         inactive_objects: Pool<PoolSnapshotInactiveObjects>,
+        pub character_ids_pool: Pool<FxHashSet<CharacterId>>,
     }
 
     impl SnapshotWorldPool {
@@ -267,6 +287,7 @@ pub mod snapshot {
                 // multiply by 2, because every flag has two cores of this type
                 flag_reusable_cores_pool: Pool::with_capacity(16 * 2), // TODO: no random number
                 inactive_objects: Pool::with_capacity(16 * 2),         // TODO: no random number
+                character_ids_pool: Pool::with_capacity(16 * 2),
             }
         }
     }
@@ -353,6 +374,21 @@ pub mod snapshot {
             game.game.stages.values().for_each(|stage| {
                 let mut characters = self.world_pool.characters_pool.new();
                 stage.world.characters.iter().for_each(|(id, char)| {
+                    let mode_to_snap_mode = |s: &CharacterSpectateMode| match s {
+                        &CharacterSpectateMode::Free(pos) => {
+                            SnapshotCharacterSpectateMode::Free(pos)
+                        }
+                        CharacterSpectateMode::Follows { ids, locked_zoom } => {
+                            SnapshotCharacterSpectateMode::Follows {
+                                ids: {
+                                    let mut res_ids = self.world_pool.character_ids_pool.new();
+                                    res_ids.extend(ids);
+                                    res_ids
+                                },
+                                locked_zoom: *locked_zoom,
+                            }
+                        }
+                    };
                     let mut snap_char = SnapshotCharacter {
                         core: char.core,
                         reusable_core: self.world_pool.character_reusable_cores_pool.new(),
@@ -361,12 +397,21 @@ pub mod snapshot {
                             CharacterPhasedState::Normal(normal) => {
                                 SnapshotCharacterPhasedState::Normal {
                                     hook: normal.hook.get(),
+                                    ingame_spectate: normal
+                                        .ingame_spectate
+                                        .as_ref()
+                                        .map(mode_to_snap_mode),
                                 }
                             }
                             CharacterPhasedState::Dead(dead) => {
                                 SnapshotCharacterPhasedState::Dead {
                                     respawn_in_ticks: dead.respawn_in_ticks,
                                 }
+                            }
+                            CharacterPhasedState::PhasedSpectate(mode) => {
+                                SnapshotCharacterPhasedState::PhasedSpectate(mode_to_snap_mode(
+                                    mode,
+                                ))
                             }
                         },
                         score: char.score.get(),
@@ -533,17 +578,6 @@ pub mod snapshot {
                                     *id,
                                     SnapshotLocalPlayer {
                                         id: p.player_info.id,
-                                        input_cam_mode: match &p.phased {
-                                            CharacterPhasedState::Normal { .. } => {
-                                                PlayerCameraMode::Default
-                                            }
-                                            CharacterPhasedState::Dead { .. } => {
-                                                PlayerCameraMode::LockedTo {
-                                                    pos: *p.pos.pos() / 32.0,
-                                                    locked_ingame: true,
-                                                }
-                                            }
-                                        },
                                     },
                                 );
                             } else if let Some(p) =
@@ -747,35 +781,52 @@ pub mod snapshot {
                     // depent on other characters (e.g. hooking an existing
                     // character only).
                     stage_char.pos.move_pos(char.pos);
-                    match char.phased {
-                        SnapshotCharacterPhasedState::Normal { hook: snap_hook } => {
-                            match &mut stage_char.phased {
-                                CharacterPhasedState::Normal(normal) => {
-                                    normal.hook.set(snap_hook.0, snap_hook.1);
-                                }
-                                CharacterPhasedState::Dead { .. } => {
-                                    stage_char.phased =
-                                        CharacterPhasedState::Normal(CharacterPhaseNormal::new(
-                                            char.game_el_id,
-                                            char.pos,
-                                            &state_stage.world.game_pending_events,
-                                            {
-                                                let mut hook = state_stage
-                                                    .world
-                                                    .hooks
-                                                    .get_new_hook(stage_char.base.game_element_id);
-                                                hook.set(snap_hook.0, snap_hook.1);
-                                                hook
-                                            },
-                                            true,
-                                        ));
-                                }
+                    let snap_mode_to_mode = |m: &SnapshotCharacterSpectateMode| match m {
+                        &SnapshotCharacterSpectateMode::Free(pos) => {
+                            CharacterSpectateMode::Free(pos)
+                        }
+                        SnapshotCharacterSpectateMode::Follows { ids, locked_zoom } => {
+                            CharacterSpectateMode::Follows {
+                                ids: (**ids).clone(),
+                                locked_zoom: *locked_zoom,
                             }
                         }
-                        SnapshotCharacterPhasedState::Dead {
+                    };
+                    match &char.phased {
+                        SnapshotCharacterPhasedState::Normal {
+                            hook: snap_hook,
+                            ingame_spectate,
+                        } => match &mut stage_char.phased {
+                            CharacterPhasedState::Normal(normal) => {
+                                normal.hook.set(snap_hook.0, snap_hook.1);
+                                normal.ingame_spectate =
+                                    ingame_spectate.as_ref().map(snap_mode_to_mode);
+                            }
+                            CharacterPhasedState::Dead { .. }
+                            | CharacterPhasedState::PhasedSpectate(_) => {
+                                stage_char.phased =
+                                    CharacterPhasedState::Normal(CharacterPhaseNormal::new(
+                                        char.game_el_id,
+                                        char.pos,
+                                        &state_stage.world.game_pending_events,
+                                        {
+                                            let mut hook = state_stage
+                                                .world
+                                                .hooks
+                                                .get_new_hook(stage_char.base.game_element_id);
+                                            hook.set(snap_hook.0, snap_hook.1);
+                                            hook
+                                        },
+                                        ingame_spectate.as_ref().map(snap_mode_to_mode),
+                                        true,
+                                    ));
+                            }
+                        },
+                        &SnapshotCharacterPhasedState::Dead {
                             respawn_in_ticks: snap_respawn_in_ticks,
                         } => match &mut stage_char.phased {
-                            CharacterPhasedState::Normal { .. } => {
+                            CharacterPhasedState::Normal { .. }
+                            | CharacterPhasedState::PhasedSpectate(_) => {
                                 stage_char.phased =
                                     CharacterPhasedState::Dead(CharacterPhaseDead::new(
                                         char.game_el_id,
@@ -795,6 +846,10 @@ pub mod snapshot {
                                 dead.respawn_in_ticks = snap_respawn_in_ticks;
                             }
                         },
+                        SnapshotCharacterPhasedState::PhasedSpectate(mode) => {
+                            stage_char.phased =
+                                CharacterPhasedState::PhasedSpectate(snap_mode_to_mode(mode));
+                        }
                     }
                     stage_char.score.set(char.score);
                 });

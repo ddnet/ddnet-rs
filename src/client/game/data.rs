@@ -27,16 +27,17 @@ use game_interface::{
         game::GameTickType,
         id_types::{CharacterId, PlayerId},
         input::{cursor::CharacterInputCursor, CharacterInputInfo, CharacterInputMethodFlags},
+        render::character::CharacterInfo,
         snapshot::SnapshotLocalPlayers,
         weapons::WeaponType,
     },
     votes::{MapVote, MapVoteKey, MiscVote, MiscVoteKey, VoteState, Voted, MAX_CATEGORY_NAME_LEN},
 };
 use input_binds::binds::{BindKey, Binds, MouseExtra};
-use math::math::vector::luffixed;
+use math::math::vector::{dvec2, luffixed};
 use native::native::{KeyCode, MouseButton, PhysicalKey};
 use pool::{
-    datatypes::{PoolVec, PoolVecDeque},
+    datatypes::{PoolFxLinkedHashMap, PoolVec, PoolVecDeque},
     mt_datatypes::PoolCow,
     pool::Pool,
     rc::PoolRc,
@@ -188,6 +189,8 @@ pub struct GameData {
     pub map_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MapVoteKey, MapVote>>,
     pub has_unfinished_map_votes: bool,
     pub misc_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MiscVoteKey, MiscVote>>,
+
+    pub cached_character_infos: PoolFxLinkedHashMap<CharacterId, CharacterInfo>,
 }
 
 impl GameData {
@@ -238,6 +241,8 @@ impl GameData {
             map_votes: Default::default(),
             has_unfinished_map_votes: false,
             misc_votes: Default::default(),
+
+            cached_character_infos: PoolFxLinkedHashMap::new_without_pool(),
         }
     }
 }
@@ -542,6 +547,7 @@ impl GameData {
                 return;
             }
             if !local_players.contains_key(&id) {
+                let cursor_pos = dvec2::new(5.0, 0.0);
                 let mut local_player: ClientPlayer = ClientPlayer {
                     is_dummy: *is_dummy,
                     is_dummies_owner: *owns_dummies,
@@ -549,6 +555,15 @@ impl GameData {
                         .forced_ingame_camera_zoom
                         .map(|z| z.as_f64() as f32)
                         .unwrap_or(1.0),
+                    input: {
+                        let mut inp = PlayerInput::default();
+                        inp.inp
+                            .cursor
+                            .set(CharacterInputCursor::from_vec2(&cursor_pos));
+                        inp
+                    },
+                    cursor_pos,
+                    player_cursor_pos: cursor_pos,
                     ..Default::default()
                 };
                 let binds = &mut local_player.binds;
@@ -557,9 +572,7 @@ impl GameData {
                 local_players.insert(id, local_player);
             }
             // sort
-            if let Some(local_player) = local_players.to_back(&id) {
-                local_player.input_cam_mode = snap_player.input_cam_mode;
-            }
+            local_players.to_back(&id);
         });
     }
 
@@ -628,7 +641,7 @@ impl GameData {
 
                     let player_input_chains = player_inputs
                         .entry(*local_player_id)
-                        .or_insert_with(|| player_inputs_chainable_pool.new());
+                        .or_insert_with_keep_order(|| player_inputs_chainable_pool.new());
 
                     for tick in
                         tick_of_inp.saturating_sub(ticks_to_send.saturating_sub(1))..=tick_of_inp
@@ -686,6 +699,7 @@ impl GameData {
                     .is_none_or(|time| cur_time.saturating_sub(time) > Duration::from_millis(500))
                 {
                     let cursor = CharacterInputCursor::from_vec2(&local_player.cursor_pos_dummy);
+                    local_player.cursor_pos = local_player.cursor_pos_dummy;
                     local_player.input.inp.cursor.set(cursor);
                     local_player.input.inp.consumable.fire.add(1, cursor);
                     local_player

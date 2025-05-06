@@ -305,6 +305,9 @@ pub struct UserData<'a> {
     pub hotkeys: &'a mut EditorBindsFile,
     pub cur_hotkey_events: &'a mut HashSet<EditorHotkeyEvent>,
     pub cached_binds_per_event: &'a mut Option<BindsPerEvent>,
+
+    pub hovered_file: &'a Option<PathBuf>,
+    pub current_client_pointer_pos: &'a egui::Pos2,
 }
 
 pub struct UserDataWithTab<'a> {

@@ -36,7 +36,8 @@ pub enum LocalConsoleEvent {
     Connect {
         addresses: Vec<SocketAddr>,
         cert: ServerCertMode,
-        can_start_local_server: bool,
+        can_start_internal_server: bool,
+        can_connect_internal_server: bool,
     },
     ConnectLegacy {
         addresses: Vec<SocketAddr>,
@@ -55,6 +56,12 @@ pub enum LocalConsoleEvent {
         file_path: PathBuf,
     },
     Echo {
+        text: String,
+    },
+    Say {
+        text: String,
+    },
+    SayTeam {
         text: String,
     },
     /// Switch to an dummy or the main player
@@ -787,6 +794,46 @@ impl LocalConsoleBuilder {
 
         let console_events_cmd = console_events.clone();
         list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "say".into(),
+            usage: "say <text>".into(),
+            description: "Sends the specified text as chat message to the server.".into(),
+            cmd: Rc::new(move |_, _, _, path| {
+                let Syn::Text(text) = &path[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+
+                console_events_cmd.push(LocalConsoleEvent::Say { text: text.clone() });
+                Ok(format!("Say: {text}"))
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
+            name: "say_team".into(),
+            usage: "say_team <text>".into(),
+            description: "Sends the specified text as team chat message to the server.".into(),
+            cmd: Rc::new(move |_, _, _, path| {
+                let Syn::Text(text) = &path[0].0 else {
+                    panic!("Command parser returned a non requested command arg");
+                };
+
+                console_events_cmd.push(LocalConsoleEvent::SayTeam { text: text.clone() });
+                Ok(format!("Say (team): {text}"))
+            }),
+            args: vec![CommandArg {
+                ty: CommandArgType::Text,
+                user_ty: None,
+            }],
+            allows_partial_cmds: false,
+        }));
+
+        let console_events_cmd = console_events.clone();
+        list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
             name: "connect".into(),
             usage: "connect <ip:port>".into(),
             description: "Connects to a server of the given ip & port.".into(),
@@ -797,16 +844,17 @@ impl LocalConsoleBuilder {
                 else {
                     return Err(anyhow!("Expected a text that represents the ip+port"));
                 };
-                let text = if !text.contains(":") {
-                    format!("{text}:8303")
+                let (text, had_port) = if !text.contains(":") {
+                    (format!("{text}:8303"), false)
                 } else {
-                    text.clone()
+                    (text.clone(), true)
                 };
                 let addresses = text.to_socket_addrs()?.collect();
                 console_events_cmd.push(LocalConsoleEvent::Connect {
                     addresses,
                     cert: ServerCertMode::Unknown,
-                    can_start_local_server: true,
+                    can_start_internal_server: !had_port,
+                    can_connect_internal_server: !had_port,
                 });
                 Ok(format!("Trying to connect to {text}"))
             }),

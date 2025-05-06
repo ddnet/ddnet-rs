@@ -6,6 +6,7 @@ pub mod bottom_panel;
 pub mod chat_panel;
 pub mod close_modal;
 pub mod dbg_panel;
+pub mod dotted_rect;
 pub mod group_and_layer;
 pub mod hotkey_panel;
 pub mod left_panel;

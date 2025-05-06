@@ -11,7 +11,7 @@ pub mod player {
     use game_interface::types::input::CharacterInput;
     use game_interface::types::network_stats::PlayerNetworkStats;
     use game_interface::types::player_info::PlayerUniqueId;
-    use game_interface::types::render::character::{PlayerCameraMode, TeeEye};
+    use game_interface::types::render::character::TeeEye;
     use game_interface::types::snapshot::SnapshotLocalPlayer;
     use hiarc::{hiarc_safer_rc_refcell, Hiarc};
     use hiarc::{HiFnMut, HiFnOnce};
@@ -159,14 +159,6 @@ pub mod player {
         pub fn to_snapshot_local_player(&self, id: &PlayerId) -> Option<SnapshotLocalPlayer> {
             self.players.get(id).map(|p| SnapshotLocalPlayer {
                 id: p.player_info.id,
-                input_cam_mode: if p.spectated_characters.is_empty() {
-                    PlayerCameraMode::Free
-                } else {
-                    PlayerCameraMode::LockedOn {
-                        character_ids: p.spectated_characters.clone(),
-                        locked_ingame: false,
-                    }
-                },
             })
         }
         pub fn set_camera_mode(

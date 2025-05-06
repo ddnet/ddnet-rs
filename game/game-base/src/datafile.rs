@@ -1816,14 +1816,15 @@ impl CDatafileWrapper {
                                 .unwrap_or_else(|| (cmd.trim().to_string(), "".to_string()));
 
                             if let Ok(index) = index.trim().parse::<u8>() {
-                                let tune_zone = tune_zones.entry(index).or_insert_with(|| {
-                                    MapLayerTilePhysicsTuneZone {
-                                        name: "".into(),
-                                        tunes: Default::default(),
-                                        enter_msg: Default::default(),
-                                        leave_msg: Default::default(),
-                                    }
-                                });
+                                let tune_zone =
+                                    tune_zones.entry(index).or_insert_with_keep_order(|| {
+                                        MapLayerTilePhysicsTuneZone {
+                                            name: "".into(),
+                                            tunes: Default::default(),
+                                            enter_msg: Default::default(),
+                                            leave_msg: Default::default(),
+                                        }
+                                    });
                                 let (tune_param, tune_val) = cmd
                                     .trim()
                                     .split_once(char::is_whitespace)
@@ -1864,14 +1865,15 @@ impl CDatafileWrapper {
                                 .unwrap_or_else(|| (cmd.trim().to_string(), "".to_string()));
 
                             if let Ok(index) = index.trim().parse::<u8>() {
-                                let tune_zone = tune_zones.entry(index).or_insert_with(|| {
-                                    MapLayerTilePhysicsTuneZone {
-                                        name: "".into(),
-                                        tunes: Default::default(),
-                                        enter_msg: Default::default(),
-                                        leave_msg: Default::default(),
-                                    }
-                                });
+                                let tune_zone =
+                                    tune_zones.entry(index).or_insert_with_keep_order(|| {
+                                        MapLayerTilePhysicsTuneZone {
+                                            name: "".into(),
+                                            tunes: Default::default(),
+                                            enter_msg: Default::default(),
+                                            leave_msg: Default::default(),
+                                        }
+                                    });
                                 let msg = (!msg.is_empty()).then_some(msg);
                                 if is_enter {
                                     tune_zone.enter_msg = msg;

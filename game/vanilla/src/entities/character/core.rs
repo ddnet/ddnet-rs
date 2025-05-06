@@ -849,7 +849,7 @@ pub mod character_core {
                     CharactersView::new(
                         characters,
                         |id| *id != own_character_id,
-                        |v| !v.phased.is_dead(),
+                        |v| !v.phased.is_phased(),
                     ),
                     &old_pos,
                     &finish_pos,

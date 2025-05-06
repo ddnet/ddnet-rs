@@ -625,13 +625,13 @@ impl InputHandling {
             let will_hook = (*local_dummy.input.inp.state.hook && !dummy.hook_change)
                 || (dummy.hook && dummy.hook_change);
             if dummy_fire_aim_character && !will_hook {
-                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy * 32.0;
+                local_dummy.cursor_pos = local_dummy.cursor_pos_dummy;
                 let cursor = CharacterInputCursor::from_vec2(&local_dummy.cursor_pos_dummy);
                 local_dummy.input.inp.cursor.set(cursor);
             } else if will_hook || !dummy_fire_aim_character {
                 // For hooks reset to human input cursor
                 local_dummy.cursor_pos = local_dummy.player_cursor_pos;
-                let cursor = local_dummy.cursor_pos / 32.0;
+                let cursor = local_dummy.cursor_pos;
                 let cursor = CharacterInputCursor::from_vec2(&cursor);
                 local_dummy.input.inp.cursor.set(cursor);
             }
@@ -856,7 +856,9 @@ impl InputHandling {
                 < game_data.local.local_players.len()
                 || game_data.local.local_players.len() == 1
             {
-                let Some((_, local_player)) = game_data.local.active_local_player_mut() else {
+                let Some((local_player_id, local_player)) =
+                    game_data.local.active_local_player_mut()
+                else {
                     return false;
                 };
                 if local_player.chat_input_active.is_none() {
@@ -918,49 +920,58 @@ impl InputHandling {
                         },
                         InputEv::Move(move_ev)
                             if !local_player.emote_wheel_active
-                                || !local_player.spectator_selection_active =>
+                                && !local_player.spectator_selection_active =>
                         {
                             let factor = config_game.inp.sensitivity() / 100.0;
 
-                            match local_player.input_cam_mode {
-                                PlayerCameraMode::Default => {
-                                    let cur = local_player.player_cursor_pos;
-                                    local_player.input.inp.cursor.set(
-                                        CharacterInputCursor::from_vec2(
-                                            &((cur
-                                                + dvec2::new(move_ev.xrel, move_ev.yrel) * factor)
-                                                / 32.0),
-                                        ),
-                                    );
-                                    Self::clamp_cursor(config_game, local_player);
-                                    local_player.cursor_pos =
-                                        local_player.input.inp.cursor.to_vec2() * 32.0;
-                                    local_player.player_cursor_pos = local_player.cursor_pos;
-                                }
-                                PlayerCameraMode::Free => {
-                                    let cur = local_player.free_cam_pos;
+                            if let Some(cam_mode) = game_data
+                                .cached_character_infos
+                                .get(local_player_id)
+                                .and_then(|c| c.player_info.as_ref())
+                                .map(|s| &s.cam_mode)
+                            {
+                                match cam_mode {
+                                    PlayerCameraMode::Default => {
+                                        let cur = local_player.player_cursor_pos * 32.0;
+                                        local_player.input.inp.cursor.set(
+                                            CharacterInputCursor::from_vec2(
+                                                &((cur
+                                                    + dvec2::new(move_ev.xrel, move_ev.yrel)
+                                                        * factor)
+                                                    / 32.0),
+                                            ),
+                                        );
+                                        Self::clamp_cursor(config_game, local_player);
+                                        local_player.cursor_pos =
+                                            local_player.input.inp.cursor.to_vec2();
+                                        local_player.player_cursor_pos = local_player.cursor_pos;
+                                    }
+                                    PlayerCameraMode::Free => {
+                                        let cur = local_player.free_cam_pos;
 
-                                    let x_ratio = move_ev.xrel
-                                        / graphics.canvas_handle.window_canvas_width() as f64;
-                                    let y_ratio = move_ev.yrel
-                                        / graphics.canvas_handle.window_canvas_height() as f64;
+                                        let x_ratio = move_ev.xrel
+                                            / graphics.canvas_handle.window_canvas_width() as f64;
+                                        let y_ratio = move_ev.yrel
+                                            / graphics.canvas_handle.window_canvas_height() as f64;
 
-                                    let x = x_ratio * vp_width;
-                                    let y = y_ratio * vp_height;
-                                    // TODO: respect zoom;
+                                        let x = x_ratio * vp_width;
+                                        let y = y_ratio * vp_height;
+                                        // TODO: respect zoom;
 
-                                    let new = cur + dvec2::new(x, y);
-                                    local_player
-                                        .input
-                                        .inp
-                                        .cursor
-                                        .set(CharacterInputCursor::from_vec2(&new));
-                                    local_player.free_cam_pos = new;
+                                        let new = cur + dvec2::new(x, y);
+                                        local_player
+                                            .input
+                                            .inp
+                                            .cursor
+                                            .set(CharacterInputCursor::from_vec2(&new));
+                                        local_player.free_cam_pos = new;
+                                    }
+                                    PlayerCameraMode::LockedTo { .. }
+                                    | PlayerCameraMode::LockedOn { .. } => {
+                                        // don't alter the cursor
+                                    }
                                 }
-                                PlayerCameraMode::LockedTo { .. }
-                                | PlayerCameraMode::LockedOn { .. } => {
-                                    // don't alter the cursor
-                                }
+                                local_player.cursor_last_cam_mode = Some(cam_mode.clone());
                             }
                         }
                         InputEv::Move(_) => {

@@ -73,11 +73,12 @@ pub struct ClientPlayer {
     pub zoom: f32,
     pub zoom_state: Option<ClientPlayerZoomState>,
 
-    pub input_cam_mode: PlayerCameraMode,
     pub free_cam_pos: dvec2,
     pub cursor_pos: dvec2,
     /// Last known cursor position done by a real player
     pub player_cursor_pos: dvec2,
+    /// Camera mode for the last cursor related input
+    pub cursor_last_cam_mode: Option<PlayerCameraMode>,
 }
 
 pub type LocalPlayers = FxLinkedHashMap<PlayerId, ClientPlayer>;

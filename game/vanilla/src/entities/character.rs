@@ -232,6 +232,17 @@ pub mod character {
         NoDmgTeam,
     }
 
+    #[derive(Debug, Hiarc, Serialize, Deserialize)]
+    pub enum CharacterSpectateMode {
+        Free(vec2),
+        Follows {
+            ids: FxHashSet<CharacterId>,
+            /// Disallow zooming if forced
+            /// zoom level is set.
+            locked_zoom: bool,
+        },
+    }
+
     #[derive(Debug, Hiarc)]
     pub struct CharacterPhaseDead {
         pub respawn_in_ticks: GameTickCooldown,
@@ -325,6 +336,8 @@ pub mod character {
     #[derive(Debug, Hiarc)]
     pub struct CharacterPhaseNormal {
         pub hook: CharacterHook,
+
+        pub ingame_spectate: Option<CharacterSpectateMode>,
         /// Please use the constructor
         _dont_construct: PhantomData<()>,
     }
@@ -335,6 +348,7 @@ pub mod character {
             pos: vec2,
             game_pending_events: &GameWorldPendingEvents,
             hook: CharacterHook,
+            ingame_spectate: Option<CharacterSpectateMode>,
             silent: bool,
         ) -> Self {
             if !silent {
@@ -355,6 +369,7 @@ pub mod character {
             }
             Self {
                 hook,
+                ingame_spectate,
                 _dont_construct: PhantomData,
             }
         }
@@ -364,6 +379,7 @@ pub mod character {
     pub enum CharacterPhasedState {
         Normal(CharacterPhaseNormal),
         Dead(CharacterPhaseDead),
+        PhasedSpectate(CharacterSpectateMode),
     }
 
     impl CharacterPhasedState {
@@ -376,6 +392,9 @@ pub mod character {
             match self {
                 CharacterPhasedState::Normal(normal) => &mut normal.hook,
                 CharacterPhasedState::Dead(_) => panic!("Called hook_mut on a dead character."),
+                CharacterPhasedState::PhasedSpectate(_) => {
+                    panic!("Called hook_mut on a phased character.")
+                }
             }
         }
         /// Get the character hook
@@ -386,14 +405,17 @@ pub mod character {
         pub fn hook(&self) -> &CharacterHook {
             match self {
                 CharacterPhasedState::Normal(normal) => &normal.hook,
-                CharacterPhasedState::Dead(_) => panic!("Called hook_mut on a dead character."),
+                CharacterPhasedState::Dead(_) => panic!("Called hook on a dead character."),
+                CharacterPhasedState::PhasedSpectate(_) => {
+                    panic!("Called hook on a phased character.")
+                }
             }
         }
-        /// Returns `true` if the character is dead.
-        pub fn is_dead(&self) -> bool {
+        /// Returns `true` if the character is phased.
+        pub fn is_phased(&self) -> bool {
             match self {
                 CharacterPhasedState::Normal(_) => false,
-                CharacterPhasedState::Dead(_) => true,
+                CharacterPhasedState::Dead(_) | CharacterPhasedState::PhasedSpectate(_) => true,
             }
         }
     }
@@ -463,6 +485,7 @@ pub mod character {
                     pos,
                     game_pending_events,
                     hooks.get_new_hook(*id),
+                    Default::default(),
                     false,
                 )),
                 score: scores.get_new_score(*id, 0),
@@ -628,7 +651,7 @@ pub mod character {
         pub fn give_ninja(&mut self) {
             let buff = self.reusable_core.buffs.entry(CharacterBuff::Ninja);
             let had_ninja = matches!(buff, hashlink::lru_cache::Entry::Occupied(_));
-            let buff = buff.or_insert_with(|| BuffProps {
+            let buff = buff.or_insert_with_keep_order(|| BuffProps {
                 remaining_tick: 0.into(),
                 interact_tick: 0.into(),
                 interact_cursor_dir: vec2::default(),
@@ -1762,7 +1785,10 @@ pub mod character {
     #[hiarc_safer_rc_refcell]
     impl PhasedCharacters {
         pub(super) fn insert(&mut self, id: CharacterId) {
-            let counter = self.ids.entry(id).or_insert_with(Default::default);
+            let counter = self
+                .ids
+                .entry(id)
+                .or_insert_with_keep_order(Default::default);
             *counter += 1;
         }
         pub(super) fn remove(&mut self, id: &CharacterId) {

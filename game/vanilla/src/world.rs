@@ -729,7 +729,7 @@ pub mod world {
         fn tick_characters(&mut self, pipe: &mut SimulationPipeStage) {
             let mut characters = LinkedHashMapIterExt::new(&mut self.characters).rev();
             characters.for_each(|(id, (character, other_chars))| {
-                if character.phased.is_dead() {
+                if character.phased.is_phased() {
                     return;
                 }
                 let _ = character.pre_tick(&mut SimulationPipeCharacter::new(
@@ -745,7 +745,7 @@ pub mod world {
             });
             let mut characters = LinkedHashMapIterExt::new(&mut self.characters).rev();
             characters.for_each(|(id, (character, other_chars))| {
-                if character.phased.is_dead() {
+                if character.phased.is_phased() {
                     return;
                 }
                 let events = self
@@ -837,7 +837,7 @@ pub mod world {
         fn post_tick_characters(&mut self, pipe: &mut SimulationPipeStage) {
             let mut characters = LinkedHashMapIterExt::new(&mut self.characters).rev();
             characters.for_each(|(id, (character, other_chars))| {
-                if character.phased.is_dead() {
+                if character.phased.is_phased() {
                     return;
                 }
                 let _ = character.tick_deferred(&mut SimulationPipeCharacter::new(
@@ -860,7 +860,7 @@ pub mod world {
             diff: CharacterInputConsumableDiff,
         ) {
             let (character, other_chars) = LinkedHashMapEntryAndRes::get(&mut self.characters, id);
-            if character.phased.is_dead() {
+            if character.phased.is_phased() {
                 return;
             }
             let _ = character.handle_input_change(
@@ -1119,6 +1119,7 @@ pub mod world {
                     *character.pos.pos(),
                     &self.game_pending_events,
                     self.hooks.get_new_hook(*character_id),
+                    Default::default(),
                     false,
                 ));
             }
@@ -1134,7 +1135,8 @@ pub mod world {
                 );
                 if let Some(character) = self.characters.get_mut(id) {
                     match &mut character.phased {
-                        CharacterPhasedState::Normal(_) => false,
+                        CharacterPhasedState::Normal(_)
+                        | CharacterPhasedState::PhasedSpectate(_) => false,
                         CharacterPhasedState::Dead(dead) => {
                             if dead.respawn_in_ticks.tick().unwrap_or_default() {
                                 self.on_character_spawn(id);

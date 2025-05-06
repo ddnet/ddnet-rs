@@ -50,7 +50,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         addr,
                         cert_hash: pipe.user_data.config.storage("server-cert"),
                         rcon_secret: pipe.user_data.config.storage("rcon-secret"),
-                        can_start_local_server: true,
+                        can_start_internal_server: pipe
+                            .user_data
+                            .config
+                            .storage("server-is-internal"),
+                        can_connect_internal_server: pipe
+                            .user_data
+                            .config
+                            .storage("server-is-internal"),
                     });
                 }
             }

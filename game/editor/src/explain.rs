@@ -13,7 +13,7 @@ Corner points:\n\
 - `Left click` allows dragging the quad's corner.\n\
 - `Right click` opens the corner property panel.\n\n\
 ---\n\n\
-Press `right click` to unset the selection.  \n
+Press `right click` to unset the selection.  \n\
 If the grid is active, then hold `alt` while dragging to snap to the next grid point.\
 ";
 
@@ -66,7 +66,7 @@ pub const TEXT_TILE_SELECT: &str =
 "\
 # Tile selection\n\
 \n\
-The tile selection allows to select a range of tiles (`left click`) and apply different actions on this selection \n
+The tile selection allows to select a range of tiles (`left click`) and apply different actions on this selection \n\
 such as flipping and rotating, which can be found in the tool bar below.  \n\
 Press `right click` to unset the selection.\
 ";
@@ -101,7 +101,7 @@ pub const TEXT_LAYER_PROPS_ANIM_COLOR: &str = "\
 If the `Animations`-panel is open and this layer has a color \
 animation active, you can change this property and \
 insert a new animation point at the current `Animations`-panel's \
-time value (move the time dragger) instead of changing the animation points inside
+time value (move the time dragger) instead of changing the animation points inside \
 the `Animations`-panel.\n\
 > Keep in mind that moving the `Animations`-panel's time dragger resets the color to the \
 evaluated color of the animation.  \n\
@@ -131,7 +131,7 @@ pub const TEXT_QUAD_PROP_COLOR: &str = "\
 If the `Animations`-panel is open and this quad has a color \
 animation active, then you can change this property and \
 insert a new animation point at the current `Animations`-panel's \
-time value (move the time dragger) instead of changing the animation points inside
+time value (move the time dragger) instead of changing the animation points inside \
 the `Animations`-panel.\n\
 > Keep in mind that moving the `Animations`-panel's time dragger resets the color to the \
 evaluated color of the animation.  \n\
@@ -158,7 +158,7 @@ pub const TEXT_IMAGES: &str =
 # Images (quad layers)\n\n\
 Quad layers support any kind of images without special requirements.\n\
 > You can still use the same image for quad layers and tile layers, simply include it in both tabs, \
-the client's implementation prevents loading the image twice.
+the client's implementation prevents loading the image twice.\
 ";
 
 pub const TEXT_2D_IMAGE_ARRAY: &str =
@@ -167,12 +167,12 @@ pub const TEXT_2D_IMAGE_ARRAY: &str =
 Tile layers need special images. Their requirement is that the width and height must\n\
 be divisible by 16 (e.g. `1024 / 16 = 64` without a rest => divisible by 16).  \n\
 > You can still use the same image for quad layers and tile layers, simply include it in both tabs, \
-the client's implementation prevents loading the image twice.
+the client's implementation prevents loading the image twice.\
 ";
 
 pub const TEXT_SOUND_SOURCES: &str = "\
 # Sound sources (sound layers)\n\n\
-Sound sources are simply sound files that can be played by the client.
+Sound sources are simply sound files that can be played by the client.\
 ";
 
 pub const TEXT_ANIM_PANEL_AND_PROPS: &str = "\
@@ -200,8 +200,8 @@ If active, tiles that are non-air will be overwritten by the brush.\
 pub const TEXT_TILE_ALLOW_UNUSED: &str = "\
 # Allow unused tiles\n\
 \n\
-Allows to select and draw unused tiles, so those tiles are not known to the game.\
-(unused tiles can be used for modding purposes)
+Allows to select and draw unused tiles, so those tiles are not known to the game \
+(unused tiles can be used for modding purposes).\
 ";
 
 pub const AUTO_MAPPER_CREATOR_EXPLAIN: &str = "\

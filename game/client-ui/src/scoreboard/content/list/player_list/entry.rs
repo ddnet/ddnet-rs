@@ -55,7 +55,7 @@ pub fn render<'a>(
     if let Some(&stage_id) = stage {
         frame_rect
             .entry(stage_id)
-            .or_insert_with(|| FrameRect {
+            .or_insert_with_keep_order(|| FrameRect {
                 rects: Default::default(),
                 shape_id: ui.painter().add(Shape::Noop),
             })

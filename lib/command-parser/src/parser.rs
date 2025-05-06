@@ -566,6 +566,7 @@ fn parse_command<const S: usize>(
     commands: &HashMap<NetworkString<S>, Vec<CommandArg>>,
     double_arg_mode: bool,
     index_key_regex: &regex::Regex,
+    token_stack_owner: Vec<usize>,
 ) -> anyhow::Result<Command, CommandParseResult> {
     // if literal, then unescape the literal and push to stack
     while let Some((Token::Quoted, text, range)) = tokens.peek() {
@@ -638,16 +639,22 @@ fn parse_command<const S: usize>(
             }
             let mut syn = || match &arg.ty {
                 CommandArgType::Command => Some(
-                    parse_command(tokens, commands, false, index_key_regex)
-                        .map(|s| {
-                            let range = s.cmd_range.start
-                                ..s.args
-                                    .last()
-                                    .map(|(_, arg_range)| arg_range.end)
-                                    .unwrap_or(s.cmd_range.end);
-                            SynOrErr::Syn((Syn::Command(Box::new(s)), range))
-                        })
-                        .unwrap_or_else(SynOrErr::ParseResUnrecoverable),
+                    parse_command(
+                        tokens,
+                        commands,
+                        false,
+                        index_key_regex,
+                        token_stack_owner.clone(),
+                    )
+                    .map(|s| {
+                        let range = s.cmd_range.start
+                            ..s.args
+                                .last()
+                                .map(|(_, arg_range)| arg_range.end)
+                                .unwrap_or(s.cmd_range.end);
+                        SynOrErr::Syn((Syn::Command(Box::new(s)), range))
+                    })
+                    .unwrap_or_else(SynOrErr::ParseResUnrecoverable),
                 ),
                 CommandArgType::CommandIdent => Some(
                     parse_command_ident(tokens, commands)
@@ -665,18 +672,28 @@ fn parse_command<const S: usize>(
                 CommandArgType::Commands => {
                     let mut cmds: Commands = Default::default();
                     while tokens.peek().is_some() {
-                        if let Ok(cmd) =
-                            match parse_command(tokens, commands, false, index_key_regex) {
-                                Ok(cmd) => anyhow::Ok(cmd),
-                                Err(err) => {
-                                    return Some(SynOrErr::ParseResUnrecoverablePartial {
-                                        res: err,
-                                        finished_cmds: cmds,
-                                    });
-                                }
+                        if let Ok(cmd) = match parse_command(
+                            tokens,
+                            commands,
+                            false,
+                            index_key_regex,
+                            [token_stack_owner.clone(), vec![tokens.tokens.len()]].concat(),
+                        ) {
+                            Ok(cmd) => anyhow::Ok(cmd),
+                            Err(err) => {
+                                return Some(SynOrErr::ParseResUnrecoverablePartial {
+                                    res: err,
+                                    finished_cmds: cmds,
+                                });
                             }
-                        {
-                            cmds.push(cmd)
+                        } {
+                            cmds.push(cmd);
+
+                            // If the token stack is equal to the current token stack
+                            // the following commands are not owned by this entry.
+                            if token_stack_owner.iter().any(|&o| o >= tokens.tokens.len()) {
+                                break;
+                            }
                         }
                     }
                     if cmds.is_empty() {
@@ -701,17 +718,23 @@ fn parse_command<const S: usize>(
                     Some(SynOrErr::Syn((Syn::Commands(cmds), range)))
                 }
                 CommandArgType::CommandDoubleArg => Some(
-                    parse_command(tokens, commands, true, index_key_regex)
-                        .map(|s| {
-                            let cmd_range_end = s.cmd_range.end;
-                            let range = s.cmd_range.start
-                                ..s.args
-                                    .last()
-                                    .map(|(_, arg_range)| arg_range.end)
-                                    .unwrap_or(cmd_range_end);
-                            SynOrErr::Syn((Syn::Command(Box::new(s)), range))
-                        })
-                        .unwrap_or_else(SynOrErr::ParseResUnrecoverable),
+                    parse_command(
+                        tokens,
+                        commands,
+                        true,
+                        index_key_regex,
+                        token_stack_owner.clone(),
+                    )
+                    .map(|s| {
+                        let cmd_range_end = s.cmd_range.end;
+                        let range = s.cmd_range.start
+                            ..s.args
+                                .last()
+                                .map(|(_, arg_range)| arg_range.end)
+                                .unwrap_or(cmd_range_end);
+                        SynOrErr::Syn((Syn::Command(Box::new(s)), range))
+                    })
+                    .unwrap_or_else(SynOrErr::ParseResUnrecoverable),
                 ),
                 CommandArgType::Number => parse_number(tokens)
                     .ok()
@@ -932,7 +955,15 @@ pub fn parse<const S: usize>(
     let tokens = generate_token_stack_entries(tokens, raw, 0);
     let mut tokens = TokenStack { tokens };
     while tokens.peek().is_some() {
-        match parse_command(&mut tokens, commands, false, reg) {
+        let owner = if tokens
+            .peek()
+            .is_some_and(|(t, _, _)| matches!(t, Token::Quoted))
+        {
+            vec![tokens.tokens.len()]
+        } else {
+            Default::default()
+        };
+        match parse_command(&mut tokens, commands, false, reg, owner) {
             Ok(cmd) => {
                 res.push(CommandType::Full(cmd));
             }
@@ -951,18 +982,28 @@ pub fn parse<const S: usize>(
             err: err_token().to_string(),
         });
         if let Some(CommandType::Partial(cmd)) = last_mut {
-            match cmd {
-                CommandParseResult::InvalidArg { err, range, .. } => {
-                    *range = err_range;
-                    *err = err_token().to_string();
+            fn apply_err(
+                cmd: &mut CommandParseResult,
+                err_token: impl Fn() -> anyhow::Error,
+                err_range: Range<usize>,
+            ) -> bool {
+                match cmd {
+                    CommandParseResult::InvalidArg { err, range, .. } => {
+                        *range = err_range;
+                        *err = err_token().to_string();
+                        true
+                    }
+                    CommandParseResult::InvalidCommandIdent { .. }
+                    | CommandParseResult::InvalidQuoteParsing(_)
+                    | CommandParseResult::Other { .. } => false,
+                    CommandParseResult::InvalidCommandArg { err, .. }
+                    | CommandParseResult::InvalidCommandsArg { err, .. } => {
+                        apply_err(err, err_token, err_range)
+                    }
                 }
-                CommandParseResult::InvalidCommandIdent { .. }
-                | CommandParseResult::InvalidCommandArg { .. }
-                | CommandParseResult::InvalidCommandsArg { .. }
-                | CommandParseResult::InvalidQuoteParsing(_)
-                | CommandParseResult::Other { .. } => {
-                    *last_mut.unwrap() = cmd_partial;
-                }
+            }
+            if !apply_err(cmd, err_token, err_range) {
+                *last_mut.unwrap() = cmd_partial;
             }
         } else {
             res.push(cmd_partial);
@@ -1034,77 +1075,39 @@ mod test {
             Syn::Command(_)
         ));
 
-        let lex = parse::<65536>(
-            "bind b cl.map \"name with\\\" spaces\"",
-            &vec![
-                (
-                    "bind".try_into().unwrap(),
-                    vec![
-                        CommandArg {
-                            ty: CommandArgType::Text,
-                            user_ty: None,
-                        },
-                        CommandArg {
-                            ty: CommandArgType::Command,
-                            user_ty: None,
-                        },
-                    ],
-                ),
-                (
-                    "cl.map".try_into().unwrap(),
-                    vec![CommandArg {
+        let commands = vec![
+            (
+                "bind".try_into().unwrap(),
+                vec![
+                    CommandArg {
                         ty: CommandArgType::Text,
                         user_ty: None,
-                    }],
-                ),
-            ]
-            .into_iter()
-            .collect(),
-            &cache,
-        );
-
-        dbg!(&lex);
-        assert!(lex[0].unwrap_ref_full().args[0].0 == Syn::Text("b".to_string()));
-        assert!(matches!(
-            lex[0].unwrap_ref_full().args[1].0,
-            Syn::Command(_)
-        ));
-
-        let lex = parse::<65536>(
-            "bind b \"cl.map \\\"name with\\\\\\\" spaces\\\"; cl.rate 50;\"",
-            &vec![
-                (
-                    "bind".try_into().unwrap(),
-                    vec![
-                        CommandArg {
-                            ty: CommandArgType::Text,
-                            user_ty: None,
-                        },
-                        CommandArg {
-                            ty: CommandArgType::Commands,
-                            user_ty: None,
-                        },
-                    ],
-                ),
-                (
-                    "cl.map".try_into().unwrap(),
-                    vec![CommandArg {
-                        ty: CommandArgType::Text,
+                    },
+                    CommandArg {
+                        ty: CommandArgType::Commands,
                         user_ty: None,
-                    }],
-                ),
-                (
-                    "cl.rate".try_into().unwrap(),
-                    vec![CommandArg {
-                        ty: CommandArgType::Number,
-                        user_ty: None,
-                    }],
-                ),
-            ]
-            .into_iter()
-            .collect(),
-            &cache,
-        );
+                    },
+                ],
+            ),
+            (
+                "cl.map".try_into().unwrap(),
+                vec![CommandArg {
+                    ty: CommandArgType::Text,
+                    user_ty: None,
+                }],
+            ),
+            (
+                "cl.rate".try_into().unwrap(),
+                vec![CommandArg {
+                    ty: CommandArgType::Number,
+                    user_ty: None,
+                }],
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        let lex = parse::<65536>("bind b cl.map \"name with\\\" spaces\"", &commands, &cache);
 
         dbg!(&lex);
         assert!(lex[0].unwrap_ref_full().args[0].0 == Syn::Text("b".to_string()));
@@ -1112,6 +1115,57 @@ mod test {
             lex[0].unwrap_ref_full().args[1].0,
             Syn::Commands(_)
         ));
+
+        let lex = parse::<65536>(
+            "bind b \"cl.map \\\"name with\\\\\\\" spaces\\\"; cl.rate 50;\"",
+            &commands,
+            &cache,
+        );
+
+        dbg!(&lex);
+        assert!(lex.len() == 1);
+        assert!(lex[0].unwrap_ref_full().args[0].0 == Syn::Text("b".to_string()));
+        assert!(matches!(
+            lex[0].unwrap_ref_full().args[1].0,
+            Syn::Commands(_)
+        ));
+
+        let lex = parse::<65536>(
+            "bind b cl.map name;bind c cl.map d;cl.map test",
+            &commands,
+            &cache,
+        );
+
+        dbg!(&lex);
+        assert!(lex.len() == 1);
+        assert!(lex[0].unwrap_ref_full().args[0].0 == Syn::Text("b".to_string()));
+        assert!(matches!(
+            lex[0].unwrap_ref_full().args[1].0,
+            Syn::Commands(_)
+        ));
+        let Syn::Commands(cmds) = &lex[0].unwrap_ref_full().args[1].0 else {
+            unreachable!()
+        };
+        assert!(cmds.len() == 3);
+
+        let lex = parse::<65536>(
+            "\"bind b cl.map name\";\"bind c cl.map d;cl.map test\"",
+            &commands,
+            &cache,
+        );
+
+        dbg!(&lex);
+        assert!(lex.len() == 2);
+        assert!(lex[0].unwrap_ref_full().args[0].0 == Syn::Text("b".to_string()));
+        assert!(lex[1].unwrap_ref_full().args[0].0 == Syn::Text("c".to_string()));
+        let Syn::Commands(cmds) = &lex[0].unwrap_ref_full().args[1].0 else {
+            unreachable!()
+        };
+        assert!(cmds.len() == 1);
+        let Syn::Commands(cmds) = &lex[1].unwrap_ref_full().args[1].0 else {
+            unreachable!()
+        };
+        assert!(cmds.len() == 2);
 
         let lex = parse::<65536>(
             "player.name \"name with\\\" spaces\" abc",
@@ -1373,7 +1427,7 @@ mod test {
             cmds.len() == 1
                 && matches!(
                     cmds[0].unwrap_ref_partial(),
-                    CommandParseResult::InvalidArg { .. }
+                    CommandParseResult::InvalidCommandArg { .. }
                 )
         );
 
@@ -1476,7 +1530,7 @@ mod test {
                 && if let CommandType::Partial(CommandParseResult::InvalidArg { range, .. }) =
                     &cmds[2]
                 {
-                    range.end <= "cl.refresh_rate \"\" player \"\"; player".len()
+                    range.end > "cl.refresh_rate \"\" player \"\"; player".len()
                 } else {
                     false
                 }

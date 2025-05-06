@@ -168,15 +168,19 @@ pub enum PlayerCameraMode {
     /// position in a map (e.g. a kill cam).
     LockedTo {
         pos: vec2,
-        /// If the camera is still ingame, e.g. kill cam,
+        /// If the camera is considered ingame, e.g. kill cam,
         /// then this should be `true`.
+        /// This prevents letting the client zooming out if a
+        /// forced zoom level is set.
         locked_ingame: bool,
     },
     /// The camera follows another player.
     LockedOn {
         character_ids: PoolFxHashSet<CharacterId>,
-        /// If the camera is still ingame, e.g. the player is
-        /// not a spectator, then this should be `true`.
+        /// If the camera is considered ingame, e.g. the player is
+        /// not a _free_ spectator, then this should be `true`.
+        /// This prevents letting the client zooming out if a
+        /// forced zoom level is set.
         locked_ingame: bool,
     },
 }
