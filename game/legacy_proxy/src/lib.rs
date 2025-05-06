@@ -173,6 +173,15 @@ use vanilla::{
     weapons::definitions::weapon_def::Weapon,
 };
 
+enum LegacyInputFlags {
+    // Playing = 1 << 0,
+    InMenu = 1 << 1,
+    Chatting = 1 << 2,
+    Scoreboard = 1 << 3,
+    Aim = 1 << 4,
+    // SpecCam = 1 << 5,
+}
+
 #[derive(Debug)]
 pub struct LegacyProxy {
     pub is_finished: Arc<AtomicBool>,
@@ -286,7 +295,7 @@ struct ClientBase {
     server_info: ServerInfoTy,
 
     votes: ServerMapVotes,
-    vote_state: Option<VoteState>,
+    vote_state: Option<(VoteState, Duration)>,
     vote_list_updated: bool,
     loaded_map_votes: bool,
     loaded_misc_votes: bool,
@@ -1094,14 +1103,6 @@ impl Client {
                             }
 
                             let mut flags = CharacterInputFlags::empty();
-                            enum LegacyInputFlags {
-                                // Playing = 1 << 0,
-                                InMenu = 1 << 1,
-                                Chatting = 1 << 2,
-                                Scoreboard = 1 << 3,
-                                Aim = 1 << 4,
-                                // SpecCam = 1 << 5,
-                            }
                             if (character.player_flags & LegacyInputFlags::Aim as i32) != 0 {
                                 flags.insert(CharacterInputFlags::HOOK_COLLISION_LINE);
                             }
@@ -2453,7 +2454,7 @@ impl Client {
                     allowed_to_vote_count: 0,
                 };
                 let state = (vote.timeout > 0).then_some(state);
-                base.vote_state = state.clone();
+                base.vote_state = state.clone().map(|s| (s, sys.time_get()));
                 server_network.send_in_order_to(
                     &ServerToClientMessage::Vote(state),
                     &con_id,
@@ -2461,10 +2462,15 @@ impl Client {
                 );
             }
             (_, SystemOrGame::Game(Game::SvVoteStatus(vote))) => {
-                if let Some(mut state) = base.vote_state.clone() {
+                if let Some((mut state, start_time)) = base.vote_state.clone() {
                     state.yes_votes = vote.yes.unsigned_abs() as u64;
                     state.no_votes = vote.no.unsigned_abs() as u64;
                     state.allowed_to_vote_count = vote.total.unsigned_abs() as u64;
+
+                    let now = sys.time_get();
+                    state.remaining_time = state
+                        .remaining_time
+                        .saturating_sub(now.saturating_sub(start_time));
 
                     server_network.send_in_order_to(
                         &ServerToClientMessage::Vote(Some(state.clone())),
@@ -2472,7 +2478,7 @@ impl Client {
                         NetworkInOrderChannel::Global,
                     );
 
-                    base.vote_state = Some(state);
+                    base.vote_state = Some((state, now));
                 }
             }
             (_, SystemOrGame::System(System::ConReady(_))) => {
@@ -3385,6 +3391,23 @@ impl Client {
         }
         let wanted_weapon = 0;
 
+        let mut player_flags = 0;
+        if inp.state.flags.contains(CharacterInputFlags::CHATTING) {
+            player_flags |= LegacyInputFlags::Chatting as i32;
+        }
+        if inp
+            .state
+            .flags
+            .contains(CharacterInputFlags::HOOK_COLLISION_LINE)
+        {
+            player_flags |= LegacyInputFlags::Aim as i32;
+        }
+        if inp.state.flags.contains(CharacterInputFlags::SCOREBOARD) {
+            player_flags |= LegacyInputFlags::Scoreboard as i32;
+        }
+        if inp.state.flags.contains(CharacterInputFlags::MENU_UI) {
+            player_flags |= LegacyInputFlags::InMenu as i32;
+        }
         let mut input = snap_obj::PlayerInput {
             direction: *state.dir,
             target_x,
@@ -3396,7 +3419,7 @@ impl Client {
                     .map(|(v, _)| (v.get() * 2).saturating_sub(*state.fire as u64))
                     .unwrap_or_default() as i32,
             hook: *state.hook as i32,
-            player_flags: 0,
+            player_flags,
             wanted_weapon,
             next_weapon: prev_inp.next_weapon + next_weapon_diff,
             prev_weapon: prev_inp.prev_weapon + prev_weapon_diff,
@@ -3770,20 +3793,12 @@ impl Client {
                                         }
                                     }
                                     ClientToServerPlayerMessage::StartVote(msg) => {
-                                        let mut get_player_name = |char_id: &CharacterId| {
+                                        let get_player_legacy_id = |char_id: &CharacterId| {
                                             self.base
                                                 .char_new_id_to_legacy
                                                 .get(char_id)
                                                 .copied()
-                                                .and_then(|id| {
-                                                    Self::player_info_mut(
-                                                        id,
-                                                        &self.base,
-                                                        &mut self.last_snapshot,
-                                                    )
-                                                    .map(|(_, i)| i.player_info.name.to_string())
-                                                })
-                                                .unwrap_or_default()
+                                                .unwrap_or(-1)
                                         };
                                         let (type_, value, reason) = match msg {
                                             VoteIdentifierType::Map(vote) => (
@@ -3834,12 +3849,12 @@ impl Client {
                                             ),
                                             VoteIdentifierType::VoteKickPlayer(vote) => (
                                                 "kick".as_bytes(),
-                                                get_player_name(&vote.voted_player_id),
+                                                get_player_legacy_id(&vote.voted_player_id).to_string(),
                                                 vote.reason.to_string(),
                                             ),
                                             VoteIdentifierType::VoteSpecPlayer(vote) => (
-                                                "spec".as_bytes(),
-                                                get_player_name(&vote.voted_player_id),
+                                                "spectate".as_bytes(),
+                                                get_player_legacy_id(&vote.voted_player_id).to_string(),
                                                 vote.reason.to_string(),
                                             ),
                                             VoteIdentifierType::Misc(vote) => (
