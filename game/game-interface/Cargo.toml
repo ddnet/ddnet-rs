@@ -23,7 +23,7 @@ strum = { version = "0.27.1", features = ["derive"] }
 bitflags = { version = "2.9.0", features = ["serde"] }
 ascii = { version = "1.1.0", features = ["serde"] }
 either = { version = "1.15.0", features = ["serde"] }
-chrono = { version = "0.4.40", default-features = false, features = ["serde"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
 rustc-hash = "2.1.1"
 
 [package.metadata.cargo-machete]

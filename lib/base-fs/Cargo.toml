@@ -9,16 +9,16 @@ hiarc = { path = "../hiarc", features = ["derive"] }
 
 # v5.0.1+ brings a MPL 2.0 dependency, i don't really like this lib anyway
 directories = { version = "=5.0.0" }
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 notify = { version = "8.0.0", default-features = false, features = ["macos_kqueue"] }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 async-trait = "0.1.88"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 path-slash = "0.2.1"
 path-clean = "1.0.1"
-virtual-fs = { version = "0.24.0", default-features = false, features = ["host-fs"] }
+virtual-fs = { version = "0.600.0", default-features = false, features = ["host-fs"] }
 log = "0.4.27"
-chrono = { version = "0.4.40", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["serde"] }
 tempfile = { version = "3.19.1" }
 
 include_dir = { version = "0.7.4", optional = true }

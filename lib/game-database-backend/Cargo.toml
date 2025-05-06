@@ -22,7 +22,7 @@ parking_lot = "0.12.3"
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 
 [features]
 mysql = ["ddnet-account-sql/mysql", "sql/mysql", "game-database/mysql", "sqlx/mysql"]

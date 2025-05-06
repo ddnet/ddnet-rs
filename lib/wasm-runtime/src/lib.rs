@@ -8,9 +8,9 @@ use wasm_runtime_types::{
 };
 use wasmer::{
     imports,
-    sys::{EngineBuilder, Features},
-    AsStoreMut, AsStoreRef, Cranelift, Function, FunctionEnv, FunctionEnvMut, Imports, Instance,
-    Module, Store, TypedFunction,
+    sys::{Cranelift, CraneliftOptLevel, EngineBuilder, Features},
+    AsStoreMut, AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module,
+    Store, TypedFunction,
 };
 
 /// Creates a WASM instance, automatically uses and fills the cache.
@@ -34,7 +34,7 @@ pub enum WasmManagerModuleType<'a, F: FnOnce(&Store) -> anyhow::Result<Module>> 
 impl WasmManager {
     fn get_store() -> Store {
         let mut compiler = Cranelift::new();
-        compiler.opt_level(wasmer::CraneliftOptLevel::Speed);
+        compiler.opt_level(CraneliftOptLevel::Speed);
         Store::new(EngineBuilder::new(compiler).set_features(Some(Features {
             simd: true,
             threads: false,

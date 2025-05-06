@@ -21,5 +21,5 @@ ui-generic = { path = "../ui-generic" }
 hiarc = { path = "../hiarc", features = ["derive"] }
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 anyhow = { version = "1.0.98", features = ["backtrace"] }
-wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "6.0.0", default-features = false, features = ["sys", "cranelift"] }
 serde = "1.0.219"

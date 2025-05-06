@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 pool = { path = "../pool" }
 
-wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "6.0.0", default-features = false, features = ["sys", "cranelift"] }
 bincode = "2.0.1"
 serde = "1.0.219"
 sendable = "0.6.1"

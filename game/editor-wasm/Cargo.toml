@@ -19,7 +19,7 @@ wasm-logic-sound = { path = "../../lib/wasm-logic-sound" }
 sound = { path = "../../lib/sound" }
 editor = { path = "../editor", default-features = false }
 
-wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "6.0.0", default-features = false, features = ["sys", "cranelift"] }
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 rayon = "1.10.0"
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }

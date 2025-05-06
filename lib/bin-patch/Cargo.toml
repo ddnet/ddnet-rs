@@ -11,5 +11,5 @@ anyhow = { version = "1.0.98", features = ["backtrace"] }
 bidiff = "1.0.0"
 qbsdiff = "1.4.3"
 bsdiff = "0.2.1"
-brotli = "7.0.0"
+brotli = "8.0.1"
 base = { path = "../base" }

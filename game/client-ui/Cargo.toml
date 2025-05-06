@@ -52,10 +52,10 @@ serde_with = "3.12.0"
 geo = "0.30.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-chrono = { version = "0.4.40", default-features = false, features = ["serde", "alloc"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde", "alloc"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-chrono = { version = "0.4.40", default-features = false, features = ["serde", "clock"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde", "clock"] }
 
 [features]
 binds = ["dep:binds"]

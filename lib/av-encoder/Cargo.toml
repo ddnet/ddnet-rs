@@ -19,7 +19,7 @@ hiarc = { path = "../hiarc", features = ["derive", "enable_tokio"] }
 
 log = "0.4.27"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 rayon = "1.10.0"
 sendable = "0.6.1"
 

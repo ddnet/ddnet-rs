@@ -19,5 +19,5 @@ vanilla = { path = "../vanilla" }
 game-interface = { path = "../game-interface" }
 
 #ddnet = { git = "https://gitlab.com/Jupstar/twgame", rev = "4e5bd44981a2b27d9b46d0db0442f84e81c90cb8" }
-wasmer = { version = "5.0.4", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "6.0.0", default-features = false, features = ["sys", "cranelift"] }
 anyhow = { version = "1.0.98", features = ["backtrace"] }
