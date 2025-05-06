@@ -235,7 +235,12 @@ pub mod character {
     #[derive(Debug, Hiarc, Serialize, Deserialize)]
     pub enum CharacterSpectateMode {
         Free(vec2),
-        Follows(FxHashSet<CharacterId>),
+        Follows {
+            ids: FxHashSet<CharacterId>,
+            /// Disallow zooming if forced
+            /// zoom level is set.
+            locked_zoom: bool,
+        },
     }
 
     #[derive(Debug, Hiarc)]

@@ -84,7 +84,12 @@ pub mod snapshot {
     #[derive(Debug, Hiarc, Serialize, Deserialize)]
     pub enum SnapshotCharacterSpectateMode {
         Free(vec2),
-        Follows(PoolFxHashSet<CharacterId>),
+        Follows {
+            ids: PoolFxHashSet<CharacterId>,
+            /// Disallow zooming if forced
+            /// zoom level is set.
+            locked_zoom: bool,
+        },
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -373,12 +378,15 @@ pub mod snapshot {
                         &CharacterSpectateMode::Free(pos) => {
                             SnapshotCharacterSpectateMode::Free(pos)
                         }
-                        CharacterSpectateMode::Follows(ids) => {
-                            SnapshotCharacterSpectateMode::Follows({
-                                let mut res_ids = self.world_pool.character_ids_pool.new();
-                                res_ids.extend(ids);
-                                res_ids
-                            })
+                        CharacterSpectateMode::Follows { ids, locked_zoom } => {
+                            SnapshotCharacterSpectateMode::Follows {
+                                ids: {
+                                    let mut res_ids = self.world_pool.character_ids_pool.new();
+                                    res_ids.extend(ids);
+                                    res_ids
+                                },
+                                locked_zoom: *locked_zoom,
+                            }
                         }
                     };
                     let mut snap_char = SnapshotCharacter {
@@ -777,8 +785,11 @@ pub mod snapshot {
                         &SnapshotCharacterSpectateMode::Free(pos) => {
                             CharacterSpectateMode::Free(pos)
                         }
-                        SnapshotCharacterSpectateMode::Follows(ids) => {
-                            CharacterSpectateMode::Follows((**ids).clone())
+                        SnapshotCharacterSpectateMode::Follows { ids, locked_zoom } => {
+                            CharacterSpectateMode::Follows {
+                                ids: (**ids).clone(),
+                                locked_zoom: *locked_zoom,
+                            }
                         }
                     };
                     match &char.phased {

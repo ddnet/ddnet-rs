@@ -1728,17 +1728,18 @@ pub mod state {
                                     character::CharacterSpectateMode::Free(_) => {
                                         PlayerCameraMode::Free
                                     }
-                                    character::CharacterSpectateMode::Follows(ids) => {
-                                        PlayerCameraMode::LockedOn {
-                                            character_ids: {
-                                                let mut res_ids =
-                                                    self.game_pools.character_id_hashset_pool.new();
-                                                res_ids.extend(ids);
-                                                res_ids
-                                            },
-                                            locked_ingame: true,
-                                        }
-                                    }
+                                    character::CharacterSpectateMode::Follows {
+                                        ids,
+                                        locked_zoom,
+                                    } => PlayerCameraMode::LockedOn {
+                                        character_ids: {
+                                            let mut res_ids =
+                                                self.game_pools.character_id_hashset_pool.new();
+                                            res_ids.extend(ids);
+                                            res_ids
+                                        },
+                                        locked_ingame: *locked_zoom,
+                                    },
                                 };
                                 CharacterPlayerInfo {
                                     cam_mode: match &character.phased {

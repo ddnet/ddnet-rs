@@ -662,12 +662,11 @@ impl ClientNativeImpl {
                     .and_then(|info| info.player_info.as_ref())
             });
 
-            let main_local_char_spec = active_local_player_info
+            let main_local_char_prefer_unpredicted = active_local_player_info
                 .map(|p| match &p.cam_mode {
                     PlayerCameraMode::Default => false,
                     PlayerCameraMode::Free => true,
-                    PlayerCameraMode::LockedTo { locked_ingame, .. }
-                    | PlayerCameraMode::LockedOn { locked_ingame, .. } => !*locked_ingame,
+                    PlayerCameraMode::LockedTo { .. } | PlayerCameraMode::LockedOn { .. } => true,
                 })
                 .unwrap_or_default();
 
@@ -676,7 +675,7 @@ impl ClientNativeImpl {
                 mut local_predicted_game,
                 main_intra_tick_ratio,
                 predicted_intra_tick_ratio,
-            ) = if self.config.game.cl.anti_ping && !main_local_char_spec {
+            ) = if self.config.game.cl.anti_ping && !main_local_char_prefer_unpredicted {
                 (game_state, None, intra_tick_ratio, intra_tick_ratio)
             } else {
                 let ticks_per_second = game_state.game_tick_speed();
@@ -721,7 +720,7 @@ impl ClientNativeImpl {
                 unpredicted_game.from_snapshots(&game.game_data.last_snaps, prev_tick + first_tick);
                 (
                     &mut unpredicted_game.state,
-                    (!main_local_char_spec).then_some(game_state),
+                    (!main_local_char_prefer_unpredicted).then_some(game_state),
                     unpredicted_intra_tick_ratio,
                     intra_tick_ratio,
                 )

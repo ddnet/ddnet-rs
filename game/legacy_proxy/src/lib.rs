@@ -1614,11 +1614,12 @@ impl Client {
                         })
                     }) {
                         let mode = if let Some(spectator_id) = spectator_id {
-                            SnapshotCharacterSpectateMode::Follows(
-                                PoolFxHashSet::from_without_pool(
+                            SnapshotCharacterSpectateMode::Follows {
+                                ids: PoolFxHashSet::from_without_pool(
                                     vec![*spectator_id].into_iter().collect(),
                                 ),
-                            )
+                                locked_zoom: false,
+                            }
                         } else {
                             SnapshotCharacterSpectateMode::Free(vec2::new(
                                 spectator_info.x as f32,
