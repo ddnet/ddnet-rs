@@ -1,3 +1,4 @@
+use egui::{Key, KeyboardShortcut, Modifiers};
 use egui_extras::{Size, StripBuilder};
 
 use game_base::server_browser::ServerFilter;
@@ -35,10 +36,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     .user_data
                     .config
                     .storage::<ServerFilter>("browser_filter");
-                if clearable_edit_field(ui, &mut filter.search, None, None)
-                    .is_some_and(|r| r.changed())
-                {
-                    pipe.user_data.config.set_storage("browser_filter", &filter);
+                if let Some(res) = clearable_edit_field(ui, &mut filter.search, None, None) {
+                    if res.changed() {
+                        pipe.user_data.config.set_storage("browser_filter", &filter);
+                    }
+                    if ui.input_mut(|i| {
+                        i.consume_shortcut(&KeyboardShortcut::new(Modifiers::CTRL, Key::F))
+                    }) {
+                        res.request_focus();
+                    }
                 }
             });
             strip.cell(|ui| {
