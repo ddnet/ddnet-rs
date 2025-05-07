@@ -3462,7 +3462,7 @@ impl Client {
         }
     }
 
-    fn run_once(&mut self) -> anyhow::Result<()> {
+    fn handle_client_events(&mut self) -> anyhow::Result<()> {
         if self
             .server_has_new_events
             .load(std::sync::atomic::Ordering::SeqCst)
@@ -4271,7 +4271,10 @@ impl Client {
             self.server_has_new_events
                 .store(false, std::sync::atomic::Ordering::SeqCst);
         }
+        Ok(())
+    }
 
+    fn handle_server_events_and_sleep(&mut self) -> anyhow::Result<()> {
         if let Some(con_id) = self.con_id {
             let mut event_handler = |socket: &mut SocketClient,
                                      ev: libtw2_net::net::ChunkOrEvent<'_, SocketAddr>,
@@ -4651,6 +4654,14 @@ impl Client {
                 })
                 .get_storage();
         }
+
+        Ok(())
+    }
+
+    fn run_once(&mut self) -> anyhow::Result<()> {
+        self.handle_client_events()?;
+
+        self.handle_server_events_and_sleep()?;
 
         Ok(())
     }
