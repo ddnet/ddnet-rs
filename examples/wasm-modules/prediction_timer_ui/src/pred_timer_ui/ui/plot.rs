@@ -21,7 +21,7 @@ pub fn render(ui: &mut egui::Ui, history: &mut VecDeque<PredictionTiming>) {
 
         let line = Line::new("", sin);
         Plot::new(name)
-            .height(150.0)
+            .height(75.0)
             .show(ui, |plot_ui| plot_ui.line(line));
     };
 
