@@ -84,9 +84,7 @@ impl Socket {
             .get_storage()?;
 
         if v4.is_none() && v6.is_none() {
-            return Err(
-                io::Error::new(io::ErrorKind::Other, NoAddressFamiliesSupported(())).into(),
-            );
+            return Err(io::Error::other(NoAddressFamiliesSupported(())).into());
         }
         let spawn_socket = |s: Arc<UdpSocket>| {
             // recv

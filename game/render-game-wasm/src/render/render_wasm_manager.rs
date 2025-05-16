@@ -27,15 +27,15 @@ pub enum RenderGameMod {
 }
 
 pub enum RenderGameWrapper {
-    Native(RenderGame),
-    Wasm(RenderWasm),
+    Native(Box<RenderGame>),
+    Wasm(Box<RenderWasm>),
 }
 
 impl AsRef<dyn RenderGameInterface + 'static> for RenderGameWrapper {
     fn as_ref(&self) -> &(dyn RenderGameInterface + 'static) {
         match self {
-            Self::Native(state) => state,
-            Self::Wasm(state) => state,
+            Self::Native(state) => state.as_ref(),
+            Self::Wasm(state) => state.as_ref(),
         }
     }
 }
@@ -43,8 +43,8 @@ impl AsRef<dyn RenderGameInterface + 'static> for RenderGameWrapper {
 impl AsMut<dyn RenderGameInterface + 'static> for RenderGameWrapper {
     fn as_mut(&mut self) -> &mut (dyn RenderGameInterface + 'static) {
         match self {
-            Self::Native(state) => state,
-            Self::Wasm(state) => state,
+            Self::Native(state) => state.as_mut(),
+            Self::Wasm(state) => state.as_mut(),
         }
     }
 }
@@ -105,12 +105,12 @@ impl RenderGameWasmManager {
                     props,
                 )
                 .map_err(|err| anyhow!(err))?;
-                RenderGameWrapper::Native(state)
+                RenderGameWrapper::Native(Box::new(state))
             }
             RenderGameMod::Wasm { file } => {
                 let state =
                     RenderWasm::new(sound, graphics, backend, io, &file, map_file, config, props)?;
-                RenderGameWrapper::Wasm(state)
+                RenderGameWrapper::Wasm(Box::new(state))
             }
         };
         Ok(Self {

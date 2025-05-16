@@ -263,6 +263,14 @@ impl ClientMapLoadingFile {
     }
 }
 
+pub struct ClientMapPreparing {
+    render: ClientMapComponentLoading,
+    map: Vec<u8>,
+    map_name: NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
+    game_mod: GameStateMod,
+    game_options: GameStateCreateOptions,
+}
+
 pub struct GameCreateProps {
     sound: SoundManager,
     graphics: Graphics,
@@ -486,21 +494,15 @@ pub struct GameMap {
 
 pub enum ClientMapFile {
     Menu { render: ClientMapRender },
-    Game(GameMap),
+    Game(Box<GameMap>),
 }
 
 pub enum ClientMapLoading {
     /// load the "raw" map file
-    File(ClientMapLoadingFile),
+    File(Box<ClientMapLoadingFile>),
     /// wait for the individual components to finish parsing the map file
     /// physics and graphics independently
-    PrepareComponents {
-        render: ClientMapComponentLoading,
-        map: Vec<u8>,
-        map_name: NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,
-        game_mod: GameStateMod,
-        game_options: GameStateCreateOptions,
-    },
+    PrepareComponents(Box<ClientMapPreparing>),
     /// finished loading
     Map(ClientMapFile),
     /// Map is in an error state
@@ -527,7 +529,7 @@ impl ClientMapLoading {
         props: RenderGameCreateOptions,
         log: ConnectingLog,
     ) -> Self {
-        Self::File(ClientMapLoadingFile::new(
+        Self::File(Box::new(ClientMapLoadingFile::new(
             sound,
             graphics,
             backend,
@@ -543,7 +545,7 @@ impl ClientMapLoading {
             game_options,
             props,
             log,
-        ))
+        )))
     }
 
     pub fn try_get(&self) -> Option<&ClientMapFile> {
@@ -601,13 +603,13 @@ impl ClientMapLoading {
                                 file.log,
                             );
 
-                            *self = Self::PrepareComponents {
+                            *self = Self::PrepareComponents(Box::new(ClientMapPreparing {
                                 render: loading,
                                 map: map_file,
                                 map_name: file.map_name,
                                 game_mod,
                                 game_options: file.game_options,
-                            }
+                            }))
                         }
                         Err(err) => *self = Self::Err(err),
                     }
@@ -615,14 +617,8 @@ impl ClientMapLoading {
                     *self = Self::File(file)
                 }
             }
-            Self::PrepareComponents {
-                render,
-                map,
-                map_name,
-                game_mod,
-                game_options,
-            } => {
-                match render.ty {
+            Self::PrepareComponents(prepare) => {
+                match prepare.render.ty {
                     ClientMapComponentLoadingType::Game(mut load_game) => {
                         if let GameLoading::Task { task, props } = load_game {
                             if task.is_finished() {
@@ -652,20 +648,20 @@ impl ClientMapLoading {
                         }
                         match load_game {
                             GameLoading::Task { task, props } => {
-                                *self = Self::PrepareComponents {
+                                *self = Self::PrepareComponents(Box::new(ClientMapPreparing {
                                     render: ClientMapComponentLoading {
                                         ty: ClientMapComponentLoadingType::Game(
                                             GameLoading::Task { task, props },
                                         ),
-                                        io: render.io,
-                                        thread_pool: render.thread_pool,
-                                        log: render.log,
+                                        io: prepare.render.io,
+                                        thread_pool: prepare.render.thread_pool,
+                                        log: prepare.render.log,
                                     },
-                                    map,
-                                    map_name,
-                                    game_mod,
-                                    game_options,
-                                }
+                                    map: prepare.map,
+                                    map_name: prepare.map_name,
+                                    game_mod: prepare.game_mod,
+                                    game_options: prepare.game_options,
+                                }))
                             }
                             GameLoading::Game(mut load_game) => {
                                 match load_game.continue_loading() {
@@ -673,19 +669,19 @@ impl ClientMapLoading {
                                         if loaded {
                                             match (
                                                 GameStateWasmManager::new(
-                                                    game_mod.clone(),
-                                                    map.clone(),
-                                                    map_name.clone(),
-                                                    game_options.clone(),
-                                                    &render.io,
+                                                    prepare.game_mod.clone(),
+                                                    prepare.map.clone(),
+                                                    prepare.map_name.clone(),
+                                                    prepare.game_options.clone(),
+                                                    &prepare.render.io,
                                                     Arc::new(DummyDb),
                                                 ),
                                                 GameStateWasmManager::new(
-                                                    game_mod,
-                                                    map,
-                                                    map_name,
-                                                    game_options,
-                                                    &render.io,
+                                                    prepare.game_mod,
+                                                    prepare.map,
+                                                    prepare.map_name,
+                                                    prepare.game_options,
+                                                    &prepare.render.io,
                                                     Arc::new(DummyDb),
                                                 ),
                                             ) {
@@ -694,10 +690,10 @@ impl ClientMapLoading {
                                                         game.info.chat_commands.clone(),
                                                     );
 
-                                                    render.log.log("Loaded map & modules.");
+                                                    prepare.render.log.log("Loaded map & modules.");
                                                     // finished loading
-                                                    *self =
-                                                        Self::Map(ClientMapFile::Game(GameMap {
+                                                    *self = Self::Map(ClientMapFile::Game(
+                                                        Box::new(GameMap {
                                                             render: load_game,
                                                             game,
                                                             unpredicted_game: GameUnpredicted {
@@ -705,7 +701,8 @@ impl ClientMapLoading {
                                                                 cur: None,
                                                                 state: unpredicted_game,
                                                             },
-                                                        }));
+                                                        }),
+                                                    ));
                                                 }
                                                 (Err(err), Ok(_)) | (Ok(_), Err(err)) => {
                                                     *self = Self::Err(err);
@@ -715,20 +712,22 @@ impl ClientMapLoading {
                                                 }
                                             }
                                         } else {
-                                            *self = Self::PrepareComponents {
-                                                render: ClientMapComponentLoading {
-                                                    ty: ClientMapComponentLoadingType::Game(
-                                                        GameLoading::Game(load_game),
-                                                    ),
-                                                    io: render.io,
-                                                    thread_pool: render.thread_pool,
-                                                    log: render.log,
+                                            *self = Self::PrepareComponents(Box::new(
+                                                ClientMapPreparing {
+                                                    render: ClientMapComponentLoading {
+                                                        ty: ClientMapComponentLoadingType::Game(
+                                                            GameLoading::Game(load_game),
+                                                        ),
+                                                        io: prepare.render.io,
+                                                        thread_pool: prepare.render.thread_pool,
+                                                        log: prepare.render.log,
+                                                    },
+                                                    map: prepare.map,
+                                                    map_name: prepare.map_name,
+                                                    game_mod: prepare.game_mod,
+                                                    game_options: prepare.game_options,
                                                 },
-                                                map,
-                                                map_name,
-                                                game_mod,
-                                                game_options,
-                                            }
+                                            ))
                                         }
                                     }
                                     Err(err) => *self = Self::Err(anyhow!("{}", err)),
@@ -745,18 +744,18 @@ impl ClientMapLoading {
                                         render: map_prepare,
                                     })
                                 } else {
-                                    *self = Self::PrepareComponents {
+                                    *self = Self::PrepareComponents(Box::new(ClientMapPreparing {
                                         render: ClientMapComponentLoading {
                                             ty: ClientMapComponentLoadingType::Menu(map_prepare),
-                                            io: render.io,
-                                            thread_pool: render.thread_pool,
-                                            log: render.log,
+                                            io: prepare.render.io,
+                                            thread_pool: prepare.render.thread_pool,
+                                            log: prepare.render.log,
                                         },
-                                        map,
-                                        map_name,
-                                        game_mod,
-                                        game_options,
-                                    }
+                                        map: prepare.map,
+                                        map_name: prepare.map_name,
+                                        game_mod: prepare.game_mod,
+                                        game_options: prepare.game_options,
+                                    }))
                                 }
                             }
                             Err(err) => {

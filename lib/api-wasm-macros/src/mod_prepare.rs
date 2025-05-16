@@ -16,7 +16,7 @@ pub fn wasm_mod_prepare(
         // first find the trait GameStateInterface
         // this makes it ez to know all functions by name
         let mut func_names: Vec<String> = Default::default();
-        mod_impl
+        let _ = mod_impl
             .content
             .as_ref()
             .unwrap()
@@ -57,7 +57,7 @@ pub fn wasm_mod_prepare(
             });
 
         // now find the struct name
-        mod_impl
+        let _ = mod_impl
             .content
             .as_mut()
             .unwrap()
@@ -81,7 +81,7 @@ pub fn wasm_mod_prepare(
             });
 
         // find the constructor impl and rewrite it
-        mod_impl
+        let _ = mod_impl
             .content
             .as_mut()
             .unwrap()
@@ -106,7 +106,7 @@ pub fn wasm_mod_prepare(
                         impl_impl.attrs.clear();
 
                         // find the new func
-                        impl_impl.items.iter_mut().try_for_each(|func| {
+                        let _ = impl_impl.items.iter_mut().try_for_each(|func| {
                             if let ImplItem::Fn(func) = func {
                                 if func.sig.ident == "new" {
                                     let mut res_token = func

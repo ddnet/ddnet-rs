@@ -171,12 +171,10 @@ impl SpatialChat {
         let hosts = self.microphone.hosts();
         let host = if config.cl.spatial_chat.host.is_empty() {
             hosts.default.clone()
+        } else if hosts.hosts.contains(&config.cl.spatial_chat.host) {
+            config.cl.spatial_chat.host.clone()
         } else {
-            hosts
-                .hosts
-                .contains(&config.cl.spatial_chat.host)
-                .then(|| config.cl.spatial_chat.host.clone())
-                .unwrap_or_else(|| hosts.default.clone())
+            hosts.default.clone()
         };
         let devices = self.microphone.devices(&host).ok();
         let device = if config.cl.spatial_chat.device.is_empty() {
@@ -186,11 +184,11 @@ impl SpatialChat {
         } else {
             devices
                 .map(|devices| {
-                    devices
-                        .devices
-                        .contains(&config.cl.spatial_chat.device)
-                        .then(|| config.cl.spatial_chat.device.clone())
-                        .unwrap_or_else(|| devices.default.clone().unwrap_or_default())
+                    if devices.devices.contains(&config.cl.spatial_chat.device) {
+                        config.cl.spatial_chat.device.clone()
+                    } else {
+                        devices.default.clone().unwrap_or_default()
+                    }
                 })
                 .unwrap_or_default()
         };

@@ -529,7 +529,7 @@ impl RenderMapLoading {
 
 pub enum ClientMapRender {
     UploadingBuffersAndTextures(RenderMapLoading),
-    Map(ClientMapRenderAndFile),
+    Map(Box<ClientMapRenderAndFile>),
     None,
     Err(anyhow::Error),
 }
@@ -608,7 +608,7 @@ impl ClientMapRender {
 
                         benchmark.bench("creating the map buffers graphics cmds");
 
-                        *self = Self::Map(ClientMapRenderAndFile {
+                        *self = Self::Map(Box::new(ClientMapRenderAndFile {
                             data: ClientMapFileData {
                                 collision: map_file.collision,
                                 buffered_map: map_buffered,
@@ -618,7 +618,7 @@ impl ClientMapRender {
                                 &map_upload.canvas_handle,
                                 &map_upload.stream_handle,
                             ),
-                        });
+                        }));
                     } else {
                         *self = Self::UploadingBuffersAndTextures(map_upload)
                     }

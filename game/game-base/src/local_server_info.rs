@@ -41,6 +41,14 @@ pub struct LocalServerConnectInfo {
     pub server_cert_hash: [u8; 32],
 }
 
+#[derive(Debug)]
+pub struct LocalServerStateReady {
+    pub connect_info: LocalServerConnectInfo,
+    pub browser_info: Option<ServerBrowserInfo>,
+    // must be last
+    pub thread: LocalServerThread,
+}
+
 #[derive(Debug, Default)]
 pub enum LocalServerState {
     #[default]
@@ -50,12 +58,7 @@ pub enum LocalServerState {
         // must be last
         thread: LocalServerThread,
     },
-    Ready {
-        connect_info: LocalServerConnectInfo,
-        // must be last
-        thread: LocalServerThread,
-        browser_info: Option<ServerBrowserInfo>,
-    },
+    Ready(Box<LocalServerStateReady>),
 }
 
 #[derive(Debug, Default)]

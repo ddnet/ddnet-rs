@@ -237,7 +237,7 @@ impl NetworkConnectionInterface for TungsteniteNetworkConnectionWrapper {
 }
 
 enum ConnectingTypes {
-    Client(std::future::Ready<WebSocketStream<MaybeTlsStream<TcpStream>>>),
+    Client(Box<std::future::Ready<WebSocketStream<MaybeTlsStream<TcpStream>>>>),
     Server(
         Pin<
             Box<
@@ -352,7 +352,7 @@ impl
         .block_on()
         .map_err(|err| NetworkEventConnectingFailed::Other(err.to_string()))?;
         Ok(TungsteniteNetworkConnectingWrapper {
-            connecting: ConnectingTypes::Client(std::future::ready(res)),
+            connecting: ConnectingTypes::Client(Box::new(std::future::ready(res))),
             addr,
         })
     }

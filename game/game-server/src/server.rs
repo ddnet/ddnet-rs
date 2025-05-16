@@ -84,7 +84,10 @@ use crate::{
 use game_base::{
     config_helper::handle_config_variable_cmd,
     game_types::{is_next_tick, time_until_tick},
-    local_server_info::{LocalServerConnectInfo, LocalServerInfo, LocalServerState, ServerDbgGame},
+    local_server_info::{
+        LocalServerConnectInfo, LocalServerInfo, LocalServerState, LocalServerStateReady,
+        ServerDbgGame,
+    },
     network::{
         messages::{
             AddLocalPlayerResponseError, MsgClChatMsg, MsgClLoadVotes, MsgClReadyResponse,
@@ -867,7 +870,7 @@ impl Server {
                 thread,
             } = std::mem::take(&mut *state)
             {
-                *state = LocalServerState::Ready {
+                *state = LocalServerState::Ready(Box::new(LocalServerStateReady {
                     connect_info: LocalServerConnectInfo {
                         sock_addr: sock_addrs[0],
                         dbg_games: Default::default(),
@@ -877,7 +880,7 @@ impl Server {
                     },
                     thread,
                     browser_info: None,
-                };
+                }));
             }
         }
 
@@ -2768,11 +2771,11 @@ impl Server {
             let projectiles = format!("{:?}", projectiles);
             let inputs = format!("{:?}", inputs.map(|inp| inp.collect::<Vec<_>>()));
 
-            if let LocalServerState::Ready {
-                connect_info: LocalServerConnectInfo { dbg_games, .. },
-                ..
-            } = &mut *shared_info.state.lock().unwrap()
-            {
+            if let LocalServerState::Ready(ready) = &mut *shared_info.state.lock().unwrap() {
+                let LocalServerStateReady {
+                    connect_info: LocalServerConnectInfo { dbg_games, .. },
+                    ..
+                } = ready.as_mut();
                 let dbg_game = dbg_games.get(&cur_tick);
                 if let Some(dbg_game) = dbg_game {
                     let now = std::time::Instant::now();
@@ -2896,13 +2899,14 @@ impl Server {
             requires_account: self.accounts_only,
         };
 
-        if let Some(LocalServerState::Ready { browser_info, .. }) = self
+        if let Some(LocalServerState::Ready(ready)) = self
             .shared_info
             .upgrade()
             .as_ref()
             .and_then(|info| info.state.lock().ok())
             .as_deref_mut()
         {
+            let LocalServerStateReady { browser_info, .. } = ready.as_mut();
             *browser_info = Some(register_info.clone())
         }
 

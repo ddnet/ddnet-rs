@@ -15,17 +15,17 @@ use wasm_runtime::WasmManager;
 use super::{editor_lib::editor_lib::EditorLib, editor_wasm::editor_wasm::EditorWasm};
 
 pub enum EditorWrapper {
-    Native(Editor),
+    Native(Box<Editor>),
     NativeLib(EditorLib),
-    Wasm(EditorWasm),
+    Wasm(Box<EditorWasm>),
 }
 
 impl AsRef<dyn EditorInterface + 'static> for EditorWrapper {
     fn as_ref(&self) -> &(dyn EditorInterface + 'static) {
         match self {
-            Self::Native(state) => state,
+            Self::Native(state) => state.as_ref(),
             Self::NativeLib(state) => state,
-            Self::Wasm(state) => state,
+            Self::Wasm(state) => state.as_ref(),
         }
     }
 }
@@ -33,9 +33,9 @@ impl AsRef<dyn EditorInterface + 'static> for EditorWrapper {
 impl AsMut<dyn EditorInterface + 'static> for EditorWrapper {
     fn as_mut(&mut self) -> &mut (dyn EditorInterface + 'static) {
         match self {
-            Self::Native(state) => state,
+            Self::Native(state) => state.as_mut(),
             Self::NativeLib(state) => state,
-            Self::Wasm(state) => state,
+            Self::Wasm(state) => state.as_mut(),
         }
     }
 }
@@ -81,7 +81,7 @@ impl EditorWasmManager {
         });
         let state = if let Ok(wasm_module) = task.get_storage() {
             let state = EditorWasm::new(sound, graphics, backend, io, font_data, &wasm_module);
-            EditorWrapper::Wasm(state)
+            EditorWrapper::Wasm(Box::new(state))
         } else {
             let path_str = MODS_PATH.to_string() + "/libeditor.so";
             let save_path: PathBuf = path_str.into();
@@ -100,11 +100,11 @@ impl EditorWasmManager {
                     EditorWrapper::NativeLib(EditorLib::new(sound, graphics, io, font_data, lib))
                 } else {
                     let state = Editor::new(sound, graphics, io, thread_pool, font_data);
-                    EditorWrapper::Native(state)
+                    EditorWrapper::Native(Box::new(state))
                 }
             } else {
                 let state = Editor::new(sound, graphics, io, thread_pool, font_data);
-                EditorWrapper::Native(state)
+                EditorWrapper::Native(Box::new(state))
             }
         };
         Self {

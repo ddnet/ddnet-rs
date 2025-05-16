@@ -418,9 +418,10 @@ impl DemoViewerImpl {
 
         let map = client_map.try_get_mut().unwrap();
 
-        let ClientMapFile::Game(GameMap { render, .. }) = map else {
+        let ClientMapFile::Game(map) = map else {
             panic!("not a game map")
         };
+        let GameMap { render, .. } = map.as_mut();
         render.clear_render_state();
     }
 
@@ -460,9 +461,10 @@ impl DemoViewerImpl {
 
         let map = client_map.try_get_mut().unwrap();
 
-        let ClientMapFile::Game(GameMap { render, game, .. }) = map else {
+        let ClientMapFile::Game(map) = map else {
             panic!("not a game map")
         };
+        let GameMap { render, game, .. } = map.as_mut();
 
         let Some((local_players, prev_tick, next_tick)) = (if !viewer.cur_snapshots.is_empty() {
             let mut it = viewer.cur_snapshots.iter();

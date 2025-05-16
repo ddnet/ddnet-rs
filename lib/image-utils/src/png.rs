@@ -99,7 +99,7 @@ where
             }
             img_data
         }
-        _ => return Err(io::Error::new(io::ErrorKind::Other, "uncovered color type")),
+        _ => return Err(io::Error::other("uncovered color type")),
     };
 
     Ok(PngResult {

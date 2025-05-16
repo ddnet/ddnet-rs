@@ -40,15 +40,11 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
     let server_info = &pipe.user_data.server_info;
     let (sock_addr, rcon_secret, server_cert_hash, server_browser_info, starting) =
         match &*server_info.state.lock().unwrap() {
-            LocalServerState::Ready {
-                connect_info,
-                browser_info,
-                ..
-            } => (
-                Some(connect_info.sock_addr),
-                Some(connect_info.rcon_secret),
-                Some(connect_info.server_cert_hash),
-                browser_info.clone(),
+            LocalServerState::Ready(ready) => (
+                Some(ready.connect_info.sock_addr),
+                Some(ready.connect_info.rcon_secret),
+                Some(ready.connect_info.server_cert_hash),
+                ready.browser_info.clone(),
                 false,
             ),
             LocalServerState::Starting { .. } => (None, None, None, None, true),

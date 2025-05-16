@@ -154,7 +154,7 @@ use game_base::{
     assets_url::HTTP_RESOURCE_URL,
     connecting_log::{ConnectModes, ConnectingLog},
     game_types::{intra_tick_time, intra_tick_time_to_ratio, is_next_tick, time_until_tick},
-    local_server_info::{LocalServerInfo, LocalServerState},
+    local_server_info::{LocalServerInfo, LocalServerState, LocalServerStateReady},
     network::messages::{GameModification, MsgClAddLocalPlayer, MsgClChatMsg, MsgClLoadVotes},
     player_input::PlayerInput,
     server_browser::ServerBrowserData,
@@ -459,23 +459,26 @@ impl ClientNativeImpl {
         state: &mut LocalServerState,
         notifications: &mut ClientNotifications,
     ) -> anyhow::Result<()> {
-        match state {
+        let thread = match state {
             LocalServerState::None => {
                 // ignore
+                None
             }
-            LocalServerState::Starting { thread, .. } | LocalServerState::Ready { thread, .. } => {
-                if thread.thread.is_finished() {
-                    match thread.thread.try_join() {
-                        Err(err) | Ok(Some(Err(err))) => {
-                            notifications.add_err(
-                                format!("Failed to start local server: {err}"),
-                                Duration::from_secs(10),
-                            );
-                            return Err(err);
-                        }
-                        Ok(Some(Ok(_))) | Ok(None) => {
-                            // ignore
-                        }
+            LocalServerState::Starting { thread, .. } => Some(thread),
+            LocalServerState::Ready(ready) => Some(&mut ready.thread),
+        };
+        if let Some(thread) = thread {
+            if thread.thread.is_finished() {
+                match thread.thread.try_join() {
+                    Err(err) | Ok(Some(Err(err))) => {
+                        notifications.add_err(
+                            format!("Failed to start local server: {err}"),
+                            Duration::from_secs(10),
+                        );
+                        return Err(err);
+                    }
+                    Ok(Some(Ok(_))) | Ok(None) => {
+                        // ignore
                     }
                 }
             }
@@ -493,7 +496,8 @@ impl ClientNativeImpl {
             ConnectLocalServerResult::ErrOrNotLocalServerAddr { addresses }
         } else if addresses.iter().any(|addr| addr.ip().is_loopback()) {
             let mut state = self.shared_info.state.lock().unwrap();
-            if let LocalServerState::Ready { connect_info, .. } = &mut *state {
+            if let LocalServerState::Ready(ready) = &mut *state {
+                let LocalServerStateReady { connect_info, .. } = ready.as_mut();
                 let rcon_secret = Some(connect_info.rcon_secret);
                 let server_cert = ServerCertMode::Hash(connect_info.server_cert_hash);
                 let addr = match connect_info.sock_addr {

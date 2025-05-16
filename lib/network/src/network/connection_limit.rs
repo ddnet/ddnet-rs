@@ -26,13 +26,11 @@ impl MaxConnections {
 
 #[async_trait]
 impl NetworkPluginConnection for MaxConnections {
-    #[must_use]
     async fn on_incoming(&self, _remote_addr: &SocketAddr) -> bool {
         // This plugin prefers proper error messages instead
         // of ignoring connections
         true
     }
-    #[must_use]
     async fn on_connect(
         &self,
         _id: &NetworkConnectionId,

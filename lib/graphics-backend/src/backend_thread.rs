@@ -46,7 +46,7 @@ use crate::{
 
 #[derive(Debug)]
 enum GraphicsBackendLoadingType {
-    Vulkan(VulkanBackendLoading),
+    Vulkan(Box<VulkanBackendLoading>),
     Null(NullBackend),
 }
 
@@ -395,7 +395,7 @@ impl BackendThread {
                     &options,
                     custom_pipes,
                 )?;
-                GraphicsBackendLoadingType::Vulkan(backend)
+                GraphicsBackendLoadingType::Vulkan(Box::new(backend))
             }
         };
 
@@ -438,7 +438,7 @@ impl BackendThread {
                     return Err(anyhow!("main thread init data was not of type vulkan"));
                 };
                 GraphicsBackendType::Vulkan(VulkanBackend::new(
-                    loading,
+                    *loading,
                     data,
                     &runtime_threadpool,
                     main_thread_init,

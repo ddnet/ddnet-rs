@@ -836,7 +836,9 @@ impl EditorServer {
                                             )
                                             .ok()
                                         })
-                                        .map(|r| (name, TileLayerAutoMapperRuleType::Wasm(r)))
+                                        .map(|r| {
+                                            (name, TileLayerAutoMapperRuleType::Wasm(Box::new(r)))
+                                        })
                                 })
                                 .flatten()
                                 .into_iter()
