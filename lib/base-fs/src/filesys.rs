@@ -272,9 +272,9 @@ impl ScopedDirFileSystemInterface for mem_fs::FileSystem {}
 #[derive(Debug, Hiarc)]
 pub struct ScopedDirFileSystem {
     #[hiarc_skip_unsafe]
-    fs: Box<dyn ScopedDirFileSystemInterface>,
-    host_path: PathBuf,
-    mount_path: PathBuf,
+    pub fs: Box<dyn ScopedDirFileSystemInterface>,
+    pub host_path: PathBuf,
+    pub mount_path: PathBuf,
 }
 
 impl ScopedDirFileSystem {
@@ -311,12 +311,11 @@ pub struct FileSystem {
 
 impl FileSystem {
     #[cfg(not(feature = "bundled_data_dir"))]
-    fn add_data_dir(scoped_file_systems: &mut Vec<ScopedDirFileSystem>) -> anyhow::Result<usize> {
-        scoped_file_systems.push(ScopedDirFileSystem::new("data/")?);
-        Ok(scoped_file_systems.len() - 1)
+    fn get_data_dir_fs() -> anyhow::Result<ScopedDirFileSystem> {
+        ScopedDirFileSystem::new("data/")
     }
     #[cfg(feature = "bundled_data_dir")]
-    fn add_data_dir(scoped_file_systems: &mut Vec<ScopedDirFileSystem>) -> anyhow::Result<usize> {
+    fn get_data_dir_fs() -> anyhow::Result<ScopedDirFileSystem> {
         use virtual_fs::AsyncWriteExt;
         const DATA_DIR: include_dir::Dir =
             include_dir::include_dir!("$CARGO_MANIFEST_DIR/../../data");
@@ -356,20 +355,20 @@ impl FileSystem {
 
         add_dirs(fs.as_ref(), &DATA_DIR)?;
 
-        scoped_file_systems.push(ScopedDirFileSystem {
+        Ok(ScopedDirFileSystem {
             fs,
             host_path: "data/".into(),
             mount_path: "/".into(),
-        });
-        Ok(scoped_file_systems.len() - 1)
+        })
     }
 
-    pub fn new(
+    pub fn new_with_data_dir(
         rt: &tokio::runtime::Runtime,
         qualifier: &str,
         organization: &str,
         application: &str,
         secure_appl: &str,
+        data_dir: ScopedDirFileSystem,
     ) -> anyhow::Result<Self> {
         let config_dir: PathBuf =
             if let Some(proj_dirs) = ProjectDirs::from(qualifier, organization, application) {
@@ -406,7 +405,10 @@ impl FileSystem {
         log::info!(target: "fs", "Found config dir in {config_dir:?}");
         scoped_file_systems.push(ScopedDirFileSystem::new(config_dir)?);
         let config_dir_index = scoped_file_systems.len() - 1;
-        let data_dir_index = Self::add_data_dir(&mut scoped_file_systems)?;
+
+        scoped_file_systems.push(data_dir);
+        let data_dir_index = scoped_file_systems.len() - 1;
+
         if let Ok(exec_path) = std::env::current_dir() {
             scoped_file_systems.push(ScopedDirFileSystem::new(exec_path)?);
         }
@@ -426,6 +428,27 @@ impl FileSystem {
             // at most allow 64 files to be read/written at the same time.
             max_operations_semaphore: Arc::new(tokio::sync::Semaphore::new(64)),
         })
+    }
+
+    pub fn new(
+        rt: &tokio::runtime::Runtime,
+        qualifier: &str,
+        organization: &str,
+        application: &str,
+        secure_appl: &str,
+    ) -> anyhow::Result<Self> {
+        let g = rt.enter();
+        let data_dir = Self::get_data_dir_fs()?;
+        drop(g);
+
+        Self::new_with_data_dir(
+            rt,
+            qualifier,
+            organization,
+            application,
+            secure_appl,
+            data_dir,
+        )
     }
 
     fn get_scoped_fs(&self, fs_path: FileSystemPath) -> &ScopedDirFileSystem {
