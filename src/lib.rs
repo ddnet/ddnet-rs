@@ -70,6 +70,11 @@ fn main_impl(app: NativeApp) {
 
         let err_msg = format!("Fatal error:\n{message}\n{loc}");
         println!("{err_msg}");
+
+        // Try to generate and print backtrace
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        println!("Backtrace:\n{}", backtrace);
+
         if thread_id != std::thread::current().id() {
             return;
         }
