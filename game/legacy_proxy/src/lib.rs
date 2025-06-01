@@ -306,6 +306,12 @@ struct ClientBase {
 
     is_first_map_pkt: bool,
 
+    // ping calculations
+    last_ping: Option<Duration>,
+    last_ping_uuid: u128,
+    last_pings: BTreeMap<u128, Duration>,
+    last_pong: Option<Duration>,
+
     // helpers
     input_deser: Pool<Vec<u8>>,
     player_snap_pool: Pool<Vec<u8>>,
@@ -631,6 +637,11 @@ impl Client {
                         server_info,
 
                         join_password: Default::default(),
+
+                        last_ping: None,
+                        last_ping_uuid: Default::default(),
+                        last_pings: Default::default(),
+                        last_pong: None,
                     },
 
                     con_id: None,
@@ -2232,6 +2243,11 @@ impl Client {
                 res.unwrap();
                 socket.server_pid = pid;
             }
+            (_, SystemOrGame::System(System::PongEx(pong_ex))) => {
+                if let Some(time) = base.last_pings.remove(&pong_ex.id.as_u128()) {
+                    base.last_pong = Some(sys.time_get().saturating_sub(time));
+                }
+            }
             (_, SystemOrGame::System(System::MapDetails(info))) => {
                 if let Some(name) = String::from_utf8(info.name.to_vec())
                     .ok()
@@ -3099,7 +3115,16 @@ impl Client {
                                 .saturating_sub(inp.logic_overhead)
                                 .as_millis()
                         );
-                        inp.logic_overhead = sys.time_get();
+                        // For now use ping pong for time calculations
+                        if let Some(pong_time) = base.last_pong {
+                            const PREDICTION_EXTRA_MARGIN: Duration = Duration::from_millis(5);
+                            inp.logic_overhead = inp
+                                .logic_overhead
+                                .saturating_add(pong_time)
+                                .saturating_add(PREDICTION_EXTRA_MARGIN);
+                        } else {
+                            inp.logic_overhead = sys.time_get();
+                        }
                         *was_acked = true;
                     }
                 }
@@ -4674,6 +4699,34 @@ impl Client {
         self.handle_client_events()?;
 
         self.handle_server_events_and_sleep()?;
+
+        // do 10 pings per second to determine accurate ping
+        let time_now = self.sys.time_get();
+        if self.base.last_ping.is_none_or(|last_ping| {
+            time_now.saturating_sub(last_ping) > Duration::from_millis(1000 / 10)
+        }) {
+            self.base.last_ping = Some(time_now);
+
+            if let Some(player) = self.players.values_mut().next() {
+                if matches!(player.data.state, ClientState::Ingame) {
+                    let pkt = system::PingEx {
+                        id: hex::encode(self.base.last_ping_uuid.to_ne_bytes())
+                            .parse()
+                            .unwrap(),
+                    };
+                    player.socket.sends(System::PingEx(pkt));
+                    player.socket.flush();
+
+                    self.base
+                        .last_pings
+                        .insert(self.base.last_ping_uuid, time_now);
+                    while self.base.last_pings.len() > 50 {
+                        self.base.last_pings.pop_first();
+                    }
+                    self.base.last_ping_uuid += 1;
+                }
+            }
+        }
 
         Ok(())
     }

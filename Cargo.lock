@@ -5711,6 +5711,7 @@ dependencies = [
  "game-interface",
  "game-network",
  "game-server",
+ "hex",
  "hexdump",
  "libtw2-gamenet-ddnet",
  "libtw2-net",
