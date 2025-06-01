@@ -445,28 +445,26 @@ impl Client {
                                     Ok(m) => m,
                                     Err(err) => {
                                         debug!("decode err during startup: {:?}", err);
-                                        // TODO: hacky way to listen for reconnect msg not impl in libtw2
-                                        if !is_map_ready {
-                                            log.log("Reconnecting");
-                                            conless
-                                                .net
-                                                .disconnect(
-                                                    &mut conless.socket,
-                                                    conless.server_pid,
-                                                    b"reconnect",
-                                                )
-                                                .unwrap();
-                                            let (pid, res) =
-                                                conless.net.connect(&mut conless.socket, addr);
-                                            res.unwrap();
-                                            conless.server_pid = pid;
-                                        }
                                         return;
                                     }
                                 };
 
                                 if matches!(msg, SystemOrGame::System(System::MapChange(_))) {
                                     is_map_ready = true;
+                                } else if matches!(msg, SystemOrGame::System(System::Reconnect(_)))
+                                {
+                                    log.log("Reconnecting");
+                                    conless
+                                        .net
+                                        .disconnect(
+                                            &mut conless.socket,
+                                            conless.server_pid,
+                                            b"reconnect",
+                                        )
+                                        .unwrap();
+                                    let (pid, res) = conless.net.connect(&mut conless.socket, addr);
+                                    res.unwrap();
+                                    conless.server_pid = pid;
                                 }
                             }
                             libtw2_net::net::ChunkOrEvent::Connless(msg) => {
@@ -996,12 +994,13 @@ impl Client {
 
                     let mut buffs: FxLinkedHashMap<_, _> = Default::default();
                     let active_weapon = match character.weapon {
-                        libtw2_gamenet_ddnet::enums::Weapon::Hammer => WeaponType::Hammer,
-                        libtw2_gamenet_ddnet::enums::Weapon::Pistol => WeaponType::Gun,
-                        libtw2_gamenet_ddnet::enums::Weapon::Shotgun => WeaponType::Shotgun,
-                        libtw2_gamenet_ddnet::enums::Weapon::Grenade => WeaponType::Grenade,
-                        libtw2_gamenet_ddnet::enums::Weapon::Rifle => WeaponType::Laser,
-                        libtw2_gamenet_ddnet::enums::Weapon::Ninja => {
+                        enums::WEAPON_HAMMER => WeaponType::Hammer,
+                        enums::WEAPON_PISTOL => WeaponType::Gun,
+                        enums::WEAPON_SHOTGUN => WeaponType::Shotgun,
+                        enums::WEAPON_GRENADE => WeaponType::Grenade,
+                        enums::WEAPON_RIFLE => WeaponType::Laser,
+                        // Weapon ninja
+                        _ => {
                             buffs.insert(
                                 CharacterBuff::Ninja,
                                 BuffProps {
@@ -1053,7 +1052,7 @@ impl Client {
                                 character_core.hook_dy as f32 / 256.0,
                             ),
                             hook_tele_base: Default::default(),
-                            hook_tick: character_core.hook_tick.0,
+                            hook_tick: character_core.hook_tick,
                             hook_state: match character_core.hook_state {
                                 1 => HookState::RetractStart,
                                 2 => HookState::RetractMid,
@@ -1192,11 +1191,11 @@ impl Client {
                                 &mut self,
                                 _ids: &[CharacterId],
                                 _for_each_func: &mut dyn FnMut(
-                                &CharacterId,
-                                &mut Core,
-                                &mut CoreReusable,
-                                &mut vanilla::entities::character::pos::character_pos::CharacterPos,
-                            ) -> std::ops::ControlFlow<()>,
+                                            &CharacterId,
+                                            &mut Core,
+                                            &mut CoreReusable,
+                                            &mut vanilla::entities::character::pos::character_pos::CharacterPos,
+                                        ) -> std::ops::ControlFlow<()>,
                             ) -> std::ops::ControlFlow<()> {
                                 std::ops::ControlFlow::Continue(())
                             }
@@ -2125,6 +2124,21 @@ impl Client {
                 SnapObj::EntityEx(entity_ex) => {
                     debug!("[NOT IMPLEMENTED] entity ex: {:?}", entity_ex);
                 }
+                SnapObj::DdnetSpectatorInfo(ddnet_spectator_info) => {
+                    debug!(
+                        "[NOT IMPLEMENTED] ddnet spectator info: {:?}",
+                        ddnet_spectator_info
+                    );
+                }
+                SnapObj::Birthday(birthday) => {
+                    debug!("[NOT IMPLEMENTED] birthday: {:?}", birthday);
+                }
+                SnapObj::Finish(finish) => {
+                    debug!("[NOT IMPLEMENTED] finish: {:?}", finish);
+                }
+                SnapObj::MapSoundWorld(map_sound_world) => {
+                    debug!("[NOT IMPLEMENTED] map sound world: {:?}", map_sound_world);
+                }
             }
         }
 
@@ -2159,18 +2173,6 @@ impl Client {
                     SystemOrGame::decode_id(&mut WarnPkt(pid, data), &mut Unpacker::new(data)).ok();
                 warn!("decode error {:?} {:?}:", id, err);
                 hexdump(Level::Warn, data);
-
-                // TODO: hacky way to listen for reconnect msg not impl in libtw2
-                if collision.is_none() {
-                    log.log("Proxy client will reconnect to the server. (reconnect packet)");
-                    socket
-                        .net
-                        .disconnect(&mut socket.socket, socket.server_pid, b"reconnect")
-                        .unwrap();
-                    let (pid, res) = socket.net.connect(&mut socket.socket, *connect_addr);
-                    res.unwrap();
-                    socket.server_pid = pid;
-                }
                 return;
             }
         };
@@ -2219,6 +2221,16 @@ impl Client {
                 if (caps.flags & SERVERCAPFLAG_CHATTIMEOUTCODE) != 0 {
                     base.capabilities.chat_timeout_codes = true;
                 }
+            }
+            (_, SystemOrGame::System(System::Reconnect(_))) => {
+                log.log("Proxy client will reconnect to the server. (reconnect packet)");
+                socket
+                    .net
+                    .disconnect(&mut socket.socket, socket.server_pid, b"reconnect")
+                    .unwrap();
+                let (pid, res) = socket.net.connect(&mut socket.socket, *connect_addr);
+                res.unwrap();
+                socket.server_pid = pid;
             }
             (_, SystemOrGame::System(System::MapDetails(info))) => {
                 if let Some(name) = String::from_utf8(info.name.to_vec())

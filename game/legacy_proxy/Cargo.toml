@@ -19,10 +19,10 @@ game-base = { path = "../game-base" }
 vanilla = { path = "../vanilla" }
 map = { path = "../map" }
 
-libtw2-gamenet-ddnet = { git = "https://github.com/Jupeyy/libtw2.git", rev = "d81eff37fcefdffbd309015e445b9c7cfd167b95" }
-libtw2-packer = { git = "https://github.com/Jupeyy/libtw2.git", rev = "d81eff37fcefdffbd309015e445b9c7cfd167b95" }
-libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "d81eff37fcefdffbd309015e445b9c7cfd167b95" }
-libtw2-net = { git = "https://github.com/Jupeyy/libtw2.git", rev = "d81eff37fcefdffbd309015e445b9c7cfd167b95" }
+libtw2-gamenet-ddnet = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
+libtw2-packer = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
+libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
+libtw2-net = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
 
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 # stuck for compat with libtw2

@@ -5803,7 +5803,7 @@ dependencies = [
 [[package]]
 name = "libtw2-common"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "zerocopy 0.7.35",
@@ -5812,7 +5812,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-common"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5828,7 +5828,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-ddnet"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5843,7 +5843,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-snap"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "buffer",
  "libtw2-common",
@@ -5855,7 +5855,7 @@ dependencies = [
 [[package]]
 name = "libtw2-huffman"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5866,7 +5866,7 @@ dependencies = [
 [[package]]
 name = "libtw2-net"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5883,7 +5883,7 @@ dependencies = [
 [[package]]
 name = "libtw2-packer"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5895,7 +5895,7 @@ dependencies = [
 [[package]]
 name = "libtw2-snapshot"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "buffer",
  "libtw2-common",
