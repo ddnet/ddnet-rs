@@ -38,13 +38,12 @@ use graphics::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         shader_storage::shader_storage::GraphicsShaderStorageHandle,
-        stream::stream::LinesStreamHandle,
         stream_types::StreamedLine,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
 };
 use graphics_types::{commands::TexFlags, rendering::State, types::GraphicsMemoryAllocationType};
-use hiarc::{hi_closure, HiarcTrait};
+use hiarc::HiarcTrait;
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::{
@@ -2615,17 +2614,7 @@ impl Editor {
             y += grid_size;
         }
 
-        self.graphics.stream_handle.render_lines(
-            hi_closure!(
-                [lines: Vec<StreamedLine>],
-                |mut stream_handle: LinesStreamHandle<'_>| -> () {
-                    for line in lines {
-                        stream_handle.add_vertices(line.into());
-                    }
-                }
-            ),
-            state,
-        );
+        self.graphics.stream_handle.render_lines(&lines, state);
     }
 
     fn render_ui(

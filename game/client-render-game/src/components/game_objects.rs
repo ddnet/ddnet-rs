@@ -32,15 +32,13 @@ use game_interface::types::{
 use graphics::{
     graphics::graphics::Graphics,
     handles::{
-        quad_container::quad_container::QuadContainer,
-        stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
-        stream_types::StreamedQuad,
+        quad_container::quad_container::QuadContainer, stream::stream::GraphicsStreamHandle,
+        stream_types::StreamedQuad, texture::texture::TextureType,
     },
     quad_container::Quad,
     streaming::quad_scope_begin,
 };
 use graphics_types::rendering::{ColorRgba, State};
-use hiarc::hi_closure;
 use math::math::{
     angle, distance, length, normalize_pre_length,
     vector::{ubvec4, vec2, vec4},
@@ -487,47 +485,38 @@ impl GameObjectsRender {
             let ia = 1.0 - a;
 
             // do outline
-            self.stream_handle.render_quads(
-                hi_closure!([from: vec2, pos: vec2, dir: vec2, outer_color: ColorRgba, inner_color: ColorRgba, phased_alpha: f32, ia: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                    let out = vec2::new(dir.y, -dir.x) * (7.0 / 32.0 * ia);
-                    stream_handle.add_vertices(
-                        StreamedQuad::default()
-                            .pos_free_form(
-                                vec2::new(from.x - out.x, from.y - out.y),
-                                vec2::new(from.x + out.x, from.y + out.y),
-                                vec2::new(pos.x - out.x, pos.y - out.y),
-                                vec2::new(pos.x + out.x, pos.y + out.y),
-                            )
-                            .colorf(vec4::new(
-                                outer_color.r,
-                                outer_color.g,
-                                outer_color.b,
-                                outer_color.a * phased_alpha,
-                            ))
-                            .into(),
-                    );
+            let out = vec2::new(dir.y, -dir.x) * (7.0 / 32.0 * ia);
+            let outter = StreamedQuad::default()
+                .pos_free_form(
+                    vec2::new(from.x - out.x, from.y - out.y),
+                    vec2::new(from.x + out.x, from.y + out.y),
+                    vec2::new(pos.x - out.x, pos.y - out.y),
+                    vec2::new(pos.x + out.x, pos.y + out.y),
+                )
+                .colorf(vec4::new(
+                    outer_color.r,
+                    outer_color.g,
+                    outer_color.b,
+                    outer_color.a * phased_alpha,
+                ));
 
-                    // do inner
-                    let out = vec2::new(dir.y, -dir.x) * (5.0 / 32.0 * ia);
-                    stream_handle.add_vertices(
-                        StreamedQuad::default()
-                            .pos_free_form(
-                                vec2::new(from.x - out.x, from.y - out.y),
-                                vec2::new(from.x + out.x, from.y + out.y),
-                                vec2::new(pos.x - out.x, pos.y - out.y),
-                                vec2::new(pos.x + out.x, pos.y + out.y),
-                            )
-                            .colorf(vec4::new(
-                                inner_color.r,
-                                inner_color.g,
-                                inner_color.b,
-                                inner_color.a * phased_alpha,
-                            ))
-                            .into(),
-                    );
-                }),
-                *base_state,
-            );
+            // do inner
+            let out = vec2::new(dir.y, -dir.x) * (5.0 / 32.0 * ia);
+            let inner = StreamedQuad::default()
+                .pos_free_form(
+                    vec2::new(from.x - out.x, from.y - out.y),
+                    vec2::new(from.x + out.x, from.y + out.y),
+                    vec2::new(pos.x - out.x, pos.y - out.y),
+                    vec2::new(pos.x + out.x, pos.y + out.y),
+                )
+                .colorf(vec4::new(
+                    inner_color.r,
+                    inner_color.g,
+                    inner_color.b,
+                    inner_color.a * phased_alpha,
+                ));
+            self.stream_handle
+                .render_quads(&[outter, inner], *base_state, TextureType::None);
         }
 
         // render head

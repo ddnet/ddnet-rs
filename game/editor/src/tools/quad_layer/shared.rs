@@ -156,7 +156,7 @@ pub fn render_quad_points(
                 map.groups.user.parallax_aware_zoom,
             );
             let h = state.get_canvas_height() / canvas_handle.canvas_height() as f32;
-            stream_handle.render_quads(
+            stream_handle.stream_quads(
                 hi_closure!([points: [fvec2; 5], x: f32, y: f32, h: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {
                     let hit_size = QUAD_POINT_RADIUS_FACTOR * h;
                     let point_size = QUAD_POINT_RADIUS_FACTOR * 0.7 * h;

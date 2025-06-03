@@ -1,11 +1,10 @@
 use client_render_base::map::render_tools::{CanvasType, RenderTools};
 use graphics::handles::{
-    canvas::canvas::GraphicsCanvasHandle,
-    stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
-    stream_types::StreamedQuad,
+    canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
+    stream_types::StreamedQuad, texture::texture::TextureType,
 };
 use graphics_types::rendering::State;
-use hiarc::{hi_closure, Hiarc};
+use hiarc::Hiarc;
 use map::map::groups::layers::design::Sound;
 use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
 use std::time::Duration;
@@ -87,26 +86,25 @@ pub fn render_sound_points(
                 map.groups.user.parallax_aware_zoom,
             );
             let h = state.get_canvas_height() / canvas_handle.canvas_height() as f32;
+            let hit_size = SOUND_POINT_RADIUS_FACTOR * h;
+            let point_size = SOUND_POINT_RADIUS_FACTOR * 0.7 * h;
+            let color = if in_radius(&point, &vec2::new(x, y), hit_size) {
+                ubvec4::new(150, 255, 150, 255)
+            } else {
+                ubvec4::new(0, 255, 0, 255)
+            };
             stream_handle.render_quads(
-                hi_closure!([point: fvec2, x: f32, y: f32, h: f32], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                    let hit_size = SOUND_POINT_RADIUS_FACTOR * h;
-                    let point_size = SOUND_POINT_RADIUS_FACTOR * 0.7 * h;
-                    let color = if in_radius(&point, &vec2::new(x, y), hit_size) {
-                        ubvec4::new(150, 255, 150, 255)
-                    }
-                    else {
-                        ubvec4::new(0, 255, 0, 255)
-                    };
-                    stream_handle.add_vertices(
-                        StreamedQuad::default().from_pos_and_size(
-                            vec2::new(point.x.to_num::<f32>() - point_size / 2.0, point.y.to_num::<f32>() - point_size / 2.0),
-                            vec2::new(point_size, point_size)
-                        )
-                        .color(color)
-                        .into()
-                    );
-                }),
+                &[StreamedQuad::default()
+                    .from_pos_and_size(
+                        vec2::new(
+                            point.x.to_num::<f32>() - point_size / 2.0,
+                            point.y.to_num::<f32>() - point_size / 2.0,
+                        ),
+                        vec2::new(point_size, point_size),
+                    )
+                    .color(color)],
                 state,
+                TextureType::None,
             );
         }
     }

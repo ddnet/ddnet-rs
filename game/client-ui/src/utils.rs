@@ -29,14 +29,13 @@ use graphics::{
     handles::{
         canvas::canvas::GraphicsCanvasHandle,
         shader_storage::shader_storage::ShaderStorage,
-        stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
+        stream::stream::GraphicsStreamHandle,
         stream_types::StreamedQuad,
         texture::texture::{TextureContainer, TextureContainer2dArray},
     },
     streaming::quad_scope_begin,
 };
 use graphics_types::rendering::{ColorRgba, State};
-use hiarc::hi_closure;
 use math::math::vector::{dvec2, ubvec4, vec2};
 use pool::mt_datatypes::PoolVec;
 use ui_base::{custom_callback::CustomCallbackTrait, types::UiState};
@@ -387,33 +386,20 @@ pub fn render_emoticon_for_ui(
                 texture: &TextureContainer,
             ) {
                 stream_handle.render_quads(
-                    hi_closure!([
-                        center: &vec2,
-                        size: &vec2,
-                        texture: &TextureContainer
-                    ], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                        stream_handle.set_texture(texture);
-                        stream_handle
-                            .add_vertices(
-                                StreamedQuad::default()
-                                .from_pos_and_size(
-                                    vec2::new(
-                                        center.x - size.x / 2.0,
-                                        center.y - size.y / 2.0
-                                    ),
-                                    *size
-                                )
-                                .color(ubvec4::new(255, 255, 255, 255))
-                                .tex_free_form(
-                                    vec2::new(0.0, 0.0),
-                                    vec2::new(1.0, 0.0),
-                                    vec2::new(1.0, 1.0),
-                                    vec2::new(0.0, 1.0),
-                                )
-                                .into()
-                            );
-                    }),
+                    &[StreamedQuad::default()
+                        .from_pos_and_size(
+                            vec2::new(center.x - size.x / 2.0, center.y - size.y / 2.0),
+                            *size,
+                        )
+                        .color(ubvec4::new(255, 255, 255, 255))
+                        .tex_free_form(
+                            vec2::new(0.0, 0.0),
+                            vec2::new(1.0, 0.0),
+                            vec2::new(1.0, 1.0),
+                            vec2::new(0.0, 1.0),
+                        )],
                     state,
+                    texture.into(),
                 );
             }
 
@@ -661,43 +647,23 @@ pub fn render_texture_for_ui(
                 state: State,
                 texture: &TextureContainer,
             ) {
-                stream_handle.render_quads(
-                    hi_closure!([
-                        center: &vec2,
-                        size: &vec2,
-                        uv: &Option<(vec2, vec2, vec2, vec2)>,
-                        texture: &TextureContainer
-                    ], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                        stream_handle.set_texture(texture);
-                        let quad =
-                            StreamedQuad::default()
-                                .from_pos_and_size(
-                                    vec2::new(
-                                        center.x - size.x / 2.0,
-                                        center.y - size.y / 2.0
-                                    ),
-                                    *size
-                                )
-                                .color(ubvec4::new(255, 255, 255, 255));
-                        let quad = if let Some((tl, tr, br, bl)) = *uv {
-                                quad.tex_free_form(
-                                    tl, tr, br, bl
-                                )
-                            } else {
-                                quad.tex_free_form(
-                                    vec2::new(0.0, 0.0),
-                                    vec2::new(1.0, 0.0),
-                                    vec2::new(1.0, 1.0),
-                                    vec2::new(0.0, 1.0),
-                                )
-                            };
-                        stream_handle
-                            .add_vertices(
-                                quad.into()
-                            );
-                    }),
-                    state,
-                );
+                let quad = StreamedQuad::default()
+                    .from_pos_and_size(
+                        vec2::new(center.x - size.x / 2.0, center.y - size.y / 2.0),
+                        *size,
+                    )
+                    .color(ubvec4::new(255, 255, 255, 255));
+                let quad = if let Some((tl, tr, br, bl)) = *uv {
+                    quad.tex_free_form(tl, tr, br, bl)
+                } else {
+                    quad.tex_free_form(
+                        vec2::new(0.0, 0.0),
+                        vec2::new(1.0, 0.0),
+                        vec2::new(1.0, 1.0),
+                        vec2::new(0.0, 1.0),
+                    )
+                };
+                stream_handle.render_quads(&[quad], state, texture.into());
             }
 
             render_rect(

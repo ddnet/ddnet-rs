@@ -212,7 +212,7 @@ fn render_ui_prepared(
 
             state.blend(BlendType::Additive);
             state.wrap(WrapType::Clamp);
-            stream_handle.render_triangles(hi_closure!(
+            stream_handle.stream_triangles(hi_closure!(
                 [
                     textures: &mut HashMap<TextureId, TextureContainer>,
                     mesh: &egui::Mesh

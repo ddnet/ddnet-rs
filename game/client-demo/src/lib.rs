@@ -38,13 +38,13 @@ use graphics::{
     graphics::graphics::Graphics,
     handles::{
         canvas::canvas::{GraphicsCanvasHandle, GraphicsCanvasMode, OffscreenCanvas},
-        stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
+        stream::stream::GraphicsStreamHandle,
         stream_types::StreamedQuad,
+        texture::texture::TextureType,
     },
 };
 use graphics_backend::backend::GraphicsBackend;
 use graphics_types::rendering::{BlendType, ColorMaskMode, State};
-use hiarc::hi_closure;
 use math::math::vector::{ffixed, ubvec4, vec2};
 use pool::datatypes::{
     PoolBTreeMap, PoolFxLinkedHashMap, PoolFxLinkedHashSet, PoolVec, PoolVecDeque,
@@ -911,32 +911,20 @@ impl DemoViewerImpl {
             let rect = &rect;
             let offscreen_canvas = &self.data.offscreen_canvas;
             self.data.stream_handle.render_quads(
-                hi_closure!([
-                    rect: &Rect,
-                    offscreen_canvas: &OffscreenCanvas
-                ], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                    stream_handle.set_offscreen_attachment_texture(offscreen_canvas);
-                    stream_handle
-                        .add_vertices(
-                            StreamedQuad::default().from_pos_and_size(
-                                vec2::new(
-                                    rect.left_top().x,
-                                    rect.left_top().y
-                                ),
-                                vec2::new(rect.width(), rect.height())
-                            )
-                            .color(
-                                ubvec4::new(255, 255, 255, 255)
-                            )
-                            .tex_free_form(
-                                vec2::new(0.0, 0.0),
-                                vec2::new(1.0, 0.0),
-                                vec2::new(1.0, 1.0),
-                                vec2::new(0.0, 1.0),
-                            ).into()
-                        );
-                }),
+                &[StreamedQuad::default()
+                    .from_pos_and_size(
+                        vec2::new(rect.left_top().x, rect.left_top().y),
+                        vec2::new(rect.width(), rect.height()),
+                    )
+                    .color(ubvec4::new(255, 255, 255, 255))
+                    .tex_free_form(
+                        vec2::new(0.0, 0.0),
+                        vec2::new(1.0, 0.0),
+                        vec2::new(1.0, 1.0),
+                        vec2::new(0.0, 1.0),
+                    )],
                 state,
+                TextureType::ColorAttachmentOfOffscreen(offscreen_canvas.clone()),
             );
         }
 

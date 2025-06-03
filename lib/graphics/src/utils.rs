@@ -9,6 +9,7 @@ use crate::handles::{
     canvas::canvas::GraphicsCanvasHandle,
     stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
     stream_types::StreamedQuad,
+    texture::texture::TextureType,
 };
 
 pub const DEFAULT_BLUR_RADIUS: f32 = 13.0;
@@ -33,7 +34,7 @@ fn render_blur_impl(
     if is_first {
         state.set_color_mask(ColorMaskMode::WriteColorOnly);
     }
-    stream_handle.render_quads(
+    stream_handle.stream_quads(
         hi_closure!([is_hori: bool, blur_radius: f32, blur_mix_length: f32, is_last_iter: bool, blur_color: &vec4], |mut stream_handle: QuadStreamHandle<'_>| -> () {
             stream_handle.set_color_attachment_texture();
             stream_handle.set_render_mode(RenderMode::Blur {
@@ -75,22 +76,17 @@ fn render_blur_impl(
         state.set_color_mask(ColorMaskMode::WriteColorOnly);
     }
     stream_handle.render_quads(
-        hi_closure!([], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-            stream_handle.set_color_attachment_texture();
-            stream_handle.add_vertices(
-                StreamedQuad::default()
-                    .from_pos_and_size(vec2::new(0.0, 0.0), vec2::new(1.0, 1.0))
-                    .tex_free_form(
-                        vec2::new(0.0, 0.0),
-                        vec2::new(1.0, 0.0),
-                        vec2::new(1.0, 1.0),
-                        vec2::new(0.0, 1.0),
-                    )
-                    .colorf(vec4::new(1.0, 1.0, 1.0, 1.0))
-                    .into(),
-            );
-        }),
+        &[StreamedQuad::default()
+            .from_pos_and_size(vec2::new(0.0, 0.0), vec2::new(1.0, 1.0))
+            .tex_free_form(
+                vec2::new(0.0, 0.0),
+                vec2::new(1.0, 0.0),
+                vec2::new(1.0, 1.0),
+                vec2::new(0.0, 1.0),
+            )
+            .colorf(vec4::new(1.0, 1.0, 1.0, 1.0))],
         state,
+        TextureType::ColorAttachmentOfPreviousPass,
     );
 
     backend_handle.next_switch_pass();
@@ -164,22 +160,17 @@ pub fn render_swapped_frame(
     state.blend(BlendType::None);
 
     stream_handle.render_quads(
-        hi_closure!([], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-            stream_handle.set_color_attachment_texture();
-            stream_handle.add_vertices(
-                StreamedQuad::default()
-                    .from_pos_and_size(vec2::new(0.0, 0.0), vec2::new(1.0, 1.0))
-                    .tex_free_form(
-                        vec2::new(0.0, 0.0),
-                        vec2::new(1.0, 0.0),
-                        vec2::new(1.0, 1.0),
-                        vec2::new(0.0, 1.0),
-                    )
-                    .colorf(vec4::new(1.0, 1.0, 1.0, 1.0))
-                    .into(),
-            );
-        }),
+        &[StreamedQuad::default()
+            .from_pos_and_size(vec2::new(0.0, 0.0), vec2::new(1.0, 1.0))
+            .tex_free_form(
+                vec2::new(0.0, 0.0),
+                vec2::new(1.0, 0.0),
+                vec2::new(1.0, 1.0),
+                vec2::new(0.0, 1.0),
+            )
+            .colorf(vec4::new(1.0, 1.0, 1.0, 1.0))],
         state,
+        TextureType::ColorAttachmentOfPreviousPass,
     );
 
     if let Some(dynamic_viewport) = dynamic_viewport {

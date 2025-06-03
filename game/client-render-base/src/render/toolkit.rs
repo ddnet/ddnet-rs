@@ -18,7 +18,7 @@ use graphics::{
     graphics::graphics::Graphics,
     handles::{
         quad_container::quad_container::QuadContainer,
-        stream::stream::{GraphicsStreamHandle, LinesStreamHandle, StreamedSprites},
+        stream::stream::{GraphicsStreamHandle, StreamedSprites},
         stream_types::StreamedLine,
     },
     quad_container::Quad,
@@ -224,25 +224,16 @@ impl ToolkitRender {
         hook_collision: &HookCollisionLine,
         base_state: State,
     ) {
-        self.stream_handle.render_lines(
-            hi_closure!(
-                [hook_collision: &HookCollisionLine],
-                    |mut stream_handle: LinesStreamHandle<'_>| -> () {
-                    let mut line = StreamedLine::new().with_color(match hook_collision.color {
-                        HookCollisionLineColor::Nothing => ubvec4::new(255, 0, 0, 255),
-                        HookCollisionLineColor::Player => ubvec4::new(255, 255, 0, 255),
-                        HookCollisionLineColor::Hookable => ubvec4::new(100, 255, 100, 255),
-                        HookCollisionLineColor::Unhookable => ubvec4::new(255, 0, 0, 255),
-                        HookCollisionLineColor::Custom(color) => color,
-                    });
-                    line = line.from_pos(
-                        [hook_collision.start, hook_collision.end]
-                    );
-                    stream_handle.add_vertices(line.into());
-                }
-            ),
-            base_state,
-        );
+        let line = StreamedLine::new()
+            .with_color(match hook_collision.color {
+                HookCollisionLineColor::Nothing => ubvec4::new(255, 0, 0, 255),
+                HookCollisionLineColor::Player => ubvec4::new(255, 255, 0, 255),
+                HookCollisionLineColor::Hookable => ubvec4::new(100, 255, 100, 255),
+                HookCollisionLineColor::Unhookable => ubvec4::new(255, 0, 0, 255),
+                HookCollisionLineColor::Custom(color) => color,
+            })
+            .from_pos([hook_collision.start, hook_collision.end]);
+        self.stream_handle.render_lines(&[line], base_state);
     }
 
     pub fn render_hook(

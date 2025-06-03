@@ -257,7 +257,7 @@ impl RenderTools {
         color: &ubvec4,
         state: State,
     ) {
-        stream_handle.render_quads(
+        stream_handle.stream_quads(
             hi_closure!([
                 pos: &vec2,
                 radius: f32,
@@ -308,33 +308,15 @@ impl RenderTools {
         texture: Option<&TextureContainer>,
     ) {
         stream_handle.render_quads(
-            hi_closure!([
-                center: &vec2,
-                size: &vec2,
-                color: &ubvec4,
-                texture: Option<&'a TextureContainer>
-            ], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                if let Some(texture) = texture {
-                    stream_handle.set_texture(texture);
-                }
-                stream_handle
-                    .add_vertices(
-                        StreamedQuad::default()
-                            .from_pos_and_size(
-                                vec2::new(
-                                    center.x - size.x / 2.0,
-                                    center.y - size.y / 2.0
-                                ),
-                                *size
-                            )
-                            .color(
-                                *color
-                            )
-                            .tex_default()
-                            .into()
-                    );
-            }),
+            &[StreamedQuad::default()
+                .from_pos_and_size(
+                    vec2::new(center.x - size.x / 2.0, center.y - size.y / 2.0),
+                    *size,
+                )
+                .color(*color)
+                .tex_default()],
             state,
+            texture.into(),
         );
     }
 
@@ -344,21 +326,6 @@ impl RenderTools {
         state: State,
         texture: Option<&TextureContainer>,
     ) {
-        let quad = &quad;
-        stream_handle.render_quads(
-            hi_closure!([
-                quad: &StreamedQuad,
-                texture: Option<&'a TextureContainer>
-            ], |mut stream_handle: QuadStreamHandle<'_>| -> () {
-                if let Some(texture) = texture {
-                    stream_handle.set_texture(texture);
-                }
-                stream_handle
-                    .add_vertices(
-                        (*quad).into()
-                    );
-            }),
-            state,
-        );
+        stream_handle.render_quads(&[quad], state, texture.into());
     }
 }
