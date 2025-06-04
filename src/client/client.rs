@@ -3739,8 +3739,8 @@ impl AppWithGraphics for ClientNativeImpl {
         }
 
         // destroy everything
-        config_fs::save(&self.config.engine, &self.io);
-        game_config_fs::fs::save(&self.config.game, &self.io);
+        config_fs::save(&self.config.engine, &self.io.clone().into());
+        game_config_fs::fs::save(&self.config.game, &self.io.clone().into());
     }
 
     fn focus_changed(&mut self, _focused: bool) {
