@@ -81,6 +81,7 @@ use graphics_backend::{
     backend::{
         GraphicsBackend, GraphicsBackendBase, GraphicsBackendIoLoading, GraphicsBackendLoading,
     },
+    utils::{AppWithGraphics, GraphicsApp},
     window::BackendWindow,
 };
 
@@ -118,9 +119,9 @@ use math::math::{
 use native::{
     input::InputEventHandler,
     native::{
-        app::NativeApp, FromNativeImpl, FromNativeLoadingImpl, KeyCode, Native,
-        NativeCreateOptions, NativeDisplayBackend, NativeImpl, NativeWindowMonitorDetails,
-        NativeWindowOptions, PhysicalKey, PhysicalSize, WindowEvent, WindowMode,
+        app::NativeApp, FromNativeLoadingImpl, KeyCode, Native, NativeCreateOptions,
+        NativeDisplayBackend, NativeImpl, NativeWindowMonitorDetails, PhysicalKey, PhysicalSize,
+        WindowEvent, WindowMode,
     },
 };
 use network::network::types::{NetworkInOrderChannel, NetworkServerCertModeResult};
@@ -289,7 +290,7 @@ pub fn ddnet_main(
         width: config_wnd.window_width,
         height: config_wnd.window_height,
     };
-    Native::run_loop::<ClientNativeImpl, _>(
+    Native::run_loop::<GraphicsApp<ClientNativeImpl>, _>(
         client,
         app,
         NativeCreateOptions {
@@ -2640,7 +2641,7 @@ impl ClientNativeImpl {
     }
 }
 
-impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
+impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNativeImpl> {
     fn new(
         mut loading: ClientNativeLoadingImpl,
         native: &mut dyn NativeImpl,
@@ -3060,7 +3061,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
 
         local_console.ui.ui_state.is_ui_open = false;
 
-        let mut client = Self {
+        let mut client = GraphicsApp::new(ClientNativeImpl {
             menu_map,
 
             cur_time,
@@ -3119,7 +3120,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
 
             // pools & helpers
             string_pool: Pool::with_sized(256, || String::with_capacity(256)), // TODO: random values rn
-        };
+        });
 
         client.handle_console_events(native);
         benchmark.bench("finish init of client");
@@ -3228,7 +3229,15 @@ impl InputEventHandler for ClientNativeImpl {
     }
 }
 
-impl FromNativeImpl for ClientNativeImpl {
+impl AppWithGraphics for ClientNativeImpl {
+    fn get_graphics_data(&mut self) -> (&Graphics, &GraphicsBackend, &mut ConfigEngine) {
+        (
+            &self.graphics,
+            &self.graphics_backend,
+            &mut self.config.engine,
+        )
+    }
+
     fn run(&mut self, native: &mut dyn NativeImpl) {
         self.inp_manager.collect_events();
 
@@ -3721,67 +3730,6 @@ impl FromNativeImpl for ClientNativeImpl {
         self.inp_manager.new_frame();
     }
 
-    fn resized(&mut self, native: &mut dyn NativeImpl, new_width: u32, new_height: u32) {
-        let window_props = self.graphics_backend.resized(
-            &self.graphics.backend_handle.backend_cmds,
-            self.graphics.stream_handle.stream_data(),
-            native,
-            new_width,
-            new_height,
-        );
-        self.graphics.resized(window_props);
-        // update config variables
-        let wnd = &mut self.config.engine.wnd;
-        let window = native.borrow_window();
-        if wnd.fullscreen {
-            wnd.fullscreen_width = new_width;
-            wnd.fullscreen_height = new_height;
-        } else {
-            let scale_factor = window.scale_factor();
-            wnd.window_width = new_width as f64 / scale_factor;
-            wnd.window_height = new_height as f64 / scale_factor;
-        }
-        if let Some(monitor) = window.current_monitor() {
-            wnd.refresh_rate_mhz = monitor
-                .refresh_rate_millihertz()
-                .unwrap_or(wnd.refresh_rate_mhz);
-        }
-    }
-
-    fn window_options_changed(&mut self, wnd: NativeWindowOptions) {
-        let config_wnd = &mut self.config.engine.wnd;
-        config_wnd.fullscreen = wnd.mode.is_fullscreen();
-        config_wnd.decorated = wnd.decorated;
-        config_wnd.maximized = wnd.maximized;
-        match wnd.mode {
-            WindowMode::Fullscreen {
-                resolution,
-                fallback_window,
-            } => {
-                if let Some(resolution) = resolution {
-                    config_wnd.fullscreen_width = resolution.width;
-                    config_wnd.fullscreen_height = resolution.height;
-                }
-
-                config_wnd.window_width = fallback_window.width;
-                config_wnd.window_height = fallback_window.height;
-            }
-            WindowMode::Windowed(pixels) => {
-                config_wnd.window_width = pixels.width;
-                config_wnd.window_height = pixels.height;
-            }
-        }
-        config_wnd.refresh_rate_mhz = wnd.refresh_rate_milli_hertz;
-        config_wnd.monitor = wnd
-            .monitor
-            .map(|monitor| ConfigMonitor {
-                name: monitor.name,
-                width: monitor.size.width,
-                height: monitor.size.height,
-            })
-            .unwrap_or_default();
-    }
-
     fn destroy(mut self) {
         #[cfg(feature = "alloc_track")]
         track_report();
@@ -3810,18 +3758,5 @@ impl FromNativeImpl for ClientNativeImpl {
         if let EditorState::Open(editor) = &mut self.editor {
             editor.file_hovered(file);
         }
-    }
-
-    fn window_created_ntfy(&mut self, native: &mut dyn NativeImpl) -> anyhow::Result<()> {
-        self.graphics_backend.window_created_ntfy(
-            BackendWindow::Winit {
-                window: native.borrow_window(),
-            },
-            &self.config.engine.dbg,
-        )
-    }
-
-    fn window_destroyed_ntfy(&mut self, _native: &mut dyn NativeImpl) -> anyhow::Result<()> {
-        self.graphics_backend.window_destroyed_ntfy()
     }
 }

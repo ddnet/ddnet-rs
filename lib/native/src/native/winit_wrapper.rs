@@ -632,7 +632,10 @@ impl WinitWrapper {
                     window,
                 } = self
                 {
-                    if !native_user.raw_window_event(&window.window, &event) {
+                    if !native_user
+                        .as_mut()
+                        .raw_window_event(&window.window, &event)
+                    {
                         match event {
                             winit::event::WindowEvent::Resized(new_size) => {
                                 native_user.resized(window, new_size.width, new_size.height);
@@ -695,17 +698,16 @@ impl WinitWrapper {
                             } => {
                                 if !event.repeat {
                                     match event.state {
-                                        winit::event::ElementState::Pressed => native_user
-                                            .key_down(
+                                        winit::event::ElementState::Pressed => {
+                                            native_user.as_mut().key_down(
                                                 &window.window,
                                                 &device_id,
                                                 event.physical_key,
-                                            ),
-                                        winit::event::ElementState::Released => native_user.key_up(
-                                            &window.window,
-                                            &device_id,
-                                            event.physical_key,
-                                        ),
+                                            )
+                                        }
+                                        winit::event::ElementState::Released => native_user
+                                            .as_mut()
+                                            .key_up(&window.window, &device_id, event.physical_key),
                                     }
                                 }
                             }
@@ -716,7 +718,7 @@ impl WinitWrapper {
                                 position,
                             } => {
                                 window.mouse.cursor_main_pos = (position.x, position.y);
-                                native_user.mouse_move(
+                                native_user.as_mut().mouse_move(
                                     &window.window,
                                     &device_id,
                                     position.x,
@@ -732,7 +734,7 @@ impl WinitWrapper {
                                 delta,
                                 phase: _,
                                 ..
-                            } => native_user.scroll(
+                            } => native_user.as_mut().scroll(
                                 &window.window,
                                 &device_id,
                                 window.mouse.cursor_main_pos.0,
@@ -744,20 +746,24 @@ impl WinitWrapper {
                                 state,
                                 button,
                             } => match state {
-                                winit::event::ElementState::Pressed => native_user.mouse_down(
-                                    &window.window,
-                                    &device_id,
-                                    window.mouse.cursor_main_pos.0,
-                                    window.mouse.cursor_main_pos.1,
-                                    &button,
-                                ),
-                                winit::event::ElementState::Released => native_user.mouse_up(
-                                    &window.window,
-                                    &device_id,
-                                    window.mouse.cursor_main_pos.0,
-                                    window.mouse.cursor_main_pos.1,
-                                    &button,
-                                ),
+                                winit::event::ElementState::Pressed => {
+                                    native_user.as_mut().mouse_down(
+                                        &window.window,
+                                        &device_id,
+                                        window.mouse.cursor_main_pos.0,
+                                        window.mouse.cursor_main_pos.1,
+                                        &button,
+                                    )
+                                }
+                                winit::event::ElementState::Released => {
+                                    native_user.as_mut().mouse_up(
+                                        &window.window,
+                                        &device_id,
+                                        window.mouse.cursor_main_pos.0,
+                                        window.mouse.cursor_main_pos.1,
+                                        &button,
+                                    )
+                                }
                             },
                             winit::event::WindowEvent::TouchpadPressure {
                                 device_id: _,
@@ -770,14 +776,14 @@ impl WinitWrapper {
                                 value: _,
                             } => {}
                             winit::event::WindowEvent::Touch(touch) => {
-                                native_user.mouse_down(
+                                native_user.as_mut().mouse_down(
                                     &window.window,
                                     &touch.device_id,
                                     touch.location.x,
                                     touch.location.y,
                                     &winit::event::MouseButton::Left,
                                 );
-                                native_user.mouse_up(
+                                native_user.as_mut().mouse_up(
                                     &window.window,
                                     &touch.device_id,
                                     touch.location.x,
@@ -879,7 +885,7 @@ impl WinitWrapper {
                         }
                         winit::event::DeviceEvent::MouseMotion {
                             delta: (delta_x, delta_y),
-                        } => native_user.mouse_move(
+                        } => native_user.as_mut().mouse_move(
                             &window.window,
                             &device_id,
                             window.mouse.cursor_main_pos.0,

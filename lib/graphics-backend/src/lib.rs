@@ -19,6 +19,7 @@ pub mod backend_thread;
 mod backends;
 pub mod cache;
 pub mod checker;
+pub mod utils;
 pub mod window;
 
 #[cfg(test)]
