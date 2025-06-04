@@ -3,8 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use assets_splitting::game_split::Game06Part;
 use clap::Parser;
-use client_extra::game_split::Game06Part;
 use tar::Header;
 
 #[derive(Parser, Debug)]
@@ -79,7 +79,7 @@ fn main() {
         })
         .unwrap();
     let converted =
-        client_extra::game_split::split_06_game(img.data, img.width, img.height).unwrap();
+        assets_splitting::game_split::split_06_game(img.data, img.width, img.height).unwrap();
 
     let mut tar_files: HashMap<String, TarFile> = Default::default();
     let mut write_mode = if args.tar {

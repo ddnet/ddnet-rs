@@ -2,7 +2,7 @@ use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 use arrayvec::ArrayVec;
 
-use client_extra::skin_split::Skin06Part;
+use assets_splitting::skin_split::Skin06Part;
 use fixed::{types::extra::U32, FixedI64};
 use game_interface::types::{emoticons::EnumCount, render::character::TeeEye};
 use graphics::{
@@ -282,7 +282,8 @@ impl LoadSkinTexturesData {
                 mem.resize(width * height * bytes_per_pixel, Default::default());
                 &mut mem
             })?;
-        let converted = client_extra::skin_split::split_06_skin(img.data, img.width, img.height)?;
+        let converted =
+            assets_splitting::skin_split::split_06_skin(img.data, img.width, img.height)?;
         let base: PathBuf = if let Some(skin_extra_path) = skin_extra_path {
             skin_extra_path.into()
         } else {

@@ -3,8 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use assets_splitting::emoticon_split::Emoticon06Part;
 use clap::Parser;
-use client_extra::emoticon_split::Emoticon06Part;
 use tar::Header;
 
 #[derive(Parser, Debug)]
@@ -74,7 +74,8 @@ fn main() {
         })
         .unwrap();
     let converted =
-        client_extra::emoticon_split::split_06_emoticon(img.data, img.width, img.height).unwrap();
+        assets_splitting::emoticon_split::split_06_emoticon(img.data, img.width, img.height)
+            .unwrap();
 
     let mut tar_files: HashMap<String, TarFile> = Default::default();
     let mut write_mode = if args.tar {

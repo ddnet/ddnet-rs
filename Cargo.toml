@@ -60,7 +60,7 @@ members = [
     "src/skin-convert",
     "src/part-convert",
     "src/master-server",
-    "game/client-extra",
+    "game/assets-splitting",
     "game/client-map",
     "game/client-render-base",
     "game/client-render",

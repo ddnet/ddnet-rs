@@ -3,8 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use assets_splitting::ddrace_hud_split::DdraceHudPart;
 use clap::Parser;
-use client_extra::ddrace_hud_split::DdraceHudPart;
 use tar::Header;
 
 #[derive(Parser, Debug)]
@@ -74,7 +74,8 @@ fn main() {
         })
         .unwrap();
     let converted =
-        client_extra::ddrace_hud_split::split_ddrace_hud(img.data, img.width, img.height).unwrap();
+        assets_splitting::ddrace_hud_split::split_ddrace_hud(img.data, img.width, img.height)
+            .unwrap();
 
     let mut tar_files: HashMap<String, TarFile> = Default::default();
     let mut write_mode = if args.tar {

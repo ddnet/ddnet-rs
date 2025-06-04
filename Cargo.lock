@@ -609,6 +609,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "assets-splitting"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "async-executor"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,10 +1564,10 @@ dependencies = [
  "anyhow",
  "arrayvec 0.7.6",
  "assets-base",
+ "assets-splitting",
  "base",
  "base-io",
  "base-io-traits",
- "client-extra",
  "either",
  "fixed",
  "game-interface",
@@ -1612,13 +1619,6 @@ dependencies = [
  "sound-backend",
  "ui-base",
  "ui-generic",
-]
-
-[[package]]
-name = "client-extra"
-version = "0.1.0"
-dependencies = [
- "anyhow",
 ]
 
 [[package]]
@@ -3576,8 +3576,8 @@ dependencies = [
 name = "emoticon-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
  "tar",
 ]
@@ -3796,8 +3796,8 @@ checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
 name = "extra-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
  "tar",
 ]
@@ -4184,8 +4184,8 @@ dependencies = [
 name = "game-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
  "tar",
 ]
@@ -4999,8 +4999,8 @@ dependencies = [
 name = "hud-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
  "tar",
 ]
@@ -7487,8 +7487,8 @@ dependencies = [
 name = "part-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
  "tar",
 ]
@@ -9224,8 +9224,8 @@ checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 name = "skin-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
 ]
 

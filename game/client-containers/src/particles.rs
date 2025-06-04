@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use client_extra::particles_split::Particles06Part;
+use assets_splitting::particles_split::Particles06Part;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::texture::texture::{GraphicsTextureHandle, TextureContainer},
@@ -109,7 +109,7 @@ impl LoadParticle {
                 &mut mem
             })?;
         let converted =
-            client_extra::particles_split::split_06_particles(img.data, img.width, img.height)?;
+            assets_splitting::particles_split::split_06_particles(img.data, img.width, img.height)?;
 
         let mut insert_part = |name: &str, part: Particles06Part| -> anyhow::Result<()> {
             let file = image_utils::png::save_png_image(&part.data, part.width, part.height)?;

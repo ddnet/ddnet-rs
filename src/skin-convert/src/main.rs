@@ -1,5 +1,5 @@
+use assets_splitting::skin_split::Skin06Part;
 use clap::Parser;
-use client_extra::skin_split::Skin06Part;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -27,7 +27,7 @@ fn main() {
         })
         .unwrap();
     let converted =
-        client_extra::skin_split::split_06_skin(img.data, img.width, img.height).unwrap();
+        assets_splitting::skin_split::split_06_skin(img.data, img.width, img.height).unwrap();
 
     std::fs::create_dir_all(&args.output).unwrap();
     std::fs::create_dir_all(&(args.output.clone() + "/eyes_left")).unwrap();

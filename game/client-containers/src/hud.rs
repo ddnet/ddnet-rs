@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use client_extra::ddrace_hud_split::DdraceHudPart;
+use assets_splitting::ddrace_hud_split::DdraceHudPart;
 use game_interface::types::weapons::{EnumCount, WeaponType};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -100,7 +100,7 @@ impl LoadHud {
                 &mut mem
             })?;
         let converted =
-            client_extra::ddrace_hud_split::split_ddrace_hud(img.data, img.width, img.height)?;
+            assets_splitting::ddrace_hud_split::split_ddrace_hud(img.data, img.width, img.height)?;
 
         let mut insert_part = |name: &str, part: DdraceHudPart| -> anyhow::Result<()> {
             let file = image_utils::png::save_png_image(&part.data, part.width, part.height)?;
