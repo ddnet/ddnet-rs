@@ -13,7 +13,9 @@ use winit::{
     window::{CursorGrabMode, Fullscreen, Window, WindowAttributes},
 };
 
-use crate::native::app::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH};
+use crate::native::app::{
+    ApplicationHandlerType, NativeEventLoop, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH,
+};
 
 use super::{
     app::NativeApp, FromNativeImpl, FromNativeLoadingImpl, NativeCreateOptions, NativeImpl,
@@ -387,7 +389,7 @@ impl WinitWrapper {
         native_options: &NativeCreateOptions,
         app: NativeApp,
         loading: &mut L,
-    ) -> anyhow::Result<EventLoop<NativeApp>>
+    ) -> anyhow::Result<NativeEventLoop>
     where
         L: Sized,
         F: FromNativeLoadingImpl<L>,
@@ -457,7 +459,7 @@ impl WinitWrapper {
             None,
         }
 
-        impl<F, L> ApplicationHandler<NativeApp> for NativeUser<'_, F, L>
+        impl<F, L> ApplicationHandler<ApplicationHandlerType> for NativeUser<'_, F, L>
         where
             F: FromNativeImpl + FromNativeLoadingImpl<L> + 'static,
         {

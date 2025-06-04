@@ -99,7 +99,7 @@ fn main() {
     }
     env_logger::init();
     #[cfg(not(target_os = "android"))]
-    main_impl(())
+    main_impl(Default::default())
 }
 
 #[allow(dead_code)]
