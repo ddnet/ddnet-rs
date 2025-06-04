@@ -71,7 +71,7 @@ use client_ui::{
     utils::render_tee_for_ui,
 };
 use command_parser::parser::ParserCache;
-use config::config::{ConfigEngine, ConfigMonitor};
+use config::config::ConfigEngine;
 use demo::recorder::DemoRecorder;
 use editor::editor::{EditorInterface, EditorResult};
 use egui::{CursorIcon, FontDefinitions};
@@ -81,7 +81,10 @@ use graphics_backend::{
     backend::{
         GraphicsBackend, GraphicsBackendBase, GraphicsBackendIoLoading, GraphicsBackendLoading,
     },
-    utils::{AppWithGraphics, GraphicsApp},
+    utils::{
+        client_window_config_to_native_window_options, client_window_props_changed_update_config,
+        AppWithGraphics, GraphicsApp,
+    },
     window::BackendWindow,
 };
 
@@ -120,8 +123,7 @@ use native::{
     input::InputEventHandler,
     native::{
         app::NativeApp, FromNativeLoadingImpl, KeyCode, Native, NativeCreateOptions,
-        NativeDisplayBackend, NativeImpl, NativeWindowMonitorDetails, PhysicalKey, PhysicalSize,
-        WindowEvent, WindowMode,
+        NativeDisplayBackend, NativeImpl, PhysicalKey, WindowEvent,
     },
 };
 use network::network::types::{NetworkInOrderChannel, NetworkServerCertModeResult};
@@ -286,10 +288,6 @@ pub fn ddnet_main(
         local_console_builder,
         has_startup_errors,
     };
-    let logical_pixels = native::native::Pixels {
-        width: config_wnd.window_width,
-        height: config_wnd.window_height,
-    };
     Native::run_loop::<GraphicsApp<ClientNativeImpl>, _>(
         client,
         app,
@@ -299,34 +297,7 @@ pub fn ddnet_main(
             sys: &sys_time,
             dbg_input,
             start_arguments,
-            window: native::native::NativeWindowOptions {
-                mode: if config_wnd.fullscreen {
-                    WindowMode::Fullscreen {
-                        resolution: (config_wnd.fullscreen_width != 0
-                            && config_wnd.fullscreen_height != 0)
-                            .then_some(native::native::Pixels {
-                                width: config_wnd.fullscreen_width,
-                                height: config_wnd.fullscreen_height,
-                            }),
-                        fallback_window: logical_pixels,
-                    }
-                } else {
-                    WindowMode::Windowed(logical_pixels)
-                },
-                decorated: config_wnd.decorated,
-                maximized: config_wnd.maximized,
-                refresh_rate_milli_hertz: config_wnd.refresh_rate_mhz,
-                monitor: (!config_wnd.monitor.name.is_empty()
-                    && config_wnd.monitor.width != 0
-                    && config_wnd.monitor.height != 0)
-                    .then_some(NativeWindowMonitorDetails {
-                        name: config_wnd.monitor.name,
-                        size: PhysicalSize {
-                            width: config_wnd.monitor.width,
-                            height: config_wnd.monitor.height,
-                        },
-                    }),
-            },
+            window: client_window_config_to_native_window_options(config_wnd),
         },
     )?;
     Ok(())
@@ -547,38 +518,9 @@ impl ClientNativeImpl {
     fn on_window_change(&mut self, native: &mut dyn NativeImpl) {
         let config_wnd = &self.config.engine.wnd;
 
-        let logical_pixels = native::native::Pixels {
-            width: config_wnd.window_width,
-            height: config_wnd.window_height,
-        };
-        if let Err(err) = native.set_window_config(native::native::NativeWindowOptions {
-            mode: if config_wnd.fullscreen {
-                WindowMode::Fullscreen {
-                    resolution: (config_wnd.fullscreen_width != 0
-                        && config_wnd.fullscreen_height != 0)
-                        .then_some(native::native::Pixels {
-                            width: config_wnd.fullscreen_width,
-                            height: config_wnd.fullscreen_height,
-                        }),
-                    fallback_window: logical_pixels,
-                }
-            } else {
-                WindowMode::Windowed(logical_pixels)
-            },
-            decorated: config_wnd.decorated,
-            maximized: config_wnd.maximized,
-            refresh_rate_milli_hertz: config_wnd.refresh_rate_mhz,
-            monitor: (!config_wnd.monitor.name.is_empty()
-                && config_wnd.monitor.width != 0
-                && config_wnd.monitor.height != 0)
-                .then_some(NativeWindowMonitorDetails {
-                    name: config_wnd.monitor.name.clone(),
-                    size: PhysicalSize {
-                        width: config_wnd.monitor.width,
-                        height: config_wnd.monitor.height,
-                    },
-                }),
-        }) {
+        if let Err(err) = native.set_window_config(client_window_config_to_native_window_options(
+            config_wnd.clone(),
+        )) {
             log::warn!("Failed to apply window settings: {err}");
             self.notifications
                 .add_err(err.to_string(), Duration::from_secs(10));
@@ -2681,42 +2623,13 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
 
         // read window props
         let wnd = native.window_options();
-        let config_wnd = &mut loading.config_engine.wnd;
-        config_wnd.fullscreen = wnd.mode.is_fullscreen();
-        config_wnd.decorated = wnd.decorated;
-        config_wnd.maximized = wnd.maximized;
-        match wnd.mode {
-            WindowMode::Fullscreen {
-                resolution,
-                fallback_window,
-            } => {
-                if let Some(resolution) = resolution {
-                    config_wnd.fullscreen_width = resolution.width;
-                    config_wnd.fullscreen_height = resolution.height;
-                }
-
-                config_wnd.window_width = fallback_window.width;
-                config_wnd.window_height = fallback_window.height;
-            }
-            WindowMode::Windowed(pixels) => {
-                config_wnd.window_width = pixels.width;
-                config_wnd.window_height = pixels.height;
-            }
-        }
-        config_wnd.refresh_rate_mhz = wnd.refresh_rate_milli_hertz;
-        config_wnd.monitor = wnd
-            .monitor
-            .map(|monitor| ConfigMonitor {
-                name: monitor.name,
-                width: monitor.size.width,
-                height: monitor.size.height,
-            })
-            .unwrap_or_default();
+        let refresh_rate_milli_hertz = wnd.refresh_rate_milli_hertz;
+        client_window_props_changed_update_config(&mut loading.config_engine, wnd);
 
         // do first time setup
         if first_time_setup {
-            loading.config_game.cl.refresh_rate = if wnd.refresh_rate_milli_hertz != 0 {
-                (wnd.refresh_rate_milli_hertz as u64) * 4 / 1000
+            loading.config_game.cl.refresh_rate = if refresh_rate_milli_hertz != 0 {
+                (refresh_rate_milli_hertz as u64) * 4 / 1000
             } else {
                 let fallback_refresh_rate = native_monitors
                     .iter()

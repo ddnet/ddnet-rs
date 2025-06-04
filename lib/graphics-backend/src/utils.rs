@@ -3,11 +3,14 @@ use std::{
     path::PathBuf,
 };
 
-use config::config::{ConfigEngine, ConfigMonitor};
+use config::config::{ConfigEngine, ConfigMonitor, ConfigWindow};
 use graphics::graphics::graphics::Graphics;
 use native::{
     input::InputEventHandler,
-    native::{FromNativeImpl, NativeImpl, NativeWindowOptions, WindowMode},
+    native::{
+        FromNativeImpl, NativeImpl, NativeWindowMonitorDetails, NativeWindowOptions, PhysicalSize,
+        WindowMode,
+    },
 };
 
 use crate::{backend::GraphicsBackend, window::BackendWindow};
@@ -105,6 +108,40 @@ pub fn client_graphics_window_destroyed_ntfy(
     _native: &mut dyn NativeImpl,
 ) -> anyhow::Result<()> {
     graphics_backend.window_destroyed_ntfy()
+}
+
+pub fn client_window_config_to_native_window_options(config: ConfigWindow) -> NativeWindowOptions {
+    let logical_pixels = native::native::Pixels {
+        width: config.window_width,
+        height: config.window_height,
+    };
+    NativeWindowOptions {
+        mode: if config.fullscreen {
+            WindowMode::Fullscreen {
+                resolution: (config.fullscreen_width != 0 && config.fullscreen_height != 0)
+                    .then_some(native::native::Pixels {
+                        width: config.fullscreen_width,
+                        height: config.fullscreen_height,
+                    }),
+                fallback_window: logical_pixels,
+            }
+        } else {
+            WindowMode::Windowed(logical_pixels)
+        },
+        decorated: config.decorated,
+        maximized: config.maximized,
+        refresh_rate_milli_hertz: config.refresh_rate_mhz,
+        monitor: (!config.monitor.name.is_empty()
+            && config.monitor.width != 0
+            && config.monitor.height != 0)
+            .then_some(NativeWindowMonitorDetails {
+                name: config.monitor.name,
+                size: PhysicalSize {
+                    width: config.monitor.width,
+                    height: config.monitor.height,
+                },
+            }),
+    }
 }
 
 pub trait AppWithGraphics {
