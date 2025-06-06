@@ -1,6 +1,9 @@
 use std::{borrow::Borrow, cell::Cell, fmt::Debug, ops::IndexMut, time::Duration};
 
-use crate::map::map_buffered::{MapRenderLayer, MapRenderTextOverlayType};
+use crate::map::{
+    map_buffered::{MapRenderLayer, MapRenderTextOverlayType},
+    render_pipe::RenderPipelinePhysics,
+};
 
 use super::{
     map_buffered::{
@@ -1227,7 +1230,7 @@ impl RenderMap {
     fn render_design_impl<'a>(
         &self,
         map: &MapVisual,
-        pipe: &mut RenderPipelineBase,
+        pipe: &RenderPipelineBase,
         render_layers: impl Iterator<Item = &'a MapRenderLayer>,
         layer_ty: RenderLayerType,
     ) {
@@ -1270,30 +1273,30 @@ impl RenderMap {
 
     pub fn render_physics_layers(
         &self,
-        pipe: &mut RenderPipelineBase,
+        pipe: &mut RenderPipelinePhysics,
         render_infos: &[MapPhysicsRenderInfo],
     ) {
         for render_info in render_infos {
             self.render_physics_layer(
-                &pipe.map.animations,
+                &pipe.base.map.animations,
                 pipe.entities_container,
                 pipe.entities_key,
                 pipe.physics_group_name,
-                &pipe.map.groups.physics.layers[render_info.layer_index],
-                pipe.camera,
-                pipe.cur_time,
-                pipe.cur_anim_time,
-                pipe.include_last_anim_point,
-                pipe.config.physics_layer_opacity,
+                &pipe.base.map.groups.physics.layers[render_info.layer_index],
+                pipe.base.camera,
+                pipe.base.cur_time,
+                pipe.base.cur_anim_time,
+                pipe.base.include_last_anim_point,
+                pipe.base.config.physics_layer_opacity,
                 None,
             );
         }
     }
 
-    pub fn render_background(&self, pipe: &mut RenderPipeline) {
+    pub fn render_background(&self, pipe: &RenderPipeline) {
         self.render_design_impl(
             pipe.base.map,
-            &mut pipe.base,
+            &pipe.base,
             pipe.buffered_map.render.background_render_layers.iter(),
             RenderLayerType::Background,
         );
@@ -1308,10 +1311,10 @@ impl RenderMap {
         );
     }
 
-    pub fn render_foreground(&self, pipe: &mut RenderPipeline) {
+    pub fn render_foreground(&self, pipe: &RenderPipeline) {
         self.render_design_impl(
             pipe.base.map,
-            &mut pipe.base,
+            &pipe.base,
             pipe.buffered_map.render.foreground_render_layers.iter(),
             RenderLayerType::Foreground,
         );
@@ -1327,16 +1330,16 @@ impl RenderMap {
     }
 
     /// render the whole map but only with design layers at full opacity
-    pub fn render_full_design(&self, map: &MapVisual, pipe: &mut RenderPipeline) {
+    pub fn render_full_design(&self, map: &MapVisual, pipe: &RenderPipeline) {
         self.render_design_impl(
             map,
-            &mut pipe.base,
+            &pipe.base,
             pipe.buffered_map.render.background_render_layers.iter(),
             RenderLayerType::Background,
         );
         self.render_design_impl(
             map,
-            &mut pipe.base,
+            &pipe.base,
             pipe.buffered_map.render.foreground_render_layers.iter(),
             RenderLayerType::Foreground,
         );

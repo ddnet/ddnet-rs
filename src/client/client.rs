@@ -24,7 +24,6 @@ use client_console::console::{
 };
 use client_containers::{
     container::ContainerLoadOptions,
-    entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
     skins::{SkinContainer, SKIN_CONTAINER_PATH},
 };
 use client_demo::{DemoVideoEncodeProperties, DemoViewer, DemoViewerSettings, EncoderSettings};
@@ -389,7 +388,6 @@ struct ClientNativeImpl {
 
     editor: EditorState,
 
-    entities_container: EntitiesContainer,
     skin_container: SkinContainer,
     render_tee: RenderTee,
 
@@ -546,7 +544,7 @@ impl ClientNativeImpl {
             let render = render.try_get().unwrap();
             render.render.render_full_design(
                 &render.data.buffered_map.map_visual,
-                &mut RenderPipeline {
+                &RenderPipeline {
                     base: RenderPipelineBase {
                         map: &render.data.buffered_map.map_visual,
                         config: &ConfigMap::default(),
@@ -558,9 +556,6 @@ impl ClientNativeImpl {
                         ),
                         include_last_anim_point: false,
                         camera: &Camera::new(vec2::new(21.0, 15.0), 1.0, None, true),
-                        entities_container: &mut self.entities_container,
-                        entities_key: None,
-                        physics_group_name: "vanilla",
                         map_sound_volume: self.config.game.snd.render.map_sound_volume
                             * self.config.game.snd.global_volume,
                     },
@@ -2723,24 +2718,6 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
         benchmark.bench("init of graphics");
 
         let scene = sound.scene_handle.create(Default::default());
-        let default_entities =
-            EntitiesContainer::load_default(&io, ENTITIES_CONTAINER_PATH.as_ref());
-        let entities_container = EntitiesContainer::new(
-            io.clone(),
-            thread_pool.clone(),
-            default_entities,
-            None,
-            None,
-            "entities-container",
-            &graphics,
-            &sound,
-            &scene,
-            ENTITIES_CONTAINER_PATH.as_ref(),
-            ContainerLoadOptions {
-                assume_unused: true,
-                ..Default::default()
-            },
-        );
         let default_skin = SkinContainer::load_default(&io, SKIN_CONTAINER_PATH.as_ref());
         let skin_container = SkinContainer::new(
             io.clone(),
@@ -2978,7 +2955,6 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             shared_info: loading.shared_info,
             client_info,
 
-            entities_container,
             skin_container,
             render_tee,
 

@@ -24,10 +24,6 @@ pub struct RenderPipelineBase<'a> {
     pub include_last_anim_point: bool,
     pub camera: &'a dyn CameraInterface,
 
-    pub entities_container: &'a mut EntitiesContainer,
-    pub entities_key: Option<&'a ContainerKey>,
-    pub physics_group_name: &'a str,
-
     pub map_sound_volume: f64,
 }
 
@@ -45,9 +41,6 @@ impl<'a> RenderPipeline<'a> {
         cur_anim_time: &'a Duration,
         include_last_anim_point: bool,
         camera: &'a dyn CameraInterface,
-        entities_container: &'a mut EntitiesContainer,
-        entities_key: Option<&'a ContainerKey>,
-        physics_group_name: &'a str,
         map_sound_volume: f64,
     ) -> RenderPipeline<'a> {
         RenderPipeline {
@@ -58,12 +51,34 @@ impl<'a> RenderPipeline<'a> {
                 cur_anim_time,
                 include_last_anim_point,
                 camera,
-                entities_container,
-                entities_key,
-                physics_group_name,
                 map_sound_volume,
             },
             buffered_map,
+        }
+    }
+}
+
+pub struct RenderPipelinePhysics<'a> {
+    pub base: &'a RenderPipelineBase<'a>,
+
+    pub entities_container: &'a mut EntitiesContainer,
+    pub entities_key: Option<&'a ContainerKey>,
+    pub physics_group_name: &'a str,
+}
+
+impl<'a> RenderPipelinePhysics<'a> {
+    pub fn new(
+        base: &'a RenderPipelineBase<'a>,
+        entities_container: &'a mut EntitiesContainer,
+        entities_key: Option<&'a ContainerKey>,
+        physics_group_name: &'a str,
+    ) -> RenderPipelinePhysics<'a> {
+        RenderPipelinePhysics {
+            base,
+
+            entities_container,
+            entities_key,
+            physics_group_name,
         }
     }
 }

@@ -33,7 +33,7 @@ use client_render_base::{
     map::{
         map::RenderMap,
         render_map_base::{ClientMapRender, RenderMapLoading},
-        render_pipe::{GameTimeInfo, RenderPipeline},
+        render_pipe::{GameTimeInfo, RenderPipeline, RenderPipelinePhysics},
     },
     render::{
         effects::Effects,
@@ -682,7 +682,7 @@ impl RenderGame {
         let render_map = map;
 
         // map + ingame objects
-        let mut render_pipe = RenderPipeline::new(
+        let render_pipe = RenderPipeline::new(
             &render_map.data.buffered_map.map_visual,
             &render_map.data.buffered_map,
             config_map,
@@ -690,12 +690,9 @@ impl RenderGame {
             &cur_anim_time,
             false,
             &cam,
-            &mut self.containers.entities_container,
-            camera_character_info.map(|c| c.info.entities.borrow()),
-            self.physics_group_name.as_str(),
             render_info.settings.map_sound_volume,
         );
-        render_map.render.render_background(&mut render_pipe);
+        render_map.render.render_background(&render_pipe);
         self.particles.render_group(
             ParticleGroup::ProjectileTrail,
             &mut self.containers.particles_container,
@@ -768,7 +765,7 @@ impl RenderGame {
                 phased: !local_characters_stage && !forced_non_phased_rendering,
             });
         }
-        let mut render_pipe = RenderPipeline::new(
+        let render_pipe = RenderPipeline::new(
             &render_map.data.buffered_map.map_visual,
             &render_map.data.buffered_map,
             config_map,
@@ -776,16 +773,18 @@ impl RenderGame {
             &cur_anim_time,
             false,
             &cam,
-            &mut self.containers.entities_container,
-            camera_character_info.map(|c| c.info.entities.borrow()),
-            self.physics_group_name.as_str(),
             render_info.settings.map_sound_volume,
         );
         render_map.render.render_physics_layers(
-            &mut render_pipe.base,
+            &mut RenderPipelinePhysics::new(
+                &render_pipe.base,
+                &mut self.containers.entities_container,
+                camera_character_info.map(|c| c.info.entities.borrow()),
+                self.physics_group_name.as_str(),
+            ),
             &render_map.data.buffered_map.render.physics_render_layers,
         );
-        render_map.render.render_foreground(&mut render_pipe);
+        render_map.render.render_foreground(&render_pipe);
 
         for (stage_id, stage) in render_info.stages.iter() {
             let local_characters_stage = camera_character_info
