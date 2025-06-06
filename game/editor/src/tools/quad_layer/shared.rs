@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
-use client_render_base::map::render_tools::{CanvasType, RenderTools};
+use camera::CameraInterface;
+use client_render_base::map::render_tools::RenderTools;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle,
     stream::stream::{GraphicsStreamHandle, QuadStreamHandle},
@@ -146,15 +147,8 @@ pub fn render_quad_points(
             let points = get_quad_points_animated(quad, map, map.user.render_time());
 
             let mut state = State::new();
-            RenderTools::map_canvas_of_group(
-                CanvasType::Handle(canvas_handle),
-                &mut state,
-                map.groups.user.pos.x,
-                map.groups.user.pos.y,
-                Some(&group.attr),
-                map.groups.user.zoom,
-                map.groups.user.parallax_aware_zoom,
-            );
+            map.game_camera()
+                .project(canvas_handle, &mut state, Some(&group.attr));
             let h = state.get_canvas_height() / canvas_handle.canvas_height() as f32;
             stream_handle.stream_quads(
                 hi_closure!([points: [fvec2; 5], x: f32, y: f32, h: f32, render_corner_points: bool], |mut stream_handle: QuadStreamHandle<'_>| -> () {

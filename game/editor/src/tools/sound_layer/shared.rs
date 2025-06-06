@@ -1,4 +1,5 @@
-use client_render_base::map::render_tools::{CanvasType, RenderTools};
+use camera::CameraInterface;
+use client_render_base::map::render_tools::RenderTools;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
     stream_types::StreamedQuad, texture::texture::TextureType,
@@ -76,15 +77,9 @@ pub fn render_sound_points(
             let point = get_sound_point_animated(sound, map, map.user.render_time());
 
             let mut state = State::new();
-            RenderTools::map_canvas_of_group(
-                CanvasType::Handle(canvas_handle),
-                &mut state,
-                map.groups.user.pos.x,
-                map.groups.user.pos.y,
-                Some(&group.attr),
-                map.groups.user.zoom,
-                map.groups.user.parallax_aware_zoom,
-            );
+            map.game_camera()
+                .project(canvas_handle, &mut state, Some(&group.attr));
+
             let h = state.get_canvas_height() / canvas_handle.canvas_height() as f32;
             let hit_size = SOUND_POINT_RADIUS_FACTOR * h;
             let point_size = SOUND_POINT_RADIUS_FACTOR * 0.7 * h;

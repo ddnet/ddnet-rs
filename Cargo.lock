@@ -1343,6 +1343,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "camera"
+version = "0.1.0"
+dependencies = [
+ "graphics",
+ "graphics-types",
+ "hiarc",
+ "map",
+ "math",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1609,7 +1620,6 @@ dependencies = [
  "graphics",
  "graphics-backend",
  "graphics-types",
- "hiarc",
  "log 0.4.27",
  "math",
  "pool",
@@ -1709,6 +1719,7 @@ dependencies = [
  "base",
  "base-io",
  "bincode",
+ "camera",
  "client-containers",
  "config",
  "fixed",
@@ -1743,6 +1754,7 @@ version = "0.1.0"
 dependencies = [
  "base",
  "base-io",
+ "camera",
  "client-containers",
  "client-render",
  "client-render-base",
@@ -1755,7 +1767,6 @@ dependencies = [
  "game-interface",
  "graphics",
  "graphics-types",
- "hiarc",
  "map",
  "math",
  "num-traits",
@@ -2721,6 +2732,7 @@ dependencies = [
  "bincode",
  "binds",
  "bytes",
+ "camera",
  "chrono",
  "client-accounts",
  "client-console",
@@ -3237,6 +3249,7 @@ dependencies = [
  "base-io",
  "base-io-traits",
  "bincode",
+ "camera",
  "client-containers",
  "client-notifications",
  "client-render-base",

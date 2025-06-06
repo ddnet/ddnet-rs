@@ -17,6 +17,7 @@ use base::{
     reduced_ascii_str::ReducedAsciiString,
 };
 use base_io::io::Io;
+use camera::Camera;
 use client_containers::utils::{load_containers, RenderGameContainers};
 pub use client_render::emote_wheel::render::EmoteWheelInput;
 use client_render::{
@@ -32,7 +33,7 @@ use client_render_base::{
     map::{
         map::RenderMap,
         render_map_base::{ClientMapRender, RenderMapLoading},
-        render_pipe::{Camera, GameTimeInfo, RenderPipeline},
+        render_pipe::{GameTimeInfo, RenderPipeline},
     },
     render::{
         effects::Effects,
@@ -582,12 +583,12 @@ impl RenderGame {
     ) {
         let map = self.map.try_get().unwrap();
 
-        let mut cam = Camera {
-            pos: Default::default(),
-            zoom: 1.0,
-            forced_aspect_ratio: render_info.settings.ingame_aspect,
-            parallax_aware_zoom: true,
-        };
+        let mut cam = Camera::new(
+            Default::default(),
+            1.0,
+            render_info.settings.ingame_aspect,
+            true,
+        );
 
         let camera_player = player_info.and_then(|(player_id, p)| match &p.cam_mode {
             RenderPlayerCameraMode::Default | RenderPlayerCameraMode::AtPos { .. } => Some((

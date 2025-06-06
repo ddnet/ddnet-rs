@@ -30,6 +30,7 @@ game-interface = { path = "../game-interface" }
 game-base = { path = "../game-base" }
 editor-interface = { path = "../editor-interface" }
 editor-auto-mapper-wasm = { path = "../editor-auto-mapper-wasm" }
+camera = { path = "../camera" }
 
 map-convert-lib = { path = "../map-convert-lib" }
 

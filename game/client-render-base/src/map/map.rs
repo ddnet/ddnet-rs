@@ -10,9 +10,10 @@ use super::{
     map_pipeline::{EditorTileLayerRenderProps, MapGraphics, QuadRenderInfo, TileLayerDrawInfo},
     map_sound::MapSoundProcess,
     map_with_visual::{MapVisual, MapVisualLayerBase},
-    render_pipe::{Camera, RenderPipeline, RenderPipelineBase},
-    render_tools::{CanvasType, RenderTools},
+    render_pipe::{RenderPipeline, RenderPipelineBase},
+    render_tools::RenderTools,
 };
+use camera::CameraInterface;
 use client_containers::{
     container::ContainerKey,
     entities::{Entities, EntitiesContainer},
@@ -837,29 +838,19 @@ impl RenderMap {
     pub fn set_group_clipping(
         &self,
         state: &mut State,
-        center: &vec2,
-        zoom: f32,
-        parallax_aware_zoom: bool,
-        forced_aspect_ratio: Option<f32>,
+        camera: &dyn CameraInterface,
         clipping: &MapGroupAttrClipping,
     ) -> bool {
-        let points = RenderTools::canvas_points_of_group(
-            forced_aspect_ratio
-                .map(|aspect_ratio| CanvasType::Custom { aspect_ratio })
-                .unwrap_or(CanvasType::Handle(&self.canvas_handle)),
-            center.x,
-            center.y,
-            None,
-            zoom,
-            parallax_aware_zoom,
-        );
+        let mut fake_state = State::new();
+        camera.project(&self.canvas_handle, &mut fake_state, None);
+        let (tl_x, tl_y, br_x, br_y) = fake_state.get_canvas_mapping();
 
-        let x0 = (clipping.pos.x.to_num::<f32>() - points[0]) / (points[2] - points[0]);
-        let y0 = (clipping.pos.y.to_num::<f32>() - points[1]) / (points[3] - points[1]);
-        let x1 = ((clipping.pos.x.to_num::<f32>() + clipping.size.x.to_num::<f32>()) - points[0])
-            / (points[2] - points[0]);
-        let y1 = ((clipping.pos.y.to_num::<f32>() + clipping.size.y.to_num::<f32>()) - points[1])
-            / (points[3] - points[1]);
+        let x0 = (clipping.pos.x.to_num::<f32>() - tl_x) / (br_x - tl_x);
+        let y0 = (clipping.pos.y.to_num::<f32>() - tl_y) / (br_y - tl_y);
+        let x1 = ((clipping.pos.x.to_num::<f32>() + clipping.size.x.to_num::<f32>()) - tl_x)
+            / (br_x - tl_x);
+        let y1 = ((clipping.pos.y.to_num::<f32>() + clipping.size.y.to_num::<f32>()) - tl_y)
+            / (br_y - tl_y);
 
         if x1 < 0.0 || x0 > 1.0 || y1 < 0.0 || y0 > 1.0 {
             // group is not visible at all
@@ -974,7 +965,7 @@ impl RenderMap {
             impl Borrow<SoundObject>,
         >,
         config: &ConfigMap,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         cur_time: &Duration,
         cur_anim_time: &Duration,
         include_last_anim_point: bool,
@@ -986,8 +977,6 @@ impl RenderMap {
         T: Borrow<TileLayerVisuals>,
         Q: Borrow<QuadLayerVisuals>,
     {
-        let center = &camera.pos;
-
         // skip rendering if detail layers if not wanted
         if layer.high_detail() && !config.high_detail {
             return;
@@ -998,30 +987,12 @@ impl RenderMap {
         // clipping
         if let Some(clipping) = &group_attr.clipping {
             // set clipping
-            if !self.set_group_clipping(
-                &mut state,
-                center,
-                camera.zoom,
-                camera.parallax_aware_zoom,
-                camera.forced_aspect_ratio,
-                clipping,
-            ) {
+            if !self.set_group_clipping(&mut state, camera, clipping) {
                 return;
             }
         }
 
-        RenderTools::map_canvas_of_group(
-            camera
-                .forced_aspect_ratio
-                .map(|aspect_ratio| CanvasType::Custom { aspect_ratio })
-                .unwrap_or(CanvasType::Handle(&self.canvas_handle)),
-            &mut state,
-            center.x,
-            center.y,
-            Some(group_attr),
-            camera.zoom,
-            camera.parallax_aware_zoom,
-        );
+        camera.project(&self.canvas_handle, &mut state, Some(group_attr));
 
         match layer {
             MapVisualLayerBase::Tile(layer) => {
@@ -1138,7 +1109,7 @@ impl RenderMap {
         entities_key: Option<&ContainerKey>,
         physics_group_name: &str,
         layer: &MapLayerPhysicsSkeleton<L>,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         cur_time: &Duration,
         cur_anim_time: &Duration,
         include_last_anim_point: bool,
@@ -1152,18 +1123,7 @@ impl RenderMap {
         let entities = entities_container.get_or_default_opt(entities_key);
         let mut state = State::new();
 
-        RenderTools::map_canvas_of_group(
-            camera
-                .forced_aspect_ratio
-                .map(|aspect_ratio| CanvasType::Custom { aspect_ratio })
-                .unwrap_or(CanvasType::Handle(&self.canvas_handle)),
-            &mut state,
-            camera.pos.x,
-            camera.pos.y,
-            None,
-            camera.zoom,
-            camera.parallax_aware_zoom,
-        );
+        camera.project(&self.canvas_handle, &mut state, None);
 
         let is_main_physics_layer = matches!(layer, MapLayerPhysicsSkeleton::Game(_));
 

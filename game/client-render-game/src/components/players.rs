@@ -1,6 +1,7 @@
 use std::{borrow::Borrow, time::Duration};
 
 use base::linked_hash_map_view::FxLinkedHashMap;
+use camera::CameraInterface;
 use client_containers::{
     emoticons::EmoticonsContainer,
     freezes::FreezeContainer,
@@ -14,7 +15,7 @@ use client_render::{
     nameplates::render::{NameplatePlayer, NameplateRender, NameplateRenderPipe},
 };
 use client_render_base::{
-    map::render_pipe::{Camera, GameTimeInfo},
+    map::render_pipe::GameTimeInfo,
     render::{
         animation::AnimState,
         canvas_mapping::CanvasMappingIngame,
@@ -60,7 +61,7 @@ pub struct PlayerRenderPipe<'a> {
     pub particle_manager: &'a mut ParticleManager,
 
     pub collision: &'a Collision,
-    pub camera: &'a Camera,
+    pub camera: &'a dyn CameraInterface,
 
     pub spatial_sound: bool,
     pub sound_playback_speed: f64,
@@ -101,16 +102,10 @@ impl Players {
         }
     }
 
-    fn base_state(&self, camera: &Camera) -> State {
+    fn base_state(&self, camera: &dyn CameraInterface) -> State {
         let mut base_state = State::default();
-        let center = camera.pos;
-        self.canvas_mapping.map_canvas_for_ingame_items(
-            &mut base_state,
-            center.x,
-            center.y,
-            camera.zoom,
-            camera.forced_aspect_ratio,
-        );
+        self.canvas_mapping
+            .map_canvas_for_ingame_items(&mut base_state, camera);
         base_state
     }
 
@@ -159,7 +154,7 @@ impl Players {
         let phased_alpha = *phased_alpha;
         let phased = *phased;
 
-        let state = self.base_state(camera);
+        let state = self.base_state(*camera);
 
         const RENDER_TEE_SIZE: f32 = 2.0;
 
@@ -469,7 +464,7 @@ impl Players {
     pub fn render_nameplates(
         &mut self,
         cur_time: &Duration,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         render_infos: &PoolFxLinkedHashMap<CharacterId, CharacterRenderInfo>,
         character_infos: &PoolFxLinkedHashMap<CharacterId, CharacterInfo>,
         nameplates: bool,
@@ -482,7 +477,7 @@ impl Players {
         self.nameplate_renderer.render(&mut NameplateRenderPipe {
             cur_time,
             state: &state,
-            camera_zoom: camera.zoom,
+            camera_zoom: camera.zoom(),
             players: &mut Self::render_info_iter(render_infos, &own_character).filter_map(
                 |(character_id, player_render_info)| {
                     let pos = &player_render_info.lerped_pos;

@@ -1,7 +1,7 @@
+use camera::Camera;
 use client_containers::{container::ContainerKey, ninja::NinjaContainer, weapons::WeaponContainer};
-use client_render_base::{
-    map::render_pipe::Camera,
-    render::{canvas_mapping::CanvasMappingIngame, toolkit::get_sprite_scale_impl},
+use client_render_base::render::{
+    canvas_mapping::CanvasMappingIngame, toolkit::get_sprite_scale_impl,
 };
 use game_interface::types::weapons::WeaponType;
 use graphics::{
@@ -46,13 +46,14 @@ impl RenderCursor {
 
     pub fn render(&self, pipe: &mut RenderCursorPipe) {
         let mut state = State::default();
-        self.canvas_mapping.map_canvas_for_ingame_items(
-            &mut state,
-            0.0,
-            0.0,
+        let camera = Camera::new(
+            Default::default(),
             1.0,
             pipe.camera.forced_aspect_ratio,
+            pipe.camera.parallax_aware_zoom,
         );
+        self.canvas_mapping
+            .map_canvas_for_ingame_items(&mut state, &camera);
 
         let mut draw_scope = quad_scope_begin();
         draw_scope.set_state(&state);

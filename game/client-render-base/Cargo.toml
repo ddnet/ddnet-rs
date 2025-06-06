@@ -23,6 +23,7 @@ vanilla = { path = "../vanilla" }
 map = { path = "../map" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
+camera = { path = "../camera" }
 
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 

@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use base::linked_hash_map_view::FxLinkedHashMap;
+use camera::CameraInterface;
 use client_containers::{
     ctf::CtfContainer, game::GameContainer, ninja::NinjaContainer, weapons::WeaponContainer,
 };
 use client_render_base::{
-    map::render_pipe::{Camera, GameTimeInfo},
+    map::render_pipe::GameTimeInfo,
     render::{
         canvas_mapping::CanvasMappingIngame,
         effects::Effects,
@@ -79,7 +80,7 @@ pub struct GameObjectsRenderPipe<'a> {
 
     pub local_character_id: Option<&'a CharacterId>,
 
-    pub camera: &'a Camera,
+    pub camera: &'a dyn CameraInterface,
     pub phased_alpha: f32,
     pub phased: bool,
 }
@@ -158,14 +159,8 @@ impl GameObjectsRender {
 
     pub fn render(&mut self, pipe: &mut GameObjectsRenderPipe) {
         let mut base_state = State::default();
-        let center = pipe.camera.pos;
-        self.canvas_mapping.map_canvas_for_ingame_items(
-            &mut base_state,
-            center.x,
-            center.y,
-            pipe.camera.zoom,
-            pipe.camera.forced_aspect_ratio,
-        );
+        self.canvas_mapping
+            .map_canvas_for_ingame_items(&mut base_state, pipe.camera);
 
         pipe.projectiles.values().for_each(|proj| {
             self.render_projectile(pipe, proj, pipe.character_infos, &base_state);

@@ -1,4 +1,4 @@
-use client_render_base::map::render_tools::RenderTools;
+use camera::CameraInterface;
 use egui::Color32;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle,
@@ -7,9 +7,10 @@ use graphics::handles::{
     texture::texture::TextureType,
 };
 use graphics_types::rendering::{ColorMaskMode, State, StencilMode};
-use math::math::vector::{ubvec4, vec2};
+use map::map::groups::MapGroupAttr;
+use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
 
-use crate::map::EditorMap;
+use crate::map::{EditorMap, EditorMapInterface};
 
 pub fn render_rect_from_state(
     stream_handle: &GraphicsStreamHandle,
@@ -45,18 +46,15 @@ pub fn render_rect_state(
     offset: &vec2,
 ) -> State {
     let mut state = State::new();
-    let points: [f32; 4] = RenderTools::map_canvas_to_world(
-        map.groups.user.pos.x,
-        map.groups.user.pos.y,
-        parallax.x,
-        parallax.y,
-        offset.x,
-        offset.y,
-        canvas_handle.canvas_aspect(),
-        map.groups.user.zoom,
-        map.groups.user.parallax_aware_zoom,
+    map.game_camera().project(
+        canvas_handle,
+        &mut state,
+        Some(&MapGroupAttr {
+            offset: fvec2::new(ffixed::from_num(offset.x), ffixed::from_num(offset.y)),
+            parallax: fvec2::new(ffixed::from_num(parallax.x), ffixed::from_num(parallax.y)),
+            clipping: None,
+        }),
     );
-    state.map_canvas(points[0], points[1], points[2], points[3]);
     state
 }
 

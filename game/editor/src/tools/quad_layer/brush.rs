@@ -1,10 +1,10 @@
 use std::{cell::Cell, collections::HashSet, time::Duration};
 
+use camera::CameraInterface;
 use client_render_base::map::{
     map::RenderMap,
     map_buffered::QuadLayerVisuals,
     map_pipeline::{MapGraphics, QuadRenderInfo},
-    render_tools::{CanvasType, RenderTools},
 };
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -522,10 +522,10 @@ impl QuadBrush {
         } else {
             Default::default()
         };
-        let is_primary_allowed_pressed = !latest_modifiers.ctrl && latest_pointer.primary_pressed();
+        let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
         // if pointer was already down
         if let QuadPointerDownState::Selection(pointer_down) = &self.pointer_down_state {
-            if is_primary_allowed_pressed {
+            if is_primary_allowed_down {
                 let pos = current_pointer_pos;
                 let pos = ui_pos_to_world_pos(
                     canvas_handle,
@@ -545,7 +545,7 @@ impl QuadBrush {
                 let down_pos = pointer_down;
                 let down_pos = egui::pos2(down_pos.x, down_pos.y);
 
-                let rect = egui::Rect::from_min_max(pos, down_pos);
+                let rect = egui::Rect::from_two_pos(pos, down_pos);
 
                 render_rect(
                     canvas_handle,
@@ -595,16 +595,12 @@ impl QuadBrush {
         let pos = egui::pos2(pos.x, pos.y);
 
         let mut state = State::new();
-
-        RenderTools::map_canvas_of_group(
-            CanvasType::Handle(canvas_handle),
+        map.game_camera().project(
+            canvas_handle,
             &mut state,
-            map.groups.user.pos.x,
-            map.groups.user.pos.y,
             layer.map(|layer| layer.get_or_fake_group_attr()).as_ref(),
-            map.groups.user.zoom,
-            map.groups.user.parallax_aware_zoom,
         );
+
         let center = -pos_on_map;
         state.canvas_br.x += center.x;
         state.canvas_br.y += center.y;

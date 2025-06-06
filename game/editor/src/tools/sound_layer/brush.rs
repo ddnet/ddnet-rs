@@ -1,7 +1,5 @@
-use client_render_base::map::{
-    map::RenderMap,
-    render_tools::{CanvasType, RenderTools},
-};
+use camera::{Camera, CameraInterface};
+use client_render_base::map::map::RenderMap;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
@@ -516,15 +514,14 @@ impl SoundBrush {
             );
             (map.groups.user.pos - pos_on_map, None)
         };
-        RenderTools::map_canvas_of_group(
-            CanvasType::Handle(canvas_handle),
-            &mut state,
-            center.x,
-            center.y,
-            group_attr.as_ref(),
+        Camera::new(
+            center,
             map.groups.user.zoom,
+            None,
             map.groups.user.parallax_aware_zoom,
-        );
+        )
+        .project(canvas_handle, &mut state, group_attr.as_ref());
+
         let time = map.user.render_time();
         RenderMap::render_sounds(
             stream_handle,

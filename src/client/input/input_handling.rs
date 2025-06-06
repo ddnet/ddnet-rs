@@ -5,7 +5,7 @@ use binds::binds::{
     gen_local_player_action_hash_map, BindAction, BindActionsCharacter, BindActionsHotkey,
     BindActionsLocalPlayer,
 };
-use client_render_base::map::render_tools::{CanvasType, RenderTools};
+use camera::{Camera, CameraInterface};
 use client_types::console::ConsoleEntry;
 use client_ui::chat::user_data::ChatMode;
 use client_ui::console::utils::run_command;
@@ -25,6 +25,7 @@ use game_interface::types::input::{
 use game_interface::types::render::character::{PlayerCameraMode, TeeEye};
 use game_interface::types::weapons::WeaponType;
 use graphics::graphics::graphics::{Graphics, ScreenshotCb};
+use graphics_types::rendering::State;
 use math::math::{length, normalize_pre_length, vector::dvec2};
 
 use input_binds::binds::{BindKey, Binds, MouseExtra};
@@ -862,23 +863,21 @@ impl InputHandling {
                     return false;
                 };
                 if local_player.chat_input_active.is_none() {
-                    let canvas = if config_game.cl.render.use_ingame_aspect_ratio {
-                        CanvasType::Custom {
-                            aspect_ratio: config_game.cl.render.ingame_aspect_ratio as f32,
-                        }
-                    } else {
-                        CanvasType::Handle(&graphics.canvas_handle)
-                    };
-                    let points = RenderTools::canvas_points_of_group(
-                        canvas,
-                        0.0,
-                        0.0,
-                        None,
+                    let mut fake_state = State::default();
+                    Camera::new(
+                        Default::default(),
                         local_player.zoom,
+                        config_game
+                            .cl
+                            .render
+                            .use_ingame_aspect_ratio
+                            .then_some(config_game.cl.render.ingame_aspect_ratio as f32),
                         true,
-                    );
-                    let vp_width = points[2] as f64 - points[0] as f64;
-                    let vp_height = points[3] as f64 - points[1] as f64;
+                    )
+                    .project(&graphics.canvas_handle, &mut fake_state, None);
+                    let (tl_x, tl_y, br_x, br_y) = fake_state.get_canvas_mapping();
+                    let vp_width = br_x as f64 - tl_x as f64;
+                    let vp_height = br_y as f64 - tl_y as f64;
                     match ev {
                         InputEv::Key(key_ev) => match &key_ev.key {
                             BindKey::Key(_) | BindKey::Mouse(_) => {

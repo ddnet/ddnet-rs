@@ -15,6 +15,7 @@ use base_fs::filesys::FileSystem;
 use base_http::http::HttpClient;
 use base_io::io::{Io, IoFileSys};
 use binds::binds::{BindActionsHotkey, BindActionsLocalPlayer};
+use camera::Camera;
 use client_accounts::accounts::{Accounts, AccountsLoading};
 use client_console::console::{
     console::{ConsoleEvents, ConsoleRenderPipe},
@@ -33,7 +34,7 @@ use client_render_base::{
     map::{
         map::RenderMap,
         map_pipeline::MapPipeline,
-        render_pipe::{Camera, GameTimeInfo, RenderPipeline, RenderPipelineBase},
+        render_pipe::{GameTimeInfo, RenderPipeline, RenderPipelineBase},
     },
     render::tee::RenderTee,
 };
@@ -556,12 +557,7 @@ impl ClientNativeImpl {
                             &intra_tick_time,
                         ),
                         include_last_anim_point: false,
-                        camera: &Camera {
-                            pos: vec2::new(21.0, 15.0),
-                            zoom: 1.0,
-                            parallax_aware_zoom: true,
-                            forced_aspect_ratio: None,
-                        },
+                        camera: &Camera::new(vec2::new(21.0, 15.0), 1.0, None, true),
                         entities_container: &mut self.entities_container,
                         entities_key: None,
                         physics_group_name: "vanilla",

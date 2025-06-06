@@ -16,6 +16,7 @@ use base::{
 };
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemInterface;
+use camera::CameraInterface;
 use client_containers::entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH};
 use client_notifications::overlay::ClientNotifications;
 use client_render_base::map::{
@@ -23,8 +24,6 @@ use client_render_base::map::{
     map_buffered::{
         ClientMapBufferQuadLayer, MapBufferPhysicsTileLayer, MapBufferTileLayer, SoundLayerSounds,
     },
-    render_pipe::Camera,
-    render_tools::{CanvasType, RenderTools},
 };
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
@@ -2047,12 +2046,7 @@ impl Editor {
                             &map.resources.sounds,
                             &group.attr,
                             layer,
-                            &Camera {
-                                pos: map.groups.user.pos,
-                                zoom: map.groups.user.zoom,
-                                parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
-                                forced_aspect_ratio: None,
-                            },
+                            &map.game_camera(),
                             0.3,
                         );
                     }
@@ -2085,12 +2079,7 @@ impl Editor {
             // TODO:
             "ddnet",
             layer,
-            &Camera {
-                pos: map.groups.user.pos,
-                zoom: map.groups.user.zoom,
-                parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
-                forced_aspect_ratio: None,
-            },
+            &map.game_camera(),
             &time,
             &time,
             map.user.include_last_anim_point(),
@@ -2578,15 +2567,8 @@ impl Editor {
         let grid_size = grid_size as f32;
 
         let mut state = State::new();
-        RenderTools::map_canvas_of_group(
-            CanvasType::Handle(&self.graphics.canvas_handle),
-            &mut state,
-            tab.map.groups.user.pos.x,
-            tab.map.groups.user.pos.y,
-            Some(&attr),
-            tab.map.groups.user.zoom,
-            tab.map.groups.user.parallax_aware_zoom,
-        );
+        let camera = tab.map.game_camera();
+        camera.project(&self.graphics.canvas_handle, &mut state, Some(&attr));
         let (width, height) = (state.get_canvas_width(), state.get_canvas_height());
 
         let offset = state.canvas_tl;

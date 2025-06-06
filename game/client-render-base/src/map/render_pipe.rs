@@ -1,22 +1,13 @@
 use std::time::Duration;
 
+use camera::CameraInterface;
 use client_containers::{container::ContainerKey, entities::EntitiesContainer};
 use game_config::config::ConfigMap;
 use game_interface::types::game::NonZeroGameTickType;
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
 
-use math::math::vector::vec2;
-
 use super::{map_buffered::ClientMapBuffered, map_with_visual::MapVisual};
-
-#[derive(Debug, Hiarc)]
-pub struct Camera {
-    pub pos: vec2,
-    pub zoom: f32,
-    pub forced_aspect_ratio: Option<f32>,
-    pub parallax_aware_zoom: bool,
-}
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]
 pub struct GameTimeInfo {
@@ -31,7 +22,7 @@ pub struct RenderPipelineBase<'a> {
     pub cur_time: &'a Duration,
     pub cur_anim_time: &'a Duration,
     pub include_last_anim_point: bool,
-    pub camera: &'a Camera,
+    pub camera: &'a dyn CameraInterface,
 
     pub entities_container: &'a mut EntitiesContainer,
     pub entities_key: Option<&'a ContainerKey>,
@@ -53,7 +44,7 @@ impl<'a> RenderPipeline<'a> {
         cur_time: &'a Duration,
         cur_anim_time: &'a Duration,
         include_last_anim_point: bool,
-        camera: &'a Camera,
+        camera: &'a dyn CameraInterface,
         entities_container: &'a mut EntitiesContainer,
         entities_key: Option<&'a ContainerKey>,
         physics_group_name: &'a str,

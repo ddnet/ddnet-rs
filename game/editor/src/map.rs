@@ -9,9 +9,10 @@ use std::{
 
 use base::{hash::Hash, linked_hash_map_view::FxLinkedHashMap};
 use base_io::runtime::IoRuntimeTask;
+use camera::Camera;
 use client_render_base::map::{
     map_buffered::{PhysicsTileLayerVisuals, QuadLayerVisuals, SoundLayerSounds, TileLayerVisuals},
-    render_pipe::{Camera, GameTimeInfo},
+    render_pipe::GameTimeInfo,
 };
 use egui_file_dialog::FileDialog;
 use egui_timeline::timeline::Timeline;
