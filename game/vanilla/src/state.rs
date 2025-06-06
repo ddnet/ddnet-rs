@@ -64,7 +64,6 @@ pub mod state {
     use pool::mt_datatypes::{PoolCow as MtPoolCow, PoolFxLinkedHashMap as MtPoolFxLinkedHashMap};
     use pool::pool::Pool;
 
-    use game_base::mapdef_06::EntityTiles;
     use game_interface::interface::{
         GameStateCreate, GameStateCreateOptions, GameStateInterface, GameStateServerOptions,
         GameStateStaticInfo, MAX_MAP_NAME_LEN, MAX_PHYSICS_GAME_TYPE_NAME_LEN,
@@ -85,6 +84,7 @@ pub mod state {
         ScoreboardScoreType, ScoreboardStageInfo,
     };
     use game_interface::types::snapshot::{SnapshotClientInfo, SnapshotLocalPlayers};
+    use legacy_map::mapdef_06::EntityTiles;
     use pool::rc::PoolRc;
     use rustc_hash::FxHashMap;
 

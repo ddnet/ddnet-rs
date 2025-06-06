@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use base::hash::fmt_hash;
 use egui::{Button, Checkbox, Color32, ComboBox, DragValue, InnerResponse};
-use game_base::mapdef_06::DdraceTileNum;
+use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
     map::groups::layers::{
         design::MapLayerTile,

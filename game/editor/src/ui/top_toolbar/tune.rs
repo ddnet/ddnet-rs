@@ -4,7 +4,7 @@ use egui::{
     scroll_area::ScrollBarVisibility, text::LayoutJob, Align, Color32, DragValue, FontId, Frame,
     Layout, ScrollArea, TextEdit, TextFormat,
 };
-use game_base::mapdef_06::DdraceTileNum;
+use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
     map::{command_value::CommandValue, groups::layers::physics::MapLayerTilePhysicsTuneZone},
     skeleton::groups::layers::physics::MapLayerTunePhysicsSkeleton,

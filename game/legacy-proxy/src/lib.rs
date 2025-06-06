@@ -18,7 +18,6 @@ use base_io::io::Io;
 use client::{ClientData, ClientState, ProxyClient, SocketClient, WarnPkt};
 use game_base::{
     connecting_log::ConnectingLog,
-    datafile::ints_to_str,
     network::{
         messages::{
             AddLocalPlayerResponseError, GameModification, MsgClChatMsg, MsgClLoadVotes,
@@ -77,6 +76,7 @@ use game_server::{
     server_game::{ServerGame, ServerMap},
 };
 use hexdump::hexdump_iter;
+use legacy_map::datafile::ints_to_str;
 use libtw2_gamenet_ddnet::{
     enums::{self, Emote, Team, VERSION},
     msg::{

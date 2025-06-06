@@ -2,7 +2,6 @@ pub mod character_core {
     use std::ops::{AddAssign, ControlFlow};
 
     use crate::reusable::{CloneWithCopyableElements, ReusableCore};
-    use game_base::mapdef_06::DdraceTileNum;
     use game_interface::{
         events::{
             GameCharacterEffectEvent, GameCharacterEventEffect, GameCharacterEventSound,
@@ -15,6 +14,7 @@ pub mod character_core {
         },
     };
     use hiarc::Hiarc;
+    use legacy_map::mapdef_06::DdraceTileNum;
     use num::FromPrimitive;
 
     use crate::{

@@ -10,7 +10,6 @@ use client_render_base::map::{
     map_pipeline::{MapGraphics, TileLayerDrawInfo},
 };
 use egui::{pos2, Rect};
-use game_base::mapdef_06::DdraceTileNum;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -24,6 +23,7 @@ use graphics::{
 };
 use graphics_types::rendering::State;
 use hiarc::Hiarc;
+use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
     map::groups::{
         layers::{

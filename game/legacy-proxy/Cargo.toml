@@ -1,5 +1,5 @@
 [package]
-name = "legacy_proxy"
+name = "legacy-proxy"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,6 +16,7 @@ game-network = { path = "../game-network" }
 game-server = { path = "../game-server" }
 game-interface = { path = "../game-interface" }
 game-base = { path = "../game-base" }
+legacy-map = { path = "../legacy-map" }
 vanilla = { path = "../vanilla" }
 map = { path = "../map" }
 

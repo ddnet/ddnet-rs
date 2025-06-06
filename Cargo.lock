@@ -1733,6 +1733,7 @@ dependencies = [
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
  "image-utils",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "math",
@@ -2777,7 +2778,7 @@ dependencies = [
  "hiarc",
  "image-utils",
  "input-binds",
- "legacy_proxy",
+ "legacy-proxy",
  "log 0.4.27",
  "map",
  "math",
@@ -3273,6 +3274,7 @@ dependencies = [
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
  "image-utils",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "map-convert-lib",
@@ -4151,21 +4153,13 @@ dependencies = [
  "base",
  "command-parser",
  "config",
- "flate2",
  "game-config",
  "game-interface",
- "graphics-types",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image-utils",
  "indexmap 2.9.0",
- "itertools 0.14.0",
- "map",
  "math",
- "num-derive",
- "num-traits",
  "pool",
- "rayon",
  "rustc-hash 2.1.1",
  "serde",
  "serde_with",
@@ -5709,7 +5703,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
-name = "legacy_proxy"
+name = "legacy-map"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base",
+ "config",
+ "flate2",
+ "graphics-types",
+ "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
+ "hiarc",
+ "image-utils",
+ "itertools 0.14.0",
+ "map",
+ "math",
+ "num-derive",
+ "num-traits",
+ "rayon",
+ "serde",
+ "time",
+]
+
+[[package]]
+name = "legacy-proxy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -5726,6 +5742,7 @@ dependencies = [
  "game-server",
  "hex",
  "hexdump",
+ "legacy-map",
  "libtw2-gamenet-ddnet",
  "libtw2-net",
  "libtw2-packer",
@@ -6216,7 +6233,7 @@ dependencies = [
  "base-fs",
  "base-io",
  "difference",
- "game-base",
+ "legacy-map",
  "map",
  "ogg-opus",
  "oxipng",
@@ -9621,6 +9638,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "math",
@@ -10933,6 +10951,7 @@ dependencies = [
  "game-interface",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "math",

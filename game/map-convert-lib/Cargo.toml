@@ -8,7 +8,8 @@ edition = "2021"
 [dependencies]
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
-game-base = { path = "../../game/game-base" }
+
+legacy-map = { path = "../../game/legacy-map" }
 map = { path = "../../game/map" }
 rayon = "1.10.0"
 anyhow = { version = "1.0.98", features = ["backtrace"] }

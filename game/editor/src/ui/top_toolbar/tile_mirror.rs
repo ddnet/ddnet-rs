@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use game_base::mapdef_06::tile_can_rotate;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -9,6 +8,7 @@ use graphics::{
         shader_storage::shader_storage::GraphicsShaderStorageHandle,
     },
 };
+use legacy_map::mapdef_06::tile_can_rotate;
 use map::map::groups::layers::tiles::{
     rotate_by_plus_90, MapTileLayerPhysicsTiles, MapTileLayerTiles, TileBase, TileFlags,
 };

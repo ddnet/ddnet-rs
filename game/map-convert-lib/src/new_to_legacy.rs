@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use base::{benchmark::Benchmark, hash::fmt_hash};
 use base_io::io::IoFileSys;
-use game_base::datafile::CDatafileWrapper;
+use legacy_map::datafile::CDatafileWrapper;
 use map::map::Map;
 use std::{future::Future, io::Cursor, path::Path, pin::Pin, sync::Arc};
 use vorbis_rs::VorbisDecoder;

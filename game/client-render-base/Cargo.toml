@@ -18,6 +18,7 @@ image-utils = { path = "../../lib/image-utils" }
 
 client-containers = { path = "../client-containers" }
 assets-base = { path = "../assets-base" }
+legacy-map = { path = "../legacy-map" }
 game-base = { path = "../game-base" }
 vanilla = { path = "../vanilla" }
 map = { path = "../map" }

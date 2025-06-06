@@ -15,7 +15,6 @@ pub mod character {
     use base::linked_hash_map_view::{
         FxLinkedHashMap, FxLinkedHashSet, LinkedHashMapView, LinkedHashMapViewMut,
     };
-    use game_base::mapdef_06::DdraceTileNum;
     use game_interface::{
         events::{
             GameBuffNinjaEventSound, GameBuffSoundEvent, GameCharacterEffectEvent,
@@ -39,6 +38,7 @@ pub mod character {
         },
     };
     use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use legacy_map::mapdef_06::DdraceTileNum;
     use map::map::groups::layers::tiles::Tile;
     use pool::{datatypes::PoolFxLinkedHashMap, mt_pool::Pool as MtPool};
     use rustc_hash::FxHashSet;

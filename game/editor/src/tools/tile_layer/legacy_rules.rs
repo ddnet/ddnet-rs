@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use editor_interface::auto_mapper::{
     AutoMapperInputModes, AutoMapperInterface, AutoMapperModes, AutoMapperOutputModes,
 };
-use game_base::mapdef_06::DdraceTileNum;
+use legacy_map::mapdef_06::DdraceTileNum;
 use map::map::groups::layers::tiles::{Tile, TileFlags};
 use scan_fmt::{scan_fmt, scan_fmt_some};
 

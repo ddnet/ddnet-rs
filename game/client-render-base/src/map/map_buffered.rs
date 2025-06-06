@@ -3,7 +3,6 @@ pub mod graphic_tile;
 
 use std::{borrow::BorrowMut, collections::HashMap, ops::Range, sync::Arc};
 
-use game_base::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -14,6 +13,7 @@ use graphics::{
     },
 };
 use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use legacy_map::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 use map::{
     map::{
         groups::{

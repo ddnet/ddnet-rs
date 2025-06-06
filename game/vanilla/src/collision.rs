@@ -2,8 +2,8 @@ pub mod collision {
     use anyhow::anyhow;
     use bitflags::bitflags;
     use config::{traits::ConfigInterface, ConfigInterface};
-    use game_base::mapdef_06::DdraceTileNum;
     use hiarc::Hiarc;
+    use legacy_map::mapdef_06::DdraceTileNum;
     use map::map::groups::{
         layers::{
             physics::MapLayerPhysics,
