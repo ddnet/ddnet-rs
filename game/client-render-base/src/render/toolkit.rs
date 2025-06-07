@@ -436,9 +436,9 @@ impl ToolkitRender {
                     &mut frame,
                 );
                 if cursor_dir.x < 0.0 {
-                    quad_scope.set_rotation(-PI / 2.0 - frame.rotation * PI * 2.0);
+                    quad_scope.set_rotation(-PI / 2.0 - frame.rotation);
                 } else {
-                    quad_scope.set_rotation(-PI / 2.0 + frame.rotation * PI * 2.0);
+                    quad_scope.set_rotation(-PI / 2.0 + frame.rotation);
                 }
             } else {
                 quad_scope.set_rotation(if cursor_dir.x < 0.0 { 100.0 } else { 500.0 });
@@ -593,7 +593,7 @@ impl ToolkitRender {
         quad_scope.set_colors_from_single(1.0, 1.0, 1.0, phased_alpha);
 
         let quad_offset = if character_render_info.lerped_cursor_pos.x < 0.0 {
-            quad_scope.set_rotation(-PI / 2.0 - frame.rotation * PI * 2.0);
+            quad_scope.set_rotation(-PI / 2.0 - frame.rotation);
             weapon_pos.x -= spec.offset_x;
             Effects::new(particle_manager, cur_time).powerup_shine(
                 &(weapon_pos + vec2::new(1.0, 0.0)),
@@ -602,7 +602,7 @@ impl ToolkitRender {
             );
             self.ninja_quad_offsets.0
         } else {
-            quad_scope.set_rotation(-PI / 2.0 + frame.rotation * PI * 2.0);
+            quad_scope.set_rotation(-PI / 2.0 + frame.rotation);
             Effects::new(particle_manager, cur_time).powerup_shine(
                 &(weapon_pos - vec2::new(1.0, 0.0)),
                 &vec2::new(1.0, 12.0 / 32.0),
