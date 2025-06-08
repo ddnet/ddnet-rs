@@ -40,3 +40,4 @@ log = "0.4.27"
 url = { version = "2.5.4", features = ["serde"] }
 futures = "0.3.31"
 strum = { version = "0.27.1", features = ["derive"] }
+rustc-hash = "2.1.1"

@@ -1741,6 +1741,7 @@ dependencies = [
  "num-traits",
  "pool",
  "rayon",
+ "rustc-hash 2.1.1",
  "serde",
  "sound",
  "strum 0.27.1",

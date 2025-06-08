@@ -275,7 +275,7 @@ where
                     );
 
                     // value = y(t)
-                    res[c] = F::from_fixed(Self::bezier(&p0.y, &p1.y, &p2.y, &p3.y, a));
+                    res[c] = F::saturating_from_fixed(Self::bezier(&p0.y, &p1.y, &p2.y, &p3.y, a));
                 }
                 return res;
             }
@@ -285,7 +285,7 @@ where
         for c in 0..CHANNELS {
             let v0: ffixed = point1.value[c].to_fixed();
             let v1: ffixed = point2_value[c].to_fixed();
-            res[c] = F::from_fixed(v0 + (v1 - v0) * a);
+            res[c] = F::saturating_from_fixed(v0 + (v1 - v0) * a);
         }
         res
     }

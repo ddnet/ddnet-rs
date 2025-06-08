@@ -1,7 +1,13 @@
-use std::{borrow::Borrow, cell::Cell, fmt::Debug, ops::IndexMut, time::Duration};
+use std::{
+    borrow::Borrow,
+    cell::Cell,
+    fmt::Debug,
+    ops::{IndexMut, Range},
+    time::Duration,
+};
 
 use crate::map::{
-    map_buffered::{MapRenderLayer, MapRenderTextOverlayType},
+    map_buffered::{MapRenderLayer, MapRenderTextOverlayType, QuadVisualRangeAnim},
     render_pipe::RenderPipelinePhysics,
 };
 
@@ -50,12 +56,13 @@ use map::{
         resources::MapResourcesSkeleton,
     },
 };
-use pool::mixed_pool::Pool;
+use pool::{datatypes::PoolFxHashMap, mixed_pool::Pool as MixedPool, pool::Pool};
+use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
 
 use math::math::{
     mix,
-    vector::{nffixed, nfvec4, ubvec4, uffixed, vec2},
+    vector::{fvec3, nffixed, nfvec4, ubvec4, uffixed, vec2},
     PI,
 };
 
@@ -75,6 +82,16 @@ pub enum ForcedTexture<'a> {
     QuadLayer(&'a TextureContainer),
 }
 
+enum QuadFlushOrAdd {
+    Flush { fully_transparent_color: bool },
+    Add { info: QuadRenderInfo },
+}
+
+pub struct QuadAnimEvalResult {
+    pub pos_anims_values: PoolFxHashMap<(usize, time::Duration), fvec3>,
+    pub color_anims_values: PoolFxHashMap<(usize, time::Duration), nfvec4>,
+}
+
 #[derive(Debug, Hiarc)]
 pub struct RenderMap {
     map_graphics: MapGraphics,
@@ -82,7 +99,9 @@ pub struct RenderMap {
     canvas_handle: GraphicsCanvasHandle,
     stream_handle: GraphicsStreamHandle,
 
-    tile_layer_render_info_pool: Pool<Vec<TileLayerDrawInfo>>,
+    tile_layer_render_info_pool: MixedPool<Vec<TileLayerDrawInfo>>,
+    pos_anims: Pool<FxHashMap<(usize, time::Duration), fvec3>>,
+    color_anims: Pool<FxHashMap<(usize, time::Duration), nfvec4>>,
 
     // sound, handled here because it's such an integral part of the map
     pub sound: MapSoundProcess,
@@ -95,7 +114,7 @@ impl RenderMap {
         stream_handle: &GraphicsStreamHandle,
     ) -> RenderMap {
         let (tile_layer_render_info_pool, tile_layer_render_info_sync_point) =
-            Pool::with_capacity(64);
+            MixedPool::with_capacity(64);
         backend_handle.add_sync_point(tile_layer_render_info_sync_point);
         RenderMap {
             map_graphics: MapGraphics::new(backend_handle),
@@ -104,6 +123,9 @@ impl RenderMap {
             stream_handle: stream_handle.clone(),
 
             tile_layer_render_info_pool,
+
+            pos_anims: Pool::with_capacity(8),
+            color_anims: Pool::with_capacity(8),
 
             sound: MapSoundProcess::new(),
         }
@@ -684,77 +706,60 @@ impl RenderMap {
         }
     }
 
-    pub fn prepare_quad_rendering<AN, AS>(
-        mut stream_handle: StreamedUniforms<'_, QuadRenderInfo>,
-        cur_time: &Duration,
-        cur_anim_time: &Duration,
-        include_last_anim_point: bool,
-        cur_quad_offset: &Cell<usize>,
-        animations: &AnimationsSkeleton<AN, AS>,
-        quads: &[Quad],
+    fn prepare_quad_rendering_grouped(
+        color_anims: &FxHashMap<(usize, time::Duration), nfvec4>,
+        pos_anims: &FxHashMap<(usize, time::Duration), fvec3>,
+        color_anim: Option<usize>,
+        color_anim_offset: &time::Duration,
+        pos_anim: Option<usize>,
+        pos_anim_offset: &time::Duration,
+        mut flush_or_add: impl FnMut(QuadFlushOrAdd),
     ) {
-        for (i, quad) in quads.iter().enumerate() {
-            let color = if let Some(anim) = {
-                if let Some(color_anim) = quad.color_anim {
-                    animations.color.get(color_anim)
-                } else {
-                    None
-                }
-            } {
-                RenderMap::animation_eval(
-                    &anim.def,
-                    cur_time,
-                    cur_anim_time,
-                    &quad.color_anim_offset,
-                    include_last_anim_point,
-                )
+        let color = if let Some(anim) = {
+            if let Some(color_anim) = color_anim {
+                color_anims.get(&(color_anim, *color_anim_offset)).copied()
             } else {
-                nfvec4::new(
-                    nffixed::from_num(1),
-                    nffixed::from_num(1),
-                    nffixed::from_num(1),
-                    nffixed::from_num(1),
-                )
-            };
-
-            let mut offset_x = 0.0;
-            let mut offset_y = 0.0;
-            let mut rot = 0.0;
-
-            if let Some(anim) = {
-                if let Some(pos_anim) = quad.pos_anim {
-                    animations.pos.get(pos_anim)
-                } else {
-                    None
-                }
-            } {
-                let pos_channels = RenderMap::animation_eval(
-                    &anim.def,
-                    cur_time,
-                    cur_anim_time,
-                    &quad.pos_anim_offset,
-                    include_last_anim_point,
-                );
-                offset_x = pos_channels.x.to_num();
-                offset_y = pos_channels.y.to_num();
-                rot = pos_channels.z.to_num::<f32>() / 180.0 * PI;
+                None
             }
+        } {
+            anim
+        } else {
+            nfvec4::new(
+                nffixed::from_num(1),
+                nffixed::from_num(1),
+                nffixed::from_num(1),
+                nffixed::from_num(1),
+            )
+        };
 
-            let is_fully_transparent = color.a() <= 0;
-            let needs_flush = is_fully_transparent;
+        let mut offset_x = 0.0;
+        let mut offset_y = 0.0;
+        let mut rot = 0.0;
 
-            if needs_flush {
-                stream_handle.flush();
-
-                cur_quad_offset.set(i);
-                if is_fully_transparent {
-                    // since this quad is ignored, the offset is the next quad
-                    cur_quad_offset.set(cur_quad_offset.get() + 1);
-                }
+        if let Some(pos_channels) = {
+            if let Some(pos_anim) = pos_anim {
+                pos_anims.get(&(pos_anim, *pos_anim_offset))
+            } else {
+                None
             }
+        } {
+            offset_x = pos_channels.x.to_num();
+            offset_y = pos_channels.y.to_num();
+            rot = pos_channels.z.to_num::<f32>() / 180.0 * PI;
+        }
 
-            if !is_fully_transparent {
-                stream_handle.add(QuadRenderInfo::new(
+        let is_fully_transparent = color.a() <= 0;
+        let needs_flush = is_fully_transparent;
+
+        if needs_flush {
+            flush_or_add(QuadFlushOrAdd::Flush {
+                fully_transparent_color: is_fully_transparent,
+            });
+        }
+
+        if !is_fully_transparent {
+            flush_or_add(QuadFlushOrAdd::Add {
+                info: QuadRenderInfo::new(
                     ColorRgba {
                         r: color.r().to_num(),
                         g: color.g().to_num(),
@@ -763,8 +768,181 @@ impl RenderMap {
                     },
                     vec2::new(offset_x, offset_y),
                     rot,
-                ));
+                ),
+            });
+        }
+    }
+
+    pub fn prepare_quad_rendering(
+        mut stream_handle: StreamedUniforms<'_, QuadRenderInfo>,
+        color_anims: &FxHashMap<(usize, time::Duration), nfvec4>,
+        pos_anims: &FxHashMap<(usize, time::Duration), fvec3>,
+        cur_quad_offset: &Cell<usize>,
+        quads: &[Quad],
+        first_index: usize,
+    ) {
+        for (i, quad) in quads.iter().enumerate() {
+            Self::prepare_quad_rendering_grouped(
+                color_anims,
+                pos_anims,
+                quad.color_anim,
+                &quad.color_anim_offset,
+                quad.pos_anim,
+                &quad.pos_anim_offset,
+                |reason| {
+                    match reason {
+                        QuadFlushOrAdd::Flush {
+                            fully_transparent_color,
+                        } => {
+                            stream_handle.flush();
+                            cur_quad_offset.set(i + first_index);
+                            if fully_transparent_color {
+                                // since this quad is ignored, the offset is the next quad
+                                cur_quad_offset.set(cur_quad_offset.get() + 1);
+                            }
+                        }
+                        QuadFlushOrAdd::Add { info } => {
+                            stream_handle.add(info);
+                        }
+                    }
+                },
+            );
+        }
+    }
+
+    fn prepare_group_rendering(
+        &self,
+        color_anims: &FxHashMap<(usize, time::Duration), nfvec4>,
+        pos_anims: &FxHashMap<(usize, time::Duration), fvec3>,
+        color_anim: Option<usize>,
+        color_anim_offset: &time::Duration,
+        pos_anim: Option<usize>,
+        pos_anim_offset: &time::Duration,
+        range: Range<usize>,
+        state: &State,
+        texture: &TextureType,
+        buffer_object: &BufferObject,
+    ) {
+        Self::prepare_quad_rendering_grouped(
+            color_anims,
+            pos_anims,
+            color_anim,
+            color_anim_offset,
+            pos_anim,
+            pos_anim_offset,
+            |reason| {
+                if let QuadFlushOrAdd::Add { info } = reason {
+                    self.map_graphics.render_quad_layer_grouped(
+                        state,
+                        texture.clone(),
+                        buffer_object,
+                        range.end - range.start,
+                        range.start,
+                        info,
+                    );
+                }
+            },
+        );
+    }
+
+    fn render_quads_with_anim(
+        &self,
+        state: &State,
+        texture: &TextureType,
+        color_anims: &FxHashMap<(usize, time::Duration), nfvec4>,
+        pos_anims: &FxHashMap<(usize, time::Duration), fvec3>,
+        quads: &[Quad],
+        buffer_container: &BufferObject,
+        first_index: usize,
+    ) {
+        let map_graphics = &self.map_graphics;
+        let cur_quad_offset_cell = Cell::new(first_index);
+        let cur_quad_offset = &cur_quad_offset_cell;
+        self.stream_handle.fill_uniform_instance(
+            hi_closure!(
+                [
+                    color_anims: &FxHashMap<(usize, time::Duration), nfvec4>,
+                    pos_anims: &FxHashMap<(usize, time::Duration), fvec3>,
+                    cur_quad_offset: &Cell<usize>,
+                    quads: &[Quad],
+                    first_index: usize,
+                ],
+                |stream_handle: StreamedUniforms<
+                    '_,
+                    QuadRenderInfo,
+                >|
+                    -> () {
+                    RenderMap::prepare_quad_rendering(
+                        stream_handle,
+                        color_anims,
+                        pos_anims,
+                        cur_quad_offset,
+                        quads,
+                        first_index
+                    );
+                }
+            ),
+            hi_closure!([
+                map_graphics: &MapGraphics,
+                state: &State,
+                texture: &TextureType,
+                buffer_container: &BufferObject,
+                cur_quad_offset: &Cell<usize>
+            ],
+            |instance: usize, count: usize| -> () {
+                map_graphics.render_quad_layer(
+                    state,
+                    texture.clone(),
+                    buffer_container,
+                    instance,
+                    count,
+                    cur_quad_offset.get(),
+                );
+                cur_quad_offset.set(cur_quad_offset.get() + count);
+            }),
+        );
+    }
+
+    pub fn prepare_quad_anims<AN: HiarcTrait, AS: HiarcTrait>(
+        pos_anims: &Pool<FxHashMap<(usize, time::Duration), fvec3>>,
+        color_anims: &Pool<FxHashMap<(usize, time::Duration), nfvec4>>,
+        cur_time: &Duration,
+        cur_anim_time: &Duration,
+        include_last_anim_point: bool,
+        visuals: &QuadLayerVisuals,
+        animations: &AnimationsSkeleton<AN, AS>,
+    ) -> QuadAnimEvalResult {
+        let mut pos_anims_values = pos_anims.new();
+        let mut color_anims_values = color_anims.new();
+
+        for &(pos_anim, pos_anim_offset) in &visuals.pos_anims {
+            if let Some(anim) = animations.pos.get(pos_anim) {
+                let pos_channels = RenderMap::animation_eval(
+                    &anim.def,
+                    cur_time,
+                    cur_anim_time,
+                    &pos_anim_offset,
+                    include_last_anim_point,
+                );
+                pos_anims_values.insert((pos_anim, pos_anim_offset), pos_channels);
             }
+        }
+        for &(color_anim, color_anim_offset) in &visuals.color_anims {
+            if let Some(anim) = animations.color.get(color_anim) {
+                let color_channels = RenderMap::animation_eval(
+                    &anim.def,
+                    cur_time,
+                    cur_anim_time,
+                    &color_anim_offset,
+                    include_last_anim_point,
+                );
+                color_anims_values.insert((color_anim, color_anim_offset), color_channels);
+            }
+        }
+
+        QuadAnimEvalResult {
+            pos_anims_values,
+            color_anims_values,
         }
     }
 
@@ -777,51 +955,100 @@ impl RenderMap {
         include_last_anim_point: bool,
         visuals: &QuadLayerVisuals,
         animations: &AnimationsSkeleton<AN, AS>,
-        quads: &Vec<Quad>,
+        quads: &[Quad],
     ) {
-        if let Some(buffer_container_index) = &visuals.buffer_object_index {
-            let map_graphics = &self.map_graphics;
+        let QuadAnimEvalResult {
+            pos_anims_values,
+            color_anims_values,
+        } = Self::prepare_quad_anims(
+            &self.pos_anims,
+            &self.color_anims,
+            cur_time,
+            cur_anim_time,
+            include_last_anim_point,
+            visuals,
+            animations,
+        );
+
+        if let Some(buffer_container) = &visuals.buffer_object_index {
             let texture = &texture;
-            let cur_quad_offset_cell = Cell::new(0);
-            let cur_quad_offset = &cur_quad_offset_cell;
-            self.stream_handle.fill_uniform_instance(
-                    hi_closure!(
-                        <AN, AS>,
-                        [
-                            cur_time: &Duration,
-                            cur_anim_time: &Duration,
-                            include_last_anim_point: bool,
-                            cur_quad_offset: &Cell<usize>,
-                            animations: &AnimationsSkeleton<AN, AS>,
-                            quads: &Vec<Quad>,
-                        ],
-                    |stream_handle: StreamedUniforms<
-                        '_,
-                        QuadRenderInfo,
-                    >|
-                     -> () {
-                        RenderMap::prepare_quad_rendering(
-                            stream_handle,
-                            cur_time,
-                            cur_anim_time,
-                            include_last_anim_point,
-                            cur_quad_offset,
-                            animations,
-                            quads
-                        );
-                     }),
-                    hi_closure!([map_graphics: &MapGraphics, state: &State, texture: &TextureType, buffer_container_index: &BufferObject, cur_quad_offset: &Cell<usize>], |instance: usize, count: usize| -> () {
-                        map_graphics.render_quad_layer(
+            for draw_range in &visuals.draw_ranges {
+                match draw_range.anim {
+                    QuadVisualRangeAnim::NoAnim => {
+                        self.map_graphics.render_quad_layer_grouped(
                             state,
                             texture.clone(),
-                            buffer_container_index,
-                            instance,
-                            count,
-                            cur_quad_offset.get(),
+                            buffer_container,
+                            draw_range.range.end - draw_range.range.start,
+                            draw_range.range.start,
+                            QuadRenderInfo {
+                                color: ColorRgba::new(1.0, 1.0, 1.0, 1.0),
+                                offsets: Default::default(),
+                                rotation: 0.0,
+                                padding: 0.0,
+                            },
                         );
-                        cur_quad_offset.set(cur_quad_offset.get() + count);
-                    }),
-                );
+                    }
+                    QuadVisualRangeAnim::ColorAnim { anim, anim_offset } => {
+                        self.prepare_group_rendering(
+                            &color_anims_values,
+                            &pos_anims_values,
+                            Some(anim),
+                            &anim_offset,
+                            None,
+                            &Default::default(),
+                            draw_range.range.clone(),
+                            state,
+                            texture,
+                            buffer_container,
+                        );
+                    }
+                    QuadVisualRangeAnim::PosAnim { anim, anim_offset } => {
+                        self.prepare_group_rendering(
+                            &color_anims_values,
+                            &pos_anims_values,
+                            None,
+                            &Default::default(),
+                            Some(anim),
+                            &anim_offset,
+                            draw_range.range.clone(),
+                            state,
+                            texture,
+                            buffer_container,
+                        );
+                    }
+                    QuadVisualRangeAnim::FullAnim {
+                        pos,
+                        pos_offset,
+                        color,
+                        color_offset,
+                    } => {
+                        self.prepare_group_rendering(
+                            &color_anims_values,
+                            &pos_anims_values,
+                            Some(color),
+                            &color_offset,
+                            Some(pos),
+                            &pos_offset,
+                            draw_range.range.clone(),
+                            state,
+                            texture,
+                            buffer_container,
+                        );
+                    }
+                    QuadVisualRangeAnim::Chaos => {
+                        self.render_quads_with_anim(
+                            state,
+                            texture,
+                            &color_anims_values,
+                            &pos_anims_values,
+                            &quads[draw_range.range.clone()],
+                            buffer_container,
+                            draw_range.range.start,
+                        );
+                    }
+                }
+            }
         }
     }
 

@@ -1,8 +1,8 @@
-use std::{cell::Cell, collections::HashSet, time::Duration};
+use std::{cell::Cell, collections::HashSet};
 
 use camera::CameraInterface;
 use client_render_base::map::{
-    map::RenderMap,
+    map::{QuadAnimEvalResult, RenderMap},
     map_buffered::QuadLayerVisuals,
     map_pipeline::{MapGraphics, QuadRenderInfo},
 };
@@ -18,8 +18,10 @@ use graphics::{
 };
 use graphics_types::rendering::State;
 use hiarc::{hi_closure, Hiarc};
-use map::{map::groups::layers::design::Quad, skeleton::animations::AnimationsSkeleton};
-use math::math::vector::{dvec2, ffixed, ubvec4, vec2};
+use map::map::groups::layers::design::Quad;
+use math::math::vector::{dvec2, ffixed, fvec3, nfvec4, ubvec4, vec2};
+use pool::pool::Pool;
+use rustc_hash::FxHashMap;
 
 use crate::{
     actions::actions::{
@@ -614,31 +616,46 @@ impl QuadBrush {
             let cur_quad_offset = &cur_quad_offset_cell;
             let animations = map.active_animations();
             let include_last_anim_point = map.user.include_last_anim_point();
+
+            let QuadAnimEvalResult {
+                pos_anims_values,
+                color_anims_values,
+            } = RenderMap::prepare_quad_anims(
+                &Pool::with_capacity(8),
+                &Pool::with_capacity(8),
+                cur_time,
+                cur_anim_time,
+                include_last_anim_point,
+                &brush.render,
+                animations,
+            );
+
+            let pos_anims_values = &*pos_anims_values;
+            let color_anims_values = &*color_anims_values;
+
             stream_handle.fill_uniform_instance(
                 hi_closure!(
-                    <AN, AS>,
                     [
-                    cur_time: &Duration,
-                    cur_anim_time: &Duration,
-                    include_last_anim_point: bool,
-                    cur_quad_offset: &Cell<usize>,
-                    animations: &AnimationsSkeleton<AN, AS>,
-                    quads: &Vec<Quad>,
-                ], |stream_handle: StreamedUniforms<
-                    '_,
-                    QuadRenderInfo,
-                >|
-                 -> () {
-                    RenderMap::prepare_quad_rendering(
-                        stream_handle,
-                        cur_time,
-                        cur_anim_time,
-                        include_last_anim_point,
-                        cur_quad_offset,
-                        animations,
-                        quads
-                    );
-                }),
+                        pos_anims_values: &FxHashMap<(usize, time::Duration), fvec3>,
+                        color_anims_values: &FxHashMap<(usize, time::Duration), nfvec4>,
+                        cur_quad_offset: &Cell<usize>,
+                        quads: &Vec<Quad>,
+                    ],
+                    |stream_handle: StreamedUniforms<
+                        '_,
+                        QuadRenderInfo,
+                    >|
+                    -> () {
+                        RenderMap::prepare_quad_rendering(
+                            stream_handle,
+                            color_anims_values,
+                            pos_anims_values,
+                            cur_quad_offset,
+                            quads,
+                            0
+                        );
+                    }
+                ),
                 hi_closure!([
                     brush: &QuadBrushQuads,
                     state: State,
