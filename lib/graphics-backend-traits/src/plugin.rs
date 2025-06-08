@@ -38,7 +38,7 @@ pub enum SamplerAddressMode {
     /// clamp uv
     ClampToEdge,
     /// clamp uv, mirror repeat r
-    Texture2DArray,
+    Texture2dArray,
 }
 
 /// the resource descriptors are pre-defined sets of descriptors that

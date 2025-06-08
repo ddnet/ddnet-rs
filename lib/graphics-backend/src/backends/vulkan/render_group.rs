@@ -6,6 +6,7 @@ use base::linked_hash_map_view::FxLinkedHashMap;
 use graphics_backend_traits::frame_fetcher_plugin::OffscreenCanvasId;
 use hiarc::Hiarc;
 use num_derive::FromPrimitive;
+use strum::EnumCount;
 
 use crate::{backend::CustomPipelines, window::BackendSwapchain};
 
@@ -24,7 +25,9 @@ use super::{
 };
 
 #[repr(u32)]
-#[derive(FromPrimitive, Hiarc, Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    FromPrimitive, Hiarc, Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, EnumCount,
+)]
 pub enum StencilOpType {
     #[default]
     None,
@@ -32,9 +35,10 @@ pub enum StencilOpType {
     OnlyWhenPassed,
     OnlyWhenNotPassed,
 }
-pub const STENCIL_OP_TYPE_COUNT: usize = 4;
 
-#[derive(FromPrimitive, Hiarc, Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    FromPrimitive, Hiarc, Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, EnumCount,
+)]
 #[repr(u32)]
 pub enum ColorWriteMaskType {
     #[default]
@@ -43,7 +47,6 @@ pub enum ColorWriteMaskType {
     AlphaOnly,
     None,
 }
-pub const COLOR_MASK_TYPE_COUNT: usize = 4;
 
 #[derive(Debug, Hiarc)]
 enum CanvasModeInternal {

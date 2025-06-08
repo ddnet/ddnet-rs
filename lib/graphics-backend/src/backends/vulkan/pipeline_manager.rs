@@ -12,7 +12,7 @@ use super::{
     pipeline_cache::PipelineCacheInner,
     render_group::{ColorWriteMaskType, StencilOpType},
     vulkan_device::Device,
-    vulkan_types::{EVulkanBackendBlendModes, EVulkanBackendClipModes, ShaderModule},
+    vulkan_types::{CanvasClipModes, ShaderModule, SupportedBlendModes},
 };
 
 #[derive(Debug, Hiarc, Clone)]
@@ -26,8 +26,8 @@ pub struct PipelineCreationAttributes {
     pub set_layouts: Vec<vk::DescriptorSetLayout>,
     #[hiarc_skip_unsafe]
     pub push_constants: Vec<vk::PushConstantRange>,
-    pub blend_mode: EVulkanBackendBlendModes,
-    pub dynamic_mode: EVulkanBackendClipModes,
+    pub blend_mode: SupportedBlendModes,
+    pub dynamic_mode: CanvasClipModes,
     pub is_line_prim: bool,
 
     pub stencil_mode: StencilOpType,
@@ -131,7 +131,7 @@ impl<'a> PipelineManager<'a> {
         rasterizer: &mut vk::PipelineRasterizationStateCreateInfo,
         multisampling: &mut vk::PipelineMultisampleStateCreateInfo,
         color_blend_attachments: &'b mut [vk::PipelineColorBlendAttachmentState],
-        blend_mode: EVulkanBackendBlendModes,
+        blend_mode: SupportedBlendModes,
         color_mask: ColorWriteMaskType,
     ) -> anyhow::Result<(
         vk::PipelineViewportStateCreateInfo<'b>,
@@ -183,34 +183,34 @@ impl<'a> PipelineManager<'a> {
             ColorWriteMaskType::None => vk::ColorComponentFlags::empty(),
         };
 
-        color_blend_attachment.blend_enable = if blend_mode == EVulkanBackendBlendModes::None {
+        color_blend_attachment.blend_enable = if blend_mode == SupportedBlendModes::None {
             vk::FALSE
         } else {
             vk::TRUE
         };
 
         let src_blend_factor_color = match blend_mode {
-            EVulkanBackendBlendModes::Additive => vk::BlendFactor::ONE,
-            EVulkanBackendBlendModes::Alpha => vk::BlendFactor::SRC_ALPHA,
-            EVulkanBackendBlendModes::None => vk::BlendFactor::SRC_COLOR,
+            SupportedBlendModes::Additive => vk::BlendFactor::ONE,
+            SupportedBlendModes::Alpha => vk::BlendFactor::SRC_ALPHA,
+            SupportedBlendModes::None => vk::BlendFactor::SRC_COLOR,
         };
 
         let dst_blend_factor_color = match blend_mode {
-            EVulkanBackendBlendModes::Additive => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
-            EVulkanBackendBlendModes::Alpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
-            EVulkanBackendBlendModes::None => vk::BlendFactor::SRC_COLOR,
+            SupportedBlendModes::Additive => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+            SupportedBlendModes::Alpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+            SupportedBlendModes::None => vk::BlendFactor::SRC_COLOR,
         };
 
         let src_blend_factor_alpha = match blend_mode {
-            EVulkanBackendBlendModes::Additive => vk::BlendFactor::ONE,
-            EVulkanBackendBlendModes::Alpha => vk::BlendFactor::SRC_ALPHA,
-            EVulkanBackendBlendModes::None => vk::BlendFactor::SRC_COLOR,
+            SupportedBlendModes::Additive => vk::BlendFactor::ONE,
+            SupportedBlendModes::Alpha => vk::BlendFactor::SRC_ALPHA,
+            SupportedBlendModes::None => vk::BlendFactor::SRC_COLOR,
         };
 
         let dst_blend_factor_alpha = match blend_mode {
-            EVulkanBackendBlendModes::Additive => vk::BlendFactor::ZERO,
-            EVulkanBackendBlendModes::Alpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
-            EVulkanBackendBlendModes::None => vk::BlendFactor::SRC_COLOR,
+            SupportedBlendModes::Additive => vk::BlendFactor::ZERO,
+            SupportedBlendModes::Alpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+            SupportedBlendModes::None => vk::BlendFactor::SRC_COLOR,
         };
 
         color_blend_attachment.src_color_blend_factor = src_blend_factor_color;
@@ -483,7 +483,7 @@ impl<'a> PipelineManager<'a> {
             pipeline_info.subpass = 0;
             pipeline_info.base_pipeline_handle = vk::Pipeline::null();
 
-            if attr.dynamic_mode == EVulkanBackendClipModes::DynamicScissorAndViewport {
+            if attr.dynamic_mode == CanvasClipModes::DynamicScissorAndViewport {
                 pipeline_info = pipeline_info.dynamic_state(&create_stack.dynamic_state_create);
             }
 

@@ -22,7 +22,7 @@ use super::{
     render_manager::RenderManager,
     render_pass::CanvasSetup,
     vulkan::VulkanCustomPipes,
-    vulkan_types::{EVulkanBackendAddressModes, RenderPassType},
+    vulkan_types::{RenderPassType, SupportedAddressModes},
     vulkan_uniform::{
         SUniformPrimExGVertColor, SUniformSpriteMultiGVertColor, UniformGBlur, UniformGPos,
         UniformPrimExGPos, UniformPrimExGPosRotationless, UniformPrimExGVertColorAlign,
@@ -32,9 +32,9 @@ use super::{
 
 pub fn get_address_mode_index(state: &State) -> usize {
     if state.wrap_mode == WrapType::Repeat {
-        EVulkanBackendAddressModes::Repeat as usize
+        SupportedAddressModes::Repeat as usize
     } else {
-        EVulkanBackendAddressModes::ClampEdges as usize
+        SupportedAddressModes::ClampEdges as usize
     }
 }
 

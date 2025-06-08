@@ -1,8 +1,9 @@
 use hiarc::Hiarc;
 use math::math::vector::{ubvec4, vec2, vec4, vec4_base};
 use serde::{Deserialize, Serialize};
+use strum::EnumCount;
 
-#[derive(Debug, Hiarc, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Default, Copy, Clone, PartialEq, Eq, EnumCount, Serialize, Deserialize)]
 pub enum BlendType {
     None = 0,
     #[default]
@@ -10,7 +11,7 @@ pub enum BlendType {
     Additive,
 }
 
-#[derive(Debug, Hiarc, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Default, Copy, Clone, PartialEq, Eq, EnumCount, Serialize, Deserialize)]
 pub enum WrapType {
     #[default]
     Repeat = 0,

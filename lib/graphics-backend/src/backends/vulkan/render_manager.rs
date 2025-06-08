@@ -19,8 +19,8 @@ use super::{
     render_group::{ColorWriteMaskType, StencilOpType},
     render_pass::CanvasSetup,
     vulkan_types::{
-        EVulkanBackendBlendModes, EVulkanBackendClipModes, PipelineContainer,
-        PipelineContainerItem, RenderPassType,
+        CanvasClipModes, PipelineContainer, PipelineContainerItem, RenderPassType,
+        SupportedBlendModes,
     },
 };
 
@@ -64,17 +64,17 @@ impl<'a> RenderManager<'a> {
 
     fn get_blend_mode_index(state: &State) -> usize {
         match state.blend_mode {
-            BlendType::None => EVulkanBackendBlendModes::None as usize,
-            BlendType::Alpha => EVulkanBackendBlendModes::Alpha as usize,
-            BlendType::Additive => EVulkanBackendBlendModes::Additive as usize,
+            BlendType::None => SupportedBlendModes::None as usize,
+            BlendType::Alpha => SupportedBlendModes::Alpha as usize,
+            BlendType::Additive => SupportedBlendModes::Additive as usize,
         }
     }
 
     fn get_dynamic_mode_index_from_exec_buffer(exec_buffer: &RenderCommandExecuteBuffer) -> usize {
         if exec_buffer.has_dynamic_state {
-            EVulkanBackendClipModes::DynamicScissorAndViewport as usize
+            CanvasClipModes::DynamicScissorAndViewport as usize
         } else {
-            EVulkanBackendClipModes::None as usize
+            CanvasClipModes::None as usize
         }
     }
 
@@ -279,7 +279,7 @@ impl<'a> RenderManager<'a> {
 
         let dynamic_state_index: usize =
             Self::get_dynamic_mode_index_from_exec_buffer(self.exec_buffer);
-        if dynamic_state_index == EVulkanBackendClipModes::DynamicScissorAndViewport as usize {
+        if dynamic_state_index == CanvasClipModes::DynamicScissorAndViewport as usize {
             unsafe {
                 self.device.device.cmd_set_viewport(
                     self.command_buffer.command_buffer,

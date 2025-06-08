@@ -10,6 +10,7 @@ hiarc = { path = "../hiarc", features = ["enable_hashlink"] }
 num-traits = "0.2.19"
 bitflags = { version = "2.9.0", features = ["serde"] }
 serde = "1.0.219"
+strum = { version = "0.27.1", features = ["derive"] }
 
 [package.metadata.cargo-machete]
 ignored = ["num-traits"]

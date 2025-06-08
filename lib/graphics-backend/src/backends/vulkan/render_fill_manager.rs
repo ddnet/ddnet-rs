@@ -10,9 +10,7 @@ use super::{
     render_cmds::get_address_mode_index,
     render_setup::RenderSetupNativeType,
     vulkan::VulkanBackend,
-    vulkan_types::{
-        ESupportedSamplerTypes, EVulkanBackendClipModes, RenderPassSubType, RenderPassType,
-    },
+    vulkan_types::{CanvasClipModes, RenderPassSubType, RenderPassType, SupportedSamplerTypes},
 };
 
 #[derive(Debug, Hiarc, Default)]
@@ -88,9 +86,9 @@ impl<'a> RenderCommandExecuteManager<'a> {
 
     fn get_dynamic_mode_index_from_state(&self, state: &State) -> usize {
         if state.clip.is_some() || self.backend.has_dynamic_viewport {
-            EVulkanBackendClipModes::DynamicScissorAndViewport as usize
+            CanvasClipModes::DynamicScissorAndViewport as usize
         } else {
-            EVulkanBackendClipModes::None as usize
+            CanvasClipModes::None as usize
         }
     }
 }
@@ -192,7 +190,7 @@ impl BackendRenderExecuteInterface for RenderCommandExecuteManager<'_> {
                 .set(&mut self.backend.current_frame_resources),
         );
         self.exec_buffer.sampler_descriptors[index as usize] = Some(
-            self.backend.props.device.samplers[ESupportedSamplerTypes::Texture2DArray as usize]
+            self.backend.props.device.samplers[SupportedSamplerTypes::Texture2dArray as usize]
                 .1
                 .set(&mut self.backend.current_frame_resources),
         );
@@ -230,7 +228,7 @@ impl BackendRenderExecuteInterface for RenderCommandExecuteManager<'_> {
 
     fn exec_buffer_fill_dynamic_states(&mut self, state: &State) {
         let dynamic_state_index: usize = self.get_dynamic_mode_index_from_state(state);
-        if dynamic_state_index == EVulkanBackendClipModes::DynamicScissorAndViewport as usize {
+        if dynamic_state_index == CanvasClipModes::DynamicScissorAndViewport as usize {
             let mut viewport = vk::Viewport::default();
             if self.backend.has_dynamic_viewport {
                 viewport.x = self.backend.dynamic_viewport_offset.x as f32;
