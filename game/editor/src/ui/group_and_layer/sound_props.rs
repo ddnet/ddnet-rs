@@ -236,7 +236,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     if matches!(point, SoundPointerDownPoint::Center) {
                         fn combobox_name(ty: &str, index: usize, name: &str) -> String {
                             name.is_empty()
-                                .then_some(format!("{ty} #{}", index))
+                                .then_some(format!("{ty} #{index}"))
                                 .unwrap_or_else(|| name.to_owned())
                         }
                         if can_change_pos_anim {

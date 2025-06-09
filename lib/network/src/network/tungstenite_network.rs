@@ -344,7 +344,7 @@ impl
         _server_name: &str,
     ) -> anyhow::Result<TungsteniteNetworkConnectingWrapper, NetworkEventConnectingFailed> {
         let (res, _) = tokio_tungstenite::connect_async_tls_with_config(
-            &format!("ws://{}", addr),
+            &format!("ws://{addr}"),
             None,
             false,
             Some(tokio_tungstenite::Connector::Plain),

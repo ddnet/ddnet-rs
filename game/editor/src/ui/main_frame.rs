@@ -95,14 +95,14 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                 "Disconnected. You can still save the map, \
                                 but not edit it anymore.",
                             );
-                            ui.label(format!("Reason: {}", reason));
+                            ui.label(format!("Reason: {reason}"));
                         });
                 }
                 NetworkClientState::Err(reason) => {
                     Window::new("Network")
                         .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                         .show(ui.ctx(), |ui| {
-                            ui.label(format!("Error: {}", reason));
+                            ui.label(format!("Error: {reason}"));
                         });
                 }
             }

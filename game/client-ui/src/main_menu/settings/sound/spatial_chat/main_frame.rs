@@ -285,7 +285,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         if loudest_report < 0.00001 {
                             "silent".to_string()
                         } else {
-                            format!("{} db", loudest_db_real)
+                            format!("{loudest_db_real} db")
                         }
                     ));
                     ui.end_row();
@@ -427,7 +427,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 let acc_certs = &mut settings.account_certs;
                                 match player.unique_id {
                                     PlayerUniqueId::Account(account_id) => {
-                                        acc_players.entry(format!("acc_{}", account_id))
+                                        acc_players.entry(format!("acc_{account_id}"))
                                     }
                                     PlayerUniqueId::CertFingerprint(hash) => {
                                         acc_certs.entry(format!("cert_{}", fmt_hash(&hash)))
@@ -462,7 +462,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 let acc_certs = &mut settings.account_certs;
                                 match player.unique_id {
                                     PlayerUniqueId::Account(account_id) => {
-                                        acc_players.remove(&format!("acc_{}", account_id));
+                                        acc_players.remove(&format!("acc_{account_id}"));
                                     }
                                     PlayerUniqueId::CertFingerprint(hash) => {
                                         acc_certs.remove(&format!("cert_{}", fmt_hash(&hash)));

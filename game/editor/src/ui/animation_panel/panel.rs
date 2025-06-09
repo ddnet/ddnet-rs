@@ -220,7 +220,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             ) where
                 S: FnOnce(usize, &AnimBaseSkeleton<EditorAnimationProps, A>) -> EditorAction,
             {
-                ui.label(format!("{}:", name));
+                ui.label(format!("{name}:"));
                 // selection of animation
                 if ui.button("\u{f060}").clicked() {
                     *index = index.map(|i| i.checked_sub(1)).flatten();
@@ -230,7 +230,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
 
                 fn combobox_name(ty: &str, index: usize, name: &str) -> String {
                     name.is_empty()
-                        .then_some(format!("{ty} #{}", index))
+                        .then_some(format!("{ty} #{index}"))
                         .unwrap_or_else(|| name.to_owned())
                 }
                 egui::ComboBox::new(format!("animations-select-anim{name}"), "")
@@ -266,7 +266,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
 
                     client.execute(
                         add(index),
-                        Some(&format!("{name}-anim-insert-anim-at-{}", index)),
+                        Some(&format!("{name}-anim-insert-anim-at-{index}")),
                     );
                 }
 
@@ -327,7 +327,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         },
                         |index, anims, groups| EditorActionGroup {
                             actions: rem_color_anim(anims, groups, index),
-                            identifier: Some(format!("color-anim-del-anim-at-{}", index)),
+                            identifier: Some(format!("color-anim-del-anim-at-{index}")),
                         },
                         |index, anim| {
                             let mut anim: ColorAnimation = anim.clone().into();
@@ -372,7 +372,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         },
                         |index, anims, groups| EditorActionGroup {
                             actions: rem_pos_anim(anims, groups, index),
-                            identifier: Some(format!("pos-anim-del-anim-at-{}", index)),
+                            identifier: Some(format!("pos-anim-del-anim-at-{index}")),
                         },
                         |index, anim| {
                             let mut anim: PosAnimation = anim.clone().into();
@@ -418,7 +418,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         },
                         |index, anims, groups| EditorActionGroup {
                             actions: rem_sound_anim(anims, groups, index),
-                            identifier: Some(format!("sound-anim-del-anim-at-{}", index)),
+                            identifier: Some(format!("sound-anim-del-anim-at-{index}")),
                         },
                         |index, anim| {
                             let mut anim: SoundAnimation = anim.clone().into();
@@ -683,7 +683,7 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                     anim: anim.clone(),
                 },
             }),
-            Some(&format!("pos-anim-repl-anim-{}", index)),
+            Some(&format!("pos-anim-repl-anim-{index}")),
         );
     }
     if let Some(((index, anim, props), anim_point)) =
@@ -697,7 +697,7 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                     anim: anim.clone(),
                 },
             }),
-            Some(&format!("color-anim-repl-anim-{}", index)),
+            Some(&format!("color-anim-repl-anim-{index}")),
         );
     }
     if let Some(((index, anim, props), anim_point)) =
@@ -711,7 +711,7 @@ fn handle_point_insert(pipe: &mut UiRenderPipe<UserDataWithTab>) {
                     anim: anim.clone(),
                 },
             }),
-            Some(&format!("sound-anim-repl-anim-{}", index)),
+            Some(&format!("sound-anim-repl-anim-{index}")),
         );
     }
 }
@@ -729,7 +729,7 @@ fn handle_points_changed(pipe: &mut UiRenderPipe<UserDataWithTab>) {
             if !props.selected_point_channels.is_empty() || !props.selected_points.is_empty() {
                 client.execute(
                     gen_action(*index, anim),
-                    Some(&format!("{}-anim-repl-anim-{}", prefix, index)),
+                    Some(&format!("{prefix}-anim-repl-anim-{index}")),
                 );
             }
         }
@@ -798,7 +798,7 @@ fn handle_point_delete(
                 anim.points.remove(point_index);
                 client.execute(
                     gen_action(*index, anim),
-                    Some(&format!("{}-anim-repl-anim-{}", group_name, index)),
+                    Some(&format!("{group_name}-anim-repl-anim-{index}")),
                 );
 
                 fn new_point(p: usize, point_index: usize) -> Option<usize> {

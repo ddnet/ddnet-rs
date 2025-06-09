@@ -1409,12 +1409,28 @@ impl TileBrush {
                                 w,
                                 h,
                                 negative_offset: usvec2::new(
-                                    x_needs_offset.then_some(count_x - 1).unwrap_or_default(),
-                                    y_needs_offset.then_some(count_y - 1).unwrap_or_default(),
+                                    if x_needs_offset {
+                                        count_x - 1
+                                    } else {
+                                        Default::default()
+                                    },
+                                    if y_needs_offset {
+                                        count_y - 1
+                                    } else {
+                                        Default::default()
+                                    },
                                 ),
                                 negative_offsetf: dvec2::new(
-                                    x_needs_offset.then_some(count_x as f64).unwrap_or_default(),
-                                    y_needs_offset.then_some(count_y as f64).unwrap_or_default(),
+                                    if x_needs_offset {
+                                        count_x as f64
+                                    } else {
+                                        Default::default()
+                                    },
+                                    if y_needs_offset {
+                                        count_y as f64
+                                    } else {
+                                        Default::default()
+                                    },
                                 ),
                                 render,
                                 map_render: MapGraphics::new(backend_handle),
@@ -1522,7 +1538,7 @@ impl TileBrush {
                                             },
                                         ));
 
-                                        (actions, format!("tile-brush phy {}", layer_index))
+                                        (actions, format!("tile-brush phy {layer_index}"))
                                     }
                                     EditorLayerUnionRef::Design {
                                         layer,
@@ -1564,8 +1580,7 @@ impl TileBrush {
                                                 },
                                             )],
                                             format!(
-                                                "tile-brush {}-{}-{}",
-                                                group_index, layer_index, is_background
+                                                "tile-brush {group_index}-{layer_index}-{is_background}"
                                             ),
                                         )
                                     }
@@ -1907,7 +1922,7 @@ impl TileBrush {
 
                     (
                         actions,
-                        format!("tile-brush phy {}", layer_index),
+                        format!("tile-brush phy {layer_index}"),
                         TileBrushLastApplyLayer::Physics {
                             layer_index: *layer_index,
                         },
@@ -1986,10 +2001,7 @@ impl TileBrush {
 
                     (
                         actions,
-                        format!(
-                            "tile-brush {}-{}-{}",
-                            group_index, layer_index, is_background
-                        ),
+                        format!("tile-brush {group_index}-{layer_index}-{is_background}"),
                         TileBrushLastApplyLayer::Design {
                             group_index: *group_index,
                             layer_index: *layer_index,

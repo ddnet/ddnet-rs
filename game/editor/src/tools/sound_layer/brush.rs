@@ -393,7 +393,7 @@ impl SoundBrush {
                                 sounds,
                             },
                         }),
-                        format!("sound-brush design {}", layer_index),
+                        format!("sound-brush design {layer_index}"),
                     ))
                 } else {
                     None

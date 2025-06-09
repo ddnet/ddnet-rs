@@ -241,7 +241,7 @@ impl PhyDevice {
             Self::get_driver_verson(device_prop.driver_version, device_prop.vendor_id)
         );
 
-        info!("{}, {}", version_name, vendor_name);
+        info!("{version_name}, {vendor_name}");
 
         // get important device limits
         limits.non_coherent_mem_alignment = device_prop.limits.non_coherent_atom_size;

@@ -156,8 +156,7 @@ impl ConfigInterface for String {
                 } {
                     return Err(ConfigFromStrErr::PathErr(
                         ConfigFromStrPathErr::ValidationError(format!(
-                            "The min/max length of the string was reached ({}/{})",
-                            min, max
+                            "The min/max length of the string was reached ({min}/{max})"
                         )),
                     ));
                 }
@@ -180,8 +179,7 @@ fn validate_numerical<I: PartialOrd + Display>(
     if min > val || max < val {
         Err(ConfigFromStrErr::PathErr(
             ConfigFromStrPathErr::ValidationError(format!(
-                "Numerical value out of allowed range: {} not in [{}, {}]",
-                val, min, max
+                "Numerical value out of allowed range: {val} not in [{min}, {max}]"
             )),
         ))
     } else {
@@ -474,7 +472,7 @@ impl ConfigInterface for bool {
                             .map(|v| v == 1)
                             .map_err(|err: ParseIntError| {
                                 ConfigFromStrErr::PathErr(ConfigFromStrPathErr::ParsingErr(
-                                    format!("{}. {}", err, err_bool),
+                                    format!("{err}. {err_bool}"),
                                 ))
                             })
                     })?;

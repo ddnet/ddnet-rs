@@ -53,7 +53,7 @@ impl HttpDownloadServer {
                                 }
                             };
                             app = app.route(
-                                &format!("/{}", path),
+                                &format!("/{path}"),
                                 axum::routing::get(|| async move { served_file }),
                             );
                         }
@@ -73,13 +73,13 @@ impl HttpDownloadServer {
 
         let tcp_socket = TcpSocket::new_v4()?;
         tcp_socket.set_reuseaddr(true)?;
-        tcp_socket.bind(format!("0.0.0.0:{}", ipv4_port).parse()?)?;
+        tcp_socket.bind(format!("0.0.0.0:{ipv4_port}").parse()?)?;
         let (join_v4, port_v4) =
             start_http_server(tcp_socket, served_files.clone(), served_dirs_disk.clone())?;
 
         let tcp_socket = TcpSocket::new_v6()?;
         tcp_socket.set_reuseaddr(true)?;
-        tcp_socket.bind(format!("[::0]:{}", ipv6_port).parse()?)?;
+        tcp_socket.bind(format!("[::0]:{ipv6_port}").parse()?)?;
         let (join_v6, port_v6) =
             start_http_server(tcp_socket, served_files.clone(), served_dirs_disk.clone())?;
         Ok(Self {

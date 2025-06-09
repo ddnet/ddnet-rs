@@ -218,9 +218,9 @@ pub fn ddnet_main(
                 &mut res,
                 true,
             );
-            log::debug!("{}", res);
+            log::debug!("{res}");
             if !cur_cmds_succeeded {
-                log::error!("{}", res);
+                log::error!("{res}");
             }
             let mut has_events = true;
             let mut count = 0;
@@ -237,11 +237,11 @@ pub fn ddnet_main(
                             &local_console_builder.entries,
                             &local_console_builder.parser_cache,
                             |err| {
-                                log::error!("{}", err);
+                                log::error!("{err}");
                                 has_startup_errors = true;
                             },
                             |msg| {
-                                log::info!("{}", msg);
+                                log::info!("{msg}");
                             },
                         );
 
@@ -1466,7 +1466,7 @@ impl ClientNativeImpl {
                                 name.as_ref(),
                                 self.font_data.clone(),
                                 Some(DemoVideoEncodeProperties {
-                                    file_name: format!("videos/{}.mp4", video_name).into(),
+                                    file_name: format!("videos/{video_name}.mp4").into(),
                                     pixels_per_point: self.config.game.cl.recorder.pixels_per_point,
                                     encoder_settings: EncoderSettings {
                                         fps: self.config.game.cl.recorder.fps,
@@ -2235,7 +2235,7 @@ impl ClientNativeImpl {
             let mut res = String::default();
             let cur_cmds_succeeded =
                 run_commands(&cmds, entries, config_engine, config_game, &mut res, true);
-            log::debug!("{}", res);
+            log::debug!("{res}");
             if !cur_cmds_succeeded {
                 on_log(res);
             }
@@ -3165,7 +3165,7 @@ impl AppWithGraphics for ClientNativeImpl {
                 let mut legacy_proxy = self.legacy_proxy_thread.take().unwrap();
                 if let Err(err) = legacy_proxy.thread.try_join() {
                     self.notifications.add_err(
-                        format!("Legacy proxy crashed: {}", err),
+                        format!("Legacy proxy crashed: {err}"),
                         Duration::from_secs(10),
                     );
                     self.connecting_log.log(format!("Legacy proxy died: {err}"));

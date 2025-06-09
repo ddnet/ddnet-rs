@@ -151,7 +151,9 @@ impl<'a> RenderManager<'a> {
                                 &creation_data.pipeline_cache,
                             );
                             let pipelines = pipeline_manager
-                                .create_graphics_pipeline_ex(&[creation_props.attr.clone()])
+                                .create_graphics_pipeline_ex(std::slice::from_ref(
+                                    &creation_props.attr,
+                                ))
                                 .unwrap();
                             pipeline_and_layout.store(Arc::new(Some(pipelines)));
                         }

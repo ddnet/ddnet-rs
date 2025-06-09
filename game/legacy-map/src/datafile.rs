@@ -3261,7 +3261,7 @@ impl CDatafileWrapper {
                                     tune_name,
                                     tune_val.value,
                                     if let Some(comment) = &tune_val.comment {
-                                        format!(" # {}", comment)
+                                        format!(" # {comment}")
                                     } else {
                                         String::default()
                                     }
@@ -3275,7 +3275,7 @@ impl CDatafileWrapper {
                             let mut msg = |postfix: &str, msg: &Option<String>| {
                                 let Some(msg) = msg else { return };
                                 let mut setting: [u8; 256] = vec![0; 256].try_into().unwrap();
-                                let cmd = format!("tune_zone_{postfix} {index} {}", msg);
+                                let cmd = format!("tune_zone_{postfix} {index} {msg}");
                                 let src = cmd.as_bytes();
                                 setting[0..src.len().min(256)]
                                     .copy_from_slice(&src[0..src.len().min(256)]);
@@ -3494,7 +3494,7 @@ impl CDatafileWrapper {
                             "{}{}",
                             cmd.value,
                             if let Some(comment) = &cmd.comment {
-                                format!(" # {}", comment)
+                                format!(" # {comment}")
                             } else {
                                 String::default()
                             }
@@ -3511,7 +3511,7 @@ impl CDatafileWrapper {
                             var_name,
                             value.value,
                             if let Some(comment) = &value.comment {
-                                format!(" # {}", comment)
+                                format!(" # {comment}")
                             } else {
                                 String::default()
                             }

@@ -29,7 +29,7 @@ pub fn wasm_func_auto_call(attr: TokenStream, tokens: TokenStream) -> TokenStrea
                     if let Type::Reference(_) = typed_arg.ty.as_ref() {
                         arg_expr += "";
                     } else {
-                        arg_expr = format!("&{}", arg_expr);
+                        arg_expr = format!("&{arg_expr}");
                     }
                     let func_call = syn::parse::<Expr>(
                         TokenStream::from_str(

@@ -299,7 +299,7 @@ impl LoadSkinTexturesData {
                         file.clone(),
                     );
                 }
-                files.insert(base.join(format!("{}.png", name)), file);
+                files.insert(base.join(format!("{name}.png")), file);
                 Ok(())
             };
         insert_part("body", converted.body, false)?;
@@ -548,7 +548,7 @@ impl LoadSkinTexturesData {
         img_mem.as_mut_slice().copy_from_slice(&img.data);
         if let Err(err) = graphics_mt.try_flush_mem(&mut img_mem, true) {
             // Ignore the error, but log it.
-            log::debug!("err while flushing memory: {}", err);
+            log::debug!("err while flushing memory: {err}");
         }
         ContainerItemLoadData {
             width: img.width,

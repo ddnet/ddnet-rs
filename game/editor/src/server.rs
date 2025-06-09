@@ -561,7 +561,7 @@ impl EditorServer {
                                                 if is_undo { "undo" } else { "redo" }
                                             );
                                             log::error!("{err}{}", act_err.backtrace());
-                                            log::error!("current action: {}", act_label);
+                                            log::error!("current action: {act_label}");
                                             log::error!(
                                                 "latest action log starting with \
                                                 the most recent:\n{}",
@@ -843,9 +843,8 @@ impl EditorServer {
                                 .flatten()
                                 .into_iter()
                                 .collect(),
-                            EditorEventRuleTy::LegacyRules(rules) => (generate_hash_for(&rules)
-                                == hash)
-                                .then(|| {
+                            EditorEventRuleTy::LegacyRules(rules) => {
+                                if generate_hash_for(&rules) == hash {
                                     LegacyRulesLoading::new(&rules)
                                         .ok()
                                         .map(|rules| {
@@ -869,8 +868,10 @@ impl EditorServer {
                                                 .collect()
                                         })
                                         .unwrap_or_default()
-                                })
-                                .unwrap_or_default(),
+                                } else {
+                                    Default::default()
+                                }
+                            }
                         };
                         if !rules.is_empty() {
                             for (name, rule) in rules {

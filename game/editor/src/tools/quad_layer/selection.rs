@@ -302,8 +302,8 @@ impl QuadSelection {
                                     index,
                                 })),
                                 Some(&format!(
-                                    "change-quad-attr-{}-{}-{}-{}",
-                                    is_background, group_index, layer_index, index
+                                    "change-quad-attr-\
+                                    {is_background}-{group_index}-{layer_index}-{index}"
                                 )),
                             );
                         }

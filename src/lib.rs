@@ -73,7 +73,7 @@ fn main_impl(app: NativeApp) {
 
         // Try to generate and print backtrace
         let backtrace = std::backtrace::Backtrace::force_capture();
-        println!("Backtrace:\n{}", backtrace);
+        println!("Backtrace:\n{backtrace}");
 
         if thread_id != std::thread::current().id() {
             return;

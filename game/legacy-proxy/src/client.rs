@@ -21,12 +21,6 @@ use log::{debug, log, log_enabled, Level};
 
 use crate::{socket::Socket, ServerInfo};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct QueuedChunk {
-    pub vital: bool,
-    pub data: Vec<u8>,
-}
-
 pub struct SocketClient {
     pub socket: Socket,
     pub net: Net<SocketAddr>,
@@ -83,7 +77,7 @@ impl SocketClient {
     pub fn run_once(&mut self, mut on_event: impl FnMut(&mut Self, ChunkOrEvent<'_, SocketAddr>)) {
         self.net
             .tick(&mut self.socket)
-            .for_each(|e| panic!("{:?}", e));
+            .for_each(|e| panic!("{e:?}"));
 
         while let Ok(res) = self.socket.try_recv() {
             self.run_recv(res, &mut on_event);
@@ -150,7 +144,7 @@ impl Drop for SocketClient {
 
 fn hexdump(level: Level, data: &[u8]) {
     if log_enabled!(level) {
-        hexdump_iter(data).for_each(|s| log!(level, "{}", s));
+        hexdump_iter(data).for_each(|s| log!(level, "{s}"));
     }
 }
 

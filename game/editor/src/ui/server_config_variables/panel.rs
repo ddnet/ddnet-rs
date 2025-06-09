@@ -119,7 +119,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                             );
                                             if let Some(comment) = &args.comment {
                                                 job.append(
-                                                    &format!(" # {}", comment),
+                                                    &format!(" # {comment}"),
                                                     0.0,
                                                     TextFormat {
                                                         color: Color32::GRAY,

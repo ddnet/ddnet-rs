@@ -117,8 +117,7 @@ impl ClientMapLoadingFile {
         Self {
             task: io.rt.spawn(async move {
                 log_load.log(format!(
-                    "Ready map file from file system: {:?}",
-                    map_file_name
+                    "Ready map file from file system: {map_file_name:?}"
                 ));
                 let file = file_system.read_file(map_file_name.as_ref()).await;
 
@@ -194,8 +193,7 @@ impl ClientMapLoadingFile {
 
                         io.rt.spawn(async move {
                             log.log(format!(
-                                "Loading physics wasm module: {:?}",
-                                game_mod_file_name
+                                "Loading physics wasm module: {game_mod_file_name:?}"
                             ));
                             let file = fs.read_file(game_mod_file_name.as_ref()).await;
 
@@ -359,7 +357,7 @@ impl ClientMapComponentLoading {
                                 } else {
                                     format!("{}/{}.wasm", RENDER_MODS_PATH, name.as_str())
                                 };
-                                log.log(format!("Reading rendering module: {}", path_str));
+                                log.log(format!("Reading rendering module: {path_str}"));
                                 let file = fs
                                     .read_file(path_str.as_ref())
                                     .await

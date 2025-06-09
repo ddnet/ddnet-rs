@@ -107,10 +107,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                     })
                                     .collect::<Vec<_>>()
                                     .join("\n");
-                                Some(format!(
-                                    "This control/command has multiple binds:\n{}",
-                                    binds
-                                ))
+                                Some(format!("This control/command has multiple binds:\n{binds}"))
                             } else {
                                 None
                             };
@@ -128,8 +125,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 .join("\n");
                             Some(format!(
                                 "This control/command is part of binds \
-                                with other controls/commands:\n{}",
-                                binds
+                                with other controls/commands:\n{binds}"
                             ))
                         } else {
                             None
@@ -139,7 +135,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         if actions.len() == 1 {
                             (
                                 Some(bind_keys_str.clone()),
-                                format!("Bound on {}", bind_keys_str),
+                                format!("Bound on {bind_keys_str}"),
                                 multibind_text,
                                 info_text,
                             )

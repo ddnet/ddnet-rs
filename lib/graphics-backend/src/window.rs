@@ -128,7 +128,7 @@ impl BackendWindow<'_> {
         &self,
         entry: &ash::Entry,
         instance: &ash::Instance,
-    ) -> Result<BackendSurfaceAndHandles, vk::Result> {
+    ) -> Result<BackendSurfaceAndHandles<'_>, vk::Result> {
         match self {
             BackendWindow::Winit { window } => {
                 if let Ok((dh, wh)) = window

@@ -5,7 +5,7 @@ use crate::map::{EditorGroup, EditorLayer, EditorPhysicsLayer, EditorResources};
 
 pub fn group_name(group: &EditorGroup, index: usize) -> String {
     if group.name.is_empty() {
-        format!("Group #{}", index)
+        format!("Group #{index}")
     } else {
         format!("Group \"{}\"", group.name)
     }
@@ -63,7 +63,7 @@ pub fn layer_name(
     } else {
         (
             icon,
-            LayoutJob::simple(format!("#{}", index), Default::default(), text_color, 0.0),
+            LayoutJob::simple(format!("#{index}"), Default::default(), text_color, 0.0),
         )
     }
 }
@@ -80,5 +80,5 @@ pub fn layer_name_phy(layer: &EditorPhysicsLayer, index: usize) -> String {
         EditorPhysicsLayer::Switch(_) => "Switch",
         EditorPhysicsLayer::Tune(_) => "Tune",
     };
-    format!("#{} {layer_name}", index)
+    format!("#{index} {layer_name}")
 }

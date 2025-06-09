@@ -152,7 +152,7 @@ where
             if d > V::from(0) {
                 // only one 'real' solution
                 let s = sqrt(d);
-                return cbrt(s - q) - cbrt(s + q) - sub;
+                cbrt(s - q) - cbrt(s + q) - sub
             } else if d == V::from(0) {
                 // one single, one double solution or triple solution
                 let s = cbrt(-q);

@@ -18,7 +18,7 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
         match mode {
             ConnectModes::Connecting { addr } => {
                 ui.vertical(|ui| {
-                    ui.label(format!("Connecting to:\n{}", addr));
+                    ui.label(format!("Connecting to:\n{addr}"));
                     if ui.button("Cancel").clicked() {
                         pipe.user_data.events.push(UiEvent::Disconnect);
                         pipe.user_data.config.engine.ui.path.route("");
@@ -28,9 +28,8 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             ConnectModes::ConnectingErr { msg } => {
                 ui.vertical(|ui| {
                     ui.label(format!(
-                        "Connecting to {} failed:\n{}",
-                        pipe.user_data.config.storage::<String>("server-addr"),
-                        msg
+                        "Connecting to {} failed:\n{msg}",
+                        pipe.user_data.config.storage::<String>("server-addr")
                     ));
                     if ui.button("Return").clicked() {
                         pipe.user_data.events.push(UiEvent::Disconnect);
@@ -44,7 +43,7 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         "Connecting to {}",
                         pipe.user_data.config.storage::<String>("server-addr")
                     ));
-                    ui.label(format!("Waiting in queue: {}", msg));
+                    ui.label(format!("Waiting in queue: {msg}"));
                     if ui.button("Cancel").clicked() {
                         pipe.user_data.events.push(UiEvent::Disconnect);
                         pipe.user_data.config.engine.ui.path.route("");
@@ -54,9 +53,8 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             ConnectModes::DisconnectErr { msg } => {
                 ui.vertical(|ui| {
                     ui.label(format!(
-                        "Connection to {} lost:\n{}",
-                        pipe.user_data.config.storage::<String>("server-addr"),
-                        msg
+                        "Connection to {} lost:\n{msg}",
+                        pipe.user_data.config.storage::<String>("server-addr")
                     ));
                     if ui.button("Return").clicked() {
                         pipe.user_data.events.push(UiEvent::Disconnect);

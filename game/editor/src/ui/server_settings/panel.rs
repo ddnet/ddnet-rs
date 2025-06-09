@@ -71,7 +71,7 @@ pub fn render_server_commands(ui: &mut egui::Ui, tab: &mut EditorTab) {
                                     );
                                     if let Some(comment) = &cmd.comment {
                                         job.append(
-                                            &format!(" # {}", comment),
+                                            &format!(" # {comment}"),
                                             0.0,
                                             TextFormat {
                                                 color: Color32::GRAY,

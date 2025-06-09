@@ -1099,13 +1099,10 @@ impl Server {
         iter.enumerate().for_each(|(index, (net_id, _))| {
             self.network.send_unordered_to(
                 &ServerToClientMessage::QueueInfo(
-                    format!(
-                        "The server is full.\nYou are queued at position: #{}",
-                        index
-                    )
-                    .as_str()
-                    .try_into()
-                    .unwrap(),
+                    format!("The server is full.\nYou are queued at position: #{index}")
+                        .as_str()
+                        .try_into()
+                        .unwrap(),
                 ),
                 net_id,
             );
@@ -1900,7 +1897,7 @@ impl Server {
                             .map(|id| id.to_string())
                             .collect::<Vec<_>>()
                             .join(", ");
-                        res = format!("Banned the following id(s): {}", text);
+                        res = format!("Banned the following id(s): {text}");
                     })?;
                     anyhow::Ok(res)
                 }
@@ -1921,7 +1918,7 @@ impl Server {
                                 .map(|id| id.to_string())
                                 .collect::<Vec<_>>()
                                 .join(", ");
-                            res = format!("Kicked the following id(s): {}", text);
+                            res = format!("Kicked the following id(s): {text}");
                         },
                     )?;
                     anyhow::Ok(res)
@@ -2767,8 +2764,8 @@ impl Server {
                 .flat_map(|s| s.1.world.projectiles.iter())
                 .collect();
 
-            let players = format!("{:?}", player_infos);
-            let projectiles = format!("{:?}", projectiles);
+            let players = format!("{player_infos:?}");
+            let projectiles = format!("{projectiles:?}");
             let inputs = format!("{:?}", inputs.map(|inp| inp.collect::<Vec<_>>()));
 
             if let LocalServerState::Ready(ready) = &mut *shared_info.state.lock().unwrap() {
@@ -2948,28 +2945,25 @@ impl Server {
                                     port: u16| {
                         Box::pin(async move {
                             for master_server in master_servers {
+                                let headers = vec![
+                                    (
+                                        "Address",
+                                        format!(
+                                            "ddrs-0.1+quic://connecting-address.invalid:{port}"
+                                        )
+                                        .as_str(),
+                                    )
+                                        .into(),
+                                    ("Secret", fmt_hash(&secret).as_str()).into(),
+                                    ("Challenge-Secret", fmt_hash(&challenge_secret).as_str())
+                                        .into(),
+                                    ("Info-Serial", serial.to_string().as_str()).into(),
+                                    ("content-type", "application/json").into(),
+                                ];
                                 match http
                                     .custom_request(
                                         master_server.try_into().unwrap(),
-                                        vec![
-                                            (
-                                                "Address",
-                                                format!(
-                                                    "ddrs-0.1+quic://connecting-address.invalid:{}",
-                                                    port
-                                                )
-                                                .as_str(),
-                                            )
-                                                .into(),
-                                            ("Secret", fmt_hash(&secret).as_str()).into(),
-                                            (
-                                                "Challenge-Secret",
-                                                fmt_hash(&challenge_secret).as_str(),
-                                            )
-                                                .into(),
-                                            ("Info-Serial", serial.to_string().as_str()).into(),
-                                            ("content-type", "application/json").into(),
-                                        ],
+                                        headers,
                                         Some(register_info.as_bytes().to_vec()),
                                     )
                                     .await

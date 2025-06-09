@@ -688,7 +688,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                     }],
                                                 },
                                             }),
-                                            Some(&format!("quad-add design {}", layer_index)),
+                                            Some(&format!("quad-add design {layer_index}")),
                                         );
                                     }
                                 }
@@ -788,7 +788,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                     },
                                                 },
                                             ),
-                                            Some(&format!("sound-add design {}", layer_index)),
+                                            Some(&format!("sound-add design {layer_index}")),
                                         );
                                     }
                                 }

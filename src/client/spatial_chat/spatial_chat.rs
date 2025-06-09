@@ -498,7 +498,7 @@ impl SpatialChat {
                         .cl
                         .spatial_chat
                         .account_players
-                        .get(&format!("acc_{}", account_id)),
+                        .get(&format!("acc_{account_id}")),
                     PlayerUniqueId::CertFingerprint(hash) => {
                         if !config.cl.spatial_chat.from_non_account_users {
                             return None;

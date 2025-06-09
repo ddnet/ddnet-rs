@@ -497,7 +497,7 @@ impl QuadBrush {
                                 quads,
                             },
                         }),
-                        format!("quad-brush design {}", layer_index),
+                        format!("quad-brush design {layer_index}"),
                     ))
                 } else {
                     None

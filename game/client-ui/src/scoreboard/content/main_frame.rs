@@ -99,7 +99,7 @@ pub fn render_players(
                 score_limit,
                 time_limit,
             } => (
-                format!("Score limit: {}", score_limit),
+                format!("Score limit: {score_limit}"),
                 if let Some(time_limit) = time_limit {
                     format!("Time limit: {}", time_limit.to_race_string())
                 } else {

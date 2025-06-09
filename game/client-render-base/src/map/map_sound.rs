@@ -181,9 +181,7 @@ impl MapSoundProcess {
                 );
                 // check if the sound should play, else play or update
                 let sounds: &SoundLayerSounds = layer.user.borrow();
-                if interact.is_some() {
-                    let (falloff, panning) = interact.unwrap();
-
+                if let Some((falloff, panning)) = interact {
                     let panning = if sound.panning { panning } else { 0.5 };
 
                     let base_props = SoundPlayBaseProps {

@@ -146,9 +146,7 @@ pub fn config(tokens: TokenStream) -> TokenStream {
                                     .replace("\\'", "'")
                                     .replace("\\n", "\n");
                                 doc_comment = match &doc_comment {
-                                    Some(doc_comment) => {
-                                        Some(format!("{}\n{}", doc_comment, inner))
-                                    }
+                                    Some(doc_comment) => Some(format!("{doc_comment}\n{inner}")),
                                     None => Some(inner),
                                 };
                             }

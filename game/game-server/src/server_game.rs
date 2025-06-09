@@ -84,7 +84,7 @@ impl ServerMap {
         let map_file_str = map_name.to_string();
         let fs = io.fs.clone();
         let map = io.rt.spawn(async move {
-            let map_path = format!("map/maps/{}.twmap", map_file_str);
+            let map_path = format!("map/maps/{map_file_str}.twmap");
             let map_file = fs.read_file(map_path.as_ref()).await?;
 
             let (resources, _) = Map::read_resources_and_header(&map_file)?;
@@ -457,7 +457,7 @@ impl ServerGame {
                     None,
                 ),
                 game_mod => {
-                    let path = format!("{}/{}.wasm", STATE_MODS_PATH, game_mod);
+                    let path = format!("{STATE_MODS_PATH}/{game_mod}.wasm");
                     let file_path = path.clone();
                     let (file, wasm_module) = {
                         let fs = io.fs.clone();
@@ -498,7 +498,7 @@ impl ServerGame {
         let fs_change_watcher = game_mod_blake3_hash.is_some().then(|| {
             io.fs.watch_for_change(
                 STATE_MODS_PATH.as_ref(),
-                Some(format!("{}.wasm", game_mod_name).as_ref()),
+                Some(format!("{game_mod_name}.wasm").as_ref()),
             )
         });
 

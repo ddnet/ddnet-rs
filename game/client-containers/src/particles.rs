@@ -114,7 +114,7 @@ impl LoadParticle {
         let mut insert_part = |name: &str, part: Particles06Part| -> anyhow::Result<()> {
             let file = image_utils::png::save_png_image(&part.data, part.width, part.height)?;
 
-            files.insert(format!("{}.png", name).into(), file);
+            files.insert(format!("{name}.png").into(), file);
             Ok(())
         };
         insert_part("slice_001", converted.slice)?;

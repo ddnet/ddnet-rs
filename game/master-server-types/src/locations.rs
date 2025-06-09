@@ -28,11 +28,11 @@ impl Locations {
     }
     pub fn read(filename: &Path) -> Result<Locations, LocationsError> {
         let mut reader = csv::Reader::from_path(filename)
-            .map_err(|e| LocationsError(format!("error opening {:?}: {}", filename, e)))?;
+            .map_err(|e| LocationsError(format!("error opening {filename:?}: {e}")))?;
         let locations: Result<Vec<_>, _> = reader.deserialize().collect();
         Ok(Locations {
             locations: locations
-                .map_err(|e| LocationsError(format!("error deserializing: {}", e)))?,
+                .map_err(|e| LocationsError(format!("error deserializing: {e}")))?,
         })
     }
     pub fn lookup(&self, addr: IpAddr) -> Option<Location> {

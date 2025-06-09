@@ -123,7 +123,7 @@ pub fn render_tune_overview(
                 act.new_tunes = new_tunes;
                 client.execute(
                     EditorAction::ChangeTuneZone(act),
-                    Some(&format!("tune_zone_change_zones-{}", zone_val)),
+                    Some(&format!("tune_zone_change_zones-{zone_val}")),
                 );
             }
         }
@@ -191,7 +191,7 @@ pub fn render_tune_overview(
                                         act.new_enter_msg = new_enter_msg;
                                         client.execute(
                                             EditorAction::ChangeTuneZone(act),
-                                            Some(&format!("tune_zone_change_zones-{}", tune_index)),
+                                            Some(&format!("tune_zone_change_zones-{tune_index}")),
                                         );
                                     }
                                     cancel(overview_extra);
@@ -236,7 +236,7 @@ pub fn render_tune_overview(
                                         act.new_leave_msg = new_leave_msg;
                                         client.execute(
                                             EditorAction::ChangeTuneZone(act),
-                                            Some(&format!("tune_zone_change_zones-{}", tune_index)),
+                                            Some(&format!("tune_zone_change_zones-{tune_index}")),
                                         );
                                     }
                                     cancel(overview_extra);
@@ -259,7 +259,7 @@ pub fn render_tune_overview(
                                     );
                                     if let Some(comment) = &val.comment {
                                         job.append(
-                                            &format!(" # {}", comment),
+                                            &format!(" # {comment}"),
                                             0.0,
                                             TextFormat {
                                                 color: Color32::GRAY,
@@ -275,8 +275,7 @@ pub fn render_tune_overview(
                                             client.execute(
                                                 EditorAction::ChangeTuneZone(act),
                                                 Some(&format!(
-                                                    "tune_zone_change_zones-{}",
-                                                    tune_index
+                                                    "tune_zone_change_zones-{tune_index}"
                                                 )),
                                             );
                                         }
@@ -335,8 +334,8 @@ pub fn render_tune_overview(
                                                         client.execute(
                                                             EditorAction::ChangeTuneZone(act),
                                                             Some(&format!(
-                                                                "tune_zone_change_zones-{}",
-                                                                tune_index
+                                                                "tune_zone_change_zones-\
+                                                                {tune_index}"
                                                             )),
                                                         );
                                                     }
@@ -479,10 +478,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 new_leave_msg: leave_msg,
                                                 old_leave_msg: tune.leave_extra.clone(),
                                             }),
-                                            Some(&format!(
-                                                "tune_zone_change_zones-{}",
-                                                active_tune
-                                            )),
+                                            Some(&format!("tune_zone_change_zones-{active_tune}")),
                                         );
                                     }
                                     tune.name = tune_name;
@@ -503,7 +499,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     } else {
                         tune.name.clone()
                     };
-                    ui.menu_button(format!("Tunes of {}", cur_tune_name,), |ui| {
+                    ui.menu_button(format!("Tunes of {cur_tune_name}",), |ui| {
                         context_menu_extra_open = true;
 
                         ui.label("Enter message:");
@@ -540,7 +536,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     new_leave_msg: tune.leave_extra.clone(),
                                     old_leave_msg,
                                 }),
-                                Some(&format!("tune_zone_change_zones-{}", active_tune)),
+                                Some(&format!("tune_zone_change_zones-{active_tune}")),
                             );
                         }
 
@@ -560,7 +556,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                     );
                                     if let Some(comment) = &val.comment {
                                         job.append(
-                                            &format!(" # {}", comment),
+                                            &format!(" # {comment}"),
                                             0.0,
                                             TextFormat {
                                                 color: Color32::GRAY,
@@ -584,10 +580,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                                 new_leave_msg: tune.leave_extra.clone(),
                                                 old_leave_msg: tune.leave_extra.clone(),
                                             }),
-                                            Some(&format!(
-                                                "tune_zone_change_zones-{}",
-                                                active_tune
-                                            )),
+                                            Some(&format!("tune_zone_change_zones-{active_tune}")),
                                         );
                                     }
                                 });
@@ -596,7 +589,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         let val = &mut layer.user.number_extra_text;
                         ui.add_space(10.0);
                         ui.separator();
-                        ui.label(format!("Add commands for tune zone {}.", cur_tune_name));
+                        ui.label(format!("Add commands for tune zone {cur_tune_name}."));
                         ui.horizontal(|ui| {
                             ui.label("Tune command:");
                             ui.add(TextEdit::singleline(val).hint_text("gravtiy 0.25"));
@@ -642,7 +635,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                             new_leave_msg: leave_msg,
                                             old_leave_msg: tune.leave_extra.clone(),
                                         }),
-                                        Some(&format!("tune_zone_change_zones-{}", active_tune)),
+                                        Some(&format!("tune_zone_change_zones-{active_tune}")),
                                     );
                                 }
                             }

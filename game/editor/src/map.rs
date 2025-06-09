@@ -786,11 +786,11 @@ pub type EditorMap = MapSkeleton<
 >;
 
 impl EditorMapGroupsInterface for EditorGroups {
-    fn active_layer(&self) -> Option<EditorLayerUnionRef> {
+    fn active_layer(&self) -> Option<EditorLayerUnionRef<'_>> {
         fn find_layer(
             is_background: bool,
             (group_index, group): (usize, &EditorGroup),
-        ) -> Option<EditorLayerUnionRef> {
+        ) -> Option<EditorLayerUnionRef<'_>> {
             group
                 .layers
                 .iter()
@@ -847,11 +847,11 @@ impl EditorMapGroupsInterface for EditorGroups {
         None
     }
 
-    fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut> {
+    fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut<'_>> {
         fn find_layer(
             is_background: bool,
-            (group_index, group): (usize, &mut EditorGroup),
-        ) -> Option<EditorLayerUnionRefMut> {
+            (group_index, group): (usize, &'_ mut EditorGroup),
+        ) -> Option<EditorLayerUnionRefMut<'_>> {
             group
                 .layers
                 .iter_mut()
@@ -903,7 +903,7 @@ impl EditorMapGroupsInterface for EditorGroups {
         None
     }
 
-    fn selected_layers(&self) -> Vec<EditorLayerUnionRef> {
+    fn selected_layers(&self) -> Vec<EditorLayerUnionRef<'_>> {
         fn collect_group(
             group: &[EditorGroup],
             is_background: bool,
@@ -986,11 +986,11 @@ impl EditorMapGroupsInterface for EditorGroups {
 }
 
 impl EditorMapInterface for EditorMap {
-    fn active_layer(&self) -> Option<EditorLayerUnionRef> {
+    fn active_layer(&self) -> Option<EditorLayerUnionRef<'_>> {
         self.groups.active_layer()
     }
 
-    fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut> {
+    fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut<'_>> {
         self.groups.active_layer_mut()
     }
 

@@ -207,7 +207,7 @@ const TICKS_PER_SECOND: u32 = 50;
 
 fn hexdump(level: Level, data: &[u8]) {
     if log_enabled!(level) {
-        hexdump_iter(data).for_each(|s| log::log!(level, "{}", s));
+        hexdump_iter(data).for_each(|s| log::log!(level, "{s}"));
     }
 }
 
@@ -420,7 +420,7 @@ impl Client {
                 let io = Io::new(|_| fs, Arc::new(HttpClient::new()));
                 let mut server_info = None;
                 {
-                    log.log(format!("Getting server info from: {}", addr));
+                    log.log(format!("Getting server info from: {addr}"));
                     // first get the server info
                     let mut conless = SocketClient::new(&io, addr).unwrap();
                     let mut is_connect = false;
@@ -450,7 +450,7 @@ impl Client {
                                 ) {
                                     Ok(m) => m,
                                     Err(err) => {
-                                        debug!("decode err during startup: {:?}", err);
+                                        debug!("decode err during startup: {err:?}");
                                         return;
                                     }
                                 };
@@ -490,7 +490,7 @@ impl Client {
                             }
                             libtw2_net::net::ChunkOrEvent::Disconnect(_, items) => {
                                 let reason = String::from_utf8_lossy(items);
-                                log.log(format!("Connection lost: {}", reason));
+                                log.log(format!("Connection lost: {reason}"));
                                 if reason.contains("password") {
                                     server_info =
                                         server_info.clone().or(Some(ServerInfoTy::Partial {
@@ -849,7 +849,7 @@ impl Client {
         for (item, id) in items {
             match item {
                 SnapObj::PlayerInput(inp) => {
-                    debug!("[NOT IMPLEMENTED] player input: {:?}", inp);
+                    debug!("[NOT IMPLEMENTED] player input: {inp:?}");
                 }
                 SnapObj::Projectile(projectile) => {
                     add_proj(
@@ -973,7 +973,7 @@ impl Client {
                     });
                 }
                 SnapObj::CharacterCore(character_core) => {
-                    debug!("[NOT IMPLEMENTED] character core: {:?}", character_core);
+                    debug!("[NOT IMPLEMENTED] character core: {character_core:?}");
                 }
                 SnapObj::Character(character) => {
                     let stage_id = base
@@ -1661,7 +1661,7 @@ impl Client {
                     }
                 }
                 SnapObj::MyOwnObject(my_own_object) => {
-                    debug!("[NOT IMPLEMENTED] my own object: {:?}", my_own_object);
+                    debug!("[NOT IMPLEMENTED] my own object: {my_own_object:?}");
                 }
                 SnapObj::DdnetCharacter(_) => {
                     panic!("This snap item is purposely removed earlier");
@@ -1670,13 +1670,10 @@ impl Client {
                     panic!("This snap item is purposely removed earlier");
                 }
                 SnapObj::GameInfoEx(game_info_ex) => {
-                    debug!("[NOT IMPLEMENTED] game info ex: {:?}", game_info_ex);
+                    debug!("[NOT IMPLEMENTED] game info ex: {game_info_ex:?}");
                 }
                 SnapObj::DdraceProjectile(ddrace_projectile) => {
-                    debug!(
-                        "[NOT IMPLEMENTED] ddrace projectile: {:?}",
-                        ddrace_projectile
-                    );
+                    debug!("[NOT IMPLEMENTED] ddrace projectile: {ddrace_projectile:?}");
                 }
                 SnapObj::DdnetLaser(laser) => {
                     add_laser(
@@ -1732,7 +1729,7 @@ impl Client {
                     );
                 }
                 SnapObj::Common(common) => {
-                    debug!("[NOT IMPLEMENTED] common: {:?}", common);
+                    debug!("[NOT IMPLEMENTED] common: {common:?}");
                 }
                 SnapObj::Explosion(explosion) => {
                     let events = base
@@ -2124,31 +2121,28 @@ impl Client {
                     );
                 }
                 SnapObj::MyOwnEvent(my_own_event) => {
-                    debug!("[NOT IMPLEMENTED] my own event: {:?}", my_own_event);
+                    debug!("[NOT IMPLEMENTED] my own event: {my_own_event:?}");
                 }
                 SnapObj::SpecChar(spec_char) => {
-                    debug!("[NOT IMPLEMENTED] spec char: {:?}", spec_char);
+                    debug!("[NOT IMPLEMENTED] spec char: {spec_char:?}");
                 }
                 SnapObj::SwitchState(switch_state) => {
-                    debug!("[NOT IMPLEMENTED] switch state: {:?}", switch_state);
+                    debug!("[NOT IMPLEMENTED] switch state: {switch_state:?}");
                 }
                 SnapObj::EntityEx(entity_ex) => {
-                    debug!("[NOT IMPLEMENTED] entity ex: {:?}", entity_ex);
+                    debug!("[NOT IMPLEMENTED] entity ex: {entity_ex:?}");
                 }
                 SnapObj::DdnetSpectatorInfo(ddnet_spectator_info) => {
-                    debug!(
-                        "[NOT IMPLEMENTED] ddnet spectator info: {:?}",
-                        ddnet_spectator_info
-                    );
+                    debug!("[NOT IMPLEMENTED] ddnet spectator info: {ddnet_spectator_info:?}");
                 }
                 SnapObj::Birthday(birthday) => {
-                    debug!("[NOT IMPLEMENTED] birthday: {:?}", birthday);
+                    debug!("[NOT IMPLEMENTED] birthday: {birthday:?}");
                 }
                 SnapObj::Finish(finish) => {
-                    debug!("[NOT IMPLEMENTED] finish: {:?}", finish);
+                    debug!("[NOT IMPLEMENTED] finish: {finish:?}");
                 }
                 SnapObj::MapSoundWorld(map_sound_world) => {
-                    debug!("[NOT IMPLEMENTED] map sound world: {:?}", map_sound_world);
+                    debug!("[NOT IMPLEMENTED] map sound world: {map_sound_world:?}");
                 }
             }
         }
@@ -2182,7 +2176,7 @@ impl Client {
             Err(err) => {
                 let id =
                     SystemOrGame::decode_id(&mut WarnPkt(pid, data), &mut Unpacker::new(data)).ok();
-                warn!("decode error {:?} {:?}:", id, err);
+                warn!("decode error {id:?} {err:?}:");
                 hexdump(Level::Warn, data);
                 return;
             }
@@ -2376,10 +2370,7 @@ impl Client {
                     let total_len = data.values().map(|d| d.len()).sum::<usize>();
                     if total_len < expected_size {
                         log.log(format!("Received map chunk: {}", map_data.chunk));
-                        log.log(format!(
-                            "{} of {} bytes downloaded",
-                            total_len, expected_size
-                        ));
+                        log.log(format!("{total_len} of {expected_size} bytes downloaded"));
                         let downloading_chunks = data.values().filter(|d| d.is_empty()).count();
                         for i in next_chunk..next_chunk + 50usize.saturating_sub(downloading_chunks)
                         {
@@ -2618,7 +2609,7 @@ impl Client {
                                 }
                             }
                             Err(e) => {
-                                debug!("item decode error {:?}: {:?}", e, id);
+                                debug!("item decode error {e:?}: {id:?}");
                                 None
                             }
                         })
@@ -3290,7 +3281,7 @@ impl Client {
         }
 
         if !processed {
-            debug!("unprocessed message {:?} {:?}", &player.state, msg);
+            debug!("unprocessed message {:?} {msg:?}", &player.state);
         }
     }
 
@@ -3298,7 +3289,7 @@ impl Client {
         let msg = match Connless::decode(&mut WarnPkt(addr, data), &mut Unpacker::new(data)) {
             Ok(m) => m,
             Err(err) => {
-                warn!("decode error {:?}:", err);
+                warn!("decode error {err:?}:");
                 hexdump(Level::Warn, data);
                 return None;
             }
@@ -3324,7 +3315,7 @@ impl Client {
             _ => processed = false,
         }
         if !processed {
-            debug!("unprocessed message {:?}", msg);
+            debug!("unprocessed message {msg:?}");
         }
         None
     }
@@ -3475,7 +3466,7 @@ impl Client {
         Ok(())
     }
 
-    fn player_info_to_legacy(player_info: &NetworkCharacterInfo) -> game::ClStartInfo {
+    fn player_info_to_legacy(player_info: &NetworkCharacterInfo) -> game::ClStartInfo<'_> {
         let skin: &ResourceKeyBase = player_info.skin.borrow();
         let (use_custom_color, color_body, color_feet) = match player_info.skin_info {
             NetworkSkinInfo::Original => (false, 0, 0),
@@ -3538,10 +3529,8 @@ impl Client {
                             return Ok(());
                         }
                         NetworkEvent::ConnectingFailed(reason) => {
-                            self.log.log(format!(
-                                "Local client failed to connect to proxy: {}",
-                                reason
-                            ));
+                            self.log
+                                .log(format!("Local client failed to connect to proxy: {reason}"));
                             self.is_finished
                                 .store(true, std::sync::atomic::Ordering::SeqCst);
                             return Ok(());
@@ -3818,7 +3807,7 @@ impl Client {
                                             if switch {
                                                 player.sendg(Game::ClSay(game::ClSay {
                                                     team: false,
-                                                    message: format!("/{}", pause).as_bytes(),
+                                                    message: format!("/{pause}").as_bytes(),
                                                 }));
                                             }
                                             player.sendg(Game::ClSetSpectatorMode(
@@ -4020,7 +4009,7 @@ impl Client {
 
                                             player.sendg(Game::ClSay(game::ClSay {
                                                 team: false,
-                                                message: format!("/team {}", team).as_bytes(),
+                                                message: format!("/team {team}").as_bytes(),
                                             }));
                                             player.flush();
                                         }
@@ -4056,8 +4045,7 @@ impl Client {
                                     }
                                     ClientToServerPlayerMessage::RconExec { ident_text, args } => {
                                         debug!(
-                                            "[NOT IMPLEMENTED] rcon exec: {:?} {:?}",
-                                            ident_text, args
+                                            "[NOT IMPLEMENTED] rcon exec: {ident_text:?} {args:?}"
                                         );
                                     }
                                 }
@@ -4369,7 +4357,7 @@ impl Client {
                     Disconnect(_, reason) => {
                         let reason = String::from_utf8_lossy(reason).to_string();
                         self.log
-                            .log(format!("Proxy client got disconnected: {}", reason));
+                            .log(format!("Proxy client got disconnected: {reason}"));
                         socket.skip_disconnect_on_drop = true;
                         if is_main_connection {
                             self.server_network.kick(&con_id, KickType::Kick(reason));

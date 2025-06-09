@@ -461,10 +461,8 @@ where
                     },
                 ) {
                     log::warn!(
-                        "downloaded image resource (png) {}\
-                        is not a valid png file: {}",
-                        file_name,
-                        err
+                        "downloaded image resource (png) {file_name}\
+                        is not a valid png file: {err}"
                     );
                     return false;
                 }
@@ -473,9 +471,7 @@ where
                 if let Err(err) = verify_ogg_vorbis(file) {
                     log::warn!(
                         "downloaded sound resource (ogg vorbis) \
-                        ({}) is not a valid ogg vorbis file: {}",
-                        file_name,
-                        err
+                        ({file_name}) is not a valid ogg vorbis file: {err}"
                     );
                     return false;
                 }
@@ -489,10 +485,8 @@ where
             },
             _ => {
                 log::warn!(
-                    "Unsupported resource type {} for {} \
-                    could not be validated",
-                    file_ty,
-                    file_name,
+                    "Unsupported resource type {file_ty} \
+                    for {file_name} could not be validated"
                 );
                 return false;
             }
@@ -586,15 +580,12 @@ where
                 {
                     if let Err(err) = fs.create_dir(&dir_path).await {
                         log::warn!(
-                            "Failed to create directory for downloaded file {} to disk: {err}",
-                            key_name
+                            "Failed to create directory for downloaded file {key_name} \
+                            to disk: {err}"
                         );
                     } else if let Err(err) = fs.write_file(dir_path.join(name).as_ref(), file).await
                     {
-                        log::warn!(
-                            "Failed to write downloaded file {} to disk: {err}",
-                            key_name
-                        );
+                        log::warn!("Failed to write downloaded file {key_name} to disk: {err}");
                     }
                 }
             })
@@ -1182,8 +1173,8 @@ where
                 if let Ok(dir_index) = dir_index.as_ref() {
                     entries.extend(
                         dir_index
-                            .iter()
-                            .map(|(name, _)| (name.clone(), ContainerItemIndexType::Http)),
+                            .keys()
+                            .map(|name| (name.clone(), ContainerItemIndexType::Http)),
                     );
                 }
             } else {
@@ -1572,7 +1563,7 @@ pub fn load_file_part_and_upload_ex(
     img.as_mut_slice().copy_from_slice(&part_img.png.data);
     if let Err(err) = graphics_mt.try_flush_mem(&mut img, true) {
         // Ignore the error, but log it.
-        log::debug!("err while flushing memory: {} for {part_name}", err);
+        log::debug!("err while flushing memory: {err} for {part_name}");
     }
     Ok(ImgFilePartResult {
         img: ContainerItemLoadData {
@@ -1665,7 +1656,7 @@ pub fn load_sound_file_part_and_upload_ex(
         sound_path = sound_path.join(Path::new(extra_path));
     }
 
-    sound_path = sound_path.join(Path::new(&format!("{}.ogg", part_name)));
+    sound_path = sound_path.join(Path::new(&format!("{part_name}.ogg")));
 
     let is_default = item_name == "default";
 
@@ -1684,17 +1675,12 @@ pub fn load_sound_file_part_and_upload_ex(
                     .files
                     .get(&path_def)
                     .ok_or_else(|| {
-                        anyhow!(
-                            "requested sound file {} didn't exist in default items",
-                            item_name
-                        )
+                        anyhow!("requested sound file {item_name} didn't exist in default items")
                     })
                     .map(|s| (s, true))
             } else {
                 Err(anyhow!(
-                    "requested sound file for {} not found: {}",
-                    item_name,
-                    part_name
+                    "requested sound file for {item_name} not found: {part_name}"
                 ))
             }
         }
@@ -1704,7 +1690,7 @@ pub fn load_sound_file_part_and_upload_ex(
     mem.as_mut_slice().copy_from_slice(file);
     if let Err(err) = sound_mt.try_flush_mem(&mut mem) {
         // Ignore the error, but log it.
-        log::debug!("err while flushing memory: {} for {part_name}", err);
+        log::debug!("err while flushing memory: {err} for {part_name}");
     }
 
     Ok(SoundFilePartResult { mem, from_default })
@@ -1834,7 +1820,7 @@ pub fn load_file_part_and_convert_3d_and_upload(
     img.as_mut_slice().copy_from_slice(&part_img.png.data);
     if let Err(err) = graphics_mt.try_flush_mem(&mut img, true) {
         // Ignore the error, but log it.
-        log::debug!("err while flushing memory: {} for {part_name}", err);
+        log::debug!("err while flushing memory: {err} for {part_name}");
     }
     Ok(ImgFilePartResult {
         img: ContainerItemLoadData {

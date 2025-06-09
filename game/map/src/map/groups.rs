@@ -115,8 +115,7 @@ impl<'de> Deserialize<'de> for MapGroupPhysics {
                 }
             } {
                 return Err(serde::de::Error::custom(format!(
-                    "could not validate physics layer: {}",
-                    err
+                    "could not validate physics layer: {err}"
                 )));
             }
         }
@@ -153,8 +152,7 @@ impl<'de> Deserialize<'de> for MapGroupPhysics {
             Ok(())
         } {
             return Err(serde::de::Error::custom(format!(
-                "could not validate physics layer: {}",
-                err
+                "could not validate physics layer: {err}"
             )));
         }
 

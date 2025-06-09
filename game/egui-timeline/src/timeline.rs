@@ -304,7 +304,7 @@ impl Timeline {
                 } else {
                     Align2::CENTER_CENTER
                 },
-                format!("{}", x),
+                format!("{x}"),
                 egui::FontId::proportional(font_size),
                 Color32::GRAY,
             );

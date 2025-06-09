@@ -471,7 +471,7 @@ pub mod state {
                     if let Err(err) = save::setup(db.clone()).await {
                         log::warn!(
                             target: "sql",
-                            "failed to setup databases: {}", err
+                            "failed to setup databases: {err}"
                         );
                         return Err(err);
                     }
@@ -479,16 +479,18 @@ pub mod state {
                     let acc_info = AccountInfo::new(db.clone(), options.account_db).await;
                     if let Err(err) = &acc_info {
                         log::warn!(
-                        target: "sql", 
-                        "failed to prepare account info sql: {}", err);
+                            target: "sql",
+                            "failed to prepare account info sql: {err}"
+                        );
                     }
 
                     let account_created = match AccountCreated::new(db, options.account_db).await {
                         Ok(account_created) => Some(account_created),
                         Err(err) => {
                             log::warn!(
-                            target: "sql", 
-                            "failed to prepare account_created sql: {}", err);
+                                target: "sql",
+                                "failed to prepare account_created sql: {err}"
+                            );
                             None
                         }
                     };
@@ -776,7 +778,7 @@ pub mod state {
             };
 
             // TODO: remove this log (move it somewhere)
-            log::info!(target: "world", "added a character into side {:?}", side);
+            log::info!(target: "world", "added a character into side {side:?}");
 
             let pos = stage.world.get_spawn_pos(side);
 

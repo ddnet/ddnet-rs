@@ -2907,7 +2907,7 @@ impl EditorInterface for Editor {
                 None
             }
         }) {
-            log::info!("[Editor] Copied the following text: {}", text);
+            log::info!("[Editor] Copied the following text: {text}");
         }
 
         // handle save tasks

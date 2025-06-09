@@ -315,7 +315,10 @@ impl ActiveGame {
                         (snapshot, snap_id, game_monotonic_tick)
                     }
                     Err(err) => {
-                        log::debug!(target: "network_logic", "had to drop a snapshot from the server with diff_id {:?}: {err}", diff_id);
+                        log::debug!(
+                            target: "network_logic",
+                            "had to drop a snapshot from the server with diff_id {diff_id:?}: {err}"
+                        );
                         return;
                     }
                 };

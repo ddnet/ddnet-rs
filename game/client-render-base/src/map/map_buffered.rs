@@ -1294,7 +1294,7 @@ impl ClientMapBuffered {
                 }
                 if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                     // Ignore the error, but log it.
-                    log::debug!("err while flushing memory: {}", err);
+                    log::debug!("err while flushing memory: {err}");
                 }
                 Some(upload_data_buffer)
             } else {
@@ -1318,7 +1318,7 @@ impl ClientMapBuffered {
                 }
                 if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                     // Ignore the error, but log it.
-                    log::debug!("err while flushing memory: {}", err);
+                    log::debug!("err while flushing memory: {err}");
                 }
                 Some(upload_data_buffer)
             } else {
@@ -1489,7 +1489,7 @@ impl ClientMapBuffered {
 
             if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                 // Ignore the error, but log it.
-                log::debug!("err while flushing memory: {}", err);
+                log::debug!("err while flushing memory: {err}");
             }
 
             let extra = Self::quad_visual_ranges(quads);

@@ -269,11 +269,8 @@ impl RenderMapLoading {
                             new_height as u32,
                         );
                         log::warn!(
-                            "3D/2D array texture had to be resized, {}x{} to {}x{}",
-                            convert_width,
-                            convert_height,
-                            new_width,
-                            new_height
+                            "3D/2D array texture had to be resized, \
+                            {convert_width}x{convert_height} to {new_width}x{new_height}"
                         );
 
                         convert_width = new_width;
@@ -308,7 +305,7 @@ impl RenderMapLoading {
 
                     if let Err(err) = graphics_mt.try_flush_mem(&mut tex_3d, false) {
                         // Ignore the error, but log it.
-                        log::debug!("err while flushing memory: {}", err);
+                        log::debug!("err while flushing memory: {err}");
                     }
 
                     (image_3d_width, image_3d_height, 256, tex_3d)

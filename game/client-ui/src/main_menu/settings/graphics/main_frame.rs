@@ -79,7 +79,7 @@ fn render_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         if samples == 1 {
                             "off".to_string()
                         } else {
-                            format!("{}", samples)
+                            format!("{samples}")
                         }
                     }),
             )
@@ -149,7 +149,7 @@ fn render_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             if let Some(ratio) = ratio {
                 ui.label(format!("{} / {}", ratio.numer(), ratio.denom()));
             } else {
-                ui.label(format!("{}", aspect_ratio));
+                ui.label(format!("{aspect_ratio}"));
             }
             ui.end_row();
 

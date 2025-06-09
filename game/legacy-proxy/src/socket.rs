@@ -21,17 +21,6 @@ impl fmt::Display for NoAddressFamiliesSupported {
     }
 }
 
-#[derive(Debug)]
-pub struct AddressFamilyNotSupported(());
-
-impl error::Error for AddressFamilyNotSupported {}
-
-impl fmt::Display for AddressFamilyNotSupported {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("destination address family (IPv4 or IPv6) not supported on this system")
-    }
-}
-
 type ThreadedReceiver = Arc<Mutex<Receiver<(Vec<u8>, SocketAddr)>>>;
 
 struct AsyncSocket {
