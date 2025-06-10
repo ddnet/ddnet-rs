@@ -3592,10 +3592,10 @@ dependencies = [
 name = "emoticon-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
  "assets-splitting",
  "clap 4.5.37",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -3812,10 +3812,10 @@ checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
 name = "extra-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
  "assets-splitting",
  "clap 4.5.37",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -4192,10 +4192,10 @@ dependencies = [
 name = "game-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
  "assets-splitting",
  "clap 4.5.37",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -5009,10 +5009,10 @@ dependencies = [
 name = "hud-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
  "assets-splitting",
  "clap 4.5.37",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -6188,6 +6188,7 @@ name = "map"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assets-base",
  "base",
  "base-fs",
  "base-io",
@@ -6199,6 +6200,7 @@ dependencies = [
  "flate2",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
+ "image-utils",
  "is_sorted",
  "lz4_flex",
  "math",
@@ -7520,10 +7522,10 @@ dependencies = [
 name = "part-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
  "assets-splitting",
  "clap 4.5.37",
  "image-utils",
- "tar",
 ]
 
 [[package]]

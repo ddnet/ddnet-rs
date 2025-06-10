@@ -22,7 +22,10 @@ use game_state_wasm::game::state_wasm_manager::{
     GameStateMod, GameStateWasmManager, STATE_MODS_PATH,
 };
 use graphics_backend::backend::GraphicsBackend;
-use map::map::Map;
+use map::{
+    file::MapFileReader,
+    map::{Map, PngValidatorOptions},
+};
 use rayon::ThreadPool;
 pub use render_game_wasm::render::render_wasm_manager::RenderGameWasmManager;
 use render_game_wasm::render::render_wasm_manager::{RenderGameMod, RENDER_MODS_PATH};
@@ -94,15 +97,16 @@ impl ClientMapLoadingFile {
         props: RenderGameCreateOptions,
         log: ConnectingLog,
     ) -> Self {
+        let load_hq_assets = false;
         let downloaded_path: Option<&Path> = (!as_menu_map).then_some("downloaded".as_ref());
         let download_map_file_name = if let Some(map_hash) = map_hash {
             base_path.join(format!(
-                "{}_{}.twmap",
+                "{}_{}.twmap.tar",
                 map_name.as_str(),
                 fmt_hash(&map_hash)
             ))
         } else {
-            base_path.join(format!("{}.twmap", map_name.as_str()))
+            base_path.join(format!("{}.twmap.tar", map_name.as_str()))
         };
         let map_file_name = if let Some(downloaded_path) = downloaded_path {
             downloaded_path.join(&download_map_file_name)
@@ -143,10 +147,18 @@ impl ClientMapLoadingFile {
                                 .to_vec();
                             // maps are allowed to be arbitrary, but all maps should still start
                             // with the twmap header.
-                            anyhow::ensure!(
-                                Map::validate_twmap_header(&file),
-                                "not a twmap file or variant of it."
-                            );
+                            Map::validate_downloaded_map_file(
+                                &MapFileReader::new(file.clone())?,
+                                if load_hq_assets {
+                                    PngValidatorOptions {
+                                        max_width: 4096.try_into().unwrap(),
+                                        max_height: 4096.try_into().unwrap(),
+                                        ..Default::default()
+                                    }
+                                } else {
+                                    Default::default()
+                                },
+                            )?;
                             let file_path: &Path = map_file_name.as_ref();
                             if let Some(dir) = file_path.parent() {
                                 file_system.create_dir(dir).await?;

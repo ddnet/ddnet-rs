@@ -139,7 +139,7 @@ pub fn test_ingame(
                 emoticons: &mut containers.emoticons_container,
                 particle_manager: &mut particles,
                 collision: &Collision::new(
-                    &MapGroupPhysics {
+                    MapGroupPhysics {
                         attr: MapGroupPhysicsAttr {
                             width: 1u16.try_into().unwrap(),
                             height: 1u16.try_into().unwrap(),
@@ -277,7 +277,7 @@ pub fn test_ingame_skins(
                 emoticons: &mut containers.emoticons_container,
                 particle_manager: &mut particles,
                 collision: &Collision::new(
-                    &MapGroupPhysics {
+                    MapGroupPhysics {
                         attr: MapGroupPhysicsAttr {
                             width: 1u16.try_into().unwrap(),
                             height: 1u16.try_into().unwrap(),

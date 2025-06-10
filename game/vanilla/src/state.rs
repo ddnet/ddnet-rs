@@ -56,6 +56,7 @@ pub mod state {
     use game_interface::types::weapons::WeaponType;
     use game_interface::vote_commands::{VoteCommand, VoteCommandResult};
     use hiarc::hi_closure;
+    use map::file::MapFileReader;
     use map::map::config::ConfigVariables;
     use map::map::Map;
     use math::math::lerp;
@@ -504,14 +505,15 @@ pub mod state {
                 }
             });
 
-            let (physics_group, map_config) = Map::read_physics_group_and_config(&map)?;
+            let (physics_group, map_config) =
+                Map::read_physics_group_and_config(&MapFileReader::new(map)?)?;
 
             let w = physics_group.attr.width.get() as u32;
             let h = physics_group.attr.height.get() as u32;
 
-            let tiles = physics_group.get_game_layer_tiles();
+            let tiles = physics_group.get_game_layer_tiles().clone();
 
-            let mut collision = Collision::new(&physics_group, true)?;
+            let mut collision = Collision::new(physics_group, true)?;
 
             // Always handle config variables before commands.
             Self::handle_map_config_variables(&mut config, map_config.config_variables);
@@ -543,7 +545,7 @@ pub mod state {
                 }
             }
 
-            let game_objects = GameObjectDefinitions::new(tiles, w, h);
+            let game_objects = GameObjectDefinitions::new(&tiles, w, h);
 
             let mut spawns: Vec<vec2> = Default::default();
             let mut spawns_red: Vec<vec2> = Default::default();

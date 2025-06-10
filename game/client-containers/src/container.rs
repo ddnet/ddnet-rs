@@ -1,5 +1,5 @@
 use assets_base::{
-    loader::read_tar,
+    tar::read_tar_files,
     verify::{ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
     AssetsIndex, AssetsMeta,
 };
@@ -623,7 +623,7 @@ where
                     )))
                     .await
                 {
-                    if let Ok(tar_files) = read_tar(&file) {
+                    if let Ok(tar_files) = read_tar_files(file.into()) {
                         files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
                             tar_files,
                         )));
@@ -655,7 +655,7 @@ where
                 }) {
                     let _g = http_download_tasks.acquire().await?;
                     if let Ok(file) = http.download_binary(game_server_http, &hash).await {
-                        if let Ok(tar_files) = read_tar(&file) {
+                        if let Ok(tar_files) = read_tar_files(file.as_ref().into()) {
                             let mut verified = true;
                             for (name, file) in &tar_files {
                                 if !Self::verify_resource(
@@ -751,7 +751,7 @@ where
                     .read_file(&base_path.join(format!("{}.tar", key.name.as_str())))
                     .await
                 {
-                    if let Ok(tar_files) = read_tar(&file) {
+                    if let Ok(tar_files) = read_tar_files(file.into()) {
                         files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
                             tar_files,
                         )));
@@ -786,7 +786,7 @@ where
                     .await
                 {
                     if entry.ty == "tar" {
-                        if let Ok(tar_files) = read_tar(&file) {
+                        if let Ok(tar_files) = read_tar_files(file.into()) {
                             files = Some(ContainerLoadedItem::Directory(
                                 ContainerLoadedItemDir::new(tar_files),
                             ));
@@ -821,7 +821,7 @@ where
                     match res {
                         Ok(file) => {
                             let write_to_disk = if ty == "tar" {
-                                if let Ok(tar_files) = read_tar(&file) {
+                                if let Ok(tar_files) = read_tar_files(file.as_ref().into()) {
                                     let mut verified = true;
                                     for (name, file) in &tar_files {
                                         if !Self::verify_resource(

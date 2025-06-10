@@ -21,7 +21,7 @@ use graphics::{
         texture::texture::GraphicsTextureHandle,
     },
 };
-use map::map::Map;
+use map::{file::MapFileReader, map::Map};
 use math::math::vector::vec2;
 use network::network::{
     connection::NetworkConnectionId,
@@ -356,8 +356,7 @@ impl EditorServer {
 
                         let send_map: Map = map.clone().into();
 
-                        let mut map_bytes = Vec::new();
-                        send_map.write(&mut map_bytes, tp).unwrap();
+                        let map_bytes = send_map.write(tp).unwrap();
 
                         self.network.send_to(
                             &id,
@@ -792,9 +791,8 @@ impl EditorServer {
                                 || props.full_map_validation_probability == u8::MAX
                             {
                                 let map: Map = map.clone().into();
-                                let mut map_file: Vec<_> = Default::default();
-                                map.write(&mut map_file, tp).unwrap();
-                                Map::read(&map_file, tp).unwrap();
+                                let map_file: Vec<_> = map.write(tp).unwrap();
+                                Map::read(&MapFileReader::new(map_file).unwrap(), tp).unwrap();
                             }
                         }
                     }

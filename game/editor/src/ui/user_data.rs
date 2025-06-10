@@ -186,7 +186,7 @@ impl EditorMenuDialogMode {
                 .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
-                .default_file_name("ctf1.twmap"),
+                .default_file_name("ctf1.twmap.tar"),
         ));
 
         file_dialog.pick_file();
@@ -203,7 +203,7 @@ impl EditorMenuDialogMode {
                 .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
-                .default_file_name("ctf1.twmap"),
+                .default_file_name("ctf1.twmap.tar"),
         ));
 
         file_dialog.save_file();
@@ -220,7 +220,7 @@ impl EditorMenuDialogMode {
                 .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
                 .movable(false)
                 .initial_directory(open_path)
-                .default_file_name("ctf1.twmap"),
+                .default_file_name("ctf1.twmap.tar"),
         ));
 
         file_dialog.pick_file();

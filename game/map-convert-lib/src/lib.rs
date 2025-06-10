@@ -41,8 +41,7 @@ mod test {
         let old_map = io
             .rt
             .spawn(async move {
-                let mut file = Vec::new();
-                new_map.map.write(&mut file, &tp)?;
+                let file = new_map.map.write(&tp)?;
                 new_to_legacy_from_buf_async(
                     &file,
                     |_| {

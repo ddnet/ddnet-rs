@@ -9,7 +9,7 @@ use base::{benchmark::Benchmark, hash::fmt_hash};
 use base_fs::filesys::FileSystem;
 use base_io::io::IoFileSys;
 use clap::Parser;
-use map::map::Map;
+use map::{file::MapFileReader, map::Map, utils::file_ext_or_twmap_tar};
 use map_convert_lib::{legacy_to_new::legacy_to_new, new_to_legacy::new_to_legacy};
 
 #[derive(Parser, Debug)]
@@ -22,7 +22,7 @@ struct Args {
     /// optimize PNGs with oxipng (default: on). This option only has an effect when converting legacy maps to new ones
     #[arg(short, long, default_value_t = true, action = clap::ArgAction::Set)]
     optimize: bool,
-    /// export as json (only works for .twmap maps)
+    /// export as json (only works for .twmap.tar maps)
     #[arg(short, long, default_value_t = false)]
     json: bool,
 }
@@ -61,8 +61,7 @@ fn main() {
 
         // write map
         let benchmark = Benchmark::new(true);
-        let mut file: Vec<u8> = Default::default();
-        output.map.write(&mut file, &thread_pool).unwrap();
+        let file = output.map.write(&thread_pool).unwrap();
         benchmark.bench("serializing & compressing map");
         let fs = io.fs.clone();
         let output_dir = args.output.clone();
@@ -72,7 +71,7 @@ fn main() {
             let map_path = PathBuf::from(&output_dir).join("map/maps/");
             fs.create_dir(&map_path).await?;
             let map_path = map_path.join(format!(
-                "{}.twmap",
+                "{}.twmap.tar",
                 file_path.file_stem().unwrap().to_str().unwrap(),
             ));
             fs.write_file(&map_path, file).await?;
@@ -114,7 +113,7 @@ fn main() {
         })
     }
     // new to legacy or json
-    else if file_path.extension().is_some_and(|e| e == "twmap") {
+    else if file_ext_or_twmap_tar(&file_path).is_some_and(|e| e == "twmap.tar") {
         if args.json {
             let fs = io.fs.clone();
             let tp = thread_pool.clone();
@@ -124,7 +123,7 @@ fn main() {
                     .read_file(path)
                     .await
                     .map_err(|err| anyhow!("loading map file failed: {err}"))?;
-                let map = Map::read(&map, &tp)
+                let map = Map::read(&MapFileReader::new(map)?, &tp)
                     .map_err(|err| anyhow!("loading map from file failed: {err}"))?;
 
                 Ok(map)

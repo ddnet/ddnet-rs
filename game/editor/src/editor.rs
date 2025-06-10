@@ -45,6 +45,7 @@ use graphics_types::{commands::TexFlags, rendering::State, types::GraphicsMemory
 use hiarc::HiarcTrait;
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
+    file::MapFileReader,
     map::{
         animations::{AnimBase, AnimPoint, AnimPointCurveType},
         config::Config,
@@ -72,6 +73,7 @@ use map::{
         },
     },
     types::NonZeroU16MinusOne,
+    utils::file_ext_or_twmap_tar,
 };
 use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
 use network::network::types::{
@@ -417,7 +419,7 @@ impl Editor {
 
             sys,
         };
-        res.load_map("map/maps/ctf1.twmap".as_ref(), Default::default());
+        res.load_map("map/maps/ctf1.twmap.tar".as_ref(), Default::default());
         res
     }
 
@@ -1127,11 +1129,12 @@ impl Editor {
     }
 
     fn path_to_tab_name(path: &Path) -> anyhow::Result<String> {
-        Ok(path
+        let name = path
             .file_stem()
             .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
             .to_string_lossy()
-            .to_string())
+            .to_string();
+        Ok(name.replace(".twmap", ""))
     }
 
     fn load_legacy_map(
@@ -1264,7 +1267,7 @@ impl Editor {
             .rt
             .spawn(async move {
                 let file = read_file_editor(&fs, &path).await?;
-                let map = Map::read(&file, &tp)?;
+                let map = Map::read(&MapFileReader::new(file)?, &tp)?;
                 let mut resource_files: HashMap<Hash, Vec<u8>> = Default::default();
                 for (ty, i) in map
                     .resources
@@ -1407,8 +1410,7 @@ impl Editor {
         let tp = tp.clone();
         let fs = io.fs.clone();
         Ok(io.rt.spawn(async move {
-            let mut file: Vec<u8> = Default::default();
-            map.write(&mut file, &tp)?;
+            let file: Vec<u8> = map.write(&tp)?;
             let map_legacy = map_convert_lib::new_to_legacy::new_to_legacy_from_buf_async(
                 &file,
                 |map| {
@@ -1575,8 +1577,7 @@ impl Editor {
                 fs.create_dir("map/resources/images".as_ref()).await?;
                 fs.create_dir("map/resources/sounds".as_ref()).await?;
 
-                let mut file: Vec<u8> = Default::default();
-                map.write(&mut file, &tp)?;
+                let file: Vec<u8> = map.write(&tp)?;
                 write_file_editor(&fs, path.as_ref(), file).await?;
 
                 // now write all resources
@@ -1691,7 +1692,7 @@ impl Editor {
                 live_edited_layers,
             })) = update_res
             {
-                let map = Map::read(&map, &self.thread_pool).unwrap();
+                let map = Map::read(&MapFileReader::new(map).unwrap(), &self.thread_pool).unwrap();
                 tab.map = Self::map_to_editor_map_impl(
                     self.graphics.get_graphics_mt(),
                     self.sound_mt.clone(),
@@ -2963,13 +2964,13 @@ impl EditorInterface for Editor {
     }
 
     fn file_dropped(&mut self, file: PathBuf) {
-        let Some(ext) = file.extension().and_then(|e| e.to_str()) else {
+        let Some(ext) = file_ext_or_twmap_tar(&file) else {
             return;
         };
 
         let fs = self.io.fs.clone();
         match ext {
-            "map" | "twmap" => {
+            "map" | "twmap.tar" => {
                 self.load_map(&file, Default::default());
             }
             "png" => {

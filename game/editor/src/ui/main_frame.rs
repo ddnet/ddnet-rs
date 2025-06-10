@@ -1,4 +1,5 @@
 use egui::{Align2, Color32, FontId, Modal, ModifierNames, Window};
+use map::utils::file_ext_or_twmap_tar;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::network::{NetworkClientState, NetworkState};
@@ -125,14 +126,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         Modal::new("hovered-file-drag-zones".into()).show(ui.ctx(), |ui| {
             ui.set_width(ui.ctx().screen_rect().width());
             ui.set_height(ui.ctx().screen_rect().height());
-            let ext = hovered_file
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let ext = file_ext_or_twmap_tar(hovered_file).unwrap_or("");
 
             let drop_areas = match ext {
                 "map" => vec!["Drop the legacy map file here to open a new tab."],
-                "twmap" => vec!["Drop the map file here to open a new tab."],
+                "twmap.tar" => vec!["Drop the map file here to open a new tab."],
                 "png" => vec![
                     "Drop the quad texture here to add it to the current map.",
                     "Drop the tile texture here to add it to the current map.",

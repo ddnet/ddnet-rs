@@ -95,7 +95,7 @@ use libtw2_gamenet_ddnet::{
 use libtw2_net::net::PeerId;
 use libtw2_packer::{IntUnpacker, Unpacker};
 use log::{debug, log_enabled, warn, Level};
-use map::map::Map;
+use map::{file::MapFileReader, map::Map};
 use math::{
     colors::{legacy_color_to_rgba, rgba_to_legacy_color},
     math::{
@@ -4453,9 +4453,12 @@ impl Client {
                             )
                             .unwrap();
 
-                            let (phy_group, _) = Map::read_physics_group_and_config(&map).unwrap();
+                            let (phy_group, _) = Map::read_physics_group_and_config(
+                                &MapFileReader::new(map.clone()).unwrap(),
+                            )
+                            .unwrap();
 
-                            let new_collision = Collision::new(&phy_group, true).unwrap();
+                            let new_collision = Collision::new(phy_group, true).unwrap();
 
                             self.log.log("Client proxy prepares map collision");
                             self.collisions = Some(new_collision);

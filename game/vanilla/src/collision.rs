@@ -179,7 +179,7 @@ pub mod collision {
     // TODO: use u8 or an enum for tile indices, instead of i32
     impl Collision {
         pub fn new(
-            physics_group: &MapGroupPhysics,
+            physics_group: MapGroupPhysics,
             load_all_layers: bool,
         ) -> anyhow::Result<Box<Self>> {
             let width = physics_group.attr.width.get() as u32;
@@ -189,23 +189,26 @@ pub mod collision {
             let mut front_layer = None;
             let mut tune_layer = None;
             let mut tele_layer = None;
-            physics_group.layers.iter().for_each(|layer| match layer {
-                MapLayerPhysics::Arbitrary(_) => {}
-                MapLayerPhysics::Game(layer) => {
-                    game_layer = Some(layer);
-                }
-                MapLayerPhysics::Front(layer) => {
-                    front_layer = load_all_layers.then_some(layer);
-                }
-                MapLayerPhysics::Tele(layer) => {
-                    tele_layer = load_all_layers.then_some(layer);
-                }
-                MapLayerPhysics::Speedup(_) => {}
-                MapLayerPhysics::Switch(_) => {}
-                MapLayerPhysics::Tune(layer) => {
-                    tune_layer = load_all_layers.then_some(layer);
-                }
-            });
+            physics_group
+                .layers
+                .into_iter()
+                .for_each(|layer| match layer {
+                    MapLayerPhysics::Arbitrary(_) => {}
+                    MapLayerPhysics::Game(layer) => {
+                        game_layer = Some(layer);
+                    }
+                    MapLayerPhysics::Front(layer) => {
+                        front_layer = load_all_layers.then_some(layer);
+                    }
+                    MapLayerPhysics::Tele(layer) => {
+                        tele_layer = load_all_layers.then_some(layer);
+                    }
+                    MapLayerPhysics::Speedup(_) => {}
+                    MapLayerPhysics::Switch(_) => {}
+                    MapLayerPhysics::Tune(layer) => {
+                        tune_layer = load_all_layers.then_some(layer);
+                    }
+                });
 
             let game_layer = game_layer.ok_or_else(|| anyhow!("no game layer found"))?;
 

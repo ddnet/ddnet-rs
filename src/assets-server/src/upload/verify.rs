@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use assets_base::{
-    loader::read_tar,
+    tar::read_tar_files,
     verify::{ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
     AssetUploadResponse,
 };
@@ -95,7 +95,7 @@ pub(crate) fn verify_resource(
             }) else {
                 return AssetUploadResponse::UnsupportedFileType;
             };
-            match read_tar(file) {
+            match read_tar_files(file.into()) {
                 Ok(files) => {
                     let allowed_resources: Vec<_> = allowed_resources
                         .iter()

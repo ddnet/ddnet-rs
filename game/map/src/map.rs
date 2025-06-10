@@ -5,18 +5,28 @@ pub mod groups;
 pub mod metadata;
 pub mod resources;
 
+use std::path::{Path, PathBuf};
+
 use anyhow::anyhow;
+use assets_base::{
+    tar::{new_tar, tar_add_file, tar_entry_to_file},
+    verify::{json::verify_json, ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
+};
 use base::{
     hash::{generate_hash_for, name_and_hash, Hash},
     join_all,
 };
 use groups::layers::design::MapLayer;
 use hiarc::Hiarc;
+use image_utils::png::is_png_image_valid;
+pub use image_utils::png::PngValidatorOptions;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    file::MapFileReader,
+    header::Header,
     map::groups::{MapGroup, MapGroupPhysics},
-    utils::compressed_size,
+    utils::{deserialize_twmap_bincode, serialize_twmap_bincode, verify_twmap_bincode},
 };
 
 use self::{
@@ -37,14 +47,11 @@ use self::{
 ///   position or similar stuff of elements in the map layers.
 ///
 /// Serialization & Deserialization of all items in the collection happens indepentially (mostly to allow parallel processing).
-/// To make it easy use [`Map::read`] &  [`Map::write`], which automatically de-/serializes and compresses the map
+/// To make it easy use [`Map::read`] &  [`Map::write`], which automatically de-/serializes and compresses the map components.
 ///
 /// ### De-/serialization notes
-/// A common file header is always add in the form of "twmap[u64]" where u64 is a 64-bit sized version number.
-/// If performance matters `resources` should be deserialized and processed async to loading the rest of this map file, since resources
-/// are always external files and deserializing this map file can be expensive too.  
-/// `groups` always de-/serializes the physics group indepentially to design groups,
-/// this allows the server to process it without design groups.
+/// A map file file must contain a [`Header`], whos type is of "twmap".
+/// If the whole map is not needed, it's also possible to only load parts of the map (e.g. only the physics group).
 #[derive(Debug, Hiarc, Clone)]
 pub struct Map {
     pub resources: Resources,
@@ -56,9 +63,6 @@ pub struct Map {
 }
 
 impl Map {
-    pub const VERSION: u64 = 2024040200;
-    pub const FILE_TY: &'static str = "twmap";
-
     pub(crate) fn validate_resource_and_anim_indices(
         resources: &Resources,
         animations: &Animations,
@@ -146,146 +150,159 @@ impl Map {
         Ok(())
     }
 
-    /// Deserializes the resources and returns the amount of bytes read
-    pub fn deserialize_resources(uncompressed_file: &[u8]) -> anyhow::Result<(Resources, usize)> {
-        Ok(bincode::serde::decode_from_slice::<Resources, _>(
-            uncompressed_file,
-            bincode::config::standard(),
-        )?)
+    /// Deserializes the header
+    pub fn deserialize_header(uncompressed_file: &[u8]) -> anyhow::Result<Header> {
+        let file = String::from_utf8(uncompressed_file.into())?;
+        let mut lines = file.lines();
+        Ok(Header {
+            ty: lines
+                .next()
+                .ok_or_else(|| anyhow!("type in header is missing"))?
+                .into(),
+            version: lines
+                .next()
+                .ok_or_else(|| anyhow!("version in header is missing"))?
+                .parse()?,
+        })
     }
 
-    /// Decompresses the resources. Returns the amount of bytes read
-    pub fn decompress_resources(file: &[u8]) -> anyhow::Result<(Vec<u8>, usize)> {
+    /// Deserializes the resources
+    pub fn deserialize_resources(uncompressed_file: &[u8]) -> anyhow::Result<Resources> {
+        Ok(serde_json::from_slice::<Resources>(uncompressed_file)?)
+    }
+
+    /// Decompresses the resources.
+    pub fn decompress_resources(file: &[u8]) -> anyhow::Result<Vec<u8>> {
         crate::utils::decompress(file)
     }
 
-    /// Deserializes the animations and returns the amount of bytes read
-    pub fn deserialize_animations(uncompressed_file: &[u8]) -> anyhow::Result<(Animations, usize)> {
-        Ok(bincode::serde::decode_from_slice::<Animations, _>(
-            uncompressed_file,
-            bincode::config::standard(),
-        )?)
+    /// Deserializes the animations
+    pub fn deserialize_animations(uncompressed_file: &[u8]) -> anyhow::Result<Animations> {
+        deserialize_twmap_bincode::<Animations>(uncompressed_file)
     }
 
-    /// Decompresses the animations. Returns the amount of bytes read
-    pub fn decompress_animations(file: &[u8]) -> anyhow::Result<(Vec<u8>, usize)> {
+    /// Decompresses the animations.
+    pub fn decompress_animations(file: &[u8]) -> anyhow::Result<Vec<u8>> {
         crate::utils::decompress(file)
     }
 
-    /// Deserializes the config and returns the amount of bytes read
-    pub fn deserialize_config(uncompressed_file: &[u8]) -> anyhow::Result<(Config, usize)> {
-        Ok(bincode::serde::decode_from_slice::<Config, _>(
-            uncompressed_file,
-            bincode::config::standard(),
-        )?)
+    /// Deserializes the config
+    pub fn deserialize_config(uncompressed_file: &[u8]) -> anyhow::Result<Config> {
+        Ok(serde_json::from_slice::<Config>(uncompressed_file)?)
     }
 
-    /// Decompresses the config. Returns the amount of bytes read
-    pub fn decompress_config(file: &[u8]) -> anyhow::Result<(Vec<u8>, usize)> {
+    /// Decompresses the config.
+    pub fn decompress_config(file: &[u8]) -> anyhow::Result<Vec<u8>> {
         crate::utils::decompress(file)
     }
 
-    /// Deserializes the meta data and returns the amount of bytes read
-    pub fn deserialize_meta(uncompressed_file: &[u8]) -> anyhow::Result<(Metadata, usize)> {
-        Ok(bincode::serde::decode_from_slice::<Metadata, _>(
-            uncompressed_file,
-            bincode::config::standard(),
-        )?)
+    /// Deserializes the meta data
+    pub fn deserialize_meta(uncompressed_file: &[u8]) -> anyhow::Result<Metadata> {
+        Ok(serde_json::from_slice::<Metadata>(uncompressed_file)?)
     }
 
-    /// Decompresses the meta data. Returns the amount of bytes read
-    pub fn decompress_meta(file: &[u8]) -> anyhow::Result<(Vec<u8>, usize)> {
+    /// Decompresses the meta data.
+    pub fn decompress_meta(file: &[u8]) -> anyhow::Result<Vec<u8>> {
         crate::utils::decompress(file)
     }
 
-    /// Read the map resources. Returns the number of bytes read.
-    pub fn read_resources(file: &[u8]) -> anyhow::Result<(Resources, usize)> {
-        let (resources_file, read_bytes_res) = Self::decompress_resources(file)?;
-        let (resources, _) = Self::deserialize_resources(&resources_file)?;
-        Ok((resources, read_bytes_res))
+    /// Read the map resources.
+    pub fn read_resources(reader: &MapFileReader) -> anyhow::Result<Resources> {
+        let file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("resource_index.json.zst"))
+                .ok_or_else(|| anyhow!("resource index was not found in map file"))?,
+        )?;
+        let resources_file = Self::decompress_resources(file)?;
+        let resources = Self::deserialize_resources(&resources_file)?;
+        Ok(resources)
     }
 
-    /// All maps that the client knows MUST start with "twmap", even if the version changes etc.
-    pub fn validate_twmap_header(file: &[u8]) -> bool {
-        let twmap_str_len = Self::FILE_TY.len();
-        file.len() >= twmap_str_len
-            && String::from_utf8_lossy(&file[..Self::FILE_TY.len()]) == Self::FILE_TY
+    /// All maps that the client knows MUST be of type "twmap", even if the version changes etc.
+    pub fn validate_twmap_header_type(header: &Header) -> bool {
+        header.ty == Header::FILE_TY
     }
 
-    /// Read the map resources (and the file header). Returns the number of bytes read.
-    pub fn read_resources_and_header(file: &[u8]) -> anyhow::Result<(Resources, usize)> {
-        let header_len = Self::FILE_TY.len() + std::mem::size_of::<u64>();
+    /// All maps that the client knows MUST be of type "twmap", even if the version changes etc.
+    pub fn read_twmap_header(reader: &MapFileReader) -> anyhow::Result<Header> {
+        let file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("header.txt"))
+                .ok_or_else(|| anyhow!("header was not found in map file"))?,
+        )?;
+        let header = Self::deserialize_header(file)?;
+        Ok(header)
+    }
+
+    /// Read the map resources (and validate the file header).
+    pub fn read_resources_and_header(reader: &MapFileReader) -> anyhow::Result<Resources> {
+        let header = Self::read_twmap_header(reader)?;
         anyhow::ensure!(
-            file.len() >= header_len && Self::validate_twmap_header(file),
-            "file smaller than the size of the header."
+            Self::validate_twmap_header_type(&header),
+            "header validation failed."
         );
-        anyhow::ensure!(
-            u64::from_le_bytes(
-                file[Self::FILE_TY.len()..Self::FILE_TY.len() + std::mem::size_of::<u64>()]
-                    .try_into()?
-            ) == Self::VERSION,
-            "file version mismatch."
-        );
-        let file = &file[header_len..];
+        anyhow::ensure!(header.version == Header::VERSION, "file version mismatch.");
 
-        let (resources_file, read_bytes_res) = Self::decompress_resources(file)?;
-        let (resources, _) = Self::deserialize_resources(&resources_file)?;
-        Ok((resources, read_bytes_res + header_len))
+        let resources = Self::read_resources(reader)?;
+        Ok(resources)
     }
 
-    /// Read the map animations. Returns the number of bytes read.
-    pub fn read_animations(file: &[u8]) -> anyhow::Result<(Animations, usize)> {
-        let (animations_file, read_bytes_res) = Self::decompress_resources(file)?;
-        let (animations, _) = Self::deserialize_animations(&animations_file)?;
-        Ok((animations, read_bytes_res))
+    /// Read the map animations.
+    pub fn read_animations(reader: &MapFileReader) -> anyhow::Result<Animations> {
+        let file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("animations.twmap_bincode.zst"))
+                .ok_or_else(|| anyhow!("animations were not found in map file"))?,
+        )?;
+        let animations_file = Self::decompress_animations(file)?;
+        let animations = Self::deserialize_animations(&animations_file)?;
+        Ok(animations)
     }
 
-    /// Skip the map animations. Returns the number of bytes read.
-    pub fn skip_animations(file: &[u8]) -> anyhow::Result<usize> {
-        let (size, bytes_read) = super::utils::compressed_size(file)?;
-        Ok(size as usize + bytes_read)
+    /// Read the map config.
+    pub fn read_config(reader: &MapFileReader) -> anyhow::Result<Config> {
+        let file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("config.json.zst"))
+                .ok_or_else(|| anyhow!("config was not found in map file"))?,
+        )?;
+        let config_file = Self::decompress_config(file)?;
+        let config = Self::deserialize_config(&config_file)?;
+        Ok(config)
     }
 
-    /// Read the map config. Returns the number of bytes read.
-    pub fn read_config(file: &[u8]) -> anyhow::Result<(Config, usize)> {
-        let (config_file, read_bytes_res) = Self::decompress_resources(file)?;
-        let (config, _) = Self::deserialize_config(&config_file)?;
-        Ok((config, read_bytes_res))
-    }
-
-    /// Read the map meta data. Returns the number of bytes read.
-    pub fn read_meta(file: &[u8]) -> anyhow::Result<(Metadata, usize)> {
-        let (meta_file, read_bytes_res) = Self::decompress_resources(file)?;
-        let (meta_data, _) = Self::deserialize_meta(&meta_file)?;
-        Ok((meta_data, read_bytes_res))
+    /// Read the map meta data.
+    pub fn read_meta(reader: &MapFileReader) -> anyhow::Result<Metadata> {
+        let file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("meta.json.zst"))
+                .ok_or_else(|| anyhow!("meta was not found in map file"))?,
+        )?;
+        let meta_file = Self::decompress_resources(file)?;
+        let meta_data = Self::deserialize_meta(&meta_file)?;
+        Ok(meta_data)
     }
 
     /// Read a map file
-    pub fn read(file: &[u8], tp: &rayon::ThreadPool) -> anyhow::Result<Self> {
-        let header_len = Self::FILE_TY.len() + std::mem::size_of::<u64>();
+    pub fn read(reader: &MapFileReader, tp: &rayon::ThreadPool) -> anyhow::Result<Self> {
+        let header = Self::read_twmap_header(reader)?;
         anyhow::ensure!(
-            file.len() >= header_len && Self::validate_twmap_header(file),
-            "file smaller than the size of the header."
+            Self::validate_twmap_header_type(&header),
+            "header validation failed."
         );
-        anyhow::ensure!(
-            u64::from_le_bytes(
-                file[Self::FILE_TY.len()..Self::FILE_TY.len() + std::mem::size_of::<u64>()]
-                    .try_into()?
-            ) == Self::VERSION,
-            "file version mismatch."
-        );
-        let file = &file[header_len..];
+        anyhow::ensure!(header.version == Header::VERSION, "file version mismatch.");
 
-        let (resources, read_bytes_res) = Self::read_resources(file)?;
+        let resources = Self::read_resources(reader)?;
 
-        let (groups, read_bytes_groups) = MapGroups::read(&file[read_bytes_res..], tp)?;
-        let (animations, read_bytes_animations) =
-            Self::read_animations(&file[read_bytes_res + read_bytes_groups..])?;
-        let (config, read_bytes_config) =
-            Self::read_config(&file[read_bytes_res + read_bytes_groups + read_bytes_animations..])?;
-        let (meta, _) = Self::read_meta(
-            &file[read_bytes_res + read_bytes_groups + read_bytes_animations + read_bytes_config..],
-        )?;
+        let groups = MapGroups::read(reader, tp)?;
+        let animations = Self::read_animations(reader)?;
+        let config = Self::read_config(reader)?;
+        let meta = Self::read_meta(reader)?;
 
         Self::validate_resource_and_anim_indices(&resources, &animations, &groups)?;
 
@@ -301,34 +318,19 @@ impl Map {
     /// Read only the physics group and the config (skips all other stuff).
     ///
     /// This is usually nice to use on the server.
-    pub fn read_physics_group_and_config(file: &[u8]) -> anyhow::Result<(MapGroupPhysics, Config)> {
-        let header_len = Self::FILE_TY.len() + std::mem::size_of::<u64>();
+    pub fn read_physics_group_and_config(
+        reader: &MapFileReader,
+    ) -> anyhow::Result<(MapGroupPhysics, Config)> {
+        let header = Self::read_twmap_header(reader)?;
         anyhow::ensure!(
-            file.len() >= header_len && Self::validate_twmap_header(file),
-            "file smaller than the size of the header."
+            Self::validate_twmap_header_type(&header),
+            "header validation failed."
         );
-        anyhow::ensure!(
-            u64::from_le_bytes(
-                file[Self::FILE_TY.len()..Self::FILE_TY.len() + std::mem::size_of::<u64>()]
-                    .try_into()?
-            ) == Self::VERSION,
-            "file version mismatch."
-        );
-        let file = &file[header_len..];
+        anyhow::ensure!(header.version == Header::VERSION, "file version mismatch.");
 
-        // size of resources + the size information itself
-        let (resource_size, read_size) = compressed_size(file)?;
+        let groups = MapGroups::read_physics_group(reader)?;
 
-        let file = &file[resource_size as usize + read_size..];
-        let (groups, bytes_read) = MapGroups::read_physics_group(file)?;
-
-        let file = &file[bytes_read..];
-        let bytes_read = MapGroups::skip_design_group(file)?;
-
-        let file = &file[bytes_read..];
-        let read_bytes_animations = Self::skip_animations(file)?;
-        let file = &file[read_bytes_animations..];
-        let (config, _) = Self::read_config(file)?;
+        let config = Self::read_config(reader)?;
 
         Ok((groups, config))
     }
@@ -337,18 +339,14 @@ impl Map {
     /// See [`Map::read_resources_and_header`]
     pub fn read_with_resources(
         resources: Resources,
-        file_without_res: &[u8],
+        reader: &MapFileReader,
         tp: &rayon::ThreadPool,
     ) -> anyhow::Result<Self> {
-        let (groups, read_bytes_groups) = MapGroups::read(file_without_res, tp)?;
+        let groups = MapGroups::read(reader, tp)?;
 
-        let (animations, read_bytes_animations) =
-            Self::read_animations(&file_without_res[read_bytes_groups..])?;
-        let (config, read_bytes_config) =
-            Self::read_config(&file_without_res[read_bytes_groups + read_bytes_animations..])?;
-        let (meta, _) = Self::read_meta(
-            &file_without_res[read_bytes_groups + read_bytes_animations + read_bytes_config..],
-        )?;
+        let animations = Self::read_animations(reader)?;
+        let config = Self::read_config(reader)?;
+        let meta = Self::read_meta(reader)?;
 
         Self::validate_resource_and_anim_indices(&resources, &animations, &groups)?;
 
@@ -361,23 +359,26 @@ impl Map {
         })
     }
 
-    /// Serializes the resources and returns the amount of bytes written
+    /// Serializes the header
+    pub fn serialize_header<W: std::io::Write>(res: &Header, writer: &mut W) -> anyhow::Result<()> {
+        let ty = format!("{}\n", res.ty).into_bytes();
+        let version = format!("{}\n", res.version).into_bytes();
+        writer.write_all(&ty)?;
+        writer.write_all(&version)?;
+        Ok(())
+    }
+
+    /// Serializes the resources
     pub fn serialize_resources<W: std::io::Write>(
         res: &Resources,
         writer: &mut W,
-    ) -> anyhow::Result<usize> {
-        Ok(bincode::serde::encode_into_std_write(
-            res,
-            writer,
-            bincode::config::standard(),
-        )?)
+    ) -> anyhow::Result<()> {
+        serde_json::to_writer_pretty(writer, res)?;
+        Ok(())
     }
 
-    pub fn compress_resources<W: std::io::Write>(
-        uncompressed_file: &[u8],
-        writer: &mut W,
-    ) -> anyhow::Result<()> {
-        crate::utils::compress(uncompressed_file, writer)
+    pub fn compress_resources(uncompressed_file: &[u8]) -> anyhow::Result<Vec<u8>> {
+        crate::utils::compress(uncompressed_file)
     }
 
     /// Serializes the animations and returns the amount of bytes written
@@ -385,109 +386,172 @@ impl Map {
         anims: &Animations,
         writer: &mut W,
     ) -> anyhow::Result<usize> {
-        Ok(bincode::serde::encode_into_std_write(
-            anims,
-            writer,
-            bincode::config::standard(),
-        )?)
+        serialize_twmap_bincode(anims, writer)
     }
 
-    pub fn compress_animations<W: std::io::Write>(
-        uncompressed_file: &[u8],
-        writer: &mut W,
-    ) -> anyhow::Result<()> {
-        crate::utils::compress(uncompressed_file, writer)
+    pub fn compress_animations(uncompressed_file: &[u8]) -> anyhow::Result<Vec<u8>> {
+        crate::utils::compress(uncompressed_file)
     }
 
-    /// Serializes the config and returns the amount of bytes written
+    /// Serializes the config
     pub fn serialize_config<W: std::io::Write>(
         config: &Config,
         writer: &mut W,
-    ) -> anyhow::Result<usize> {
-        Ok(bincode::serde::encode_into_std_write(
-            config,
-            writer,
-            bincode::config::standard(),
-        )?)
-    }
-
-    pub fn compress_config<W: std::io::Write>(
-        uncompressed_file: &[u8],
-        writer: &mut W,
     ) -> anyhow::Result<()> {
-        crate::utils::compress(uncompressed_file, writer)
+        serde_json::to_writer_pretty(writer, config)?;
+        Ok(())
     }
 
-    /// Serializes the meta and returns the amount of bytes written
+    pub fn compress_config(uncompressed_file: &[u8]) -> anyhow::Result<Vec<u8>> {
+        crate::utils::compress(uncompressed_file)
+    }
+
+    /// Serializes the meta
     pub fn serialize_meta<W: std::io::Write>(
         meta_data: &Metadata,
         writer: &mut W,
-    ) -> anyhow::Result<usize> {
-        Ok(bincode::serde::encode_into_std_write(
-            meta_data,
-            writer,
-            bincode::config::standard(),
-        )?)
+    ) -> anyhow::Result<()> {
+        serde_json::to_writer_pretty(writer, meta_data)?;
+        Ok(())
     }
 
-    pub fn compress_meta<W: std::io::Write>(
-        uncompressed_file: &[u8],
-        writer: &mut W,
-    ) -> anyhow::Result<()> {
-        crate::utils::compress(uncompressed_file, writer)
+    pub fn compress_meta(uncompressed_file: &[u8]) -> anyhow::Result<Vec<u8>> {
+        crate::utils::compress(uncompressed_file)
     }
 
     /// Write a map file to a writer
-    pub fn write<W: std::io::Write>(
-        &self,
-        writer: &mut W,
-        tp: &rayon::ThreadPool,
-    ) -> anyhow::Result<()> {
-        let (resources, groups, animations, config, meta) = tp.install(|| {
+    pub fn write(&self, tp: &rayon::ThreadPool) -> anyhow::Result<Vec<u8>> {
+        let (header, resources, groups, animations, config, meta) = tp.install(|| {
             join_all!(
                 || {
-                    let mut resources: Vec<u8> = Vec::new();
+                    let mut serializer_helper: Vec<u8> = Default::default();
+                    Self::serialize_header(
+                        &Header {
+                            ty: Header::FILE_TY.to_string(),
+                            version: Header::VERSION,
+                        },
+                        &mut serializer_helper,
+                    )?;
+                    anyhow::Ok(serializer_helper)
+                },
+                || {
                     let mut serializer_helper: Vec<u8> = Default::default();
                     Self::serialize_resources(&self.resources, &mut serializer_helper)?;
-                    Self::compress_resources(&serializer_helper, &mut resources)?;
-                    anyhow::Ok(resources)
+                    Self::compress_resources(&serializer_helper)
                 },
+                || { MapGroups::write(&self.groups, tp) },
                 || {
-                    let mut groups: Vec<u8> = Vec::new();
-                    MapGroups::write(&self.groups, &mut groups, tp)?;
-                    anyhow::Ok(groups)
-                },
-                || {
-                    let mut animations: Vec<u8> = Vec::new();
                     let mut serializer_helper: Vec<u8> = Default::default();
                     Self::serialize_animations(&self.animations, &mut serializer_helper)?;
-                    Self::compress_animations(&serializer_helper, &mut animations)?;
-                    anyhow::Ok(animations)
+                    Self::compress_animations(&serializer_helper)
                 },
                 || {
-                    let mut config: Vec<u8> = Vec::new();
                     let mut serializer_helper: Vec<u8> = Default::default();
                     Self::serialize_config(&self.config, &mut serializer_helper)?;
-                    Self::compress_config(&serializer_helper, &mut config)?;
-                    anyhow::Ok(config)
+                    Self::compress_config(&serializer_helper)
                 },
                 || {
-                    let mut meta_data: Vec<u8> = Vec::new();
                     let mut serializer_helper: Vec<u8> = Default::default();
                     Self::serialize_meta(&self.meta, &mut serializer_helper)?;
-                    Self::compress_meta(&serializer_helper, &mut meta_data)?;
-                    anyhow::Ok(meta_data)
+                    Self::compress_meta(&serializer_helper)
                 }
             )
         });
 
-        writer.write_all(Self::FILE_TY.as_bytes())?;
-        writer.write_all(&Self::VERSION.to_le_bytes())?;
-        writer.write_all(&resources?)?;
-        writer.write_all(&groups?)?;
-        writer.write_all(&animations?)?;
-        writer.write_all(&config?)?;
-        writer.write_all(&meta?)?;
+        let mut builder = new_tar();
+
+        tar_add_file(&mut builder, "header.txt", &header?);
+        tar_add_file(&mut builder, "resource_index.json.zst", &resources?);
+
+        let (physics, bg, fg) = groups?;
+        tar_add_file(&mut builder, "groups/physics.twmap_bincode.zst", &physics);
+        tar_add_file(&mut builder, "groups/background.twmap_bincode.zst", &bg);
+        tar_add_file(&mut builder, "groups/foreground.twmap_bincode.zst", &fg);
+
+        tar_add_file(&mut builder, "animations.twmap_bincode.zst", &animations?);
+        tar_add_file(&mut builder, "config.json.zst", &config?);
+        tar_add_file(&mut builder, "meta.json.zst", &meta?);
+
+        Ok(builder.into_inner()?)
+    }
+
+    /// Validate a downloaded map's entries.
+    ///
+    /// This includes:
+    /// - image files
+    /// - text files
+    /// - sound files
+    /// - the map header (without a version check)
+    /// - twmap_bincode files (the map internal bincode file format), __BUT__
+    ///   it does not check it's file contents (it does not deserialize it).
+    /// - zstd file (the content must be one of the above types)
+    pub fn validate_downloaded_map_file(
+        reader: &MapFileReader,
+        png_options: PngValidatorOptions,
+    ) -> anyhow::Result<()> {
+        let header = Self::read_twmap_header(reader)?;
+        anyhow::ensure!(
+            Self::validate_twmap_header_type(&header),
+            "header validation failed."
+        );
+
+        let files = reader.read_all()?;
+
+        for (path, file) in files {
+            fn verify_file(
+                path: PathBuf,
+                file: Vec<u8>,
+                png_options: PngValidatorOptions,
+            ) -> anyhow::Result<()> {
+                let file_ext = path
+                    .extension()
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "no file extension found during \
+                            downloaded map validation."
+                        )
+                    })?
+                    .to_str()
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "file extension check during downloaded \
+                            map contained invalid characters"
+                        )
+                    })?;
+                let file_name = path
+                    .file_stem()
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "no file stem found during \
+                            downloaded map validation."
+                        )
+                    })?
+                    .to_str()
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "file steam check during downloaded \
+                            map contained invalid characters"
+                        )
+                    })?;
+                match file_ext {
+                    "ogg" => verify_ogg_vorbis(&file)?,
+                    "png" => is_png_image_valid(&file, png_options)?,
+                    "txt" => verify_txt(&file, file_name)?,
+                    "json" => verify_json(&file)?,
+                    "twmap_bincode" => verify_twmap_bincode(&file)?,
+                    "zst" => {
+                        let file = crate::utils::decompress(&file)?;
+                        verify_file(file_name.into(), file, png_options)?;
+                    }
+                    _ => anyhow::bail!(
+                        "file extension: {} is unknown and cannot be validated.",
+                        file_ext
+                    ),
+                }
+                Ok(())
+            }
+            verify_file(path, file, png_options)?;
+        }
 
         Ok(())
     }

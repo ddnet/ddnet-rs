@@ -1,6 +1,8 @@
 #![deny(warnings)]
 #![deny(clippy::all)]
 
+pub mod file;
+pub mod header;
 pub mod map;
 pub mod skeleton;
 pub mod types;
@@ -18,7 +20,10 @@ mod test {
     use base_io::io::IoFileSys;
     use flate2::Compression;
 
-    use crate::map::{groups::MapGroup, Map};
+    use crate::{
+        file::MapFileReader,
+        map::{groups::MapGroup, Map},
+    };
 
     fn compression_tests_for_map(map_name: &str) {
         let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
@@ -42,10 +47,10 @@ mod test {
         let map_name = map_name.to_string();
         let map_legacy = io.rt.spawn(async move {
             let map = fs
-                .read_file(format!("map/maps/{}.twmap", map_name).as_ref())
+                .read_file(format!("map/maps/{}.twmap.tar", map_name).as_ref())
                 .await?;
 
-            Map::read(&map, &tp)
+            Map::read(&MapFileReader::new(map)?, &tp)
         });
         let map = map_legacy.get_storage().unwrap();
 

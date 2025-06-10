@@ -3,9 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use assets_base::tar::{new_tar, tar_add_file, TarBuilder};
 use assets_splitting::game_split::Game06Part;
 use clap::Parser;
-use tar::Header;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -20,18 +20,12 @@ struct Args {
 }
 
 struct TarFile {
-    file: tar::Builder<Vec<u8>>,
+    file: TarBuilder,
 }
 
 enum WriteMode<'a> {
     Tar(&'a mut HashMap<String, TarFile>),
     Disk,
-}
-
-fn new_tar() -> TarFile {
-    let mut builder = tar::Builder::new(Vec::new());
-    builder.mode(tar::HeaderMode::Deterministic);
-    TarFile { file: builder }
 }
 
 fn write_part(
@@ -44,21 +38,11 @@ fn write_part(
     let png = image_utils::png::save_png_image(&part.data, part.width, part.height).unwrap();
     match write_mode {
         WriteMode::Tar(files) => {
-            let tar = files.entry(base_path.to_string()).or_insert_with(new_tar);
+            let tar = files
+                .entry(base_path.to_string())
+                .or_insert_with(|| TarFile { file: new_tar() });
 
-            let mut header = Header::new_gnu();
-            header.set_cksum();
-            header.set_size(png.len() as u64);
-            header.set_mode(0o644);
-            header.set_uid(1000);
-            header.set_gid(1000);
-            tar.file
-                .append_data(
-                    &mut header,
-                    format!("{name}.png"),
-                    std::io::Cursor::new(&png),
-                )
-                .unwrap();
+            tar_add_file(&mut tar.file, format!("{name}.png"), &png);
         }
         WriteMode::Disk => {
             std::fs::write(output.join(base_path).join(format!("{name}.png")), png)
