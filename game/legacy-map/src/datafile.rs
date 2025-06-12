@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ffi::{CStr, CString},
     io::{Read, Write},
     mem::size_of,
@@ -273,6 +273,10 @@ pub struct CDatafileWrapper {
     // files to read, if the user of this object
     // wants to have support for images etc.
     pub read_files: LinkedHashMap<String, ReadFile>,
+    // dup key to real key
+    pub duplicated_img_reads: HashMap<usize, usize>,
+    // real key with a list of dup keys
+    pub duplicated_img_reads_list: HashMap<usize, HashSet<usize>>,
 }
 
 #[derive(Default)]
@@ -365,6 +369,8 @@ impl CDatafileWrapper {
             tune_layer_index: usize::MAX,
 
             read_files: Default::default(),
+            duplicated_img_reads: Default::default(),
+            duplicated_img_reads_list: Default::default(),
         }
     }
 
@@ -599,15 +605,20 @@ impl CDatafileWrapper {
                         self.images.iter().enumerate().for_each(|(index, img)| {
                             if img.item_data.external != 0 {
                                 // add the external image to the read files
-                                let r = self.read_files.insert(
-                                    format!("legacy/mapres/{}.png", img.img_name),
-                                    ReadFile::Image(index, Vec::new()),
-                                );
-                                assert!(
-                                    r.is_none(),
-                                    "image with that name was already found {}",
-                                    img.img_name
-                                )
+                                let key = format!("legacy/mapres/{}.png", img.img_name);
+                                if let Some(ReadFile::Image(old_index, _)) =
+                                    self.read_files.get(&key)
+                                {
+                                    self.duplicated_img_reads.insert(index, *old_index);
+                                    let list = self
+                                        .duplicated_img_reads_list
+                                        .entry(*old_index)
+                                        .or_default();
+                                    list.insert(index);
+                                } else {
+                                    self.read_files
+                                        .insert(key, ReadFile::Image(index, Vec::new()));
+                                }
                             }
                         });
                         benchmark.bench_multi("loading the map images");
@@ -1620,18 +1631,41 @@ impl CDatafileWrapper {
         let mut old_img_array_assign: HashMap<usize, usize> = Default::default();
         let mut ext_image_count = 0;
         for (img_index, image) in self.images.into_iter().enumerate() {
+            // skip if duplicated
+            if let Some(old_index) = self.duplicated_img_reads.get(&img_index) {
+                if let Some(old_img_array_assign_index) = old_img_array_assign.get(old_index) {
+                    old_img_array_assign.insert(img_index, *old_img_array_assign_index);
+                }
+                if let Some(old_img_assign_index) = old_img_assign.get(old_index) {
+                    old_img_assign.insert(img_index, *old_img_assign_index);
+                }
+                continue;
+            }
+
             // was the image used in tile layer and/or quad layer?
             let mut in_tile_layer = false;
             let mut in_quad_layer = false;
             for layer in &self.layers {
                 match layer {
                     MapLayer::Tile(layer) => {
-                        if layer.0.image == img_index as i32 {
+                        if layer.0.image == img_index as i32
+                            || (layer.0.image > 0
+                                && self
+                                    .duplicated_img_reads_list
+                                    .get(&img_index)
+                                    .is_some_and(|list| list.contains(&(layer.0.image as usize))))
+                        {
                             in_tile_layer = true;
                         }
                     }
                     MapLayer::Quads(layer) => {
-                        if layer.0.image == img_index as i32 {
+                        if layer.0.image == img_index as i32
+                            || (layer.0.image > 0
+                                && self
+                                    .duplicated_img_reads_list
+                                    .get(&img_index)
+                                    .is_some_and(|list| list.contains(&(layer.0.image as usize))))
+                        {
                             in_quad_layer = true;
                         }
                     }

@@ -4439,7 +4439,7 @@ impl Client {
                             }
 
                             self.log.log(format!(
-                                "Client proxy is converting map: {}.\
+                                "Client proxy is converting map: {}. \
                                 This might take a moment.",
                                 map_name.as_str()
                             ));
