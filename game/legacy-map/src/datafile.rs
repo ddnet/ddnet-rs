@@ -1669,19 +1669,10 @@ impl CDatafileWrapper {
 
         let mut old_img_assign: HashMap<usize, usize> = Default::default();
         let mut old_img_array_assign: HashMap<usize, usize> = Default::default();
+        let mut images_high_ordered: Vec<(usize, MapImage, bool, bool)> = Default::default();
+        let mut images_low_ordered: Vec<(usize, MapImage, bool, bool)> = Default::default();
         let mut ext_image_count = 0;
         for (img_index, image) in self.images.into_iter().enumerate() {
-            // skip if duplicated
-            if let Some(old_index) = self.duplicated_img_reads.get(&img_index) {
-                if let Some(old_img_array_assign_index) = old_img_array_assign.get(old_index) {
-                    old_img_array_assign.insert(img_index, *old_img_array_assign_index);
-                }
-                if let Some(old_img_assign_index) = old_img_assign.get(old_index) {
-                    old_img_assign.insert(img_index, *old_img_assign_index);
-                }
-                continue;
-            }
-
             // was the image used in tile layer and/or quad layer?
             let mut in_tile_layer = false;
             let mut in_quad_layer = false;
@@ -1711,6 +1702,27 @@ impl CDatafileWrapper {
                     }
                     _ => {}
                 }
+            }
+
+            if in_quad_layer {
+                images_high_ordered.push((img_index, image, in_quad_layer, in_tile_layer));
+            } else if in_tile_layer {
+                images_low_ordered.push((img_index, image, in_quad_layer, in_tile_layer));
+            }
+        }
+        for (img_index, image, in_quad_layer, in_tile_layer) in images_high_ordered
+            .into_iter()
+            .chain(images_low_ordered.into_iter())
+        {
+            // skip if duplicated
+            if let Some(old_index) = self.duplicated_img_reads.get(&img_index) {
+                if let Some(old_img_array_assign_index) = old_img_array_assign.get(old_index) {
+                    old_img_array_assign.insert(img_index, *old_img_array_assign_index);
+                }
+                if let Some(old_img_assign_index) = old_img_assign.get(old_index) {
+                    old_img_assign.insert(img_index, *old_img_assign_index);
+                }
+                continue;
             }
 
             fn check_size_and_dilate<'a>(
@@ -1818,14 +1830,16 @@ impl CDatafileWrapper {
                 },
                 hq_meta: None,
             };
-            image_resources.insert(
-                res_ref.meta.blake3_hash,
-                LegacyMapToNewRes {
-                    buf: png_data,
-                    ty: "png".into(),
-                    name: res_ref.name.to_string(),
-                },
-            );
+            if in_quad_layer || in_tile_layer {
+                image_resources.insert(
+                    res_ref.meta.blake3_hash,
+                    LegacyMapToNewRes {
+                        buf: png_data,
+                        ty: "png".into(),
+                        name: res_ref.name.to_string(),
+                    },
+                );
+            }
             if in_tile_layer {
                 old_img_array_assign.insert(img_index, map.resources.image_arrays.len());
                 map.resources.image_arrays.push(res_ref.clone());
@@ -2600,13 +2614,14 @@ impl CDatafileWrapper {
             }
         }
 
-        let images_len = map.resources.images.len();
+        let mut image_hash_to_index_mapping: HashMap<(String, Hash), usize> = Default::default();
+        let mut image_array_index_mapping: HashMap<usize, usize> = Default::default();
+        let mut img_counter = 0;
 
         // resources
         {
             // images
             let item_index = res.data_file.info.item_offsets.len() as i32;
-            let image_count = map.resources.images.len() + map.resources.image_arrays.len();
             for (index, image) in map.resources.images.into_iter().enumerate() {
                 res.data_file
                     .info
@@ -2665,10 +2680,22 @@ impl CDatafileWrapper {
                 };
                 data_item.write_to_vec(&mut data_items);
                 data_items.append(&mut img_data);
+
+                image_hash_to_index_mapping
+                    .insert((image.name.to_string(), image.meta.blake3_hash), index);
+                img_counter += 1;
             }
 
             // images 2d array
             for (index, image) in map.resources.image_arrays.into_iter().enumerate() {
+                if let Some(map_index) = image_hash_to_index_mapping
+                    .get(&(image.name.to_string(), image.meta.blake3_hash))
+                {
+                    image_array_index_mapping.insert(index, *map_index);
+                    continue;
+                }
+                image_array_index_mapping.insert(index, img_counter);
+
                 res.data_file
                     .info
                     .item_offsets
@@ -2726,12 +2753,14 @@ impl CDatafileWrapper {
                 };
                 data_item.write_to_vec(&mut data_items);
                 data_items.append(&mut img_data);
+
+                img_counter += 1;
             }
-            if image_count > 0 {
+            if img_counter > 0 {
                 res.data_file.info.item_types.push(CDatafileItemType {
                     item_type: MapItemTypes::Image as i32,
                     start: item_index,
-                    num: image_count as i32,
+                    num: img_counter as i32,
                 });
             }
 
@@ -2912,7 +2941,7 @@ impl CDatafileWrapper {
                                     image: layer
                                         .attr
                                         .image_array
-                                        .map(|i| (i + images_len) as i32)
+                                        .map(|i| *image_array_index_mapping.get(&i).unwrap() as i32)
                                         .unwrap_or(-1),
                                     data: data_index as i32,
                                     name: Default::default(),
