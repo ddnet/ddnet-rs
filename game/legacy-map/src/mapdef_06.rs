@@ -671,6 +671,26 @@ impl CMapItemLayerTilemap {
             tune = read_i32_le(val);
         }
 
+        if version < 3 {
+            if flags & TilesLayerFlag::Tele as i32 != 0 {
+                tele = name[0];
+            }
+            if flags & TilesLayerFlag::Speedup as i32 != 0 {
+                speedup = name[1];
+            }
+            if flags & TilesLayerFlag::Front as i32 != 0 {
+                front = name[2];
+            }
+            if flags & TilesLayerFlag::Switch as i32 != 0 {
+                switch = tele;
+                tele = -1;
+            }
+            if flags & TilesLayerFlag::Tune as i32 != 0 {
+                tune = speedup;
+                speedup = -1;
+            }
+        }
+
         Self {
             layer: tile_layer,
             version,
