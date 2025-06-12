@@ -4,6 +4,7 @@ use std::{
     ffi::{CStr, CString},
     io::{Read, Write},
     mem::size_of,
+    ops::ControlFlow,
     time::Duration,
 };
 
@@ -511,7 +512,7 @@ impl CDatafileWrapper {
         benchmark.bench("loading the map header, items and data");
 
         // read items
-        thread_pool.install(|| {
+        let (_, _, c, _, _, _, g) = thread_pool.install(|| {
             join_all!(
                 || {
                     if !options.dont_load_map_item[MapItemTypes::Version as usize] {
@@ -594,14 +595,35 @@ impl CDatafileWrapper {
                             &mut num,
                         );
                         self.images.resize_with(num as usize, MapImage::default);
-                        self.images.par_iter_mut().enumerate().for_each(|(i, img)| {
-                            let data = &items[start as usize + i].data[0..item_size];
-                            img.item_data = CMapItemImage::read_from_slice(data);
+                        let r = self
+                            .images
+                            .par_iter_mut()
+                            .enumerate()
+                            .try_for_each(|(i, img)| {
+                                let data = &items[start as usize + i].data[0..item_size];
+                                img.item_data = CMapItemImage::read_from_slice(data);
 
-                            // read the image name
-                            img.img_name =
-                                Self::read_string(&data_file, img.item_data.image_name, data_start);
-                        });
+                                // read the image name
+                                img.img_name = match Self::read_string(
+                                    &data_file,
+                                    img.item_data.image_name,
+                                    data_start,
+                                ) {
+                                    Ok(name) => name,
+                                    Err(lossy_name) => {
+                                        if img.item_data.external != 0 {
+                                            return ControlFlow::Break(anyhow!(
+                                                "External image contained invalid utf8 string"
+                                            ));
+                                        }
+                                        format!("{i}-{lossy_name}")
+                                    }
+                                };
+                                ControlFlow::Continue(())
+                            });
+                        if let ControlFlow::Break(err) = r {
+                            anyhow::bail!("{err}")
+                        }
                         self.images.iter().enumerate().for_each(|(index, img)| {
                             if img.item_data.external != 0 {
                                 // add the external image to the read files
@@ -623,6 +645,7 @@ impl CDatafileWrapper {
                         });
                         benchmark.bench_multi("loading the map images");
                     }
+                    anyhow::Ok(())
                 },
                 || {
                     if !options.dont_load_map_item[MapItemTypes::Envelope as usize] {
@@ -763,7 +786,17 @@ impl CDatafileWrapper {
                             let data = &items[start as usize + i].data[0..item_size];
                             let sound = CMapItemSound::read_from_slice(data);
                             let sound_name =
-                                Self::read_string(&data_file, sound.sound_name, data_start);
+                                match Self::read_string(&data_file, sound.sound_name, data_start) {
+                                    Ok(name) => name,
+                                    Err(lossy_name) => {
+                                        if sound.external != 0 {
+                                            anyhow::bail!(
+                                                "External sound contained invalid utf8 string"
+                                            );
+                                        }
+                                        format!("{i}-{lossy_name}")
+                                    }
+                                };
                             self.sounds.push(MapSound {
                                 name: sound_name,
                                 def: sound,
@@ -772,9 +805,12 @@ impl CDatafileWrapper {
                         }
                         benchmark.bench_multi("loading the map sounds");
                     }
+                    anyhow::Ok(())
                 }
-            );
+            )
         });
+        c?;
+        g?;
 
         if !options.dont_load_map_item[MapItemTypes::Envpoints as usize] {
             let has_bezier = self
@@ -1259,12 +1295,16 @@ impl CDatafileWrapper {
         self.init_tilemap_skip(thread_pool);
     }
 
-    fn read_string(data_file: &CDatafile, index: i32, data_start: &[u8]) -> String {
+    // On fail gives a lossy string
+    fn read_string(data_file: &CDatafile, index: i32, data_start: &[u8]) -> Result<String, String> {
         let data_name = Self::decompress_data(data_file, index as usize, data_start);
         let name_cstr = CStr::from_bytes_with_nul(data_name.as_slice()).unwrap_or_else(|_| {
             panic!("data name was not valid utf8 with null-termination {data_name:?}")
         });
-        name_cstr.to_str().unwrap().to_string()
+        name_cstr
+            .to_str()
+            .map(|s| s.to_string())
+            .map_err(|_| name_cstr.to_string_lossy().to_string())
     }
 
     fn read_char_array<const N: usize>(
