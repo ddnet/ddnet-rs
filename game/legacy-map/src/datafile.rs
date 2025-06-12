@@ -690,20 +690,8 @@ impl CDatafileWrapper {
                                 let layer = CMapItemLayer::read_from_slice(data);
 
                                 if layer.item_layer == MapLayerTypes::Tiles as i32 {
-                                    let item_size_non_ddrace =
-                                        CMapItemLayerTilemap::size_of_without_ddrace();
-                                    let item_size_non_ddrace_no_name =
-                                        CMapItemLayerTilemap::size_of_without_name();
-                                    let item_size_full = size_of::<CMapItemLayerTilemap>();
                                     let data_len = items[start as usize + i].data.len();
-                                    let data = if data_len >= item_size_full {
-                                        &items[start as usize + i].data[0..item_size_full]
-                                    } else if data_len >= item_size_non_ddrace {
-                                        &items[start as usize + i].data[0..item_size_non_ddrace]
-                                    } else {
-                                        &items[start as usize + i].data
-                                            [0..item_size_non_ddrace_no_name]
-                                    };
+                                    let data = &items[start as usize + i].data[0..data_len];
                                     let tile_layer = CMapItemLayerTilemap::read_from_slice(data);
 
                                     let tile_layer_impl = MapTileLayerDetail::Tile(Vec::new());

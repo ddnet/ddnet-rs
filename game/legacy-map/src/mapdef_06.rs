@@ -597,14 +597,6 @@ pub struct CMapItemLayerTilemap {
 }
 
 impl CMapItemLayerTilemap {
-    pub fn size_of_without_ddrace() -> usize {
-        std::mem::size_of::<Self>() - std::mem::size_of::<i32>() * 5
-    }
-
-    pub fn size_of_without_name() -> usize {
-        Self::size_of_without_ddrace() - std::mem::size_of::<i32>() * 3
-    }
-
     pub fn read_from_slice(data: &[u8]) -> Self {
         let (tile_layer, rest) = data.split_at(size_of::<CMapItemLayer>());
         let tile_layer = CMapItemLayer::read_from_slice(tile_layer);
