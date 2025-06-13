@@ -1421,15 +1421,29 @@ impl CDatafileWrapper {
     }
 
     fn read_str_from_ints(inp: &[i32]) -> String {
+        // many old maps have empty names (with zeroes)
+        if inp.iter().all(|&i| i == 0) {
+            return Default::default();
+        }
         let mut res: [u8; 32] = Default::default();
 
         ints_to_str(inp, &mut res);
 
-        CStr::from_bytes_until_nul(&res)
+        let mut res = CStr::from_bytes_until_nul(&res)
             .map_err(|err| anyhow!("reading {inp:?} - {res:?} => err: {err}"))
             .unwrap()
             .to_string_lossy()
-            .to_string()
+            .to_string();
+
+        if res.len() >= 32 {
+            res = res
+                .char_indices()
+                .filter(|(byte_offset, c)| *byte_offset + c.len_utf8() < 32)
+                .map(|(_, char)| char)
+                .collect();
+        }
+
+        res
     }
 
     /// images are external images
