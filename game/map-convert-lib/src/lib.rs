@@ -3,6 +3,7 @@ pub mod new_to_legacy;
 
 #[cfg(test)]
 mod test {
+    use std::path::Path;
     use std::sync::Arc;
 
     use base_fs::filesys::FileSystem;
@@ -11,37 +12,17 @@ mod test {
     use crate::legacy_to_new::{legacy_to_new, legacy_to_new_from_buf};
     use crate::new_to_legacy::new_to_legacy_from_buf_async;
 
-    fn convert_back_and_forth_for_map(map_name: &str) {
-        let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
-        std::env::set_current_dir(workspace_root).unwrap();
-        let io = IoFileSys::new(|rt| {
-            Arc::new(
-                FileSystem::new(rt, "ddnet-test", "ddnet-test", "ddnet-test", "ddnet-test")
-                    .unwrap(),
-            )
-        });
-
-        let thread_pool = Arc::new(
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(1)
-                .build()
-                .unwrap(),
-        );
-
-        let new_map = legacy_to_new(
-            format!("legacy/maps/{}.map", map_name).as_ref(),
-            &io,
-            &thread_pool,
-            false,
-        )
-        .unwrap();
+    fn convert_back_and_forth_for_map(io: &IoFileSys, tp: &Arc<rayon::ThreadPool>, path: &Path) {
+        let map_name = path.file_stem().unwrap().to_str().unwrap();
+        println!("converting map: {map_name}");
+        let new_map = legacy_to_new(path, io, tp, false).unwrap();
         let mut map = new_map.map.clone();
 
-        let tp = thread_pool.clone();
+        let tp_task = tp.clone();
         let old_map = io
             .rt
             .spawn(async move {
-                let file = new_map.map.write(&tp)?;
+                let file = new_map.map.write(&tp_task)?;
                 new_to_legacy_from_buf_async(
                     &file,
                     |_| {
@@ -92,18 +73,22 @@ mod test {
                             ))
                         })
                     },
-                    &tp,
+                    &tp_task,
                 )
                 .await
             })
             .get_storage()
             .unwrap();
 
-        let new_map2 =
-            legacy_to_new_from_buf(old_map.map, map_name, &io, &thread_pool, false).unwrap();
+        let new_map2 = legacy_to_new_from_buf(old_map.map, map_name, io, tp, false).unwrap();
         let mut map2 = new_map2.map;
 
-        fn assert_json_eq<A: serde::Serialize, B: serde::Serialize>(name: &str, a: &A, b: &B) {
+        fn assert_json_eq<A: serde::Serialize, B: serde::Serialize>(
+            map_name: &str,
+            name: &str,
+            a: &A,
+            b: &B,
+        ) {
             let map1_json = serde_json::to_string_pretty(a).unwrap();
             let map2_json = serde_json::to_string_pretty(b).unwrap();
             let found_diff = map1_json
@@ -117,19 +102,19 @@ mod test {
                 let s1_end = s1_start + (map1_json.len() - s1_start).min(range_len * 2);
 
                 let s2_start = diff_index.max(range_len) - range_len;
-                let s2_end = s1_start + (map1_json.len() - s1_start).min(range_len * 2);
+                let s2_end = s2_start + (map2_json.len() - s2_start).min(range_len * 2);
 
                 let diff = difference::Changeset::new(
-                    &map1_json[s1_start..s1_end],
-                    &map2_json[s2_start..s2_end],
+                    &String::from_utf8_lossy(&map1_json.as_bytes()[s1_start..s1_end]),
+                    &String::from_utf8_lossy(&map2_json.as_bytes()[s2_start..s2_end]),
                     "\n",
                 );
 
                 panic!(
-                    "difference found for {name} @{diff_index}: \n{}\n in {} vs. {}",
+                    "difference found for {map_name} {name} @{diff_index}: \n{}\n in\n{} vs.\n{}",
                     diff,
-                    &map1_json[s1_start..s1_end],
-                    &map2_json[s2_start..s2_end],
+                    &String::from_utf8_lossy(&map1_json.as_bytes()[s1_start..s1_end]),
+                    &String::from_utf8_lossy(&map2_json.as_bytes()[s2_start..s2_end]),
                 );
             }
             assert!(
@@ -143,17 +128,76 @@ mod test {
         map2.resources.sounds.clear();
 
         // animation
-        assert_json_eq("animations", &map.animations, &map2.animations);
-        assert_json_eq("resources", &map.resources, &map2.resources);
-        assert_json_eq("bg groups", &map.groups.background, &map2.groups.background);
-        assert_json_eq("physics groups", &map.groups.physics, &map2.groups.physics);
-        assert_json_eq("fg groups", &map.groups.foreground, &map2.groups.foreground);
+        assert_json_eq(map_name, "animations", &map.animations, &map2.animations);
+        assert_json_eq(map_name, "resources", &map.resources, &map2.resources);
+        assert_json_eq(
+            map_name,
+            "bg groups",
+            &map.groups.background,
+            &map2.groups.background,
+        );
+        assert_json_eq(
+            map_name,
+            "physics groups",
+            &map.groups.physics,
+            &map2.groups.physics,
+        );
+        assert_json_eq(
+            map_name,
+            "fg groups",
+            &map.groups.foreground,
+            &map2.groups.foreground,
+        );
     }
 
     #[test]
     fn convert_back_and_forth() {
-        convert_back_and_forth_for_map("Sunny Side Up");
-        convert_back_and_forth_for_map("ctf1");
-        //convert_back_and_forth_for_map("arctic");
+        let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
+        std::env::set_current_dir(workspace_root).unwrap();
+        let io = IoFileSys::new(|rt| {
+            Arc::new(
+                FileSystem::new(rt, "ddnet-test", "ddnet-test", "ddnet-test", "ddnet-test")
+                    .unwrap(),
+            )
+        });
+        let thread_pool = Arc::new(
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(1)
+                .build()
+                .unwrap(),
+        );
+        let in_ty = |ty: &str| {
+            let fs = io.fs.clone();
+            let ty_t = ty.to_string();
+            let entries = io
+                .rt
+                .spawn(async move {
+                    Ok(fs
+                        .entries_in_dir(format!("types/{ty_t}/maps").as_ref())
+                        .await
+                        .unwrap())
+                })
+                .get_storage()
+                .unwrap();
+
+            for (path, _) in entries {
+                if path.ends_with(".map") {
+                    let path: &std::path::Path = path.as_ref();
+                    convert_back_and_forth_for_map(&io, &thread_pool, path);
+                }
+            }
+        };
+        in_ty("novice");
+        in_ty("moderate");
+        in_ty("brutal");
+        in_ty("ddmax.easy");
+        in_ty("ddmax.next");
+        in_ty("ddmax.nut");
+        in_ty("ddmax.pro");
+        in_ty("dummy");
+        in_ty("fun");
+        in_ty("insane");
+        in_ty("race");
+        in_ty("solo");
     }
 }
