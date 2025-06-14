@@ -1683,8 +1683,8 @@ impl CDatafileWrapper {
 
         let mut old_img_assign: HashMap<usize, usize> = Default::default();
         let mut old_img_array_assign: HashMap<usize, usize> = Default::default();
-        let mut images_high_ordered: Vec<(usize, MapImage, bool, bool)> = Default::default();
-        let mut images_low_ordered: Vec<(usize, MapImage, bool, bool)> = Default::default();
+        let mut images_high_ordered: Vec<(usize, MapImage, bool, bool, usize)> = Default::default();
+        let mut images_low_ordered: Vec<(usize, MapImage, bool, bool, usize)> = Default::default();
         let mut ext_image_count = 0;
         for (img_index, image) in self.images.into_iter().enumerate() {
             // was the image used in tile layer and/or quad layer?
@@ -1718,13 +1718,29 @@ impl CDatafileWrapper {
                 }
             }
 
+            let is_external = image.item_data.external != 0;
             if in_quad_layer {
-                images_high_ordered.push((img_index, image, in_quad_layer, in_tile_layer));
+                images_high_ordered.push((
+                    img_index,
+                    image,
+                    in_quad_layer,
+                    in_tile_layer,
+                    ext_image_count,
+                ));
             } else if in_tile_layer {
-                images_low_ordered.push((img_index, image, in_quad_layer, in_tile_layer));
+                images_low_ordered.push((
+                    img_index,
+                    image,
+                    in_quad_layer,
+                    in_tile_layer,
+                    ext_image_count,
+                ));
+            }
+            if is_external {
+                ext_image_count += 1;
             }
         }
-        for (img_index, image, in_quad_layer, in_tile_layer) in images_high_ordered
+        for (img_index, image, in_quad_layer, in_tile_layer, ext_image_count) in images_high_ordered
             .into_iter()
             .chain(images_low_ordered.into_iter())
         {
@@ -1813,11 +1829,7 @@ impl CDatafileWrapper {
                 (Map::generate_hash_for(&img), img)
             } else {
                 let img = images
-                    .get({
-                        let i = ext_image_count;
-                        ext_image_count += 1;
-                        i
-                    })
+                    .get(ext_image_count)
                     .ok_or_else(|| anyhow!("image with name {} was not loaded", image.img_name))?;
                 let mut img_data: Vec<u8> = Vec::new();
                 let img = load_png_image_as_rgba(img, |width, height, color_channel_count| {
