@@ -838,6 +838,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base-io",
  "base-io-traits",
  "chrono",
  "directories 5.0.0",

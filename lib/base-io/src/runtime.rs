@@ -46,27 +46,67 @@ impl<S> IoRuntimeTask<S> {
             .unwrap()
     }
 
-    fn wait_finished_and_drop(&mut self) {
+    fn wait_finished_and_drop(&mut self, catch: bool) {
         let mut inner = self.io_runtime.borrow_mut();
         let task_join = Self::drop_task(self.queue_id, &mut inner);
         #[cfg(not(target_arch = "wasm32"))]
-        inner.rt.block_on(task_join).unwrap();
+        let res = inner.rt.block_on(task_join);
         #[cfg(target_arch = "wasm32")]
-        futures_lite::future::block_on(inner.rt.run(task_join));
+        let res = futures_lite::future::block_on({
+            use futures_lite::future::FutureExt;
+            inner.rt.run(task_join.catch_unwind())
+        });
         self.task_state = TaskState::None;
-    }
-
-    pub fn blocking_wait_finished(&mut self) {
-        if let TaskState::WaitAndDrop | TaskState::CancelAndDrop = self.task_state {
-            self.wait_finished_and_drop();
+        // Handle the panic explicit for now.
+        if catch {
+            if let Err(err) = res {
+                #[cfg(not(target_arch = "wasm32"))]
+                let info = err.into_panic();
+                #[cfg(target_arch = "wasm32")]
+                let info = err;
+                let message = if let Some(s) = info.downcast_ref::<&str>() {
+                    *s
+                } else if let Some(s) = info.downcast_ref::<String>() {
+                    s.as_str()
+                } else {
+                    "Unknown panic message"
+                };
+                *self.storage_task.blocking_lock() = Err(anyhow!("Task panicked: {message}"));
+            }
+        } else {
+            res.unwrap();
         }
     }
 
-    pub fn get_storage(mut self) -> anyhow::Result<S> {
-        self.blocking_wait_finished();
+    fn blocking_wait_finished_impl(&mut self, catch: bool) {
+        if let TaskState::WaitAndDrop | TaskState::CancelAndDrop = self.task_state {
+            self.wait_finished_and_drop(catch);
+        }
+    }
+
+    pub fn blocking_wait_finished(&mut self) {
+        self.blocking_wait_finished_impl(false);
+    }
+
+    fn get_impl(mut self, catch: bool) -> anyhow::Result<S> {
+        self.blocking_wait_finished_impl(catch);
         let mut storage_res = Err(anyhow!("not started yet"));
         std::mem::swap(&mut *self.storage_task.blocking_lock(), &mut storage_res);
         storage_res
+    }
+
+    /// Get the result of the task.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the task panicked.
+    pub fn get_storage(self) -> anyhow::Result<S> {
+        self.get_impl(false)
+    }
+
+    /// Catches panics from the task as errors.
+    pub fn get_catch(self) -> anyhow::Result<S> {
+        self.get_impl(true)
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -103,7 +143,7 @@ impl<S> Drop for IoRuntimeTask<S> {
     fn drop(&mut self) {
         match self.task_state {
             TaskState::WaitAndDrop => {
-                self.wait_finished_and_drop();
+                self.wait_finished_and_drop(false);
             }
             TaskState::CancelAndDrop => {
                 let mut inner = self.io_runtime.borrow_mut();
@@ -181,9 +221,15 @@ impl IoRuntime {
     {
         let _g = self.inner.borrow_mut().rt.enter();
         tokio::spawn(async move {
+            struct Finisher(Arc<AtomicBool>);
+            impl Drop for Finisher {
+                fn drop(&mut self) {
+                    self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+                }
+            }
+            Finisher(task_finished);
             let storage_wrapped = task.await;
             *storage_task.lock().await = storage_wrapped;
-            task_finished.store(true, std::sync::atomic::Ordering::SeqCst);
         })
     }
 
