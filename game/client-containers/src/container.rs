@@ -365,7 +365,7 @@ where
             // explicit drop here
             drop(notifier);
             let (default_item, default_loaded_item) = task
-                .get_storage()
+                .get()
                 .map_err(|err| {
                     anyhow!(
                         "failed to load default files for \"{}\": {err}",
@@ -1030,7 +1030,7 @@ where
                 if load_item.is_finished() {
                     let name = name.clone();
                     if let Some(load_item) = self.loading_tasks.remove(&name) {
-                        let loaded_item = load_item.get_storage();
+                        let loaded_item = load_item.get();
                         match loaded_item {
                             Ok(item) => {
                                 let new_item =
@@ -1194,9 +1194,7 @@ where
                             match task {
                                 Some(inner_task) => {
                                     if inner_task.is_finished() {
-                                        if let Err(err) =
-                                            task.take().map(|t| t.get_storage()).transpose()
-                                        {
+                                        if let Err(err) = task.take().map(|t| t.get()).transpose() {
                                             log::error!(
                                                 "Failed to download http index for {}: {err}",
                                                 self.container_name
@@ -1266,7 +1264,7 @@ where
                                 Either::Right(None),
                             );
                             if let Either::Right(Some(task)) = res_dir_index {
-                                let res_dir_index = task.get_storage().ok().unwrap_or_else(|| {
+                                let res_dir_index = task.get().ok().unwrap_or_else(|| {
                                     Err(anyhow!("get entries in dir task failed."))
                                 });
                                 self.resource_dir_index = Either::Left(res_dir_index);
@@ -1354,9 +1352,7 @@ where
                         match task {
                             Some(inner_task) => {
                                 if inner_task.is_finished() {
-                                    if let Err(err) =
-                                        task.take().map(|t| t.get_storage()).transpose()
-                                    {
+                                    if let Err(err) = task.take().map(|t| t.get()).transpose() {
                                         log::error!(
                                             "Failed to download http meta index for {}: {err}",
                                             self.container_name

@@ -79,7 +79,7 @@ impl EditorWasmManager {
                 })
                 .await
         });
-        let state = if let Ok(wasm_module) = task.get_storage() {
+        let state = if let Ok(wasm_module) = task.get() {
             let state = EditorWasm::new(sound, graphics, backend, io, font_data, &wasm_module);
             EditorWrapper::Wasm(Box::new(state))
         } else {
@@ -93,7 +93,7 @@ impl EditorWasmManager {
                     )
                     .await
             });
-            let name = name_task.get_storage();
+            let name = name_task.get();
             if let Ok(name) = name {
                 let lib_path = io.fs.get_cache_path().join(name);
                 if let Ok(lib) = unsafe { libloading::Library::new(&lib_path) } {

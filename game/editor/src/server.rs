@@ -824,7 +824,7 @@ impl EditorServer {
                                             AutoMapperWasmManager::load_module(&fs, wasm_file_task)
                                                 .await
                                         })
-                                        .get_storage()
+                                        .get()
                                         .ok()
                                         .and_then(|wasm_module| {
                                             TileLayerAutoMapperWasm::new(

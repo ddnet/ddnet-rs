@@ -1169,7 +1169,7 @@ impl DemoViewer {
                     name,
                 } = *loading;
                 if task.is_finished() {
-                    let demo_container = task.get_storage()?;
+                    let demo_container = task.get()?;
                     let gen_client_map = |sound_props: SoundSceneCreateProps| {
                         ClientMapLoading::new(
                             sound,

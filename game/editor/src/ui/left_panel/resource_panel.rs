@@ -56,7 +56,7 @@ pub fn render<F, R, U>(
         .drain()
         .filter_map(|(name, task)| {
             if task.is_finished() {
-                if let Ok(file) = task.get_storage() {
+                if let Ok(file) = task.get() {
                     let hash = generate_hash_for(&file);
                     if resources.iter().any(|r| r.def.meta.blake3_hash == hash) {
                         client.notifications.push(EditorNotification::Warning(

@@ -63,7 +63,7 @@ fn update_communities(user_data: &mut UserData) {
             CommunityIcon::Loading(task) => {
                 if task.as_ref().is_ok_and(|task| task.is_finished()) {
                     let task = std::mem::replace(task, Err("loading failed.".to_string()));
-                    let task = task.unwrap().get_storage();
+                    let task = task.unwrap().get();
                     if let Ok((mem, width, height)) = task {
                         match user_data.texture_handle.load_texture_rgba_u8(mem, "icon") {
                             Ok(texture) => {

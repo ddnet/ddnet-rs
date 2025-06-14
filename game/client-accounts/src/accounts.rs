@@ -67,7 +67,7 @@ pub struct Accounts {
 
 impl Accounts {
     pub fn new(loading: AccountsLoading, steam: Arc<dyn SteamClient>) -> Self {
-        let loading = loading.task.get_storage().unwrap();
+        let loading = loading.task.get().unwrap();
 
         Self {
             profiles: Profiles::new(loading),

@@ -63,14 +63,8 @@ async fn udp_socket(ipv4: bool) -> io::Result<Option<UdpSocket>> {
 
 impl Socket {
     pub fn new(io: &Io) -> anyhow::Result<Socket> {
-        let v4 = io
-            .rt
-            .spawn(async { Ok(udp_socket(true).await?) })
-            .get_storage()?;
-        let v6 = io
-            .rt
-            .spawn(async { Ok(udp_socket(false).await?) })
-            .get_storage()?;
+        let v4 = io.rt.spawn(async { Ok(udp_socket(true).await?) }).get()?;
+        let v6 = io.rt.spawn(async { Ok(udp_socket(false).await?) }).get()?;
 
         if v4.is_none() && v6.is_none() {
             return Err(io::Error::other(NoAddressFamiliesSupported(())).into());

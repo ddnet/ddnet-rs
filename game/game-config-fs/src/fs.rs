@@ -24,7 +24,7 @@ pub fn load_in(io: &IoFileSys, path: &Path) -> anyhow::Result<ConfigGame> {
     let config_file = io
         .rt
         .spawn(async move { Ok(fs.read_file(path.as_ref()).await?) });
-    let res = config_file.get_storage()?;
+    let res = config_file.get()?;
     ConfigGame::from_json_slice(&res)
 }
 

@@ -54,7 +54,7 @@ impl WasmDatabaseLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -82,7 +82,7 @@ impl WasmDatabaseLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -114,7 +114,7 @@ impl WasmDatabaseLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -141,7 +141,7 @@ impl WasmDatabaseLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -168,7 +168,7 @@ impl WasmDatabaseLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -190,7 +190,7 @@ impl WasmDatabaseLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }

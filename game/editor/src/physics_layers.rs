@@ -190,7 +190,7 @@ impl PhysicsLayerOverlaysDdnet {
                     )?,
                 })
             })
-            .get_storage()?;
+            .get()?;
 
         Ok(Rc::new(Self {
             game: PhysicsLayerOverlayTexture::new(loading.game, "game", graphics)?,

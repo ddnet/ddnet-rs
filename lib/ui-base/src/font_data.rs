@@ -53,7 +53,7 @@ pub struct UiFontData {
 
 impl UiFontData {
     pub fn new(loading: UiFontDataLoading) -> anyhow::Result<Self> {
-        loading.task.get_storage()
+        loading.task.get()
     }
 
     pub fn into_font_definitions(self) -> FontDefinitions {

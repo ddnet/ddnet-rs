@@ -322,7 +322,7 @@ impl Editor {
         let overlays = PhysicsLayerOverlaysDdnet::new(io, tp, graphics)
             .expect("Data files for editor are wrong");
 
-        let mut hotkeys: EditorBindsFile = hotkeys_file.get_storage().unwrap_or_default();
+        let mut hotkeys: EditorBindsFile = hotkeys_file.get().unwrap_or_default();
         hotkeys.apply_defaults();
 
         let mut res = Self {
@@ -1151,7 +1151,7 @@ impl Editor {
             .io
             .rt
             .spawn(async move { read_file_editor(&fs, &path_buf).await })
-            .get_storage()?;
+            .get()?;
         let map = map_convert_lib::legacy_to_new::legacy_to_new_from_buf(
             map_file,
             path.file_stem()
@@ -1319,7 +1319,7 @@ impl Editor {
 
                 Ok((map, resource_files))
             })
-            .get_storage()?;
+            .get()?;
 
         let map = self.map_to_editor_map(map, resources);
 
@@ -2915,7 +2915,7 @@ impl EditorInterface for Editor {
         let mut unfinished_tasks = Vec::default();
         for task in self.save_tasks.drain(..) {
             if task.is_finished() {
-                match task.get_storage() {
+                match task.get() {
                     Ok(_) => {
                         log::info!("Map saved.");
                         self.notifications_overlay

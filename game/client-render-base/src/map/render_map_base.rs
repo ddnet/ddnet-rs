@@ -561,7 +561,7 @@ impl ClientMapRender {
                 Self::UploadingBuffersAndTextures(map_upload) => {
                     if map_upload.task.is_finished() {
                         // the task might be cleared by a higher function call, so make sure it still exists
-                        let map_file = map_upload.task.get_storage()?;
+                        let map_file = map_upload.task.get()?;
 
                         let do_benchmark = map_upload.do_benchmarks;
                         let benchmark = Benchmark::new(do_benchmark);

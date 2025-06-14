@@ -590,7 +590,7 @@ impl MainMenuUi {
     pub fn check_tasks(&mut self, cur_time: &Duration) {
         if let Some(server_task) = &self.menu_io.cur_servers_task {
             if server_task.is_finished() {
-                match self.menu_io.cur_servers_task.take().unwrap().get_storage() {
+                match self.menu_io.cur_servers_task.take().unwrap().get() {
                     Ok(servers_raw) => {
                         self.browser_data.set_servers(servers_raw, *cur_time);
                     }
@@ -607,7 +607,7 @@ impl MainMenuUi {
                     .cur_ddnet_info_task
                     .take()
                     .unwrap()
-                    .get_storage()
+                    .get()
                     .and_then(|s| serde_json::from_str(&s).map_err(|err| anyhow!(err)))
                 {
                     Ok(ddnet_info) => {
@@ -621,7 +621,7 @@ impl MainMenuUi {
         }
         if let Some(task) = &self.menu_io.cur_demos_task {
             if task.is_finished() {
-                match self.menu_io.cur_demos_task.take().unwrap().get_storage() {
+                match self.menu_io.cur_demos_task.take().unwrap().get() {
                     Ok(demos) => {
                         self.demos = demos;
                     }
@@ -633,13 +633,7 @@ impl MainMenuUi {
         }
         if let Some(task) = &self.menu_io.cur_demo_info_task {
             if task.is_finished() {
-                match self
-                    .menu_io
-                    .cur_demo_info_task
-                    .take()
-                    .unwrap()
-                    .get_storage()
-                {
+                match self.menu_io.cur_demo_info_task.take().unwrap().get() {
                     Ok((header, header_ext)) => {
                         self.demo_info = Some((header, header_ext));
                     }

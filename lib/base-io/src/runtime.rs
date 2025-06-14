@@ -97,14 +97,22 @@ impl<S> IoRuntimeTask<S> {
 
     /// Get the result of the task.
     ///
+    /// This is a __blocking__ call.
+    /// Often this call is used in combination with
+    /// [`Self::is_finished`].
+    ///
     /// ## Panics
     ///
     /// Panics if the task panicked.
-    pub fn get_storage(self) -> anyhow::Result<S> {
+    pub fn get(self) -> anyhow::Result<S> {
         self.get_impl(false)
     }
 
     /// Catches panics from the task as errors.
+    ///
+    /// This is a __blocking__ call.
+    /// Often this call is used in combination with
+    /// [`Self::is_finished`].
     pub fn get_catch(self) -> anyhow::Result<S> {
         self.get_impl(true)
     }

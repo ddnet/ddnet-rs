@@ -143,7 +143,7 @@ impl GhostViewer {
     ) {
         if self.task.as_ref().is_some_and(|task| task.is_finished()) {
             let task = self.task.take().unwrap();
-            match task.get_storage() {
+            match task.get() {
                 Ok(ghosts) => {
                     self.ghosts.extend(ghosts.into_iter().map(|ghost| {
                         let demo_path = self.base_path.join(&ghost);
