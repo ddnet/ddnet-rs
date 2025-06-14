@@ -52,7 +52,7 @@ mod test {
 
             Map::read(&MapFileReader::new(map)?, &tp)
         });
-        let map = map_legacy.get_storage().unwrap();
+        let map = map_legacy.get().unwrap();
 
         let benchmark = Benchmark::new(true);
         let groups_encoded =

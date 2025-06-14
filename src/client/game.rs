@@ -515,10 +515,7 @@ impl Game {
                     && dicts_task.is_finished()
                     && server_cert_verify_task.is_finished()
                 {
-                    match (
-                        server_cert_verify_task.get_storage(),
-                        account_task.get_storage(),
-                    ) {
+                    match (server_cert_verify_task.get(), account_task.get()) {
                         (Ok((server_cert, servers)), Ok(account)) => {
                             // if servers were updated, store them in the browser data
                             if let Some((servers, time)) = servers {
@@ -531,7 +528,7 @@ impl Game {
                                 connect,
                                 config,
                                 account,
-                                dicts_task.get_storage().ok(),
+                                dicts_task.get().ok(),
                                 auto_cleanup,
                             )
                         }

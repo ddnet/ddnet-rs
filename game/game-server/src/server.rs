@@ -557,7 +557,7 @@ impl Server {
                     .map_err(|err| anyhow!(err))
                     .and_then(|file| String::from_utf8(file).map_err(|err| anyhow!(err)))
             })
-            .get_storage()?;
+            .get()?;
 
         Ok(Self::handle_config_cmd_lines(
             config,
@@ -696,7 +696,7 @@ impl Server {
                     fs: Fs::new(path).await?,
                 }))
             })
-            .get_storage()?;
+            .get()?;
         let http_accounts_clone = http_accounts.clone();
         let account_certs_downloader = io.rt.spawn(async move {
             if accounts_enabled {
@@ -710,7 +710,7 @@ impl Server {
         let game_event_generator_server =
             Arc::new(GameEventGenerator::new(has_new_events_server.clone()));
 
-        let account_certs_downloader = account_certs_downloader.get_storage().ok();
+        let account_certs_downloader = account_certs_downloader.get().ok();
         let accounts_only = config_game.sv.account_only && account_certs_downloader.is_some();
 
         let mut connection_plugins: Vec<Arc<dyn NetworkPluginConnection>> = vec![];
@@ -746,7 +746,7 @@ impl Server {
             )));
         }
 
-        if let Ok((client_send, server_send)) = zstd_dicts.get_storage() {
+        if let Ok((client_send, server_send)) = zstd_dicts.get() {
             packet_plugins.push(Arc::new(DefaultNetworkPacketCompressor::new_with_dict(
                 server_send,
                 client_send,
@@ -795,7 +795,7 @@ impl Server {
             },
         )?;
 
-        let (db, game_db, accounts) = task.get_storage()?;
+        let (db, game_db, accounts) = task.get()?;
 
         let account_server_cert_downloader_task = if let Some(account_certs_downloader) =
             account_certs_downloader.clone()
@@ -810,7 +810,7 @@ impl Server {
         };
 
         let map_votes: BTreeMap<_, _> =
-            if let Some(Ok(votes)) = auto_map_votes.map(|task| task.get_storage()) {
+            if let Some(Ok(votes)) = auto_map_votes.map(|task| task.get()) {
                 votes
                     .map_files
                     .into_iter()
@@ -844,7 +844,7 @@ impl Server {
             has_unfinished_map_votes: false,
         };
 
-        match map_votes_file.get_storage() {
+        match map_votes_file.get() {
             Ok(map_votes_file) => {
                 map_votes.categories.extend(map_votes_file.votes.categories);
                 map_votes.has_unfinished_map_votes = map_votes_file.votes.has_unfinished_map_votes;
@@ -858,7 +858,7 @@ impl Server {
             &bincode::serde::encode_to_vec(&map_votes, bincode::config::standard()).unwrap(),
         );
 
-        let config_mod = config_mod_task.get_storage().ok();
+        let config_mod = config_mod_task.get().ok();
 
         let rcon = Rcon::new(&io);
 
@@ -3513,7 +3513,7 @@ impl Server {
             self.db_requests_helper.clear();
             for db_req in self.db_requests.drain(..) {
                 if db_req.is_finished() {
-                    match db_req.get_storage() {
+                    match db_req.get() {
                         Ok(req) => match req {
                             GameServerDb::Account(ev) => match ev {
                                 GameServerDbAccount::Rename {
@@ -3610,9 +3610,7 @@ impl Server {
         let mod_name = Self::config_physics_mod_name(&self.config_game);
         let (render_mod_name, render_mod_hash, render_mod_required) =
             Self::config_render_mod_name(&self.config_game);
-        let config = Self::read_mod_config(&self.io, &mod_name)
-            .get_storage()
-            .ok();
+        let config = Self::read_mod_config(&self.io, &mod_name).get().ok();
         self.game_server = ServerGame::new(
             map,
             &mod_name,

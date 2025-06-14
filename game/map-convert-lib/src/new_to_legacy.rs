@@ -141,7 +141,7 @@ pub fn new_to_legacy_from_buf(
             )
             .await
         })
-        .get_storage()
+        .get()
 }
 
 /// this function will only be supported as long as the map format is equally convertable to the old format
@@ -163,7 +163,7 @@ pub fn new_to_legacy(
 
             Ok(map)
         })
-        .get_storage()
+        .get()
         .map_err(|err| anyhow!("loading map failed: {err}"))?;
     new_to_legacy_from_buf(&map, io, thread_pool)
 }

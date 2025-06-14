@@ -239,7 +239,7 @@ impl EditorMenuDialogMode {
                         &fs.read_file("editor/join_props.json".as_ref()).await?,
                     )?)
                 })
-                .get_storage()
+                .get()
                 .unwrap_or_else(|_| EditorMenuDialogJoinProps {
                     ip_port: Default::default(),
                     cert_hash: Default::default(),

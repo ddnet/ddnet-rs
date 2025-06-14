@@ -2219,7 +2219,7 @@ impl ClientNativeImpl {
                         })
                     })
             })
-            .get_storage()
+            .get()
         {
             Ok(cmds_file) => cmds_file,
             Err(err) => {

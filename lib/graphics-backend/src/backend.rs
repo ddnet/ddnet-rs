@@ -177,8 +177,8 @@ impl GraphicsBackendBase {
             match io_loading.backend_io {
                 GraphicsBackendLoadingIoType::Vulkan(data) => BackendThreadInitData::Vulkan {
                     data: VulkanBackendLoadedIo {
-                        shader_compiler: data.shader_compiler.get_storage()?,
-                        pipeline_cache: data.pipeline_cache.get_storage()?,
+                        shader_compiler: data.shader_compiler.get()?,
+                        pipeline_cache: data.pipeline_cache.get()?,
                     },
                     runtime_threadpool: runtime_threadpool.clone(),
                     window_width: size.width,

@@ -39,7 +39,7 @@ impl WasmHttpLogicImpl {
                 if task.is_finished() {
                     let task = tasks.remove(&task_id).unwrap();
                     Some(
-                        task.get_storage()
+                        task.get()
                             .map_err(|err| HttpError::Other(err.to_string()))
                             .and_then(|res| res),
                     )
@@ -71,7 +71,7 @@ impl WasmHttpLogicImpl {
                 if task.is_finished() {
                     let task = tasks.remove(&task_id).unwrap();
                     Some(
-                        task.get_storage()
+                        task.get()
                             .map_err(|err| HttpError::Other(err.to_string()))
                             .and_then(|res| res),
                     )
@@ -103,7 +103,7 @@ impl WasmHttpLogicImpl {
                 if task.is_finished() {
                     let task = tasks.remove(&task_id).unwrap();
                     Some(
-                        task.get_storage()
+                        task.get()
                             .map_err(|err| HttpError::Other(err.to_string()))
                             .and_then(|res| res),
                     )

@@ -372,7 +372,7 @@ mod tests {
 
             Ok(compiled_files)
         });
-        let files = backend_files.get_storage().unwrap();
+        let files = backend_files.get().unwrap();
         assert!(!files.is_empty());
         /*for (name, file) in files {
             let mut f = std::fs::File::create(name).unwrap();

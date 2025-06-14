@@ -107,7 +107,7 @@ impl TileLayerOverlaysDdnet {
                     )?,
                 })
             })
-            .get_storage()?;
+            .get()?;
 
         Ok(Rc::new(Self {
             index: graphics

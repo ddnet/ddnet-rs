@@ -350,7 +350,7 @@ impl UiPageInterface<()> for MainMenu {
             .as_ref()
             .is_some_and(|servers| servers.is_finished())
         {
-            if let Ok(servers) = self.servers.take().unwrap().get_storage() {
+            if let Ok(servers) = self.servers.take().unwrap().get() {
                 self.browser_data = servers;
             }
         }

@@ -566,7 +566,7 @@ pub mod state {
 
             let game_type = Self::get_game_type_from_conf(config.game_type);
 
-            let (statements, account_info) = db_task.get_storage().ok().flatten().unzip();
+            let (statements, account_info) = db_task.get().ok().flatten().unzip();
 
             let has_accounts = account_info.is_some();
 
@@ -873,7 +873,7 @@ pub mod state {
             self.game_db.cur_queries_helper.clear();
             for query in self.game_db.cur_queries.drain(..) {
                 if query.is_finished() {
-                    match query.get_storage() {
+                    match query.get() {
                         Ok(query) => match query {
                             GameDbQueries::AccountInfo {
                                 player_id,

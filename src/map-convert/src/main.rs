@@ -128,7 +128,7 @@ fn main() {
 
                 Ok(map)
             });
-            let map = map.get_storage().unwrap();
+            let map = map.get().unwrap();
             let fs = io.fs.clone();
             let output_dir = args.output.clone();
             io.rt.spawn(async move {
@@ -176,7 +176,7 @@ fn main() {
     } else {
         panic!("Given file was neither a legacy map nor new map.");
     };
-    if let Err(err) = task.get_storage() {
+    if let Err(err) = task.get() {
         log::error!("{err}");
     }
 }

@@ -54,7 +54,7 @@ impl ClientGameStateModTask {
             ClientGameStateModTask::Native => GameStateMod::Native,
             ClientGameStateModTask::Ddnet => GameStateMod::Ddnet,
             ClientGameStateModTask::Wasm { file } => GameStateMod::Wasm {
-                file: file.get_storage().unwrap(),
+                file: file.get().unwrap(),
             },
         }
     }
@@ -595,7 +595,7 @@ impl ClientMapLoading {
         match self_helper {
             Self::File(file) => {
                 if file.task.is_finished() && file.game_mod_task.is_finished() {
-                    match file.task.get_storage() {
+                    match file.task.get() {
                         Ok(map_file) => {
                             let game_mod = file.game_mod_task.to_game_state_mod();
 
@@ -632,7 +632,7 @@ impl ClientMapLoading {
                     ClientMapComponentLoadingType::Game(mut load_game) => {
                         if let GameLoading::Task { task, props } = load_game {
                             if task.is_finished() {
-                                match task.get_storage() {
+                                match task.get() {
                                     Ok(file) => {
                                         match RenderGameWasmManager::new(
                                             &props.sound,

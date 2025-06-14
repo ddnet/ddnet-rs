@@ -371,7 +371,7 @@ impl Client {
 
         let mut packet_plugins: Vec<Arc<dyn NetworkPluginPacket>> = vec![];
 
-        if let Ok((client_send, server_send)) = zstd_dicts.get_storage() {
+        if let Ok((client_send, server_send)) = zstd_dicts.get() {
             packet_plugins.push(Arc::new(DefaultNetworkPacketCompressor::new_with_dict(
                 server_send,
                 client_send,
@@ -2272,7 +2272,7 @@ impl Client {
                                 )
                                 .await?)
                         })
-                        .get_storage();
+                        .get();
                     match file {
                         Ok(_) => {
                             socket.sends(System::Ready(system::Ready));
@@ -2406,7 +2406,7 @@ impl Client {
                                         .await;
                                     Ok(())
                                 })
-                                .get_storage();
+                                .get();
 
                             let name = std::mem::take(name);
 
@@ -4635,7 +4635,7 @@ impl Client {
                     let (res, index, _) = futures::future::select_all(futures).await;
                     Ok((res, index))
                 })
-                .get_storage()
+                .get()
                 .unwrap();
             if let Some((data, addr)) = pkt {
                 if index > 1 {
@@ -4680,7 +4680,7 @@ impl Client {
                     }
                     Ok(())
                 })
-                .get_storage();
+                .get();
         }
 
         Ok(())

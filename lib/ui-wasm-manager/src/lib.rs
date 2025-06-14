@@ -275,7 +275,7 @@ where
                         UiPageRunReturn::Loading
                     } else {
                         match loading_entry {
-                            Ok(loading_entry) => match loading_entry.get_storage() {
+                            Ok(loading_entry) => match loading_entry.get() {
                                 Ok(item) => {
                                     let graphics_logic = WasmGraphicsLogic::new(
                                         graphics,

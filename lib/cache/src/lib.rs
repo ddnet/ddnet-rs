@@ -54,7 +54,7 @@ impl<const VERSION: usize> Cache<{ VERSION }> {
                     },
                 })
             })
-            .get_storage()
+            .get()
             .unwrap()
     }
 

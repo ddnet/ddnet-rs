@@ -77,7 +77,7 @@ mod test {
                 )
                 .await
             })
-            .get_storage()
+            .get()
             .unwrap();
 
         let new_map2 = legacy_to_new_from_buf(old_map.map, map_name, io, tp, false).unwrap();
@@ -177,7 +177,7 @@ mod test {
                         .await
                         .unwrap())
                 })
-                .get_storage()
+                .get()
                 .unwrap();
 
             for (path, _) in entries {

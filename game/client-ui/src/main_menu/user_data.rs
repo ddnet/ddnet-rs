@@ -280,7 +280,7 @@ impl ProfileTasks {
             }
             ProfileState::EmailCredentialAuthToken { op, task } => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(res) => match res {
                             Ok(_) => ProfileState::EmailCredentialAuthTokenObtained(op),
                             Err(err) => match err {
@@ -307,7 +307,7 @@ impl ProfileTasks {
 
             ProfileState::EmailLoggingIn(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(profile_name) => {
                             set_profile_skin(profile_name);
                             ProfileState::Overview
@@ -320,7 +320,7 @@ impl ProfileTasks {
             }
             ProfileState::EmailLinkCredential(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -330,7 +330,7 @@ impl ProfileTasks {
             }
             ProfileState::EmailUnlinkCredential(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -340,7 +340,7 @@ impl ProfileTasks {
             }
             ProfileState::EmailLogoutAll(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -350,7 +350,7 @@ impl ProfileTasks {
             }
             ProfileState::EmailDelete(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -364,7 +364,7 @@ impl ProfileTasks {
             }
             ProfileState::SteamCredentialAuthToken { op, task } => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(res) => match res {
                             Ok(token) => {
                                 ProfileState::SteamCredentialAuthTokenObtained { op, token }
@@ -393,7 +393,7 @@ impl ProfileTasks {
 
             ProfileState::SteamLoggingIn(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(profile_name) => {
                             set_profile_skin(profile_name);
                             ProfileState::Overview
@@ -406,7 +406,7 @@ impl ProfileTasks {
             }
             ProfileState::SteamLinkCredential(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -416,7 +416,7 @@ impl ProfileTasks {
             }
             ProfileState::SteamUnlinkCredential(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -426,7 +426,7 @@ impl ProfileTasks {
             }
             ProfileState::SteamLogoutAll(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -436,7 +436,7 @@ impl ProfileTasks {
             }
             ProfileState::SteamDelete(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -450,7 +450,7 @@ impl ProfileTasks {
             }
             ProfileState::EmailAccountToken { op, task } => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(res) => match res {
                             Ok(_) => ProfileState::EmailAccountTokenObtained(op),
                             Err(err) => match err {
@@ -478,7 +478,7 @@ impl ProfileTasks {
             }
             ProfileState::SteamAccountToken { op, task } => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(res) => match res {
                             Ok(token) => ProfileState::SteamAccountTokenObtained { op, token },
                             Err(err) => match err {
@@ -507,7 +507,7 @@ impl ProfileTasks {
                 profile_data,
             } => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(info) => ProfileState::AccountInfo {
                             info,
                             profile_name,
@@ -534,7 +534,7 @@ impl ProfileTasks {
             },
             ProfileState::Logout(task) => {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(_) => ProfileState::Overview,
                         Err(err) => ProfileState::Err(err.to_string()),
                     }
@@ -571,7 +571,7 @@ impl ProfileTasks {
             let mut res = Vec::new();
             for task in tasks_dummy.into_iter() {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(t) => {
                             res.push(t);
                         }

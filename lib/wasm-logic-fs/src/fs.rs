@@ -39,7 +39,7 @@ impl WasmFileSystemLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&file_id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -68,7 +68,7 @@ impl WasmFileSystemLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&file_id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -92,7 +92,7 @@ impl WasmFileSystemLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&file_id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -120,7 +120,7 @@ impl WasmFileSystemLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&file_id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }
@@ -148,7 +148,7 @@ impl WasmFileSystemLogicImpl {
             Some(task) => {
                 if task.is_finished() {
                     let task = tasks.remove(&file_id).unwrap();
-                    Some(task.get_storage().map_err(|err| err.to_string()))
+                    Some(task.get().map_err(|err| err.to_string()))
                 } else {
                     None
                 }

@@ -168,7 +168,7 @@ fn main() {
                 key: SigningKey::from_bytes(&cert_file.secret_key),
             })
         })
-        .get_storage();
+        .get();
 
     let (cert, key) = if let Ok(load_cert) = load_cert {
         (load_cert.cert, load_cert.key)
@@ -193,7 +193,7 @@ fn main() {
                     )
                     .await?)
             })
-            .get_storage()
+            .get()
         {
             log::error!("failed to write cert to disk: {err}");
         }

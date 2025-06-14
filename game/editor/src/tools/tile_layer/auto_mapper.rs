@@ -904,7 +904,7 @@ impl TileLayerAutoMapper {
             .drain(..)
             .flat_map(|task| {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(task) => {
                             to_load_res.push((task.name, task.hash, task.image));
                         }
@@ -929,7 +929,7 @@ impl TileLayerAutoMapper {
                 .drain(..)
                 .flat_map(|task| {
                     if task.is_finished() {
-                        match task.get_storage() {
+                        match task.get() {
                             Ok(task) => {
                                 if let Some(resource) =
                                     self.resources.get_mut(&task.resource_name_and_hash)
@@ -1042,7 +1042,7 @@ impl TileLayerAutoMapper {
             .drain(..)
             .flat_map(|task| {
                 if task.is_finished() {
-                    match task.get_storage() {
+                    match task.get() {
                         Ok(task) => {
                             if let Some(resource) =
                                 self.resources.get_mut(&task.resource_name_and_hash)
@@ -1097,7 +1097,7 @@ impl TileLayerAutoMapper {
             .drain()
             .filter_map(|(name, task)| {
                 if task.is_finished() {
-                    let load_task = task.get_storage();
+                    let load_task = task.get();
                     match load_task {
                         Ok(load_task) => {
                             let textures = load_task

@@ -2,6 +2,9 @@ pub mod filesys;
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
+    use base_io::io::IoFileSys;
     use base_io_traits::fs_traits::{FileSystemInterface, FileSystemPath, FileSystemType};
 
     use crate::filesys::FileSystem;
@@ -142,4 +145,24 @@ mod test {
         let files = rt.block_on(fs.entries_in_dir("escape".as_ref())).unwrap();
         assert!(files.len() == 0);
     }*/
+
+    #[test]
+    fn runtime_panic_free() {
+        let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
+        std::env::set_current_dir(workspace_root).unwrap();
+        let io = IoFileSys::new(|rt| {
+            Arc::new(
+                FileSystem::new(rt, "ddnet-test", "ddnet-test", "ddnet-test", "ddnet-test")
+                    .unwrap(),
+            )
+        });
+
+        assert!(io
+            .rt
+            .spawn::<(), _>(async {
+                panic!("test");
+            })
+            .get_catch()
+            .is_err());
+    }
 }

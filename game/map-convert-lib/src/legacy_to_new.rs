@@ -37,7 +37,7 @@ pub fn legacy_to_new(
             let map = fs.read_file(path).await?;
             Ok(map)
         })
-        .get_storage()?;
+        .get()?;
 
     legacy_to_new_from_buf(
         map_file,
@@ -233,5 +233,5 @@ pub fn legacy_to_new_from_buf(
             )
             .await
         })
-        .get_storage()
+        .get()
 }

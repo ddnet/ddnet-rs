@@ -29,7 +29,7 @@ impl Rcon {
                     &file,
                 )?)
             })
-            .get_storage()
+            .get()
             .unwrap_or_default();
 
         let mut rcon_secret: [u8; 32] = Default::default();

@@ -306,8 +306,14 @@ impl<'a> PipelineManager<'a> {
             binding_descriptions.stride = attr.stride;
             binding_descriptions.input_rate = vk::VertexInputRate::VERTEX;
 
+            let binding_descriptions = if attr.input_attributes.is_empty() {
+                &[]
+            } else {
+                create_stack_inner.binding_descriptions.as_slice()
+            };
+
             let vertex_input_info = vk::PipelineVertexInputStateCreateInfo::default()
-                .vertex_binding_descriptions(&create_stack_inner.binding_descriptions)
+                .vertex_binding_descriptions(binding_descriptions)
                 .vertex_attribute_descriptions(&attr.input_attributes);
 
             create_stack_inner.dynamic_states =

@@ -153,7 +153,7 @@ impl ServerMap {
             Ok((map_file, resource_files))
         });
 
-        let map_res = map.get_storage();
+        let map_res = map.get();
 
         // try to load legacy map with that name, convert it to new format
         let (map_file, resource_files) = match map_res {
@@ -267,7 +267,7 @@ impl ServerMap {
                     .await?;
                 Ok(map)
             })
-            .get_storage()?;
+            .get()?;
 
         let map = Map::read(&MapFileReader::new(map_file.clone())?, runtime_thread_pool)?;
         let load_resources = || {
@@ -331,7 +331,7 @@ impl ServerMap {
                 let file = io
                     .rt
                     .spawn(async move { Ok(fs.read_file(file_path.as_ref()).await?) })
-                    .get_storage()?;
+                    .get()?;
                 resource_files.insert(path, file);
             }
 
@@ -351,7 +351,7 @@ impl ServerMap {
 
                         Ok(())
                     })
-                    .get_storage()?;
+                    .get()?;
                 load_resources()?
             }
         };
@@ -472,7 +472,7 @@ impl ServerGame {
 
                                 Ok((file, wasm_module))
                             })
-                            .get_storage()?
+                            .get()?
                     };
                     let (name, hash) = name_and_hash(game_mod, &file);
                     (
@@ -576,7 +576,7 @@ impl ServerGame {
             cur_monotonic_tick: 0,
             map,
             map_blake3_hash: map_hash,
-            required_resources: required_resources.get_storage().ok().unwrap_or_default(),
+            required_resources: required_resources.get().ok().unwrap_or_default(),
             game_mod,
             render_mod,
 
