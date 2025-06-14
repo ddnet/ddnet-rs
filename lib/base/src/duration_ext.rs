@@ -15,12 +15,12 @@ impl DurationToRaceStr for Duration {
         format!(
             "{}{}{:0>2}:{:0>2}.{:0>2}",
             if days > 0 {
-                format!("{}d ", days)
+                format!("{days}d ")
             } else {
                 String::default()
             },
             if hours > 0 || days > 0 {
-                format!("{:0>2}:", hours)
+                format!("{hours:0>2}:")
             } else {
                 String::default()
             },

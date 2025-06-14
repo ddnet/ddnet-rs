@@ -24,7 +24,10 @@ use game_database::traits::DbInterface;
 use game_state_wasm::game::state_wasm_manager::{
     GameStateMod, GameStateWasmManager, STATE_MODS_PATH,
 };
-use map::map::{resources::MapResourceMetaData, Map};
+use map::{
+    file::MapFileReader,
+    map::{resources::MapResourceMetaData, Map},
+};
 use network::network::connection::NetworkConnectionId;
 use pool::{datatypes::PoolFxLinkedHashMap, pool::Pool};
 
@@ -84,10 +87,10 @@ impl ServerMap {
         let map_file_str = map_name.to_string();
         let fs = io.fs.clone();
         let map = io.rt.spawn(async move {
-            let map_path = format!("map/maps/{}.twmap", map_file_str);
+            let map_path = format!("map/maps/{map_file_str}.twmap.tar");
             let map_file = fs.read_file(map_path.as_ref()).await?;
 
-            let (resources, _) = Map::read_resources_and_header(&map_file)?;
+            let resources = Map::read_resources_and_header(&MapFileReader::new(map_file.clone())?)?;
             let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
 
             let (names, files): (Vec<_>, Vec<_>) = {
@@ -186,7 +189,7 @@ impl ServerMap {
             rest_path.into()
         };
         let fs = io.fs.clone();
-        let cache = Arc::new(Cache::<20250418>::new("legacy-to-new-map-server", io));
+        let cache = Arc::new(Cache::<20250610>::new("legacy-to-new-map-server", io));
 
         let map_name = map_name.to_string();
         let tp = runtime_thread_pool.clone();
@@ -219,8 +222,7 @@ impl ServerMap {
                                     legacy map loading failed too: {err}"
                         )
                     })?;
-                    let mut map_bytes = Vec::new();
-                    map.map.write(&mut map_bytes, &tp)?;
+                    let map_bytes = map.map.write(&tp)?;
                     let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
                     for (blake3_hash, resource) in map.resources.images.into_iter() {
                         let path = format!(
@@ -267,7 +269,7 @@ impl ServerMap {
             })
             .get_storage()?;
 
-        let map = Map::read(&map_file, runtime_thread_pool)?;
+        let map = Map::read(&MapFileReader::new(map_file.clone())?, runtime_thread_pool)?;
         let load_resources = || {
             let mut resource_files: HashMap<String, Vec<u8>> = Default::default();
             for path in map
@@ -457,7 +459,7 @@ impl ServerGame {
                     None,
                 ),
                 game_mod => {
-                    let path = format!("{}/{}.wasm", STATE_MODS_PATH, game_mod);
+                    let path = format!("{STATE_MODS_PATH}/{game_mod}.wasm");
                     let file_path = path.clone();
                     let (file, wasm_module) = {
                         let fs = io.fs.clone();
@@ -498,7 +500,7 @@ impl ServerGame {
         let fs_change_watcher = game_mod_blake3_hash.is_some().then(|| {
             io.fs.watch_for_change(
                 STATE_MODS_PATH.as_ref(),
-                Some(format!("{}.wasm", game_mod_name).as_ref()),
+                Some(format!("{game_mod_name}.wasm").as_ref()),
             )
         });
 
@@ -607,7 +609,7 @@ impl ServerGame {
     ) -> anyhow::Result<HttpDownloadServer> {
         HttpDownloadServer::new(
             vec![(
-                format!("map/maps/{}_{}.twmap", map_name, fmt_hash(&map_hash)),
+                format!("map/maps/{}_{}.twmap.tar", map_name, fmt_hash(&map_hash)),
                 map_file.to_vec(),
             )]
             .into_iter()

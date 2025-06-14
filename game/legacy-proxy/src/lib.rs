@@ -18,7 +18,6 @@ use base_io::io::Io;
 use client::{ClientData, ClientState, ProxyClient, SocketClient, WarnPkt};
 use game_base::{
     connecting_log::ConnectingLog,
-    datafile::ints_to_str,
     network::{
         messages::{
             AddLocalPlayerResponseError, GameModification, MsgClChatMsg, MsgClLoadVotes,
@@ -77,6 +76,7 @@ use game_server::{
     server_game::{ServerGame, ServerMap},
 };
 use hexdump::hexdump_iter;
+use legacy_map::datafile::ints_to_str;
 use libtw2_gamenet_ddnet::{
     enums::{self, Emote, Team, VERSION},
     msg::{
@@ -95,7 +95,7 @@ use libtw2_gamenet_ddnet::{
 use libtw2_net::net::PeerId;
 use libtw2_packer::{IntUnpacker, Unpacker};
 use log::{debug, log_enabled, warn, Level};
-use map::map::Map;
+use map::{file::MapFileReader, map::Map};
 use math::{
     colors::{legacy_color_to_rgba, rgba_to_legacy_color},
     math::{
@@ -173,6 +173,15 @@ use vanilla::{
     weapons::definitions::weapon_def::Weapon,
 };
 
+enum LegacyInputFlags {
+    // Playing = 1 << 0,
+    InMenu = 1 << 1,
+    Chatting = 1 << 2,
+    Scoreboard = 1 << 3,
+    Aim = 1 << 4,
+    // SpecCam = 1 << 5,
+}
+
 #[derive(Debug)]
 pub struct LegacyProxy {
     pub is_finished: Arc<AtomicBool>,
@@ -198,7 +207,7 @@ const TICKS_PER_SECOND: u32 = 50;
 
 fn hexdump(level: Level, data: &[u8]) {
     if log_enabled!(level) {
-        hexdump_iter(data).for_each(|s| log::log!(level, "{}", s));
+        hexdump_iter(data).for_each(|s| log::log!(level, "{s}"));
     }
 }
 
@@ -286,7 +295,7 @@ struct ClientBase {
     server_info: ServerInfoTy,
 
     votes: ServerMapVotes,
-    vote_state: Option<VoteState>,
+    vote_state: Option<(VoteState, Duration)>,
     vote_list_updated: bool,
     loaded_map_votes: bool,
     loaded_misc_votes: bool,
@@ -296,6 +305,12 @@ struct ClientBase {
     join_password: String,
 
     is_first_map_pkt: bool,
+
+    // ping calculations
+    last_ping: Option<Duration>,
+    last_ping_uuid: u128,
+    last_pings: BTreeMap<u128, Duration>,
+    last_pong: Option<Duration>,
 
     // helpers
     input_deser: Pool<Vec<u8>>,
@@ -405,7 +420,7 @@ impl Client {
                 let io = Io::new(|_| fs, Arc::new(HttpClient::new()));
                 let mut server_info = None;
                 {
-                    log.log(format!("Getting server info from: {}", addr));
+                    log.log(format!("Getting server info from: {addr}"));
                     // first get the server info
                     let mut conless = SocketClient::new(&io, addr).unwrap();
                     let mut is_connect = false;
@@ -435,29 +450,27 @@ impl Client {
                                 ) {
                                     Ok(m) => m,
                                     Err(err) => {
-                                        debug!("decode err during startup: {:?}", err);
-                                        // TODO: hacky way to listen for reconnect msg not impl in libtw2
-                                        if !is_map_ready {
-                                            log.log("Reconnecting");
-                                            conless
-                                                .net
-                                                .disconnect(
-                                                    &mut conless.socket,
-                                                    conless.server_pid,
-                                                    b"reconnect",
-                                                )
-                                                .unwrap();
-                                            let (pid, res) =
-                                                conless.net.connect(&mut conless.socket, addr);
-                                            res.unwrap();
-                                            conless.server_pid = pid;
-                                        }
+                                        debug!("decode err during startup: {err:?}");
                                         return;
                                     }
                                 };
 
                                 if matches!(msg, SystemOrGame::System(System::MapChange(_))) {
                                     is_map_ready = true;
+                                } else if matches!(msg, SystemOrGame::System(System::Reconnect(_)))
+                                {
+                                    log.log("Reconnecting");
+                                    conless
+                                        .net
+                                        .disconnect(
+                                            &mut conless.socket,
+                                            conless.server_pid,
+                                            b"reconnect",
+                                        )
+                                        .unwrap();
+                                    let (pid, res) = conless.net.connect(&mut conless.socket, addr);
+                                    res.unwrap();
+                                    conless.server_pid = pid;
                                 }
                             }
                             libtw2_net::net::ChunkOrEvent::Connless(msg) => {
@@ -477,7 +490,7 @@ impl Client {
                             }
                             libtw2_net::net::ChunkOrEvent::Disconnect(_, items) => {
                                 let reason = String::from_utf8_lossy(items);
-                                log.log(format!("Connection lost: {}", reason));
+                                log.log(format!("Connection lost: {reason}"));
                                 if reason.contains("password") {
                                     server_info =
                                         server_info.clone().or(Some(ServerInfoTy::Partial {
@@ -624,6 +637,11 @@ impl Client {
                         server_info,
 
                         join_password: Default::default(),
+
+                        last_ping: None,
+                        last_ping_uuid: Default::default(),
+                        last_pings: Default::default(),
+                        last_pong: None,
                     },
 
                     con_id: None,
@@ -831,7 +849,7 @@ impl Client {
         for (item, id) in items {
             match item {
                 SnapObj::PlayerInput(inp) => {
-                    debug!("[NOT IMPLEMENTED] player input: {:?}", inp);
+                    debug!("[NOT IMPLEMENTED] player input: {inp:?}");
                 }
                 SnapObj::Projectile(projectile) => {
                     add_proj(
@@ -955,7 +973,7 @@ impl Client {
                     });
                 }
                 SnapObj::CharacterCore(character_core) => {
-                    debug!("[NOT IMPLEMENTED] character core: {:?}", character_core);
+                    debug!("[NOT IMPLEMENTED] character core: {character_core:?}");
                 }
                 SnapObj::Character(character) => {
                     let stage_id = base
@@ -987,12 +1005,13 @@ impl Client {
 
                     let mut buffs: FxLinkedHashMap<_, _> = Default::default();
                     let active_weapon = match character.weapon {
-                        libtw2_gamenet_ddnet::enums::Weapon::Hammer => WeaponType::Hammer,
-                        libtw2_gamenet_ddnet::enums::Weapon::Pistol => WeaponType::Gun,
-                        libtw2_gamenet_ddnet::enums::Weapon::Shotgun => WeaponType::Shotgun,
-                        libtw2_gamenet_ddnet::enums::Weapon::Grenade => WeaponType::Grenade,
-                        libtw2_gamenet_ddnet::enums::Weapon::Rifle => WeaponType::Laser,
-                        libtw2_gamenet_ddnet::enums::Weapon::Ninja => {
+                        enums::WEAPON_HAMMER => WeaponType::Hammer,
+                        enums::WEAPON_PISTOL => WeaponType::Gun,
+                        enums::WEAPON_SHOTGUN => WeaponType::Shotgun,
+                        enums::WEAPON_GRENADE => WeaponType::Grenade,
+                        enums::WEAPON_RIFLE => WeaponType::Laser,
+                        // Weapon ninja
+                        _ => {
                             buffs.insert(
                                 CharacterBuff::Ninja,
                                 BuffProps {
@@ -1044,7 +1063,7 @@ impl Client {
                                 character_core.hook_dy as f32 / 256.0,
                             ),
                             hook_tele_base: Default::default(),
-                            hook_tick: character_core.hook_tick.0,
+                            hook_tick: character_core.hook_tick,
                             hook_state: match character_core.hook_state {
                                 1 => HookState::RetractStart,
                                 2 => HookState::RetractMid,
@@ -1094,14 +1113,6 @@ impl Client {
                             }
 
                             let mut flags = CharacterInputFlags::empty();
-                            enum LegacyInputFlags {
-                                // Playing = 1 << 0,
-                                InMenu = 1 << 1,
-                                Chatting = 1 << 2,
-                                Scoreboard = 1 << 3,
-                                Aim = 1 << 4,
-                                // SpecCam = 1 << 5,
-                            }
                             if (character.player_flags & LegacyInputFlags::Aim as i32) != 0 {
                                 flags.insert(CharacterInputFlags::HOOK_COLLISION_LINE);
                             }
@@ -1191,11 +1202,11 @@ impl Client {
                                 &mut self,
                                 _ids: &[CharacterId],
                                 _for_each_func: &mut dyn FnMut(
-                                &CharacterId,
-                                &mut Core,
-                                &mut CoreReusable,
-                                &mut vanilla::entities::character::pos::character_pos::CharacterPos,
-                            ) -> std::ops::ControlFlow<()>,
+                                            &CharacterId,
+                                            &mut Core,
+                                            &mut CoreReusable,
+                                            &mut vanilla::entities::character::pos::character_pos::CharacterPos,
+                                        ) -> std::ops::ControlFlow<()>,
                             ) -> std::ops::ControlFlow<()> {
                                 std::ops::ControlFlow::Continue(())
                             }
@@ -1650,7 +1661,7 @@ impl Client {
                     }
                 }
                 SnapObj::MyOwnObject(my_own_object) => {
-                    debug!("[NOT IMPLEMENTED] my own object: {:?}", my_own_object);
+                    debug!("[NOT IMPLEMENTED] my own object: {my_own_object:?}");
                 }
                 SnapObj::DdnetCharacter(_) => {
                     panic!("This snap item is purposely removed earlier");
@@ -1659,13 +1670,10 @@ impl Client {
                     panic!("This snap item is purposely removed earlier");
                 }
                 SnapObj::GameInfoEx(game_info_ex) => {
-                    debug!("[NOT IMPLEMENTED] game info ex: {:?}", game_info_ex);
+                    debug!("[NOT IMPLEMENTED] game info ex: {game_info_ex:?}");
                 }
                 SnapObj::DdraceProjectile(ddrace_projectile) => {
-                    debug!(
-                        "[NOT IMPLEMENTED] ddrace projectile: {:?}",
-                        ddrace_projectile
-                    );
+                    debug!("[NOT IMPLEMENTED] ddrace projectile: {ddrace_projectile:?}");
                 }
                 SnapObj::DdnetLaser(laser) => {
                     add_laser(
@@ -1721,7 +1729,7 @@ impl Client {
                     );
                 }
                 SnapObj::Common(common) => {
-                    debug!("[NOT IMPLEMENTED] common: {:?}", common);
+                    debug!("[NOT IMPLEMENTED] common: {common:?}");
                 }
                 SnapObj::Explosion(explosion) => {
                     let events = base
@@ -2113,16 +2121,28 @@ impl Client {
                     );
                 }
                 SnapObj::MyOwnEvent(my_own_event) => {
-                    debug!("[NOT IMPLEMENTED] my own event: {:?}", my_own_event);
+                    debug!("[NOT IMPLEMENTED] my own event: {my_own_event:?}");
                 }
                 SnapObj::SpecChar(spec_char) => {
-                    debug!("[NOT IMPLEMENTED] spec char: {:?}", spec_char);
+                    debug!("[NOT IMPLEMENTED] spec char: {spec_char:?}");
                 }
                 SnapObj::SwitchState(switch_state) => {
-                    debug!("[NOT IMPLEMENTED] switch state: {:?}", switch_state);
+                    debug!("[NOT IMPLEMENTED] switch state: {switch_state:?}");
                 }
                 SnapObj::EntityEx(entity_ex) => {
-                    debug!("[NOT IMPLEMENTED] entity ex: {:?}", entity_ex);
+                    debug!("[NOT IMPLEMENTED] entity ex: {entity_ex:?}");
+                }
+                SnapObj::DdnetSpectatorInfo(ddnet_spectator_info) => {
+                    debug!("[NOT IMPLEMENTED] ddnet spectator info: {ddnet_spectator_info:?}");
+                }
+                SnapObj::Birthday(birthday) => {
+                    debug!("[NOT IMPLEMENTED] birthday: {birthday:?}");
+                }
+                SnapObj::Finish(finish) => {
+                    debug!("[NOT IMPLEMENTED] finish: {finish:?}");
+                }
+                SnapObj::MapSoundWorld(map_sound_world) => {
+                    debug!("[NOT IMPLEMENTED] map sound world: {map_sound_world:?}");
                 }
             }
         }
@@ -2156,20 +2176,8 @@ impl Client {
             Err(err) => {
                 let id =
                     SystemOrGame::decode_id(&mut WarnPkt(pid, data), &mut Unpacker::new(data)).ok();
-                warn!("decode error {:?} {:?}:", id, err);
+                warn!("decode error {id:?} {err:?}:");
                 hexdump(Level::Warn, data);
-
-                // TODO: hacky way to listen for reconnect msg not impl in libtw2
-                if collision.is_none() {
-                    log.log("Proxy client will reconnect to the server. (reconnect packet)");
-                    socket
-                        .net
-                        .disconnect(&mut socket.socket, socket.server_pid, b"reconnect")
-                        .unwrap();
-                    let (pid, res) = socket.net.connect(&mut socket.socket, *connect_addr);
-                    res.unwrap();
-                    socket.server_pid = pid;
-                }
                 return;
             }
         };
@@ -2217,6 +2225,21 @@ impl Client {
                 }
                 if (caps.flags & SERVERCAPFLAG_CHATTIMEOUTCODE) != 0 {
                     base.capabilities.chat_timeout_codes = true;
+                }
+            }
+            (_, SystemOrGame::System(System::Reconnect(_))) => {
+                log.log("Proxy client will reconnect to the server. (reconnect packet)");
+                socket
+                    .net
+                    .disconnect(&mut socket.socket, socket.server_pid, b"reconnect")
+                    .unwrap();
+                let (pid, res) = socket.net.connect(&mut socket.socket, *connect_addr);
+                res.unwrap();
+                socket.server_pid = pid;
+            }
+            (_, SystemOrGame::System(System::PongEx(pong_ex))) => {
+                if let Some(time) = base.last_pings.remove(&pong_ex.id.as_u128()) {
+                    base.last_pong = Some(sys.time_get().saturating_sub(time));
                 }
             }
             (_, SystemOrGame::System(System::MapDetails(info))) => {
@@ -2347,10 +2370,7 @@ impl Client {
                     let total_len = data.values().map(|d| d.len()).sum::<usize>();
                     if total_len < expected_size {
                         log.log(format!("Received map chunk: {}", map_data.chunk));
-                        log.log(format!(
-                            "{} of {} bytes downloaded",
-                            total_len, expected_size
-                        ));
+                        log.log(format!("{total_len} of {expected_size} bytes downloaded"));
                         let downloading_chunks = data.values().filter(|d| d.is_empty()).count();
                         for i in next_chunk..next_chunk + 50usize.saturating_sub(downloading_chunks)
                         {
@@ -2453,7 +2473,7 @@ impl Client {
                     allowed_to_vote_count: 0,
                 };
                 let state = (vote.timeout > 0).then_some(state);
-                base.vote_state = state.clone();
+                base.vote_state = state.clone().map(|s| (s, sys.time_get()));
                 server_network.send_in_order_to(
                     &ServerToClientMessage::Vote(state),
                     &con_id,
@@ -2461,10 +2481,15 @@ impl Client {
                 );
             }
             (_, SystemOrGame::Game(Game::SvVoteStatus(vote))) => {
-                if let Some(mut state) = base.vote_state.clone() {
+                if let Some((mut state, start_time)) = base.vote_state.clone() {
                     state.yes_votes = vote.yes.unsigned_abs() as u64;
                     state.no_votes = vote.no.unsigned_abs() as u64;
                     state.allowed_to_vote_count = vote.total.unsigned_abs() as u64;
+
+                    let now = sys.time_get();
+                    state.remaining_time = state
+                        .remaining_time
+                        .saturating_sub(now.saturating_sub(start_time));
 
                     server_network.send_in_order_to(
                         &ServerToClientMessage::Vote(Some(state.clone())),
@@ -2472,7 +2497,7 @@ impl Client {
                         NetworkInOrderChannel::Global,
                     );
 
-                    base.vote_state = Some(state);
+                    base.vote_state = Some((state, now));
                 }
             }
             (_, SystemOrGame::System(System::ConReady(_))) => {
@@ -2584,7 +2609,7 @@ impl Client {
                                 }
                             }
                             Err(e) => {
-                                debug!("item decode error {:?}: {:?}", e, id);
+                                debug!("item decode error {e:?}: {id:?}");
                                 None
                             }
                         })
@@ -3081,7 +3106,16 @@ impl Client {
                                 .saturating_sub(inp.logic_overhead)
                                 .as_millis()
                         );
-                        inp.logic_overhead = sys.time_get();
+                        // For now use ping pong for time calculations
+                        if let Some(pong_time) = base.last_pong {
+                            const PREDICTION_EXTRA_MARGIN: Duration = Duration::from_millis(5);
+                            inp.logic_overhead = inp
+                                .logic_overhead
+                                .saturating_add(pong_time)
+                                .saturating_add(PREDICTION_EXTRA_MARGIN);
+                        } else {
+                            inp.logic_overhead = sys.time_get();
+                        }
                         *was_acked = true;
                     }
                 }
@@ -3247,7 +3281,7 @@ impl Client {
         }
 
         if !processed {
-            debug!("unprocessed message {:?} {:?}", &player.state, msg);
+            debug!("unprocessed message {:?} {msg:?}", &player.state);
         }
     }
 
@@ -3255,7 +3289,7 @@ impl Client {
         let msg = match Connless::decode(&mut WarnPkt(addr, data), &mut Unpacker::new(data)) {
             Ok(m) => m,
             Err(err) => {
-                warn!("decode error {:?}:", err);
+                warn!("decode error {err:?}:");
                 hexdump(Level::Warn, data);
                 return None;
             }
@@ -3281,7 +3315,7 @@ impl Client {
             _ => processed = false,
         }
         if !processed {
-            debug!("unprocessed message {:?}", msg);
+            debug!("unprocessed message {msg:?}");
         }
         None
     }
@@ -3385,6 +3419,23 @@ impl Client {
         }
         let wanted_weapon = 0;
 
+        let mut player_flags = 0;
+        if inp.state.flags.contains(CharacterInputFlags::CHATTING) {
+            player_flags |= LegacyInputFlags::Chatting as i32;
+        }
+        if inp
+            .state
+            .flags
+            .contains(CharacterInputFlags::HOOK_COLLISION_LINE)
+        {
+            player_flags |= LegacyInputFlags::Aim as i32;
+        }
+        if inp.state.flags.contains(CharacterInputFlags::SCOREBOARD) {
+            player_flags |= LegacyInputFlags::Scoreboard as i32;
+        }
+        if inp.state.flags.contains(CharacterInputFlags::MENU_UI) {
+            player_flags |= LegacyInputFlags::InMenu as i32;
+        }
         let mut input = snap_obj::PlayerInput {
             direction: *state.dir,
             target_x,
@@ -3396,7 +3447,7 @@ impl Client {
                     .map(|(v, _)| (v.get() * 2).saturating_sub(*state.fire as u64))
                     .unwrap_or_default() as i32,
             hook: *state.hook as i32,
-            player_flags: 0,
+            player_flags,
             wanted_weapon,
             next_weapon: prev_inp.next_weapon + next_weapon_diff,
             prev_weapon: prev_inp.prev_weapon + prev_weapon_diff,
@@ -3415,7 +3466,7 @@ impl Client {
         Ok(())
     }
 
-    fn player_info_to_legacy(player_info: &NetworkCharacterInfo) -> game::ClStartInfo {
+    fn player_info_to_legacy(player_info: &NetworkCharacterInfo) -> game::ClStartInfo<'_> {
         let skin: &ResourceKeyBase = player_info.skin.borrow();
         let (use_custom_color, color_body, color_feet) = match player_info.skin_info {
             NetworkSkinInfo::Original => (false, 0, 0),
@@ -3439,7 +3490,7 @@ impl Client {
         }
     }
 
-    fn run_once(&mut self) -> anyhow::Result<()> {
+    fn handle_client_events(&mut self) -> anyhow::Result<()> {
         if self
             .server_has_new_events
             .load(std::sync::atomic::Ordering::SeqCst)
@@ -3478,10 +3529,8 @@ impl Client {
                             return Ok(());
                         }
                         NetworkEvent::ConnectingFailed(reason) => {
-                            self.log.log(format!(
-                                "Local client failed to connect to proxy: {}",
-                                reason
-                            ));
+                            self.log
+                                .log(format!("Local client failed to connect to proxy: {reason}"));
                             self.is_finished
                                 .store(true, std::sync::atomic::Ordering::SeqCst);
                             return Ok(());
@@ -3758,7 +3807,7 @@ impl Client {
                                             if switch {
                                                 player.sendg(Game::ClSay(game::ClSay {
                                                     team: false,
-                                                    message: format!("/{}", pause).as_bytes(),
+                                                    message: format!("/{pause}").as_bytes(),
                                                 }));
                                             }
                                             player.sendg(Game::ClSetSpectatorMode(
@@ -3770,20 +3819,12 @@ impl Client {
                                         }
                                     }
                                     ClientToServerPlayerMessage::StartVote(msg) => {
-                                        let mut get_player_name = |char_id: &CharacterId| {
+                                        let get_player_legacy_id = |char_id: &CharacterId| {
                                             self.base
                                                 .char_new_id_to_legacy
                                                 .get(char_id)
                                                 .copied()
-                                                .and_then(|id| {
-                                                    Self::player_info_mut(
-                                                        id,
-                                                        &self.base,
-                                                        &mut self.last_snapshot,
-                                                    )
-                                                    .map(|(_, i)| i.player_info.name.to_string())
-                                                })
-                                                .unwrap_or_default()
+                                                .unwrap_or(-1)
                                         };
                                         let (type_, value, reason) = match msg {
                                             VoteIdentifierType::Map(vote) => (
@@ -3834,12 +3875,12 @@ impl Client {
                                             ),
                                             VoteIdentifierType::VoteKickPlayer(vote) => (
                                                 "kick".as_bytes(),
-                                                get_player_name(&vote.voted_player_id),
+                                                get_player_legacy_id(&vote.voted_player_id).to_string(),
                                                 vote.reason.to_string(),
                                             ),
                                             VoteIdentifierType::VoteSpecPlayer(vote) => (
-                                                "spec".as_bytes(),
-                                                get_player_name(&vote.voted_player_id),
+                                                "spectate".as_bytes(),
+                                                get_player_legacy_id(&vote.voted_player_id).to_string(),
                                                 vote.reason.to_string(),
                                             ),
                                             VoteIdentifierType::Misc(vote) => (
@@ -3968,7 +4009,7 @@ impl Client {
 
                                             player.sendg(Game::ClSay(game::ClSay {
                                                 team: false,
-                                                message: format!("/team {}", team).as_bytes(),
+                                                message: format!("/team {team}").as_bytes(),
                                             }));
                                             player.flush();
                                         }
@@ -4004,8 +4045,7 @@ impl Client {
                                     }
                                     ClientToServerPlayerMessage::RconExec { ident_text, args } => {
                                         debug!(
-                                            "[NOT IMPLEMENTED] rcon exec: {:?} {:?}",
-                                            ident_text, args
+                                            "[NOT IMPLEMENTED] rcon exec: {ident_text:?} {args:?}"
                                         );
                                     }
                                 }
@@ -4256,7 +4296,10 @@ impl Client {
             self.server_has_new_events
                 .store(false, std::sync::atomic::Ordering::SeqCst);
         }
+        Ok(())
+    }
 
+    fn handle_server_events_and_sleep(&mut self) -> anyhow::Result<()> {
         if let Some(con_id) = self.con_id {
             let mut event_handler = |socket: &mut SocketClient,
                                      ev: libtw2_net::net::ChunkOrEvent<'_, SocketAddr>,
@@ -4314,7 +4357,7 @@ impl Client {
                     Disconnect(_, reason) => {
                         let reason = String::from_utf8_lossy(reason).to_string();
                         self.log
-                            .log(format!("Proxy client got disconnected: {}", reason));
+                            .log(format!("Proxy client got disconnected: {reason}"));
                         socket.skip_disconnect_on_drop = true;
                         if is_main_connection {
                             self.server_network.kick(&con_id, KickType::Kick(reason));
@@ -4396,7 +4439,7 @@ impl Client {
                             }
 
                             self.log.log(format!(
-                                "Client proxy is converting map: {}.\
+                                "Client proxy is converting map: {}. \
                                 This might take a moment.",
                                 map_name.as_str()
                             ));
@@ -4410,9 +4453,12 @@ impl Client {
                             )
                             .unwrap();
 
-                            let (phy_group, _) = Map::read_physics_group_and_config(&map).unwrap();
+                            let (phy_group, _) = Map::read_physics_group_and_config(
+                                &MapFileReader::new(map.clone()).unwrap(),
+                            )
+                            .unwrap();
 
-                            let new_collision = Collision::new(&phy_group, true).unwrap();
+                            let new_collision = Collision::new(phy_group, true).unwrap();
 
                             self.log.log("Client proxy prepares map collision");
                             self.collisions = Some(new_collision);
@@ -4635,6 +4681,42 @@ impl Client {
                     Ok(())
                 })
                 .get_storage();
+        }
+
+        Ok(())
+    }
+
+    fn run_once(&mut self) -> anyhow::Result<()> {
+        self.handle_client_events()?;
+
+        self.handle_server_events_and_sleep()?;
+
+        // do 10 pings per second to determine accurate ping
+        let time_now = self.sys.time_get();
+        if self.base.last_ping.is_none_or(|last_ping| {
+            time_now.saturating_sub(last_ping) > Duration::from_millis(1000 / 10)
+        }) {
+            self.base.last_ping = Some(time_now);
+
+            if let Some(player) = self.players.values_mut().next() {
+                if matches!(player.data.state, ClientState::Ingame) {
+                    let pkt = system::PingEx {
+                        id: hex::encode(self.base.last_ping_uuid.to_ne_bytes())
+                            .parse()
+                            .unwrap(),
+                    };
+                    player.socket.sends(System::PingEx(pkt));
+                    player.socket.flush();
+
+                    self.base
+                        .last_pings
+                        .insert(self.base.last_ping_uuid, time_now);
+                    while self.base.last_pings.len() > 50 {
+                        self.base.last_pings.pop_first();
+                    }
+                    self.base.last_ping_uuid += 1;
+                }
+            }
         }
 
         Ok(())

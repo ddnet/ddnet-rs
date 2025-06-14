@@ -183,10 +183,7 @@ pub fn image_barrier(
 
         needs_dependency = true;
     } else {
-        panic!(
-            "unsupported layout transition! old: {:?} -> new: {:?}",
-            old_layout, new_layout
-        );
+        panic!("unsupported layout transition! old: {old_layout:?} -> new: {new_layout:?}");
     }
 
     unsafe {

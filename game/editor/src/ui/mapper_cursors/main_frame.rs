@@ -1,9 +1,9 @@
-use client_render_base::map::render_tools::{CanvasType, RenderTools};
+use camera::CameraInterface;
 use egui::Color32;
 use graphics::handles::canvas::canvas::GraphicsCanvasHandle;
 use graphics_types::rendering::State;
 
-use crate::ui::user_data::EditorTabsRefMut;
+use crate::{map::EditorMapInterface, ui::user_data::EditorTabsRefMut};
 
 pub fn render(
     ui: &mut egui::Ui,
@@ -17,19 +17,10 @@ pub fn render(
             .iter()
             .filter(|c| c.server_id != tab.client.server_id)
         {
-            let points = RenderTools::canvas_points_of_group_attr(
-                CanvasType::Handle(canvas_handle),
-                tab.map.groups.user.pos.x,
-                tab.map.groups.user.pos.y,
-                100.0,
-                100.0,
-                0.0,
-                0.0,
-                tab.map.groups.user.zoom,
-                tab.map.groups.user.parallax_aware_zoom,
-            );
             let mut state = State::new();
-            state.map_canvas(points[0], points[1], points[2], points[3]);
+            tab.map
+                .game_camera()
+                .project(canvas_handle, &mut state, None);
 
             let size = ui.ctx().screen_rect().size();
             let (x0, y0, x1, y1) = state.get_canvas_mapping();

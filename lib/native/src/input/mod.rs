@@ -6,7 +6,7 @@ use winit::{
 
 /// all functions (except [`InputEventHandler::raw_window_event`]) get a raw input,
 /// so repeated key events (holding a key down -> many keys are sent like in text editors) are __ignored__
-pub trait InputEventHandler {
+pub trait InputEventHandler: 'static {
     fn key_down(&mut self, window: &winit::window::Window, device: &DeviceId, key: PhysicalKey);
     fn key_up(&mut self, window: &winit::window::Window, device: &DeviceId, key: PhysicalKey);
     fn mouse_down(

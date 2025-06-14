@@ -167,7 +167,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     let start_rot = |pos: &mut vec2| {
         rotate(
             &vec2::default(),
-            -1.0 * 3.0 / TeeEye::COUNT as f32 * PI,
+            -3.0 / TeeEye::COUNT as f32 * PI,
             std::slice::from_mut(pos),
         )
     };

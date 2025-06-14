@@ -70,7 +70,7 @@ pub enum MapLayerPhysicsRef<'a> {
 }
 
 impl MapLayerPhysics {
-    pub fn as_ref(&self) -> MapLayerPhysicsRef {
+    pub fn as_ref(&self) -> MapLayerPhysicsRef<'_> {
         match self {
             MapLayerPhysics::Arbitrary(layer) => MapLayerPhysicsRef::Arbitrary(layer),
             MapLayerPhysics::Game(layer) => MapLayerPhysicsRef::Game(layer),
@@ -84,7 +84,7 @@ impl MapLayerPhysics {
 }
 
 impl MapLayerPhysicsRef<'_> {
-    pub fn tiles_ref(&self) -> MapTileLayerPhysicsTilesRef {
+    pub fn tiles_ref(&self) -> MapTileLayerPhysicsTilesRef<'_> {
         match self {
             Self::Arbitrary(_) => panic!("not a tile layer"),
             Self::Game(layer) => MapTileLayerPhysicsTilesRef::Game(&layer.tiles),

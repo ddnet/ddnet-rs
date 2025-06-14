@@ -1,5 +1,6 @@
 use std::{cell::Cell, collections::HashSet, rc::Rc, sync::Arc};
 
+use camera::CameraInterface;
 use client_containers::{container::ContainerKey, entities::EntitiesContainer};
 use client_render_base::map::{
     map_buffered::{
@@ -7,10 +8,8 @@ use client_render_base::map::{
         TileLayerBufferedVisuals, TileLayerVisuals,
     },
     map_pipeline::{MapGraphics, TileLayerDrawInfo},
-    render_tools::{CanvasType, RenderTools},
 };
 use egui::{pos2, Rect};
-use game_base::mapdef_06::DdraceTileNum;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -24,6 +23,7 @@ use graphics::{
 };
 use graphics_types::rendering::State;
 use hiarc::Hiarc;
+use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
     map::groups::{
         layers::{
@@ -1409,12 +1409,28 @@ impl TileBrush {
                                 w,
                                 h,
                                 negative_offset: usvec2::new(
-                                    x_needs_offset.then_some(count_x - 1).unwrap_or_default(),
-                                    y_needs_offset.then_some(count_y - 1).unwrap_or_default(),
+                                    if x_needs_offset {
+                                        count_x - 1
+                                    } else {
+                                        Default::default()
+                                    },
+                                    if y_needs_offset {
+                                        count_y - 1
+                                    } else {
+                                        Default::default()
+                                    },
                                 ),
                                 negative_offsetf: dvec2::new(
-                                    x_needs_offset.then_some(count_x as f64).unwrap_or_default(),
-                                    y_needs_offset.then_some(count_y as f64).unwrap_or_default(),
+                                    if x_needs_offset {
+                                        count_x as f64
+                                    } else {
+                                        Default::default()
+                                    },
+                                    if y_needs_offset {
+                                        count_y as f64
+                                    } else {
+                                        Default::default()
+                                    },
                                 ),
                                 render,
                                 map_render: MapGraphics::new(backend_handle),
@@ -1522,7 +1538,7 @@ impl TileBrush {
                                             },
                                         ));
 
-                                        (actions, format!("tile-brush phy {}", layer_index))
+                                        (actions, format!("tile-brush phy {layer_index}"))
                                     }
                                     EditorLayerUnionRef::Design {
                                         layer,
@@ -1564,8 +1580,7 @@ impl TileBrush {
                                                 },
                                             )],
                                             format!(
-                                                "tile-brush {}-{}-{}",
-                                                group_index, layer_index, is_background
+                                                "tile-brush {group_index}-{layer_index}-{is_background}"
                                             ),
                                         )
                                     }
@@ -1907,7 +1922,7 @@ impl TileBrush {
 
                     (
                         actions,
-                        format!("tile-brush phy {}", layer_index),
+                        format!("tile-brush phy {layer_index}"),
                         TileBrushLastApplyLayer::Physics {
                             layer_index: *layer_index,
                         },
@@ -1986,10 +2001,7 @@ impl TileBrush {
 
                     (
                         actions,
-                        format!(
-                            "tile-brush {}-{}-{}",
-                            group_index, layer_index, is_background
-                        ),
+                        format!("tile-brush {group_index}-{layer_index}-{is_background}"),
                         TileBrushLastApplyLayer::Design {
                             group_index: *group_index,
                             layer_index: *layer_index,
@@ -2570,15 +2582,8 @@ impl TileBrush {
                         let mut state = State::new();
                         let pos_x = off_x - tile_offset_x as f32 * TILE_VISUAL_SIZE;
                         let pos_y = off_y - tile_offset.y as f32 * TILE_VISUAL_SIZE;
-                        RenderTools::map_canvas_of_group(
-                            CanvasType::Handle(canvas_handle),
-                            &mut state,
-                            map.groups.user.pos.x,
-                            map.groups.user.pos.y,
-                            group_attr.as_ref(),
-                            map.groups.user.zoom,
-                            map.groups.user.parallax_aware_zoom,
-                        );
+                        map.game_camera()
+                            .project(canvas_handle, &mut state, group_attr.as_ref());
                         state.canvas_br.x += center.x - pos_x;
                         state.canvas_br.y += center.y - pos_y;
                         state.canvas_tl.x += center.x - pos_x;
@@ -2647,15 +2652,8 @@ impl TileBrush {
         }) = &brush.render
         {
             let mut state = State::new();
-            RenderTools::map_canvas_of_group(
-                CanvasType::Handle(canvas_handle),
-                &mut state,
-                map.groups.user.pos.x,
-                map.groups.user.pos.y,
-                group_attr.as_ref(),
-                map.groups.user.zoom,
-                map.groups.user.parallax_aware_zoom,
-            );
+            map.game_camera()
+                .project(canvas_handle, &mut state, group_attr.as_ref());
             state.canvas_br.x += center.x;
             state.canvas_br.y += center.y;
             state.canvas_tl.x += center.x;

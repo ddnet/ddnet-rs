@@ -1,7 +1,7 @@
 pub mod game_objects {
-    use game_base::mapdef_06::EntityTiles;
     use game_interface::types::{emoticons::EnumCount, weapons::WeaponType};
     use hiarc::Hiarc;
+    use legacy_map::mapdef_06::EntityTiles;
     use map::map::groups::layers::tiles::TileBase;
     use math::math::vector::ivec2;
 

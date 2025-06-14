@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use game_base::mapdef_06::tile_can_rotate;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -9,6 +8,7 @@ use graphics::{
         shader_storage::shader_storage::GraphicsShaderStorageHandle,
     },
 };
+use legacy_map::mapdef_06::tile_can_rotate;
 use map::map::groups::layers::tiles::{
     rotate_by_plus_90, MapTileLayerPhysicsTiles, MapTileLayerTiles, TileBase, TileFlags,
 };
@@ -847,10 +847,7 @@ fn generate_client_action(
                             h: range.h,
                         },
                     }),
-                    Some(&format!(
-                        "selection_physics_tile_layer_tools_{}",
-                        layer_index
-                    )),
+                    Some(&format!("selection_physics_tile_layer_tools_{layer_index}")),
                 );
             }
         }
@@ -882,8 +879,7 @@ fn generate_client_action(
                         },
                     }),
                     Some(&format!(
-                        "selection_tile_layer_tools_{}_{}_{}",
-                        is_background, group_index, layer_index
+                        "selection_tile_layer_tools_{is_background}_{group_index}_{layer_index}"
                     )),
                 );
             }

@@ -294,8 +294,8 @@ pub(crate) fn hi_closure_impl(item: TokenStream) -> TokenStream {
                 Err(err) => {
                     let err = err.to_string();
                     let err = format!(
-                        "currently only typed arguments are allowed: {}, found: {}",
-                        err, input
+                        "currently only typed arguments are allowed: {err}, \
+                        found: {input}",
                     );
                     (
                         quote!(),
@@ -318,14 +318,13 @@ pub(crate) fn hi_closure_impl(item: TokenStream) -> TokenStream {
                     ty.to_token_stream()
                 } else {
                     let err = output.to_token_stream().to_string();
-                    let err = format!("result type must be explicitly set: {}", err);
+                    let err = format!("result type must be explicitly set: {err}");
                     quote!(compile_error!(#err))
                 }
             }
             Err(err) => {
                 let err = format!(
-                    "result type must be explicitly set: {} from {}",
-                    err,
+                    "result type must be explicitly set: {err} from {}",
                     closure.output.clone()
                 );
                 quote!(compile_error!(#err))

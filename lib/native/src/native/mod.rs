@@ -59,7 +59,7 @@ pub trait NativeImpl {
     fn start_arguments(&self) -> &Vec<String>;
 }
 
-pub trait FromNativeImpl: InputEventHandler {
+pub trait FromNativeImpl: AsMut<dyn InputEventHandler> {
     fn run(&mut self, native: &mut dyn NativeImpl);
     /// New width and height in pixels!
     fn resized(&mut self, native: &mut dyn NativeImpl, new_width: u32, new_height: u32);
@@ -92,13 +92,13 @@ where
     fn new(loading: L, native: &mut dyn NativeImpl) -> anyhow::Result<Self>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NativeWindowMonitorDetails {
     pub name: String,
     pub size: PhysicalSize<u32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Pixels<T> {
     pub width: T,
     pub height: T,
@@ -107,7 +107,7 @@ pub struct Pixels<T> {
 pub type PhysicalPixels = Pixels<u32>;
 pub type LogicalPixels = Pixels<f64>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum WindowMode {
     Fullscreen {
         resolution: Option<PhysicalPixels>,
@@ -127,7 +127,7 @@ impl WindowMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NativeWindowOptions {
     pub mode: WindowMode,
     /// if fullscreen is `false` & maximized is `true` & decorated is `false`

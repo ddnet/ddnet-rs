@@ -61,7 +61,7 @@ pub enum GameStateMod {
 enum GameStateWrapper {
     Native(Box<GameState>),
     //Ddnet(Ddnet),
-    Wasm(StateWasm),
+    Wasm(Box<StateWasm>),
 }
 
 impl GameStateWrapper {
@@ -69,7 +69,7 @@ impl GameStateWrapper {
         match self {
             Self::Native(state) => state.as_ref(),
             //GameStateWrapper::Ddnet(state) => state,
-            Self::Wasm(state) => state,
+            Self::Wasm(state) => state.as_ref(),
         }
     }
 
@@ -77,7 +77,7 @@ impl GameStateWrapper {
         match self {
             Self::Native(state) => state.as_mut(),
             //GameStateWrapper::Ddnet(state) => state,
-            Self::Wasm(state) => state,
+            Self::Wasm(state) => state.as_mut(),
         }
     }
 }
@@ -152,7 +152,7 @@ impl GameStateWasmManager {
                     io.rt.clone(),
                     db,
                 )?;
-                (GameStateWrapper::Wasm(state), info)
+                (GameStateWrapper::Wasm(Box::new(state)), info)
             }
         };
         Ok(Self {

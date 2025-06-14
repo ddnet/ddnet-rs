@@ -13,7 +13,6 @@ graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
 graphics-backend = { path = "../../lib/graphics-backend" }
 pool = { path = "../../lib/pool" }
-hiarc = { path = "../../lib/hiarc" }
 ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
 sound = { path = "../../lib/sound" }

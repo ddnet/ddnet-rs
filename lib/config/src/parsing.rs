@@ -43,7 +43,7 @@ fn parse_conf_value_usage(val: &ConfigValue) -> String {
             format!("int [{min}..{max}]")
         }
         ConfigValue::Float { min, max } => {
-            format!("float [{:.4},{:.4}]", min, max)
+            format!("float [{min:.4},{max:.4}]")
         }
         ConfigValue::String {
             min_length,

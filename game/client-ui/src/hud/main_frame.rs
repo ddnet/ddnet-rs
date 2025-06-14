@@ -245,7 +245,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                                     |ui| {
                                                         ui.colored_label(
                                                             Color32::WHITE,
-                                                            format!("{}", score),
+                                                            format!("{score}"),
                                                         );
                                                     },
                                                 );
@@ -320,7 +320,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                                         .show(ui, |ui| {
                                                             ui.colored_label(
                                                                 Color32::WHITE,
-                                                                format!("{}", score_red),
+                                                                format!("{score_red}"),
                                                             );
                                                         });
                                                 });
@@ -335,7 +335,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                                         .show(ui, |ui| {
                                                             ui.colored_label(
                                                                 Color32::WHITE,
-                                                                format!("{}", score_blue),
+                                                                format!("{score_blue}"),
                                                             );
                                                         });
                                                 });

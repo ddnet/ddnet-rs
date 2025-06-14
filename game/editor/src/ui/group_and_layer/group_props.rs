@@ -515,8 +515,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         }
     };
 
-    if window_res.is_some() {
-        let window_res = window_res.as_ref().unwrap();
+    if let Some(window_res) = &window_res {
         ui_state.add_blur_rect(window_res.response.rect, 0.0);
     }
 

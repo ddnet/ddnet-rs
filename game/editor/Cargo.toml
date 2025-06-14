@@ -28,8 +28,10 @@ client-notifications = { path = "../client-notifications" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 game-base = { path = "../game-base" }
+legacy-map = { path = "../legacy-map" }
 editor-interface = { path = "../editor-interface" }
 editor-auto-mapper-wasm = { path = "../editor-auto-mapper-wasm" }
+camera = { path = "../camera" }
 
 map-convert-lib = { path = "../map-convert-lib" }
 

@@ -369,7 +369,7 @@ fn render_op_list(
     if let Some((operator, next)) = operation {
         ui.add_space(3.0);
         ComboBox::new(
-            format!("tile-auto-mapper-creator-operator-ty-{}", counter),
+            format!("tile-auto-mapper-creator-operator-ty-{counter}"),
             "",
         )
         .selected_text(match operator {

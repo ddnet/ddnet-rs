@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use thiserror::Error;
 
 /// Escape `"`, `\` or ` ` characters
-pub fn escape(s: &str) -> Cow<str> {
+pub fn escape(s: &str) -> Cow<'_, str> {
     let mut quote = false;
     let mut needs_per_char_quote = false;
 
@@ -23,7 +23,7 @@ pub fn escape(s: &str) -> Cow<str> {
         return Cow::from(s);
     }
     if !needs_per_char_quote {
-        return format!("\"{}\"", s).into();
+        return format!("\"{s}\"").into();
     }
 
     let mut output = String::with_capacity(s.len());
@@ -72,7 +72,7 @@ pub fn unescape(s: &str) -> Result<String, UnescapeError> {
                 match chars.next() {
                     None => {
                         return Err(UnescapeError::InvalidEscape {
-                            escape: format!("{}", c),
+                            escape: format!("{c}"),
                             index,
                             string: String::from(s),
                         });
@@ -84,7 +84,7 @@ pub fn unescape(s: &str) -> Result<String, UnescapeError> {
                             ' ' => ' ',
                             _ => {
                                 return Err(UnescapeError::InvalidEscape {
-                                    escape: format!("{}{}", c, c2),
+                                    escape: format!("{c}{c2}"),
                                     index,
                                     string: String::from(s),
                                 });

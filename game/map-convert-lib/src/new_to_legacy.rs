@@ -1,8 +1,8 @@
 use anyhow::anyhow;
 use base::{benchmark::Benchmark, hash::fmt_hash};
 use base_io::io::IoFileSys;
-use game_base::datafile::CDatafileWrapper;
-use map::map::Map;
+use legacy_map::datafile::CDatafileWrapper;
+use map::{file::MapFileReader, map::Map};
 use std::{future::Future, io::Cursor, path::Path, pin::Pin, sync::Arc};
 use vorbis_rs::VorbisDecoder;
 
@@ -21,7 +21,7 @@ pub async fn new_to_legacy_from_buf_async(
     >,
     thread_pool: &Arc<rayon::ThreadPool>,
 ) -> anyhow::Result<NewMapToLegacyOutput> {
-    let map = Map::read(file, thread_pool)
+    let map = Map::read(&MapFileReader::new(file.to_vec())?, thread_pool)
         .map_err(|err| anyhow!("loading map from file failed: {err}"))?;
 
     let (images, image_arrays, mut sounds) = load_resources(&map).await?;

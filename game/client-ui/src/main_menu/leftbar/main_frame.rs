@@ -127,7 +127,7 @@ pub fn render(
         ui_state: &mut UiState,
         ui_page_query_name: &str,
     ) {
-        let activate_text = format!("{}{}", prefix, text);
+        let activate_text = format!("{prefix}{text}");
         let selected = activate_text.as_str() == current_active;
         ui.allocate_ui_with_layout(
             vec2(size, size),
@@ -137,7 +137,7 @@ pub fn render(
 
                 if selected {
                     let highlight_rect = rect
-                        .translate(vec2(rect.width() / 2.0 * -1.0, 0.0))
+                        .translate(vec2(-(rect.width() / 2.0), 0.0))
                         .scale_from_center2(vec2(5.0 / size, 0.5));
                     ui.painter().add(Shape::rect_filled(
                         highlight_rect,

@@ -77,7 +77,7 @@ impl WasmManager {
                 0,
             );
 
-            println!("{}", text);
+            println!("{text}");
         }
 
         // We then create an import object so that the `Module`'s imports can be satisfied.

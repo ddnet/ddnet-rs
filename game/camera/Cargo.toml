@@ -1,0 +1,13 @@
+[package]
+name = "camera"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+math = { path = "../../lib/math" }
+hiarc = { path = "../../lib/hiarc", features = ["derive"] }
+graphics = { path = "../../lib/graphics" }
+graphics-types = { path = "../../lib/graphics-types" }
+
+map = { path = "../map" }
+

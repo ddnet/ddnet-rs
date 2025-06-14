@@ -63,7 +63,7 @@ impl UiWasmPageEntry {
 }
 
 enum UiPageEntry<U> {
-    Wasm(UiWasmPageEntry),
+    Wasm(Box<UiWasmPageEntry>),
     Native(Box<dyn UiPageInterface<U>>),
 }
 
@@ -315,8 +315,10 @@ where
                                     .unwrap();
                                     let mut entry = UiWasmPageEntry { wasm_runtime };
                                     entry.call_new(&self.fonts).unwrap();
-                                    self.ui_paths
-                                        .insert(path.to_string(), UiPageEntry::Wasm(entry));
+                                    self.ui_paths.insert(
+                                        path.to_string(),
+                                        UiPageEntry::Wasm(Box::new(entry)),
+                                    );
                                     self.run_ui_path(
                                         path, io, graphics, backend, sound, pipe, inp, blur,
                                     )

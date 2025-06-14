@@ -8,6 +8,9 @@ use graphics_backend_traits::plugin::SamplerAddressMode;
 use graphics_types::commands::StreamDataMax;
 use hiarc::Hiarc;
 use num_derive::FromPrimitive;
+use strum::EnumCount;
+
+use crate::backends::vulkan::render_group::{ColorWriteMaskType, StencilOpType};
 
 use super::{
     buffer::Buffer,
@@ -23,7 +26,6 @@ use super::{
     pipeline_manager::PipelineCreationAttributes,
     pipelines::Pipelines,
     render_fill_manager::RenderCommandExecuteBuffer,
-    render_group::{COLOR_MASK_TYPE_COUNT, STENCIL_OP_TYPE_COUNT},
     render_pass::CanvasSetup,
     vulkan_allocator::VulkanAllocator,
 };
@@ -194,31 +196,26 @@ impl Drop for ShaderModule {
     }
 }
 
-#[derive(FromPrimitive, Copy, Clone)]
+#[derive(FromPrimitive, Copy, Clone, EnumCount)]
 #[repr(u32)]
-pub enum EVulkanBackendAddressModes {
+pub enum SupportedAddressModes {
     Repeat = 0,
     ClampEdges = 1,
-
-    Count = 2,
 }
 
-#[derive(Debug, Hiarc, FromPrimitive, Copy, Clone, PartialEq)]
+#[derive(Debug, Hiarc, FromPrimitive, Copy, Clone, PartialEq, EnumCount)]
 #[repr(u32)]
-pub enum EVulkanBackendBlendModes {
+pub enum SupportedBlendModes {
     Alpha = 0,
     None = 1,
     Additive = 2,
 }
-pub const BLEND_MODE_COUNT: usize = 3;
 
-#[derive(Debug, Hiarc, FromPrimitive, Copy, Clone, PartialEq)]
+#[derive(Debug, Hiarc, FromPrimitive, Copy, Clone, PartialEq, EnumCount)]
 #[repr(u32)]
-pub enum EVulkanBackendClipModes {
+pub enum CanvasClipModes {
     None = 0,
     DynamicScissorAndViewport = 1,
-
-    Count = 2,
 }
 
 const MAX_TEXTURE_MODES: usize = 2;
@@ -293,15 +290,15 @@ pub enum PipelineContainerCreateMode {
     OneByOne(PipelineCreationOneByOne),
 }
 
-pub type PipelinesSampler = [PipelineContainerItem; SAMPLER_TYPES_COUNT];
-pub type PipelinesColorMasks = [PipelinesSampler; COLOR_MASK_TYPE_COUNT];
+pub type PipelinesSampler = [PipelineContainerItem; SupportedSamplerTypes::COUNT];
+pub type PipelinesColorMasks = [PipelinesSampler; ColorWriteMaskType::COUNT];
 
 #[derive(Debug, Hiarc)]
 pub struct PipelineContainer {
     // 3 blend modes - 2 viewport & scissor modes - 2 texture modes - 4 stencil modes - 3 color mask types - 3 sampler modes
     pub pipelines: Box<
-        [[[[PipelinesColorMasks; STENCIL_OP_TYPE_COUNT]; MAX_TEXTURE_MODES];
-            EVulkanBackendClipModes::Count as usize]; BLEND_MODE_COUNT],
+        [[[[PipelinesColorMasks; StencilOpType::COUNT]; MAX_TEXTURE_MODES]; CanvasClipModes::COUNT];
+            SupportedBlendModes::COUNT],
     >,
 
     pub(crate) mode: PipelineContainerCreateMode,
@@ -316,21 +313,20 @@ impl PipelineContainer {
     }
 }
 
-#[derive(Debug, FromPrimitive, Copy, Clone, PartialEq)]
+#[derive(Debug, FromPrimitive, Copy, Clone, PartialEq, EnumCount)]
 #[repr(u32)]
-pub enum ESupportedSamplerTypes {
+pub enum SupportedSamplerTypes {
     Repeat = 0,
     ClampToEdge,
-    Texture2DArray,
+    Texture2dArray,
 }
-pub const SAMPLER_TYPES_COUNT: usize = 3;
 
-impl From<ESupportedSamplerTypes> for SamplerAddressMode {
-    fn from(val: ESupportedSamplerTypes) -> Self {
+impl From<SupportedSamplerTypes> for SamplerAddressMode {
+    fn from(val: SupportedSamplerTypes) -> Self {
         match val {
-            ESupportedSamplerTypes::Repeat => SamplerAddressMode::Repeat,
-            ESupportedSamplerTypes::ClampToEdge => SamplerAddressMode::ClampToEdge,
-            ESupportedSamplerTypes::Texture2DArray => SamplerAddressMode::Texture2DArray,
+            SupportedSamplerTypes::Repeat => SamplerAddressMode::Repeat,
+            SupportedSamplerTypes::ClampToEdge => SamplerAddressMode::ClampToEdge,
+            SupportedSamplerTypes::Texture2dArray => SamplerAddressMode::Texture2dArray,
         }
     }
 }

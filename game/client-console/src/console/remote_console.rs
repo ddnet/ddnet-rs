@@ -53,7 +53,7 @@ impl RemoteConsole {
 
         for arg in args {
             if let Some(user_ty) = &arg.user_ty {
-                usage += &format!("<{}>", user_ty);
+                usage += &format!("<{user_ty}>");
             } else {
                 match &arg.ty {
                     CommandArgType::Command => usage += "<command> <arg> ",

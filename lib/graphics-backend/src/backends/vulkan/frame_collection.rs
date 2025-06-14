@@ -208,8 +208,7 @@ impl<'a> FrameCollector<'a> {
                 .load(std::sync::atomic::Ordering::SeqCst);
             assert!(
                 img_layout == ImageLayout::Undefined || img_layout == ImageLayout::ColorAttachment,
-                "{:?}",
-                img_layout
+                "{img_layout:?}"
             );
             image_barrier(
                 current_frame_resources,

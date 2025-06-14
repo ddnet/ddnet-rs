@@ -116,7 +116,7 @@ impl<L> MapLayerPhysicsSkeleton<L> {
             MapLayerPhysicsSkeleton::Tune(layer) => &mut layer.user,
         }
     }
-    pub fn layer_ref(&self) -> MapLayerPhysicsRef {
+    pub fn layer_ref(&self) -> MapLayerPhysicsRef<'_> {
         match self {
             MapLayerPhysicsSkeleton::Arbitrary(layer) => MapLayerPhysicsRef::Arbitrary(&layer.buf),
             MapLayerPhysicsSkeleton::Game(layer) => MapLayerPhysicsRef::Game(&layer.layer),

@@ -197,7 +197,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     .filter(|p| p.name.to_lowercase().starts_with("new tee"))
                     .count();
                 config.players.push(if new_tee_count > 0 {
-                    ConfigPlayer::new(&format!("new tee ({})", new_tee_count))
+                    ConfigPlayer::new(&format!("new tee ({new_tee_count})"))
                 } else {
                     ConfigPlayer::new("new tee")
                 });

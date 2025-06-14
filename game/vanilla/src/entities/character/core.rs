@@ -2,7 +2,6 @@ pub mod character_core {
     use std::ops::{AddAssign, ControlFlow};
 
     use crate::reusable::{CloneWithCopyableElements, ReusableCore};
-    use game_base::mapdef_06::DdraceTileNum;
     use game_interface::{
         events::{
             GameCharacterEffectEvent, GameCharacterEventEffect, GameCharacterEventSound,
@@ -15,6 +14,7 @@ pub mod character_core {
         },
     };
     use hiarc::Hiarc;
+    use legacy_map::mapdef_06::DdraceTileNum;
     use num::FromPrimitive;
 
     use crate::{
@@ -417,7 +417,7 @@ pub mod character_core {
                         let ids = pos
                             .field
                             .by_distancef(hook_pos, hook_len + (physical_size() + 2.0));
-                        pipe.get_other_character_id_and_cores_iter_by_ids_mut(
+                        let _ = pipe.get_other_character_id_and_cores_iter_by_ids_mut(
                             &ids,
                             &mut |char_id, char_core, _, char_pos| {
                                 if !(is_super || char_core.is_super) && (char_core.solo || solo) {
@@ -577,7 +577,7 @@ pub mod character_core {
             let tunings = collision.get_tune_at(pos.pos());
             const PHY_RANGE_COLLISION: i32 = (physical_size() * 1.25) as i32;
             let mut ids = pos.in_range(PHY_RANGE_COLLISION);
-            pipe.get_other_character_id_and_cores_iter_by_ids_mut(
+            let _ = pipe.get_other_character_id_and_cores_iter_by_ids_mut(
                 &ids,
                 &mut |_, char_core, _, char_pos| {
                     if !(self.is_super || char_core.is_super) && (self.solo || char_core.solo) {
@@ -617,7 +617,7 @@ pub mod character_core {
                 // reuse the previous ids here
                 ids.clear();
                 ids.push(hooked_player);
-                pipe.get_other_character_id_and_cores_iter_by_ids_mut(
+                let _ = pipe.get_other_character_id_and_cores_iter_by_ids_mut(
                     &ids,
                     &mut |char_id, char_core, _, char_pos| {
                         if !(self.is_super || char_core.is_super) && (self.solo || char_core.solo) {

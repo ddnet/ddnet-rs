@@ -1,12 +1,19 @@
 pub mod layers;
 
+use std::path::Path;
+
 use anyhow::anyhow;
+use assets_base::tar::tar_entry_to_file;
 use base::join_all;
 use hiarc::Hiarc;
 use math::math::vector::{fvec2, ufvec2};
 use serde::{Deserialize, Serialize};
 
-use crate::types::NonZeroU16MinusOne;
+use crate::{
+    file::MapFileReader,
+    types::NonZeroU16MinusOne,
+    utils::{deserialize_twmap_bincode, serialize_twmap_bincode},
+};
 
 use self::layers::{design::MapLayer, physics::MapLayerPhysics, tiles::TileBase};
 
@@ -115,8 +122,7 @@ impl<'de> Deserialize<'de> for MapGroupPhysics {
                 }
             } {
                 return Err(serde::de::Error::custom(format!(
-                    "could not validate physics layer: {}",
-                    err
+                    "could not validate physics layer: {err}"
                 )));
             }
         }
@@ -153,8 +159,7 @@ impl<'de> Deserialize<'de> for MapGroupPhysics {
             Ok(())
         } {
             return Err(serde::de::Error::custom(format!(
-                "could not validate physics layer: {}",
-                err
+                "could not validate physics layer: {err}"
             )));
         }
 
@@ -191,14 +196,9 @@ pub struct MapGroups {
 }
 
 impl MapGroups {
-    /// Deserializes the physics group and returns the amount of bytes read
-    pub fn deserialize_physics_group(
-        uncompressed_file: &[u8],
-    ) -> anyhow::Result<(MapGroupPhysics, usize)> {
-        Ok(bincode::serde::decode_from_slice::<MapGroupPhysics, _>(
-            uncompressed_file,
-            bincode::config::standard(),
-        )?)
+    /// Deserializes the physics group
+    pub fn deserialize_physics_group(uncompressed_file: &[u8]) -> anyhow::Result<MapGroupPhysics> {
+        deserialize_twmap_bincode::<MapGroupPhysics>(uncompressed_file)
     }
 
     /// Serializes the physics group and returns the amount of bytes written
@@ -206,50 +206,34 @@ impl MapGroups {
         grp: &MapGroupPhysics,
         writer: &mut W,
     ) -> anyhow::Result<usize> {
-        Ok(bincode::serde::encode_into_std_write(
-            grp,
-            writer,
-            bincode::config::standard(),
-        )?)
+        serialize_twmap_bincode(grp, writer)
     }
 
-    /// Decompresses the physics group, returns the amount of bytes read
-    pub fn decompress_physics_group(file: &[u8]) -> anyhow::Result<(Vec<u8>, usize)> {
+    /// Decompresses the physics group
+    pub fn decompress_physics_group(file: &[u8]) -> anyhow::Result<Vec<u8>> {
         crate::utils::decompress(file)
     }
 
-    /// Compresses the physics group, returns the amount of bytes written
-    pub fn compress_physics_group<W: std::io::Write>(
-        uncompressed_file: &[u8],
-        writer: &mut W,
-    ) -> anyhow::Result<()> {
-        crate::utils::compress(uncompressed_file, writer)
+    /// Compresses the physics group
+    pub fn compress_physics_group(uncompressed_file: &[u8]) -> anyhow::Result<Vec<u8>> {
+        crate::utils::compress(uncompressed_file)
     }
 
-    fn deserialize_design_groups(
-        uncompressed_file: &[u8],
-    ) -> anyhow::Result<(Vec<MapGroup>, usize)> {
-        Ok(bincode::serde::decode_from_slice::<Vec<MapGroup>, _>(
-            uncompressed_file,
-            bincode::config::standard(),
-        )?)
+    fn deserialize_design_groups(uncompressed_file: &[u8]) -> anyhow::Result<Vec<MapGroup>> {
+        deserialize_twmap_bincode::<Vec<MapGroup>>(uncompressed_file)
     }
 
     fn serialize_design_groups<W: std::io::Write>(
         grps: &Vec<MapGroup>,
         writer: &mut W,
     ) -> anyhow::Result<usize> {
-        Ok(bincode::serde::encode_into_std_write(
-            grps,
-            writer,
-            bincode::config::standard(),
-        )?)
+        serialize_twmap_bincode(grps, writer)
     }
 
-    /// Deserializes the foreground groups and returns the amount of bytes read
+    /// Deserializes the foreground groups
     pub(crate) fn deserialize_foreground_groups(
         uncompressed_file: &[u8],
-    ) -> anyhow::Result<(Vec<MapGroup>, usize)> {
+    ) -> anyhow::Result<Vec<MapGroup>> {
         Self::deserialize_design_groups(uncompressed_file)
     }
 
@@ -261,10 +245,10 @@ impl MapGroups {
         Self::serialize_design_groups(grps, writer)
     }
 
-    /// Deserializes the background groups and returns the amount of bytes read
+    /// Deserializes the background groups
     pub(crate) fn deserialize_background_groups(
         uncompressed_file: &[u8],
-    ) -> anyhow::Result<(Vec<MapGroup>, usize)> {
+    ) -> anyhow::Result<Vec<MapGroup>> {
         Self::deserialize_design_groups(uncompressed_file)
     }
 
@@ -276,91 +260,97 @@ impl MapGroups {
         Self::serialize_design_groups(grps, writer)
     }
 
-    /// Decompresses the background & foreground groups, returns the amount of bytes read
-    pub fn decompress_design_groups(file: &[u8]) -> anyhow::Result<(Vec<u8>, usize)> {
+    /// Decompresses the background & foreground groups
+    pub fn decompress_design_group(file: &[u8]) -> anyhow::Result<Vec<u8>> {
         crate::utils::decompress(file)
     }
 
-    /// Compresses the background & foreground groups, returns the amount of bytes read
-    pub fn compress_design_groups<W: std::io::Write>(
-        uncompressed_file: &[u8],
-        writer: &mut W,
-    ) -> anyhow::Result<()> {
-        crate::utils::compress(uncompressed_file, writer)
+    /// Compresses the background & foreground groups
+    pub fn compress_design_group(uncompressed_file: &[u8]) -> anyhow::Result<Vec<u8>> {
+        crate::utils::compress(uncompressed_file)
     }
 
-    /// Read the map's game group. returns the amount of bytes read.
-    pub(crate) fn read(file: &[u8], tp: &rayon::ThreadPool) -> anyhow::Result<(Self, usize)> {
-        let (physics_group_file, bytes_read) = Self::decompress_physics_group(file)?;
-        let (physics_group, design_groups) = tp.install(|| {
+    /// Read the map's game group.
+    pub(crate) fn read(reader: &MapFileReader, tp: &rayon::ThreadPool) -> anyhow::Result<Self> {
+        let physics_file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("groups/physics.twmap_bincode.zst"))
+                .ok_or_else(|| anyhow!("physics group was not found in map file"))?,
+        )?;
+        let bg_file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("groups/background.twmap_bincode.zst"))
+                .ok_or_else(|| anyhow!("background groups was not found in map file"))?,
+        )?;
+        let fg_file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("groups/foreground.twmap_bincode.zst"))
+                .ok_or_else(|| anyhow!("foreground groups was not found in map file"))?,
+        )?;
+        let (physics_group, background_groups, foreground_groups) = tp.install(|| {
             join_all!(
                 || {
-                    let (physics_group, _) = Self::deserialize_physics_group(&physics_group_file)?;
+                    let physics_group_file = Self::decompress_physics_group(physics_file)?;
+                    let physics_group = Self::deserialize_physics_group(&physics_group_file)?;
                     anyhow::Ok(physics_group)
                 },
                 || {
-                    let (design_groups_file, bytes_read_group) =
-                        Self::decompress_design_groups(&file[bytes_read..])?;
+                    let bg_group_file = Self::decompress_design_group(bg_file)?;
 
-                    let (background_groups, bytes_read) =
-                        Self::deserialize_background_groups(&design_groups_file)?;
-                    let (foreground_groups, _) =
-                        Self::deserialize_foreground_groups(&design_groups_file[bytes_read..])?;
-                    anyhow::Ok((bytes_read_group, background_groups, foreground_groups))
+                    let background_groups = Self::deserialize_background_groups(&bg_group_file)?;
+                    anyhow::Ok(background_groups)
+                },
+                || {
+                    let fg_group_file = Self::decompress_design_group(fg_file)?;
+
+                    let foreground_groups = Self::deserialize_foreground_groups(&fg_group_file)?;
+                    anyhow::Ok(foreground_groups)
                 }
             )
         });
-        let (bytes_read_group, background_groups, foreground_groups) = design_groups?;
 
-        Ok((
-            Self {
-                physics: physics_group?,
-                background: background_groups,
-                foreground: foreground_groups,
-            },
-            bytes_read + bytes_read_group,
-        ))
+        Ok(Self {
+            physics: physics_group?,
+            background: background_groups?,
+            foreground: foreground_groups?,
+        })
     }
 
-    /// Returns the physics group and the amount of bytes read
-    pub fn read_physics_group(file: &[u8]) -> anyhow::Result<(MapGroupPhysics, usize)> {
-        let (physics_group_file, bytes_read) = Self::decompress_physics_group(file)?;
+    /// Returns the physics group
+    pub fn read_physics_group(reader: &MapFileReader) -> anyhow::Result<MapGroupPhysics> {
+        let physics_file = tar_entry_to_file(
+            reader
+                .entries
+                .get(Path::new("groups/physics.twmap_bincode.zst"))
+                .ok_or_else(|| anyhow!("physics group was not found in map file"))?,
+        )?;
+        let physics_group_file = Self::decompress_physics_group(physics_file)?;
 
-        let (physics_group, _) = Self::deserialize_physics_group(&physics_group_file)?;
-        anyhow::Ok((physics_group, bytes_read))
-    }
-
-    /// Skip the design groups and returns the amount of bytes skipped
-    pub fn skip_design_group(file: &[u8]) -> anyhow::Result<usize> {
-        let (design_group_size, bytes_read) = crate::utils::compressed_size(file)?;
-        anyhow::Ok(design_group_size as usize + bytes_read)
+        let physics_group = Self::deserialize_physics_group(&physics_group_file)?;
+        anyhow::Ok(physics_group)
     }
 
     /// Write a map file to a writer
-    pub fn write<W: std::io::Write>(
-        &self,
-        writer: &mut W,
-        tp: &rayon::ThreadPool,
-    ) -> anyhow::Result<()> {
+    pub fn write(&self, tp: &rayon::ThreadPool) -> anyhow::Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let (physics, bg_fg) = tp.install(|| {
             tp.join(
                 || {
-                    let mut physics: Vec<u8> = Default::default();
                     let mut serialized_physics: Vec<u8> = Default::default();
                     Self::serialize_physics_group(&self.physics, &mut serialized_physics)?;
-                    Self::compress_physics_group(&serialized_physics, &mut physics)?;
-                    anyhow::Ok(physics)
+                    Self::compress_physics_group(&serialized_physics)
                 },
                 || {
-                    let mut bg_fg: Vec<u8> = Default::default();
-                    let (serialized_bg, serialized_fg) = tp.join(
+                    let (bg, fg) = tp.join(
                         || {
                             let mut serialized_bg: Vec<u8> = Default::default();
                             Self::serialize_background_groups(
                                 &self.background,
                                 &mut serialized_bg,
                             )?;
-                            anyhow::Ok(serialized_bg)
+                            Self::compress_design_group(&serialized_bg)
                         },
                         || {
                             let mut serialized_fg: Vec<u8> = Default::default();
@@ -368,20 +358,15 @@ impl MapGroups {
                                 &self.foreground,
                                 &mut serialized_fg,
                             )?;
-                            anyhow::Ok(serialized_fg)
+                            Self::compress_design_group(&serialized_fg)
                         },
                     );
-                    Self::compress_design_groups(
-                        &[serialized_bg?, serialized_fg?].concat(),
-                        &mut bg_fg,
-                    )?;
-                    anyhow::Ok(bg_fg)
+                    anyhow::Ok((bg?, fg?))
                 },
             )
         });
 
-        writer.write_all(&physics?)?;
-        writer.write_all(&bg_fg?)?;
-        Ok(())
+        let (bg, fg) = bg_fg?;
+        Ok((physics?, bg, fg))
     }
 }

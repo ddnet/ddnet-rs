@@ -194,7 +194,7 @@ impl MapTileLayerPhysicsTiles {
         }
     }
 
-    pub fn as_ref(&self) -> MapTileLayerPhysicsTilesRef {
+    pub fn as_ref(&self) -> MapTileLayerPhysicsTilesRef<'_> {
         match self {
             MapTileLayerPhysicsTiles::Arbitrary(tiles) => {
                 MapTileLayerPhysicsTilesRef::Arbitrary(tiles)

@@ -13,7 +13,7 @@ impl AutoMapVotes {
 
         let map_files: HashSet<PathBuf> = dir
             .into_iter()
-            .filter_map(|(p, _)| p.ends_with(".twmap").then::<PathBuf, _>(|| p.into()))
+            .filter_map(|(p, _)| p.ends_with(".twmap.tar").then::<PathBuf, _>(|| p.into()))
             .collect();
 
         let map_files = {

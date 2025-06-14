@@ -148,7 +148,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let rect = ui.painter().text(
                     pos,
                     egui::Align2::LEFT_TOP,
-                    format!("{}x", count),
+                    format!("{count}x"),
                     FontId::monospace(24.0),
                     Color32::WHITE,
                 );
@@ -182,7 +182,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                 let rect = ui.painter().text(
                     pos,
                     egui::Align2::LEFT_TOP,
-                    format!("{}x", count),
+                    format!("{count}x"),
                     FontId::monospace(24.0),
                     Color32::WHITE,
                 );

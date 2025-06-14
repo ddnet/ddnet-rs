@@ -392,8 +392,8 @@ impl LocalConsoleBuilder {
             let events = console_events.clone();
             list.push(ConsoleEntry::Cmd(ConsoleEntryCmd {
                 name: name.to_string(),
-                usage: format!("triggers a player action: {}", name),
-                description: format!("Triggers the player action: {}", name),
+                usage: format!("triggers a player action: {name}"),
+                description: format!("Triggers the player action: {name}"),
                 cmd: Rc::new(move |_config_engine, _config_game, _, _path| {
                     events.push(LocalConsoleEvent::LocalPlayerAction(action));
                     Ok(String::default())
@@ -420,7 +420,7 @@ impl LocalConsoleBuilder {
                     }
 
                     for i in 0..=9 {
-                        res.push(format!("numpad{}", i));
+                        res.push(format!("numpad{i}"));
                     }
                     res.push("numpad_subtract".to_string());
                     res.push("numpad_add".to_string());
@@ -430,7 +430,7 @@ impl LocalConsoleBuilder {
                     res.push("numpad_enter".to_string());
 
                     for i in 0..=9 {
-                        res.push(format!("digit{}", i));
+                        res.push(format!("digit{i}"));
                     }
 
                     res.push("page_up".to_string());

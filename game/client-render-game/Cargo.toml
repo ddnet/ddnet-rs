@@ -11,7 +11,6 @@ math = { path = "../../lib/math" }
 config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
-hiarc = { path = "../../lib/hiarc", features = ["derive"] }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
 
@@ -25,6 +24,7 @@ game-base = { path = "../game-base" }
 vanilla = { path = "../vanilla" }
 game-interface = { path = "../game-interface" }
 map = { path = "../map" }
+camera = { path = "../camera" }
 
 num-traits = "0.2.19"
 rayon = "1.10.0"

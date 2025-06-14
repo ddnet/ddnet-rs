@@ -14,7 +14,7 @@ use base::{
     hash::{generate_hash_for, Hash},
 };
 use base_io::io::IoFileSys;
-use game_base::datafile::{
+use legacy_map::datafile::{
     CDatafileWrapper, LegacyMapToNewOutput, LegacyMapToNewRes, MapFileImageReadOptions,
     MapFileLayersReadOptions, MapFileOpenOptions, MapFileSoundReadOptions,
 };

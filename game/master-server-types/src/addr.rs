@@ -149,7 +149,7 @@ impl serde::Serialize for Addr {
         S: serde::Serializer,
     {
         let mut buf: ArrayString<[u8; 128]> = ArrayString::new();
-        write!(&mut buf, "{}", self).unwrap();
+        write!(&mut buf, "{self}").unwrap();
         serializer.serialize_str(&buf)
     }
 }
@@ -212,8 +212,8 @@ impl fmt::Display for ParseRegisterAddrError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::ParseRegisterAddrError::*;
         match *self {
-            Url(e) => write!(f, "URL parse error: {}", e),
-            Protocol(e) => write!(f, "protocol parse error: {}", e),
+            Url(e) => write!(f, "URL parse error: {e}"),
+            Protocol(e) => write!(f, "protocol parse error: {e}"),
             HostNotConnectingAddressInvalid => write!(
                 f,
                 "register address must have domain connecting-address.invalid"
@@ -243,7 +243,7 @@ impl serde::Serialize for RegisterAddr {
         S: serde::Serializer,
     {
         let mut buf: ArrayString<[u8; 128]> = ArrayString::new();
-        write!(&mut buf, "{}", self).unwrap();
+        write!(&mut buf, "{self}").unwrap();
         serializer.serialize_str(&buf)
     }
 }

@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use base_io::io::{Io, IoFileSys};
+use base_io::io::IoFileSys;
 use game_config::config::ConfigGame;
 
-pub fn save(config: &ConfigGame, io: &Io) {
+pub fn save(config: &ConfigGame, io: &IoFileSys) {
     let save_str = config.to_json_string();
 
     if let Ok(save_str) = save_str {

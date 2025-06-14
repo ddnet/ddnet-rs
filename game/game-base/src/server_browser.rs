@@ -331,7 +331,15 @@ impl ServerBrowserData {
                     .info
                     .name
                     .to_lowercase()
-                    .contains(&filter.search.to_lowercase()))
+                    .contains(&filter.search.to_lowercase())
+                || server.info.players.iter().any(|p| {
+                    p.name
+                        .to_lowercase()
+                        .contains(&filter.search.to_lowercase())
+                        || p.clan
+                            .to_lowercase()
+                            .contains(&filter.search.to_lowercase())
+                }))
                 && (!filter.has_players || !server.info.players.is_empty())
                 && (!filter.filter_full_servers
                     || server.info.players.len() < server.info.max_ingame_players as usize)

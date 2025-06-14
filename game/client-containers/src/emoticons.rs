@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use arrayvec::ArrayVec;
 
-use client_extra::emoticon_split::Emoticon06Part;
+use assets_splitting::emoticon_split::Emoticon06Part;
 use game_interface::types::emoticons::{EmoticonType, EnumCount};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -39,12 +39,12 @@ impl LoadEmoticons {
                 &mut mem
             })?;
         let converted =
-            client_extra::emoticon_split::split_06_emoticon(img.data, img.width, img.height)?;
+            assets_splitting::emoticon_split::split_06_emoticon(img.data, img.width, img.height)?;
 
         let mut insert_part = |name: &str, part: Emoticon06Part| -> anyhow::Result<()> {
             let file = image_utils::png::save_png_image(&part.data, part.width, part.height)?;
 
-            files.insert(format!("{}.png", name).into(), file);
+            files.insert(format!("{name}.png").into(), file);
             Ok(())
         };
         insert_part("oop", converted.oop)?;

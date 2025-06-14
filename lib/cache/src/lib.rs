@@ -62,7 +62,7 @@ impl<const VERSION: usize> Cache<{ VERSION }> {
     fn cache_file_path(cache: &CacheImpl, hash: &Hash) -> (PathBuf, PathBuf) {
         let dir_name = Path::new("cache/")
             .join(Path::new(&cache.cache_name))
-            .join(Path::new(&format!("v{}", VERSION)));
+            .join(Path::new(&format!("v{VERSION}")));
         let hash_path = dir_name.join(Path::new(&format!("f_{}.cached", fmt_hash(hash))));
         (dir_name, hash_path)
     }
@@ -180,7 +180,7 @@ impl<const VERSION: usize> Cache<{ VERSION }> {
     fn cache_named_file_path(cache: &CacheImpl, name_path: &Path) -> PathBuf {
         let dir_name = Path::new("cache/named")
             .join(Path::new(&cache.cache_name))
-            .join(Path::new(&format!("v{}", VERSION)));
+            .join(Path::new(&format!("v{VERSION}")));
         dir_name.join(name_path)
     }
 

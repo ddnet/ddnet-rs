@@ -609,6 +609,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "assets-splitting"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "async-executor"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1336,6 +1343,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "camera"
+version = "0.1.0"
+dependencies = [
+ "graphics",
+ "graphics-types",
+ "hiarc",
+ "map",
+ "math",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,10 +1575,10 @@ dependencies = [
  "anyhow",
  "arrayvec 0.7.6",
  "assets-base",
+ "assets-splitting",
  "base",
  "base-io",
  "base-io-traits",
- "client-extra",
  "either",
  "fixed",
  "game-interface",
@@ -1602,7 +1620,6 @@ dependencies = [
  "graphics",
  "graphics-backend",
  "graphics-types",
- "hiarc",
  "log 0.4.27",
  "math",
  "pool",
@@ -1612,13 +1629,6 @@ dependencies = [
  "sound-backend",
  "ui-base",
  "ui-generic",
-]
-
-[[package]]
-name = "client-extra"
-version = "0.1.0"
-dependencies = [
- "anyhow",
 ]
 
 [[package]]
@@ -1709,6 +1719,7 @@ dependencies = [
  "base",
  "base-io",
  "bincode",
+ "camera",
  "client-containers",
  "config",
  "fixed",
@@ -1722,6 +1733,7 @@ dependencies = [
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
  "image-utils",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "math",
@@ -1729,6 +1741,7 @@ dependencies = [
  "num-traits",
  "pool",
  "rayon",
+ "rustc-hash 2.1.1",
  "serde",
  "sound",
  "strum 0.27.1",
@@ -1743,6 +1756,7 @@ version = "0.1.0"
 dependencies = [
  "base",
  "base-io",
+ "camera",
  "client-containers",
  "client-render",
  "client-render-base",
@@ -1755,7 +1769,6 @@ dependencies = [
  "game-interface",
  "graphics",
  "graphics-types",
- "hiarc",
  "map",
  "math",
  "num-traits",
@@ -2721,6 +2734,7 @@ dependencies = [
  "bincode",
  "binds",
  "bytes",
+ "camera",
  "chrono",
  "client-accounts",
  "client-console",
@@ -2765,7 +2779,7 @@ dependencies = [
  "hiarc",
  "image-utils",
  "input-binds",
- "legacy_proxy",
+ "legacy-proxy",
  "log 0.4.27",
  "map",
  "math",
@@ -3237,6 +3251,7 @@ dependencies = [
  "base-io",
  "base-io-traits",
  "bincode",
+ "camera",
  "client-containers",
  "client-notifications",
  "client-render-base",
@@ -3260,6 +3275,7 @@ dependencies = [
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
  "image-utils",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "map-convert-lib",
@@ -3576,10 +3592,10 @@ dependencies = [
 name = "emoticon-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -3796,10 +3812,10 @@ checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
 name = "extra-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -4138,21 +4154,13 @@ dependencies = [
  "base",
  "command-parser",
  "config",
- "flate2",
  "game-config",
  "game-interface",
- "graphics-types",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image-utils",
  "indexmap 2.9.0",
- "itertools 0.14.0",
- "map",
  "math",
- "num-derive",
- "num-traits",
  "pool",
- "rayon",
  "rustc-hash 2.1.1",
  "serde",
  "serde_with",
@@ -4184,10 +4192,10 @@ dependencies = [
 name = "game-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -4553,6 +4561,7 @@ dependencies = [
  "replace_with",
  "serde",
  "serde_json",
+ "strum 0.27.1",
  "thiserror 2.0.12",
  "thread-priority",
 ]
@@ -4616,6 +4625,7 @@ dependencies = [
  "num-traits",
  "pool",
  "serde",
+ "strum 0.27.1",
 ]
 
 [[package]]
@@ -4999,10 +5009,10 @@ dependencies = [
 name = "hud-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -5696,7 +5706,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
-name = "legacy_proxy"
+name = "legacy-map"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base",
+ "config",
+ "flate2",
+ "graphics-types",
+ "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
+ "hiarc",
+ "image-utils",
+ "itertools 0.14.0",
+ "map",
+ "math",
+ "num-derive",
+ "num-traits",
+ "rayon",
+ "serde",
+ "time",
+]
+
+[[package]]
+name = "legacy-proxy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -5711,7 +5743,9 @@ dependencies = [
  "game-interface",
  "game-network",
  "game-server",
+ "hex",
  "hexdump",
+ "legacy-map",
  "libtw2-gamenet-ddnet",
  "libtw2-net",
  "libtw2-packer",
@@ -5803,7 +5837,7 @@ dependencies = [
 [[package]]
 name = "libtw2-common"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "zerocopy 0.7.35",
@@ -5812,7 +5846,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-common"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5828,7 +5862,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-ddnet"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5843,7 +5877,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-snap"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "buffer",
  "libtw2-common",
@@ -5855,7 +5889,7 @@ dependencies = [
 [[package]]
 name = "libtw2-huffman"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5866,7 +5900,7 @@ dependencies = [
 [[package]]
 name = "libtw2-net"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5883,7 +5917,7 @@ dependencies = [
 [[package]]
 name = "libtw2-packer"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -5895,7 +5929,7 @@ dependencies = [
 [[package]]
 name = "libtw2-snapshot"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=d81eff37fcefdffbd309015e445b9c7cfd167b95#d81eff37fcefdffbd309015e445b9c7cfd167b95"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
 dependencies = [
  "buffer",
  "libtw2-common",
@@ -6154,6 +6188,7 @@ name = "map"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assets-base",
  "base",
  "base-fs",
  "base-io",
@@ -6165,6 +6200,7 @@ dependencies = [
  "flate2",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
+ "image-utils",
  "is_sorted",
  "lz4_flex",
  "math",
@@ -6202,7 +6238,7 @@ dependencies = [
  "base-fs",
  "base-io",
  "difference",
- "game-base",
+ "legacy-map",
  "map",
  "ogg-opus",
  "oxipng",
@@ -7486,10 +7522,10 @@ dependencies = [
 name = "part-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-base",
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
- "tar",
 ]
 
 [[package]]
@@ -9223,8 +9259,8 @@ checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 name = "skin-convert"
 version = "0.1.0"
 dependencies = [
+ "assets-splitting",
  "clap 4.5.37",
- "client-extra",
  "image-utils",
 ]
 
@@ -9607,6 +9643,7 @@ dependencies = [
  "graphics-types",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "math",
@@ -10919,6 +10956,7 @@ dependencies = [
  "game-interface",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
+ "legacy-map",
  "log 0.4.27",
  "map",
  "math",

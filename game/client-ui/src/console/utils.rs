@@ -477,7 +477,7 @@ pub fn try_apply_config_val(
                     let mut msgs: String = Default::default();
                     match err {
                         ConfigFromStrErr::PathErr(_) => {
-                            msgs.push_str(&format!("Parsing error: {}\n", err,));
+                            msgs.push_str(&format!("Parsing error: {err}\n",));
                         }
                         ConfigFromStrErr::FatalErr(_) => {
                             was_fatal = true;
@@ -485,13 +485,13 @@ pub fn try_apply_config_val(
                     }
                     match err_game {
                         ConfigFromStrErr::PathErr(_) => {
-                            msgs.push_str(&format!("Parsing error: {}\n", err_game,));
+                            msgs.push_str(&format!("Parsing error: {err_game}\n",));
                             was_fatal = false;
                         }
                         ConfigFromStrErr::FatalErr(_) => {}
                     }
                     if was_fatal {
-                        msgs.push_str(&format!("Parsing errors: {}, {}\n", err, err_game,));
+                        msgs.push_str(&format!("Parsing errors: {err}, {err_game}\n",));
                     }
                     msgs
                 })
@@ -529,7 +529,7 @@ pub fn run_command(
         let cmd = cmd.unwrap_full_or_partial_cmd_ref();
         match (entry_cmd.cmd)(config_engine, config_game, &cmd.cmd_text, &cmd.args) {
             Ok(msg) => Ok(msg),
-            Err(err) => Err(format!("Parsing error: {}\n", err)),
+            Err(err) => Err(format!("Parsing error: {err}\n")),
         }
     } else {
         let Some((args, cmd_text)) = (match cmd {
@@ -542,7 +542,7 @@ pub fn run_command(
                 }
             }
         }) else {
-            return Err(format!("Invalid argument: {:?}", cmd));
+            return Err(format!("Invalid argument: {cmd:?}"));
         };
 
         let set_val = syn_vec_to_config_val(&args);
@@ -564,15 +564,15 @@ pub fn run_command(
                         {
                             (var.on_set)(cmd_text);
                         }
-                        Ok(format!("Updated value for \"{}\": {}\n", cmd_text, cur_val))
+                        Ok(format!("Updated value for \"{cmd_text}\": {cur_val}\n"))
                     } else {
-                        Ok(format!("Current value for \"{}\": {}\n", cmd_text, cur_val))
+                        Ok(format!("Current value for \"{cmd_text}\": {cur_val}\n"))
                     }
                 }
                 Err(err) => Err(err),
             }
         } else {
-            Err(format!("Failed to apply command: {:?}", cmd))
+            Err(format!("Failed to apply command: {cmd:?}"))
         }
     }
 }

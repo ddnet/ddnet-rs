@@ -1,4 +1,4 @@
-pub mod loader;
+pub mod tar;
 pub mod verify;
 
 use std::collections::HashMap;

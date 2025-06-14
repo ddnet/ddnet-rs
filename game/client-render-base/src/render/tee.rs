@@ -1,8 +1,10 @@
 use client_containers::skins::{Skin, SkinMetrics, SkinTextures};
 use game_interface::types::render::character::TeeEye;
 use graphics::{
-    graphics::graphics::Graphics, handles::quad_container::quad_container::QuadContainer,
-    quad_container::Quad, streaming::quad_scope_begin,
+    graphics::graphics::Graphics,
+    handles::quad_container::quad_container::QuadContainer,
+    quad_container::Quad,
+    streaming::{quad_scope_begin, rotate_pos},
 };
 
 use graphics_types::rendering::{ColorRgba, State};
@@ -10,7 +12,6 @@ use hiarc::{hiarc_safer_rc_refcell, Hiarc};
 use math::math::{
     angle,
     vector::{ubvec4, vec2},
-    PI,
 };
 
 use super::animation::AnimState;
@@ -246,15 +247,19 @@ impl RenderTeeMath {
             y: -0.05 + direction.y * 0.10,
         } * render_size;
 
-        let eye_pos_left = vec2 {
-            x: body_pos.x - eye_separation + offset.x,
-            y: body_pos.y + offset.y,
-        };
+        let eye_left = rotate_pos(
+            &Default::default(),
+            body_rotation,
+            vec2::new(-eye_separation + offset.x, offset.y),
+        );
+        let eye_pos_left = body_pos + eye_left;
 
-        let eye_pos_right = vec2 {
-            x: body_pos.x + eye_separation + offset.x,
-            y: body_pos.y + offset.y,
-        };
+        let eye_right = rotate_pos(
+            &Default::default(),
+            body_rotation,
+            vec2::new(eye_separation + offset.x, offset.y),
+        );
+        let eye_pos_right = body_pos + eye_right;
 
         let eye_scale_left = vec2 {
             x: eye_scale / 0.4 * anim.left_eye.scale.x,
@@ -266,8 +271,8 @@ impl RenderTeeMath {
             y: eye_right_height / 0.4 * anim.right_eye.scale.y,
         };
 
-        let eye_rotation_left = anim.left_eye.rotation;
-        let eye_rotation_right = anim.right_eye.rotation;
+        let eye_rotation_left = anim.left_eye.rotation + body_rotation;
+        let eye_rotation_right = anim.right_eye.rotation - body_rotation;
 
         // feet
         let feet_width = render_size;
@@ -403,7 +408,7 @@ impl RenderTee {
     ) {
         let mut quad_scope = quad_scope_begin();
         quad_scope.set_state(state);
-        quad_scope.set_rotation(body_rotation * PI * 2.0);
+        quad_scope.set_rotation(body_rotation);
 
         let render_skin = skin.render_skin(body_color);
         let body_color = body_color.unwrap(alpha);
@@ -450,7 +455,7 @@ impl RenderTee {
 
         let mut quad_scope = quad_scope_begin();
         quad_scope.set_state(state);
-        quad_scope.set_rotation(eye_left_rotation * PI * 2.0);
+        quad_scope.set_rotation(eye_left_rotation);
         let render_skin = skin.render_skin(eye_left_color);
         let eye_left_color = eye_left_color.unwrap(alpha);
         let texture = &render_skin.left_eyes[tee_eye_index];
@@ -472,7 +477,7 @@ impl RenderTee {
         let tee_eye_index = eye_right as usize - TeeEye::Normal as usize;
         let mut quad_scope = quad_scope_begin();
         quad_scope.set_state(state);
-        quad_scope.set_rotation(eye_right_rotation * PI * 2.0);
+        quad_scope.set_rotation(eye_right_rotation);
         let render_skin = skin.render_skin(eye_right_color);
         let eye_right_color = eye_right_color.unwrap(alpha);
         let texture = &render_skin.right_eyes[tee_eye_index];
@@ -533,7 +538,7 @@ impl RenderTee {
 
         let mut quad_scope = quad_scope_begin();
         quad_scope.set_state(state);
-        quad_scope.set_rotation(foot_rotation * PI * 2.0);
+        quad_scope.set_rotation(foot_rotation);
 
         let indicate = !got_air_jump;
         let mut color_scale = 1.0;

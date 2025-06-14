@@ -485,8 +485,11 @@ pub mod simulation_pipe {
     impl SimulationPipeCharacters<'_> {
         pub fn get_characters_except_owner(
             &mut self,
-        ) -> CharactersViewMut<impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
-        {
+        ) -> CharactersViewMut<
+            '_,
+            impl Fn(&CharacterId) -> bool + '_,
+            impl Fn(&Character) -> bool + '_,
+        > {
             CharactersViewMut::new(
                 self.characters,
                 |id| *id != self.owner_character,
@@ -495,13 +498,17 @@ pub mod simulation_pipe {
         }
         pub fn get_characters(
             &mut self,
-        ) -> CharactersViewMut<impl Fn(&CharacterId) -> bool, impl Fn(&Character) -> bool> {
+        ) -> CharactersViewMut<'_, impl Fn(&CharacterId) -> bool, impl Fn(&Character) -> bool>
+        {
             CharactersViewMut::new(self.characters, |_| true, |c| !c.phased.is_phased())
         }
         pub fn get_owner_character_view(
             &mut self,
-        ) -> CharactersViewMut<impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
-        {
+        ) -> CharactersViewMut<
+            '_,
+            impl Fn(&CharacterId) -> bool + '_,
+            impl Fn(&Character) -> bool + '_,
+        > {
             CharactersViewMut::new(
                 self.characters,
                 |id| *id == self.owner_character,
@@ -542,15 +549,18 @@ pub mod simulation_pipe {
     impl SimulationPipeOwnerlessCharacters<'_> {
         pub fn characters(
             &self,
-        ) -> CharactersView<impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
+        ) -> CharactersView<'_, impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
         {
             CharactersView::new(self.characters, |_| true, |v| !v.phased.is_phased())
         }
 
         pub fn characters_mut(
             &mut self,
-        ) -> CharactersViewMut<impl Fn(&CharacterId) -> bool + '_, impl Fn(&Character) -> bool + '_>
-        {
+        ) -> CharactersViewMut<
+            '_,
+            impl Fn(&CharacterId) -> bool + '_,
+            impl Fn(&Character) -> bool + '_,
+        > {
             CharactersViewMut::new(self.characters, |_| true, |v| !v.phased.is_phased())
         }
     }

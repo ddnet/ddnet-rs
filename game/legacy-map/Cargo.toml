@@ -1,0 +1,27 @@
+[package]
+name = "legacy-map"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image-utils = { path = "../../lib/image-utils" }
+graphics-types = { path = "../../lib/graphics-types" }
+hiarc = { path = "../../lib/hiarc", features = ["derive"] }
+math = { path = "../../lib/math" }
+base = { path = "../../lib/base" }
+config = { path = "../../lib/config" }
+
+map = { path = "../map" }
+
+rayon = "1.10.0"
+num-derive = "0.4.2"
+flate2 = "1.1.1"
+itertools = "0.14.0"
+num-traits = "0.2.19"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+serde = { version = "1.0.219", features = ["derive"] }
+time = { version = "0.3.41", features = ["serde"] }
+
+[package.metadata.cargo-machete]
+ignored = ["num-traits"]

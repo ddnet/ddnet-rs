@@ -382,7 +382,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         stream_receive_window: Option<u32>,
     ) -> tokio::task::JoinHandle<()> {
         let remote_addr = conn.remote_addr();
-        log::debug!("handling connecting request for {:?}", remote_addr);
+        log::debug!("handling connecting request for {remote_addr:?}");
 
         let connections_clone = connections.clone();
         let mut game_event_generator_clone = game_event_generator.clone();

@@ -1,5 +1,6 @@
 use std::{borrow::Borrow, time::Duration};
 
+use camera::{Camera, CameraInterface};
 use hiarc::Hiarc;
 use map::{
     map::groups::{layers::design::SoundShape, MapGroupAttr},
@@ -22,8 +23,6 @@ use super::{
     map::RenderMap,
     map_buffered::{ClientMapBuffered, MapSoundProcessInfo, SoundLayerSounds},
     map_with_visual::{MapVisual, MapVisualLayer},
-    render_pipe::Camera,
-    render_tools::RenderTools,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -127,7 +126,7 @@ impl MapSoundProcess {
         sounds: &[MapResourceRefSkeleton<impl Borrow<SoundObject>>],
         group_attr: &MapGroupAttr,
         layer: &MapLayerSoundSkeleton<S>,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         map_sound_volume: f64,
     ) where
         S: Borrow<SoundLayerSounds>,
@@ -174,7 +173,7 @@ impl MapSoundProcess {
                 }
 
                 let interact = Self::camera_sound_interaction(
-                    &RenderTools::pos_to_group(camera.pos, Some(group_attr)),
+                    &Camera::pos_to_group(camera.pos(), Some(group_attr)),
                     &pos,
                     rot,
                     &sound.shape,
@@ -182,9 +181,7 @@ impl MapSoundProcess {
                 );
                 // check if the sound should play, else play or update
                 let sounds: &SoundLayerSounds = layer.user.borrow();
-                if interact.is_some() {
-                    let (falloff, panning) = interact.unwrap();
-
+                if let Some((falloff, panning)) = interact {
                     let panning = if sound.panning { panning } else { 0.5 };
 
                     let base_props = SoundPlayBaseProps {
@@ -228,7 +225,7 @@ impl MapSoundProcess {
         map: &MapVisual,
         sound_layers: impl Iterator<Item = &'a MapSoundProcessInfo>,
         layer_ty: SoundLayerType,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         map_sound_volume: f64,
     ) {
         let groups = match layer_ty {
@@ -261,7 +258,7 @@ impl MapSoundProcess {
         include_last_anim_point: bool,
         map: &MapVisual,
         buffered_map: &ClientMapBuffered,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         map_sound_volume: f64,
     ) {
         map.user.sound_scene.stay_active();
@@ -283,7 +280,7 @@ impl MapSoundProcess {
         include_last_anim_point: bool,
         map: &MapVisual,
         buffered_map: &ClientMapBuffered,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
         map_sound_volume: f64,
     ) {
         map.user.sound_scene.stay_active();

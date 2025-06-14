@@ -3,9 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use assets_base::tar::{new_tar, tar_add_file, TarBuilder};
+use assets_splitting::particles_split::Particles06Part;
 use clap::Parser;
-use client_extra::particles_split::Particles06Part;
-use tar::Header;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -20,18 +20,12 @@ struct Args {
 }
 
 struct TarFile {
-    file: tar::Builder<Vec<u8>>,
+    file: TarBuilder,
 }
 
 enum WriteMode<'a> {
     Tar(&'a mut HashMap<String, TarFile>),
     Disk,
-}
-
-fn new_tar() -> TarFile {
-    let mut builder = tar::Builder::new(Vec::new());
-    builder.mode(tar::HeaderMode::Deterministic);
-    TarFile { file: builder }
 }
 
 fn write_part(write_mode: &mut WriteMode<'_>, part: Particles06Part, output: &Path, name: &str) {
@@ -40,21 +34,9 @@ fn write_part(write_mode: &mut WriteMode<'_>, part: Particles06Part, output: &Pa
         WriteMode::Tar(files) => {
             let tar = files
                 .entry(output.to_string_lossy().to_string())
-                .or_insert_with(new_tar);
+                .or_insert_with(|| TarFile { file: new_tar() });
 
-            let mut header = Header::new_gnu();
-            header.set_cksum();
-            header.set_size(png.len() as u64);
-            header.set_mode(0o644);
-            header.set_uid(1000);
-            header.set_gid(1000);
-            tar.file
-                .append_data(
-                    &mut header,
-                    format!("{name}.png"),
-                    std::io::Cursor::new(&png),
-                )
-                .unwrap();
+            tar_add_file(&mut tar.file, format!("{name}.png"), &png);
         }
         WriteMode::Disk => {
             std::fs::write(output.join(format!("{name}.png")), png).unwrap();
@@ -74,7 +56,8 @@ fn main() {
         })
         .unwrap();
     let converted =
-        client_extra::particles_split::split_06_particles(img.data, img.width, img.height).unwrap();
+        assets_splitting::particles_split::split_06_particles(img.data, img.width, img.height)
+            .unwrap();
 
     let mut tar_files: HashMap<String, TarFile> = Default::default();
     let mut write_mode = if args.tar {

@@ -1,22 +1,13 @@
 use std::time::Duration;
 
+use camera::CameraInterface;
 use client_containers::{container::ContainerKey, entities::EntitiesContainer};
 use game_config::config::ConfigMap;
 use game_interface::types::game::NonZeroGameTickType;
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
 
-use math::math::vector::vec2;
-
 use super::{map_buffered::ClientMapBuffered, map_with_visual::MapVisual};
-
-#[derive(Debug, Hiarc)]
-pub struct Camera {
-    pub pos: vec2,
-    pub zoom: f32,
-    pub forced_aspect_ratio: Option<f32>,
-    pub parallax_aware_zoom: bool,
-}
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]
 pub struct GameTimeInfo {
@@ -31,11 +22,7 @@ pub struct RenderPipelineBase<'a> {
     pub cur_time: &'a Duration,
     pub cur_anim_time: &'a Duration,
     pub include_last_anim_point: bool,
-    pub camera: &'a Camera,
-
-    pub entities_container: &'a mut EntitiesContainer,
-    pub entities_key: Option<&'a ContainerKey>,
-    pub physics_group_name: &'a str,
+    pub camera: &'a dyn CameraInterface,
 
     pub map_sound_volume: f64,
 }
@@ -53,10 +40,7 @@ impl<'a> RenderPipeline<'a> {
         cur_time: &'a Duration,
         cur_anim_time: &'a Duration,
         include_last_anim_point: bool,
-        camera: &'a Camera,
-        entities_container: &'a mut EntitiesContainer,
-        entities_key: Option<&'a ContainerKey>,
-        physics_group_name: &'a str,
+        camera: &'a dyn CameraInterface,
         map_sound_volume: f64,
     ) -> RenderPipeline<'a> {
         RenderPipeline {
@@ -67,12 +51,34 @@ impl<'a> RenderPipeline<'a> {
                 cur_anim_time,
                 include_last_anim_point,
                 camera,
-                entities_container,
-                entities_key,
-                physics_group_name,
                 map_sound_volume,
             },
             buffered_map,
+        }
+    }
+}
+
+pub struct RenderPipelinePhysics<'a> {
+    pub base: &'a RenderPipelineBase<'a>,
+
+    pub entities_container: &'a mut EntitiesContainer,
+    pub entities_key: Option<&'a ContainerKey>,
+    pub physics_group_name: &'a str,
+}
+
+impl<'a> RenderPipelinePhysics<'a> {
+    pub fn new(
+        base: &'a RenderPipelineBase<'a>,
+        entities_container: &'a mut EntitiesContainer,
+        entities_key: Option<&'a ContainerKey>,
+        physics_group_name: &'a str,
+    ) -> RenderPipelinePhysics<'a> {
+        RenderPipelinePhysics {
+            base,
+
+            entities_container,
+            entities_key,
+            physics_group_name,
         }
     }
 }

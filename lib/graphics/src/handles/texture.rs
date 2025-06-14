@@ -10,7 +10,9 @@ pub mod texture {
     };
     use hiarc::{hiarc_safer_rc_refcell, Hiarc};
 
-    use crate::handles::backend::backend::GraphicsBackendHandle;
+    use crate::handles::{
+        backend::backend::GraphicsBackendHandle, canvas::canvas::OffscreenCanvas,
+    };
 
     #[hiarc_safer_rc_refcell]
     #[derive(Debug, Hiarc)]
@@ -163,7 +165,7 @@ pub mod texture {
         None,
         Texture(TextureContainer),
         ColorAttachmentOfPreviousPass,
-        ColorAttachmentOfOffscreen(u128),
+        ColorAttachmentOfOffscreen(OffscreenCanvas),
     }
 
     impl From<TextureType> for StateTexture {
@@ -175,7 +177,7 @@ pub mod texture {
                     StateTexture::ColorAttachmentOfPreviousPass
                 }
                 TextureType::ColorAttachmentOfOffscreen(offscreen_id) => {
-                    StateTexture::ColorAttachmentOfOffscreen(offscreen_id)
+                    StateTexture::ColorAttachmentOfOffscreen(offscreen_id.get_index_unsafe())
                 }
             }
         }

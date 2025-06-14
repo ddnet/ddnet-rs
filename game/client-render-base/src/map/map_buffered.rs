@@ -3,7 +3,6 @@ pub mod graphic_tile;
 
 use std::{borrow::BorrowMut, collections::HashMap, ops::Range, sync::Arc};
 
-use game_base::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -14,6 +13,7 @@ use graphics::{
     },
 };
 use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use legacy_map::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 use map::{
     map::{
         groups::{
@@ -48,15 +48,19 @@ use graphics_types::{
     commands::{CommandUpdateBufferObjectRegion, CommandUpdateShaderStorageRegion},
     types::{GraphicsBackendMemory, GraphicsMemoryAllocationType},
 };
+use rustc_hash::FxHashSet;
 use sound::{
     scene_object::SceneObject, sound_listener::SoundListener, sound_object::SoundObject,
     sound_play_handle::SoundPlayHandle, types::SoundPlayBaseProps,
 };
 
-use crate::map::map_with_visual::{
-    MapVisualConfig, MapVisualImage2dArray, MapVisualLayerArbitrary, MapVisualLayerQuad,
-    MapVisualLayerSound, MapVisualLayerTile, MapVisualMetadata, MapVisualPhysicsLayer,
-    MapVisualProps,
+use crate::map::{
+    map_pipeline::GRAPHICS_MAX_QUADS_RENDER_COUNT,
+    map_with_visual::{
+        MapVisualConfig, MapVisualImage2dArray, MapVisualLayerArbitrary, MapVisualLayerQuad,
+        MapVisualLayerSound, MapVisualLayerTile, MapVisualMetadata, MapVisualPhysicsLayer,
+        MapVisualProps,
+    },
 };
 
 use self::{
@@ -198,9 +202,41 @@ pub struct QuadVisual {
     pub index_buffer_byte_offset: usize,
 }
 
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq)]
+pub enum QuadVisualRangeAnim {
+    NoAnim,
+    ColorAnim {
+        anim: usize,
+        anim_offset: time::Duration,
+    },
+    PosAnim {
+        anim: usize,
+        anim_offset: time::Duration,
+    },
+    FullAnim {
+        pos: usize,
+        pos_offset: time::Duration,
+        color: usize,
+        color_offset: time::Duration,
+    },
+    /// Too many quads with alternating anims
+    Chaos,
+}
+
+#[derive(Debug, Hiarc, Clone)]
+pub struct QuadVisualRange {
+    pub anim: QuadVisualRangeAnim,
+    pub range: Range<usize>,
+}
+
 #[derive(Debug, Hiarc, Clone)]
 pub struct QuadLayerVisuals {
     pub buffer_object_index: Option<BufferObject>,
+    pub draw_ranges: Vec<QuadVisualRange>,
+    /// distinct pos anims in this layer
+    pub pos_anims: Vec<(usize, time::Duration)>,
+    /// distinct color anims in this layer
+    pub color_anims: Vec<(usize, time::Duration)>,
 }
 
 #[hiarc_safer_rc_refcell]
@@ -413,10 +449,20 @@ pub struct MapBufferPhysicsTileLayer {
 }
 
 #[derive(Debug, Default)]
+struct QuadVisualExtra {
+    draw_ranges: Vec<QuadVisualRange>,
+    // distinct pos & color anims
+    pos_anims: Vec<(usize, time::Duration)>,
+    color_anims: Vec<(usize, time::Duration)>,
+}
+
+#[derive(Debug, Default)]
 pub struct ClientMapBufferQuadLayer {
     mem: Option<GraphicsBackendMemory>,
     quad_count_for_indices: u64,
     render_info: MapRenderInfo,
+
+    extra: QuadVisualExtra,
 }
 
 pub struct ClientMapBufferUploadData {
@@ -862,6 +908,12 @@ impl ClientMapBuffered {
         let ClientMapBufferQuadLayer {
             mem: raw_data,
             quad_count_for_indices,
+            extra:
+                QuadVisualExtra {
+                    draw_ranges,
+                    pos_anims,
+                    color_anims,
+                },
             ..
         } = upload_data;
         if raw_data
@@ -875,10 +927,16 @@ impl ClientMapBuffered {
                 buffer_object_index: Some(
                     buffer_object_handle.create_buffer_object(raw_data.unwrap()),
                 ),
+                draw_ranges,
+                pos_anims,
+                color_anims,
             }
         } else {
             QuadLayerVisuals {
                 buffer_object_index: None,
+                draw_ranges,
+                pos_anims,
+                color_anims,
             }
         }
     }
@@ -1236,7 +1294,7 @@ impl ClientMapBuffered {
                 }
                 if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                     // Ignore the error, but log it.
-                    log::debug!("err while flushing memory: {}", err);
+                    log::debug!("err while flushing memory: {err}");
                 }
                 Some(upload_data_buffer)
             } else {
@@ -1260,7 +1318,7 @@ impl ClientMapBuffered {
                 }
                 if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                     // Ignore the error, but log it.
-                    log::debug!("err while flushing memory: {}", err);
+                    log::debug!("err while flushing memory: {err}");
                 }
                 Some(upload_data_buffer)
             } else {
@@ -1311,6 +1369,94 @@ impl ClientMapBuffered {
         tmp_quads_textured
     }
 
+    fn quad_visual_ranges(quads: &[Quad]) -> QuadVisualExtra {
+        if quads.is_empty() {
+            return Default::default();
+        }
+
+        fn quad_to_range_anim(q: &Quad) -> QuadVisualRangeAnim {
+            let color = q.color_anim;
+            let pos = q.pos_anim;
+            if let Some((color, pos)) = color.zip(pos) {
+                QuadVisualRangeAnim::FullAnim {
+                    pos,
+                    pos_offset: q.pos_anim_offset,
+                    color,
+                    color_offset: q.color_anim_offset,
+                }
+            } else if let Some(color) = color {
+                QuadVisualRangeAnim::ColorAnim {
+                    anim: color,
+                    anim_offset: q.color_anim_offset,
+                }
+            } else if let Some(pos) = pos {
+                QuadVisualRangeAnim::PosAnim {
+                    anim: pos,
+                    anim_offset: q.pos_anim_offset,
+                }
+            } else {
+                QuadVisualRangeAnim::NoAnim
+            }
+        }
+
+        let quad = &quads[0];
+        let mut ranges = vec![];
+        ranges.push(QuadVisualRange {
+            anim: quad_to_range_anim(quad),
+            range: 0..0,
+        });
+
+        let mut pos_anims: FxHashSet<(usize, time::Duration)> = Default::default();
+        let mut color_anims: FxHashSet<(usize, time::Duration)> = Default::default();
+
+        quads.iter().enumerate().for_each(|(i, quad)| {
+            let anim = quad_to_range_anim(quad);
+
+            if anim != ranges.last().unwrap().anim {
+                ranges.push(QuadVisualRange { anim, range: i..i });
+            }
+            ranges.last_mut().unwrap().range.end += 1;
+
+            if let Some(pos_anim) = quad.pos_anim {
+                pos_anims.insert((pos_anim, quad.pos_anim_offset));
+            }
+            if let Some(color_anim) = quad.color_anim {
+                color_anims.insert((color_anim, quad.color_anim_offset));
+            }
+        });
+
+        // convert ranges with quads less than 64 to chaos
+        let mut res_ranges: Vec<QuadVisualRange> = vec![];
+        if ranges.len() > 1 {
+            for range in ranges {
+                let quad_count = range.range.end - range.range.start;
+                if quad_count < GRAPHICS_MAX_QUADS_RENDER_COUNT {
+                    if res_ranges
+                        .last_mut()
+                        .is_some_and(|r| matches!(r.anim, QuadVisualRangeAnim::Chaos))
+                    {
+                        res_ranges.last_mut().unwrap().range.end = range.range.end;
+                    } else {
+                        res_ranges.push(QuadVisualRange {
+                            anim: QuadVisualRangeAnim::Chaos,
+                            range: range.range,
+                        });
+                    }
+                } else {
+                    res_ranges.push(range);
+                }
+            }
+        } else {
+            res_ranges = ranges;
+        }
+
+        QuadVisualExtra {
+            draw_ranges: res_ranges,
+            pos_anims: pos_anims.into_iter().collect(),
+            color_anims: color_anims.into_iter().collect(),
+        }
+    }
+
     fn upload_quad_layer_buffer(
         attr: &MapLayerQuadsAttrs,
         quads: &[Quad],
@@ -1343,9 +1489,10 @@ impl ClientMapBuffered {
 
             if let Err(err) = graphics_mt.try_flush_mem(&mut upload_data_buffer, false) {
                 // Ignore the error, but log it.
-                log::debug!("err while flushing memory: {}", err);
+                log::debug!("err while flushing memory: {err}");
             }
 
+            let extra = Self::quad_visual_ranges(quads);
             Some(ClientMapBufferQuadLayer {
                 mem: Some(upload_data_buffer),
                 quad_count_for_indices: quads.len() as u64,
@@ -1353,6 +1500,7 @@ impl ClientMapBuffered {
                     group_index,
                     layer_index,
                 },
+                extra,
             })
         } else {
             None
@@ -2467,9 +2615,12 @@ impl ClientMapBuffered {
         });
 
         let upload_data_len = upload_data_buffer.len();
-        layer
-            .user
-            .borrow_mut()
+        let quad_visuals = layer.user.borrow_mut();
+        let extra = Self::quad_visual_ranges(&layer.layer.quads);
+        quad_visuals.draw_ranges = extra.draw_ranges;
+        quad_visuals.pos_anims = extra.pos_anims;
+        quad_visuals.color_anims = extra.color_anims;
+        quad_visuals
             .buffer_object_index
             .as_ref()
             .unwrap()

@@ -125,7 +125,7 @@ pub enum Game {
     /// the game is connecting
     Connecting(ConnectingGame),
     /// the game is loading
-    Loading(LoadingGame),
+    Loading(Box<LoadingGame>),
     WaitingForFirstSnapshot(Box<ActiveGame>),
     Active(Box<ActiveGame>),
     Err(anyhow::Error),
@@ -168,12 +168,7 @@ impl Game {
                 let servers = MainMenuUi::download_server_list(&http).await?;
                 let server = servers
                     .iter()
-                    .find(|server| {
-                        server
-                            .addresses
-                            .iter()
-                            .any(|server_addr| *server_addr == addr)
-                    })
+                    .find(|server| server.addresses.contains(&addr))
                     .ok_or_else(|| anyhow!("Server was not found in the server list"));
                 match (server_cert, server) {
                     (ServerCertMode::Unknown, Err(err)) => Err(err),
@@ -337,7 +332,7 @@ impl Game {
             in_memory: None,
         };
 
-        Self::Loading(LoadingGame {
+        Self::Loading(Box::new(LoadingGame {
             network,
             resource_download_server: props.resource_download_server.clone(),
             map: ClientMapLoading::new(
@@ -375,7 +370,7 @@ impl Game {
             },
             send_input_every_tick,
             server_options,
-        })
+        }))
     }
 
     pub fn player_net_infos(
@@ -555,22 +550,23 @@ impl Game {
                     })
                 }
             }
-            Game::Loading(LoadingGame {
-                network,
-                mut map,
-                ping,
-                prediction_timer,
-                hint_start_camera_pos,
-                demo_recorder_props,
-                spatial_world,
-                auto_cleanup,
-                connect,
-                base,
-                resource_download_server,
-                local,
-                send_input_every_tick,
-                server_options,
-            }) => {
+            Game::Loading(loading) => {
+                let LoadingGame {
+                    network,
+                    mut map,
+                    ping,
+                    prediction_timer,
+                    hint_start_camera_pos,
+                    demo_recorder_props,
+                    spatial_world,
+                    auto_cleanup,
+                    connect,
+                    base,
+                    resource_download_server,
+                    local,
+                    send_input_every_tick,
+                    server_options,
+                } = *loading;
                 if map.is_fully_loaded() {
                     network.send_unordered_to_server(&ClientToServerMessage::Ready(MsgClReady {
                         players: Self::player_net_infos(&local.expected_local_players, config_game),
@@ -610,7 +606,7 @@ impl Game {
                         .log("Map fully loaded, waiting for first snapshot from server now.");
                     Self::WaitingForFirstSnapshot(Box::new(ActiveGame {
                         network,
-                        map,
+                        map: *map,
 
                         auto_demo_recorder: Some(auto_demo_recorder),
                         demo_recorder_props,
@@ -664,7 +660,7 @@ impl Game {
                             .log
                             .set_mode(ConnectModes::ConnectingErr { msg: err });
                     }
-                    Self::Loading(LoadingGame {
+                    Self::Loading(Box::new(LoadingGame {
                         network,
                         map,
                         ping,
@@ -682,7 +678,7 @@ impl Game {
                         local,
                         send_input_every_tick,
                         server_options,
-                    })
+                    }))
                 }
             }
             Game::Err(err) => {

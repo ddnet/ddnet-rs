@@ -19,8 +19,8 @@ use super::{
     render_group::{ColorWriteMaskType, StencilOpType},
     render_pass::CanvasSetup,
     vulkan_types::{
-        EVulkanBackendBlendModes, EVulkanBackendClipModes, PipelineContainer,
-        PipelineContainerItem, RenderPassType,
+        CanvasClipModes, PipelineContainer, PipelineContainerItem, RenderPassType,
+        SupportedBlendModes,
     },
 };
 
@@ -64,17 +64,17 @@ impl<'a> RenderManager<'a> {
 
     fn get_blend_mode_index(state: &State) -> usize {
         match state.blend_mode {
-            BlendType::None => EVulkanBackendBlendModes::None as usize,
-            BlendType::Alpha => EVulkanBackendBlendModes::Alpha as usize,
-            BlendType::Additive => EVulkanBackendBlendModes::Additive as usize,
+            BlendType::None => SupportedBlendModes::None as usize,
+            BlendType::Alpha => SupportedBlendModes::Alpha as usize,
+            BlendType::Additive => SupportedBlendModes::Additive as usize,
         }
     }
 
     fn get_dynamic_mode_index_from_exec_buffer(exec_buffer: &RenderCommandExecuteBuffer) -> usize {
         if exec_buffer.has_dynamic_state {
-            EVulkanBackendClipModes::DynamicScissorAndViewport as usize
+            CanvasClipModes::DynamicScissorAndViewport as usize
         } else {
-            EVulkanBackendClipModes::None as usize
+            CanvasClipModes::None as usize
         }
     }
 
@@ -151,7 +151,9 @@ impl<'a> RenderManager<'a> {
                                 &creation_data.pipeline_cache,
                             );
                             let pipelines = pipeline_manager
-                                .create_graphics_pipeline_ex(&[creation_props.attr.clone()])
+                                .create_graphics_pipeline_ex(std::slice::from_ref(
+                                    &creation_props.attr,
+                                ))
                                 .unwrap();
                             pipeline_and_layout.store(Arc::new(Some(pipelines)));
                         }
@@ -279,7 +281,7 @@ impl<'a> RenderManager<'a> {
 
         let dynamic_state_index: usize =
             Self::get_dynamic_mode_index_from_exec_buffer(self.exec_buffer);
-        if dynamic_state_index == EVulkanBackendClipModes::DynamicScissorAndViewport as usize {
+        if dynamic_state_index == CanvasClipModes::DynamicScissorAndViewport as usize {
             unsafe {
                 self.device.device.cmd_set_viewport(
                     self.command_buffer.command_buffer,

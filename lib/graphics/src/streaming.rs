@@ -5,17 +5,23 @@ use graphics_types::{
 use hiarc::Hiarc;
 use math::math::vector::{vec2, vec4};
 
-pub fn rotate(center: &vec2, rotation: f32, points: &mut [GlVertex]) {
+#[inline(always)]
+pub fn rotate_pos(center: &vec2, rotation: f32, point: vec2) -> vec2 {
     let c = rotation.cos();
     let s = rotation.sin();
 
+    let x = point.x - center.x;
+    let y = point.y - center.y;
+    vec2 {
+        x: x * c - y * s + center.x,
+        y: x * s + y * c + center.y,
+    }
+}
+
+pub fn rotate(center: &vec2, rotation: f32, points: &mut [GlVertex]) {
     for point in points.iter_mut() {
-        let x = point.get_pos().x - center.x;
-        let y = point.get_pos().y - center.y;
-        point.set_pos(&vec2 {
-            x: x * c - y * s + center.x,
-            y: x * s + y * c + center.y,
-        });
+        let pos = point.get_pos();
+        point.set_pos(&rotate_pos(center, rotation, vec2::new(pos.x, pos.y)));
     }
 }
 

@@ -56,7 +56,7 @@ pub mod character_pos {
         }
 
         #[inline]
-        fn entry(&mut self, index: u32) -> WorldMapEntry {
+        fn entry(&mut self, index: u32) -> WorldMapEntry<'_> {
             match self {
                 WorldMap::Hashed { map, world_pool } => WorldMapEntry::Hashed {
                     entry: map.entry(index),
@@ -188,12 +188,12 @@ pub mod character_pos {
         }
 
         #[inline]
-        fn get_at_index_mut(world: &mut WorldMap, index: u32) -> WorldMapEntry {
+        fn get_at_index_mut(world: &mut WorldMap, index: u32) -> WorldMapEntry<'_> {
             world.entry(index)
         }
 
         #[inline]
-        fn get_at_mut(&mut self, pos: &usvec2) -> WorldMapEntry {
+        fn get_at_mut(&mut self, pos: &usvec2) -> WorldMapEntry<'_> {
             let index = self.index_at(pos);
             Self::get_at_index_mut(&mut self.world, index)
         }

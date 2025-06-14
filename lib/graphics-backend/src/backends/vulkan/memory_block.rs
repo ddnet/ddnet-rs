@@ -15,7 +15,10 @@ fn verbose_allocated_memory(size: vk::DeviceSize, mem_usage: MemoryBlockType) {
         MemoryBlockType::Stream => "stream",
         MemoryBlockType::Staging => "staging buffer",
     };
-    log::info!(target: "vulkan", "allocated chunk of memory with size: {} ({})", size, usage_str);
+    log::info!(
+        target: "vulkan",
+        "allocated chunk of memory with size: {size} ({usage_str})"
+    );
 }
 
 fn verbose_deallocated_memory(size: vk::DeviceSize, mem_usage: MemoryBlockType) {
@@ -25,7 +28,10 @@ fn verbose_deallocated_memory(size: vk::DeviceSize, mem_usage: MemoryBlockType) 
         MemoryBlockType::Stream => "stream",
         MemoryBlockType::Staging => "staging buffer",
     };
-    log::info!(target: "vulkan", "deallocated chunk of memory with size: {} ({})", size, usage_str);
+    log::info!(
+        target: "vulkan",
+        "deallocated chunk of memory with size: {size} ({usage_str})"
+    );
 }
 
 #[derive(Debug, Clone, Hiarc)]

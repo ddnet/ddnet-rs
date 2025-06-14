@@ -2,8 +2,9 @@
 
 use std::{cell::RefCell, collections::VecDeque, sync::Arc, time::Duration};
 
-use crate::{map::render_pipe::Camera, render::canvas_mapping::CanvasMappingIngame};
+use crate::render::canvas_mapping::CanvasMappingIngame;
 use base::linked_hash_map_view::FxLinkedHashMap;
+use camera::CameraInterface;
 use client_containers::{
     container::ContainerKey,
     particles::{ParticleType, ParticlesContainer},
@@ -243,18 +244,12 @@ impl ParticleManager {
         group: ParticleGroup,
         particle_container: &mut ParticlesContainer,
         character_infos: &FxLinkedHashMap<CharacterId, CharacterInfo>,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
     ) {
         if !self.particle_groups[group as usize].is_empty() {
             let mut state = State::new();
-            let center = camera.pos;
-            self.canvas_mapping.map_canvas_for_ingame_items(
-                &mut state,
-                center.x,
-                center.y,
-                camera.zoom,
-                camera.forced_aspect_ratio,
-            );
+            self.canvas_mapping
+                .map_canvas_for_ingame_items(&mut state, camera);
 
             let p = &self.particle_groups[group as usize][0];
             let mut alpha = p.color.a;
@@ -376,7 +371,7 @@ impl ParticleManager {
         start_group: ParticleGroup,
         particle_container: &mut ParticlesContainer,
         character_infos: &FxLinkedHashMap<CharacterId, CharacterInfo>,
-        camera: &Camera,
+        camera: &dyn CameraInterface,
     ) {
         for i in start_group as usize..ParticleGroup::Count as usize {
             self.render_group(

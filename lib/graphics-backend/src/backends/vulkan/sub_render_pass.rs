@@ -9,8 +9,9 @@ use graphics_backend_traits::plugin::{
 };
 use hiarc::Hiarc;
 use num_traits::FromPrimitive;
+use strum::EnumCount;
 
-use crate::backend::CustomPipelines;
+use crate::{backend::CustomPipelines, backends::vulkan::vulkan_types::SupportedBlendModes};
 
 use super::{
     compiler::compiler::ShaderCompiler,
@@ -18,15 +19,12 @@ use super::{
     pipeline_cache::PipelineCacheInner,
     pipeline_manager::{PipelineCreationAttributes, PipelineManager},
     pipelines::Pipelines,
-    render_group::{
-        ColorWriteMaskType, StencilOpType, COLOR_MASK_TYPE_COUNT, STENCIL_OP_TYPE_COUNT,
-    },
+    render_group::{ColorWriteMaskType, StencilOpType},
     vulkan_device::DescriptorLayouts,
     vulkan_types::{
-        ESupportedSamplerTypes, EVulkanBackendBlendModes, EVulkanBackendClipModes,
-        PipelineContainer, PipelineContainerCreateMode, PipelineContainerItem,
+        CanvasClipModes, PipelineContainer, PipelineContainerCreateMode, PipelineContainerItem,
         PipelineCreationAttributesEx, PipelineCreationOneByOne, PipelineCreationProps,
-        BLEND_MODE_COUNT, SAMPLER_TYPES_COUNT,
+        SupportedSamplerTypes,
     },
     vulkan_uniform::{
         SUniformPrimExGVertColor, SUniformSpriteMultiGVertColor, UniformGBlur, UniformGPos,
@@ -84,7 +82,7 @@ impl SubRenderPass {
         layouts: &DescriptorLayouts,
         is_textured: bool,
         as_line_geometry: bool,
-        address_mode: ESupportedSamplerTypes,
+        address_mode: SupportedSamplerTypes,
     ) -> (
         Vec<vk::VertexInputAttributeDescription>,
         Vec<vk::DescriptorSetLayout>,
@@ -138,7 +136,7 @@ impl SubRenderPass {
     fn standard_3d_pipeline_layout(
         layouts: &DescriptorLayouts,
         is_textured: bool,
-        address_mode: ESupportedSamplerTypes,
+        address_mode: SupportedSamplerTypes,
     ) -> (
         Vec<vk::VertexInputAttributeDescription>,
         Vec<vk::DescriptorSetLayout>,
@@ -209,7 +207,7 @@ impl SubRenderPass {
         N: Fn(bool) -> Option<(String, String)>,
         L: Fn(
             bool,
-            ESupportedSamplerTypes,
+            SupportedSamplerTypes,
         ) -> (
             Vec<vk::VertexInputAttributeDescription>,
             Vec<vk::DescriptorSetLayout>,
@@ -218,27 +216,27 @@ impl SubRenderPass {
             bool,
         ),
     {
-        let cap_size = SAMPLER_TYPES_COUNT
+        let cap_size = SupportedSamplerTypes::COUNT
             * 2
-            * COLOR_MASK_TYPE_COUNT
-            * STENCIL_OP_TYPE_COUNT
-            * BLEND_MODE_COUNT
-            * EVulkanBackendClipModes::Count as usize;
+            * ColorWriteMaskType::COUNT
+            * StencilOpType::COUNT
+            * SupportedBlendModes::COUNT
+            * CanvasClipModes::COUNT;
         let mut attrs: Vec<PipelineCreationAttributes> = Vec::with_capacity(cap_size);
         let mut attrs_ex: Vec<PipelineCreationAttributesEx> = Vec::with_capacity(cap_size);
-        for l in 0..SAMPLER_TYPES_COUNT {
+        for l in 0..SupportedSamplerTypes::COUNT {
             for t in 0..2 {
                 let is_textured = t == 0;
                 let (attribute_descriptors, set_layouts, push_constants, stride, is_line_geometry) =
                     create_layout(
                         is_textured,
-                        ESupportedSamplerTypes::from_u32(l as u32).unwrap(),
+                        SupportedSamplerTypes::from_u32(l as u32).unwrap(),
                     );
                 if let Some((vert_name, frag_name)) = shader_names(is_textured) {
-                    for c in 0..COLOR_MASK_TYPE_COUNT {
-                        for s in 0..STENCIL_OP_TYPE_COUNT {
-                            for i in 0..BLEND_MODE_COUNT {
-                                for j in 0..EVulkanBackendClipModes::Count as usize {
+                    for c in 0..ColorWriteMaskType::COUNT {
+                        for s in 0..StencilOpType::COUNT {
+                            for i in 0..SupportedBlendModes::COUNT {
+                                for j in 0..CanvasClipModes::COUNT {
                                     let attr = PipelineCreationAttributes {
                                         vert_name: vert_name.clone(),
                                         frag_name: frag_name.clone(),
@@ -246,10 +244,9 @@ impl SubRenderPass {
                                         input_attributes: attribute_descriptors.clone(),
                                         set_layouts: set_layouts.clone(),
                                         push_constants: push_constants.clone(),
-                                        blend_mode: EVulkanBackendBlendModes::from_u32(i as u32)
+                                        blend_mode: SupportedBlendModes::from_u32(i as u32)
                                             .unwrap(),
-                                        dynamic_mode: EVulkanBackendClipModes::from_u32(j as u32)
-                                            .unwrap(),
+                                        dynamic_mode: CanvasClipModes::from_u32(j as u32).unwrap(),
                                         is_line_prim: is_line_geometry,
                                         stencil_mode: StencilOpType::from_u32(s as u32).unwrap(),
                                         color_mask: ColorWriteMaskType::from_u32(c as u32).unwrap(),
@@ -320,7 +317,7 @@ impl SubRenderPass {
         layouts: &DescriptorLayouts,
         is_textured: bool,
         rotationless: bool,
-        address_mode: ESupportedSamplerTypes,
+        address_mode: SupportedSamplerTypes,
     ) -> (
         Vec<vk::VertexInputAttributeDescription>,
         Vec<vk::DescriptorSetLayout>,
@@ -391,7 +388,7 @@ impl SubRenderPass {
 
     fn sprite_multi_pipeline_layout(
         layouts: &DescriptorLayouts,
-        address_mode: ESupportedSamplerTypes,
+        address_mode: SupportedSamplerTypes,
     ) -> (
         Vec<vk::VertexInputAttributeDescription>,
         Vec<vk::DescriptorSetLayout>,
@@ -480,7 +477,7 @@ impl SubRenderPass {
     fn backend_layout_to_vk_layout(
         layouts: &DescriptorLayouts,
         mut layout: BackendPipelineLayout,
-        address_mode: ESupportedSamplerTypes,
+        address_mode: SupportedSamplerTypes,
     ) -> (
         Vec<vk::VertexInputAttributeDescription>,
         Vec<vk::DescriptorSetLayout>,

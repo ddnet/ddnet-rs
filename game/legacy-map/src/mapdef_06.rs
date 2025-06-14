@@ -597,14 +597,6 @@ pub struct CMapItemLayerTilemap {
 }
 
 impl CMapItemLayerTilemap {
-    pub fn size_of_without_ddrace() -> usize {
-        std::mem::size_of::<Self>() - std::mem::size_of::<i32>() * 5
-    }
-
-    pub fn size_of_without_name() -> usize {
-        Self::size_of_without_ddrace() - std::mem::size_of::<i32>() * 3
-    }
-
     pub fn read_from_slice(data: &[u8]) -> Self {
         let (tile_layer, rest) = data.split_at(size_of::<CMapItemLayer>());
         let tile_layer = CMapItemLayer::read_from_slice(tile_layer);
@@ -677,6 +669,26 @@ impl CMapItemLayerTilemap {
         if !rest.is_empty() {
             let (val, _) = rest.split_at(size_of::<i32>());
             tune = read_i32_le(val);
+        }
+
+        if version < 3 {
+            if flags & TilesLayerFlag::Tele as i32 != 0 {
+                tele = name[0];
+            }
+            if flags & TilesLayerFlag::Speedup as i32 != 0 {
+                speedup = name[1];
+            }
+            if flags & TilesLayerFlag::Front as i32 != 0 {
+                front = name[2];
+            }
+            if flags & TilesLayerFlag::Switch as i32 != 0 {
+                switch = tele;
+                tele = -1;
+            }
+            if flags & TilesLayerFlag::Tune as i32 != 0 {
+                tune = speedup;
+                speedup = -1;
+            }
         }
 
         Self {

@@ -48,7 +48,7 @@ impl From<StreamedLine> for [GlVertex; 2] {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Hiarc, Copy, Clone)]
 pub struct StreamedTriangle {
     vertices: [GlVertex; 3],
 }

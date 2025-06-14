@@ -19,6 +19,7 @@ command-parser = { path = "../../../lib/command-parser" }
 
 api-state = { path = "../../../game/api-state" }
 game-base = { path = "../../../game/game-base" }
+legacy-map = { path = "../../../game/legacy-map" }
 vanilla = { path = "../../../game/vanilla" }
 game-interface = { path = "../../../game/game-interface" }
 map = { path = "../../../game/map" }

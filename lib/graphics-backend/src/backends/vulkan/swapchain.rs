@@ -220,7 +220,7 @@ impl Swapchain {
         // Try rgb formats first on macos
         #[cfg(target_os = "macos")]
         if let Some(format) = surf_formats.remove(&vk::Format::R16G16B16A16_SFLOAT) {
-            log::debug!("Using surface format: {:?}", format);
+            log::debug!("Using surface format: {format:?}");
             return Ok(format);
         }
 
@@ -228,7 +228,7 @@ impl Swapchain {
             .remove(&vk::Format::R8G8B8A8_UNORM)
             .or_else(|| surf_formats.remove(&vk::Format::B8G8R8A8_UNORM))
         {
-            log::debug!("Using surface format: {:?}", format);
+            log::debug!("Using surface format: {format:?}");
             return Ok(format);
         }
 

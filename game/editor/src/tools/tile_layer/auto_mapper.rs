@@ -481,7 +481,7 @@ impl TileLayerAutoMapperWasm {
 
 pub enum TileLayerAutoMapperRuleType {
     EditorRule(TileLayerAutoMapperEditorRule),
-    Wasm(TileLayerAutoMapperWasm),
+    Wasm(Box<TileLayerAutoMapperWasm>),
     LegacyRules {
         rule: LegacyRule,
         loading_data: Arc<Vec<u8>>,
@@ -1062,7 +1062,9 @@ impl TileLayerAutoMapper {
                                         resource.rules.insert(
                                             task.name,
                                             (
-                                                TileLayerAutoMapperRuleType::Wasm(manager),
+                                                TileLayerAutoMapperRuleType::Wasm(Box::new(
+                                                    manager,
+                                                )),
                                                 ResourceHashTy::Hashed,
                                             ),
                                         );
@@ -1144,7 +1146,7 @@ impl TileLayerAutoMapper {
                                                     Ok(manager) => {
                                                         let v = (
                                                             TileLayerAutoMapperRuleType::Wasm(
-                                                                manager,
+                                                                Box::new(manager),
                                                             ),
                                                             hash_ty,
                                                         );

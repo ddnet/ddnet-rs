@@ -56,6 +56,7 @@ pub mod state {
     use game_interface::types::weapons::WeaponType;
     use game_interface::vote_commands::{VoteCommand, VoteCommandResult};
     use hiarc::hi_closure;
+    use map::file::MapFileReader;
     use map::map::config::ConfigVariables;
     use map::map::Map;
     use math::math::lerp;
@@ -64,7 +65,6 @@ pub mod state {
     use pool::mt_datatypes::{PoolCow as MtPoolCow, PoolFxLinkedHashMap as MtPoolFxLinkedHashMap};
     use pool::pool::Pool;
 
-    use game_base::mapdef_06::EntityTiles;
     use game_interface::interface::{
         GameStateCreate, GameStateCreateOptions, GameStateInterface, GameStateServerOptions,
         GameStateStaticInfo, MAX_MAP_NAME_LEN, MAX_PHYSICS_GAME_TYPE_NAME_LEN,
@@ -85,6 +85,7 @@ pub mod state {
         ScoreboardScoreType, ScoreboardStageInfo,
     };
     use game_interface::types::snapshot::{SnapshotClientInfo, SnapshotLocalPlayers};
+    use legacy_map::mapdef_06::EntityTiles;
     use pool::rc::PoolRc;
     use rustc_hash::FxHashMap;
 
@@ -471,7 +472,7 @@ pub mod state {
                     if let Err(err) = save::setup(db.clone()).await {
                         log::warn!(
                             target: "sql",
-                            "failed to setup databases: {}", err
+                            "failed to setup databases: {err}"
                         );
                         return Err(err);
                     }
@@ -479,16 +480,18 @@ pub mod state {
                     let acc_info = AccountInfo::new(db.clone(), options.account_db).await;
                     if let Err(err) = &acc_info {
                         log::warn!(
-                        target: "sql", 
-                        "failed to prepare account info sql: {}", err);
+                            target: "sql",
+                            "failed to prepare account info sql: {err}"
+                        );
                     }
 
                     let account_created = match AccountCreated::new(db, options.account_db).await {
                         Ok(account_created) => Some(account_created),
                         Err(err) => {
                             log::warn!(
-                            target: "sql", 
-                            "failed to prepare account_created sql: {}", err);
+                                target: "sql",
+                                "failed to prepare account_created sql: {err}"
+                            );
                             None
                         }
                     };
@@ -502,14 +505,15 @@ pub mod state {
                 }
             });
 
-            let (physics_group, map_config) = Map::read_physics_group_and_config(&map)?;
+            let (physics_group, map_config) =
+                Map::read_physics_group_and_config(&MapFileReader::new(map)?)?;
 
             let w = physics_group.attr.width.get() as u32;
             let h = physics_group.attr.height.get() as u32;
 
-            let tiles = physics_group.get_game_layer_tiles();
+            let tiles = physics_group.get_game_layer_tiles().clone();
 
-            let mut collision = Collision::new(&physics_group, true)?;
+            let mut collision = Collision::new(physics_group, true)?;
 
             // Always handle config variables before commands.
             Self::handle_map_config_variables(&mut config, map_config.config_variables);
@@ -541,7 +545,7 @@ pub mod state {
                 }
             }
 
-            let game_objects = GameObjectDefinitions::new(tiles, w, h);
+            let game_objects = GameObjectDefinitions::new(&tiles, w, h);
 
             let mut spawns: Vec<vec2> = Default::default();
             let mut spawns_red: Vec<vec2> = Default::default();
@@ -776,7 +780,7 @@ pub mod state {
             };
 
             // TODO: remove this log (move it somewhere)
-            log::info!(target: "world", "added a character into side {:?}", side);
+            log::info!(target: "world", "added a character into side {side:?}");
 
             let pos = stage.world.get_spawn_pos(side);
 

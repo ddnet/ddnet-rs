@@ -213,7 +213,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
         let mut selected_layers = Vec::new();
         let mut selected_groups = Vec::new();
         for (g, group) in groups.iter_mut().enumerate() {
-            CollapsingState::load_with_default_open(ui.ctx(), format!("{}-{g}", id).into(), true)
+            CollapsingState::load_with_default_open(ui.ctx(), format!("{id}-{g}").into(), true)
                 .show_header(ui, |ui| {
                     ui.with_layout(Layout::right_to_left(egui::Align::Min), |ui| {
                         let hidden = group.editor_attr_mut().hidden;

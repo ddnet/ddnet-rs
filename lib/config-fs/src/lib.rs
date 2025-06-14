@@ -1,7 +1,7 @@
-use base_io::io::{Io, IoFileSys};
+use base_io::io::IoFileSys;
 use config::config::ConfigEngine;
 
-pub fn save(config: &ConfigEngine, io: &Io) {
+pub fn save(config: &ConfigEngine, io: &IoFileSys) {
     let save_str = config.to_json_string();
 
     if let Ok(save_str) = save_str {

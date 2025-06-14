@@ -37,7 +37,7 @@ use image_utils::{
     png::{is_png_image_valid, load_png_image_as_rgba, resize_rgba, PngValidatorOptions},
     utils::{highest_bit, texture_2d_to_3d},
 };
-use map::map::Map;
+use map::{file::MapFileReader, map::Map};
 use math::math::vector::vec2;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sound::{commands::SoundSceneCreateProps, scene_handle::SoundSceneHandle, sound::SoundManager};
@@ -99,8 +99,9 @@ impl RenderMapLoading {
         Self {
             task: io.rt.spawn(async move {
                 let benchmark = Benchmark::new(do_benchmark);
+                let map_reader = MapFileReader::new(file)?;
                 // open the map file
-                let (resources, resources_bytes_read) = Map::read_resources_and_header(&file)?;
+                let resources = Map::read_resources_and_header(&map_reader)?;
                 benchmark.bench("opening the full map file");
 
                 // read content files
@@ -269,11 +270,8 @@ impl RenderMapLoading {
                             new_height as u32,
                         );
                         log::warn!(
-                            "3D/2D array texture had to be resized, {}x{} to {}x{}",
-                            convert_width,
-                            convert_height,
-                            new_width,
-                            new_height
+                            "3D/2D array texture had to be resized, \
+                            {convert_width}x{convert_height} to {new_width}x{new_height}"
                         );
 
                         convert_width = new_width;
@@ -308,11 +306,12 @@ impl RenderMapLoading {
 
                     if let Err(err) = graphics_mt.try_flush_mem(&mut tex_3d, false) {
                         // Ignore the error, but log it.
-                        log::debug!("err while flushing memory: {}", err);
+                        log::debug!("err while flushing memory: {err}");
                     }
 
                     (image_3d_width, image_3d_height, 256, tex_3d)
                 };
+
                 // load images, external images and do map buffering
                 let (images_loading, sounds_loading, map_prepare) = runtime_tp.install(|| {
                     join_all!(
@@ -434,21 +433,28 @@ impl RenderMapLoading {
                             )
                         },
                         || {
-                            let map = Map::read_with_resources(
-                                resources,
-                                &file[resources_bytes_read..],
-                                &runtime_tp,
-                            )?;
+                            let map =
+                                Map::read_with_resources(resources, &map_reader, &runtime_tp)?;
 
                             benchmark.bench_multi("initialzing the map layers");
 
-                            let physics_group = &map.groups.physics;
-                            let collision = Collision::new(physics_group, false)?;
+                            let benchmark = Benchmark::new(do_benchmark);
+                            let physics_group = map.groups.physics.clone();
+                            let (collision, upload_data) = runtime_tp.join(
+                                || {
+                                    let collision = Collision::new(physics_group, false);
+                                    benchmark.bench_multi("preparing collisions");
+                                    collision
+                                },
+                                || {
+                                    let upload_data =
+                                        ClientMapBuffered::prepare_upload(&graphics_mt, map);
+                                    benchmark.bench_multi("preparing the map buffering");
+                                    upload_data
+                                },
+                            );
 
-                            let upload_data = ClientMapBuffered::prepare_upload(&graphics_mt, map);
-                            benchmark.bench_multi("preparing the map buffering");
-
-                            anyhow::Ok((collision, upload_data))
+                            anyhow::Ok((collision?, upload_data))
                         }
                     )
                 });
@@ -529,7 +535,7 @@ impl RenderMapLoading {
 
 pub enum ClientMapRender {
     UploadingBuffersAndTextures(RenderMapLoading),
-    Map(ClientMapRenderAndFile),
+    Map(Box<ClientMapRenderAndFile>),
     None,
     Err(anyhow::Error),
 }
@@ -608,7 +614,7 @@ impl ClientMapRender {
 
                         benchmark.bench("creating the map buffers graphics cmds");
 
-                        *self = Self::Map(ClientMapRenderAndFile {
+                        *self = Self::Map(Box::new(ClientMapRenderAndFile {
                             data: ClientMapFileData {
                                 collision: map_file.collision,
                                 buffered_map: map_buffered,
@@ -618,7 +624,7 @@ impl ClientMapRender {
                                 &map_upload.canvas_handle,
                                 &map_upload.stream_handle,
                             ),
-                        });
+                        }));
                     } else {
                         *self = Self::UploadingBuffersAndTextures(map_upload)
                     }

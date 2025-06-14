@@ -15,6 +15,7 @@ use base_fs::filesys::FileSystem;
 use base_http::http::HttpClient;
 use base_io::io::{Io, IoFileSys};
 use binds::binds::{BindActionsHotkey, BindActionsLocalPlayer};
+use camera::Camera;
 use client_accounts::accounts::{Accounts, AccountsLoading};
 use client_console::console::{
     console::{ConsoleEvents, ConsoleRenderPipe},
@@ -23,7 +24,6 @@ use client_console::console::{
 };
 use client_containers::{
     container::ContainerLoadOptions,
-    entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
     skins::{SkinContainer, SKIN_CONTAINER_PATH},
 };
 use client_demo::{DemoVideoEncodeProperties, DemoViewer, DemoViewerSettings, EncoderSettings};
@@ -33,7 +33,7 @@ use client_render_base::{
     map::{
         map::RenderMap,
         map_pipeline::MapPipeline,
-        render_pipe::{Camera, GameTimeInfo, RenderPipeline, RenderPipelineBase},
+        render_pipe::{GameTimeInfo, RenderPipeline, RenderPipelineBase},
     },
     render::tee::RenderTee,
 };
@@ -71,7 +71,7 @@ use client_ui::{
     utils::render_tee_for_ui,
 };
 use command_parser::parser::ParserCache;
-use config::config::{ConfigEngine, ConfigMonitor};
+use config::config::ConfigEngine;
 use demo::recorder::DemoRecorder;
 use editor::editor::{EditorInterface, EditorResult};
 use egui::{CursorIcon, FontDefinitions};
@@ -80,6 +80,10 @@ use graphics::graphics::graphics::Graphics;
 use graphics_backend::{
     backend::{
         GraphicsBackend, GraphicsBackendBase, GraphicsBackendIoLoading, GraphicsBackendLoading,
+    },
+    utils::{
+        client_window_config_to_native_window_options, client_window_props_changed_update_config,
+        AppWithGraphics, GraphicsApp,
     },
     window::BackendWindow,
 };
@@ -118,9 +122,8 @@ use math::math::{
 use native::{
     input::InputEventHandler,
     native::{
-        app::NativeApp, FromNativeImpl, FromNativeLoadingImpl, KeyCode, Native,
-        NativeCreateOptions, NativeDisplayBackend, NativeImpl, NativeWindowMonitorDetails,
-        NativeWindowOptions, PhysicalKey, PhysicalSize, WindowEvent, WindowMode,
+        app::NativeApp, FromNativeLoadingImpl, KeyCode, Native, NativeCreateOptions,
+        NativeDisplayBackend, NativeImpl, PhysicalKey, WindowEvent,
     },
 };
 use network::network::types::{NetworkInOrderChannel, NetworkServerCertModeResult};
@@ -154,7 +157,7 @@ use game_base::{
     assets_url::HTTP_RESOURCE_URL,
     connecting_log::{ConnectModes, ConnectingLog},
     game_types::{intra_tick_time, intra_tick_time_to_ratio, is_next_tick, time_until_tick},
-    local_server_info::{LocalServerInfo, LocalServerState},
+    local_server_info::{LocalServerInfo, LocalServerState, LocalServerStateReady},
     network::messages::{GameModification, MsgClAddLocalPlayer, MsgClChatMsg, MsgClLoadVotes},
     player_input::PlayerInput,
     server_browser::ServerBrowserData,
@@ -215,9 +218,9 @@ pub fn ddnet_main(
                 &mut res,
                 true,
             );
-            log::debug!("{}", res);
+            log::debug!("{res}");
             if !cur_cmds_succeeded {
-                log::error!("{}", res);
+                log::error!("{res}");
             }
             let mut has_events = true;
             let mut count = 0;
@@ -234,11 +237,11 @@ pub fn ddnet_main(
                             &local_console_builder.entries,
                             &local_console_builder.parser_cache,
                             |err| {
-                                log::error!("{}", err);
+                                log::error!("{err}");
                                 has_startup_errors = true;
                             },
                             |msg| {
-                                log::info!("{}", msg);
+                                log::info!("{msg}");
                             },
                         );
 
@@ -285,11 +288,7 @@ pub fn ddnet_main(
         local_console_builder,
         has_startup_errors,
     };
-    let logical_pixels = native::native::Pixels {
-        width: config_wnd.window_width,
-        height: config_wnd.window_height,
-    };
-    Native::run_loop::<ClientNativeImpl, _>(
+    Native::run_loop::<GraphicsApp<ClientNativeImpl>, _>(
         client,
         app,
         NativeCreateOptions {
@@ -298,34 +297,7 @@ pub fn ddnet_main(
             sys: &sys_time,
             dbg_input,
             start_arguments,
-            window: native::native::NativeWindowOptions {
-                mode: if config_wnd.fullscreen {
-                    WindowMode::Fullscreen {
-                        resolution: (config_wnd.fullscreen_width != 0
-                            && config_wnd.fullscreen_height != 0)
-                            .then_some(native::native::Pixels {
-                                width: config_wnd.fullscreen_width,
-                                height: config_wnd.fullscreen_height,
-                            }),
-                        fallback_window: logical_pixels,
-                    }
-                } else {
-                    WindowMode::Windowed(logical_pixels)
-                },
-                decorated: config_wnd.decorated,
-                maximized: config_wnd.maximized,
-                refresh_rate_milli_hertz: config_wnd.refresh_rate_mhz,
-                monitor: (!config_wnd.monitor.name.is_empty()
-                    && config_wnd.monitor.width != 0
-                    && config_wnd.monitor.height != 0)
-                    .then_some(NativeWindowMonitorDetails {
-                        name: config_wnd.monitor.name,
-                        size: PhysicalSize {
-                            width: config_wnd.monitor.width,
-                            height: config_wnd.monitor.height,
-                        },
-                    }),
-            },
+            window: client_window_config_to_native_window_options(config_wnd),
         },
     )?;
     Ok(())
@@ -416,7 +388,6 @@ struct ClientNativeImpl {
 
     editor: EditorState,
 
-    entities_container: EntitiesContainer,
     skin_container: SkinContainer,
     render_tee: RenderTee,
 
@@ -459,23 +430,26 @@ impl ClientNativeImpl {
         state: &mut LocalServerState,
         notifications: &mut ClientNotifications,
     ) -> anyhow::Result<()> {
-        match state {
+        let thread = match state {
             LocalServerState::None => {
                 // ignore
+                None
             }
-            LocalServerState::Starting { thread, .. } | LocalServerState::Ready { thread, .. } => {
-                if thread.thread.is_finished() {
-                    match thread.thread.try_join() {
-                        Err(err) | Ok(Some(Err(err))) => {
-                            notifications.add_err(
-                                format!("Failed to start local server: {err}"),
-                                Duration::from_secs(10),
-                            );
-                            return Err(err);
-                        }
-                        Ok(Some(Ok(_))) | Ok(None) => {
-                            // ignore
-                        }
+            LocalServerState::Starting { thread, .. } => Some(thread),
+            LocalServerState::Ready(ready) => Some(&mut ready.thread),
+        };
+        if let Some(thread) = thread {
+            if thread.thread.is_finished() {
+                match thread.thread.try_join() {
+                    Err(err) | Ok(Some(Err(err))) => {
+                        notifications.add_err(
+                            format!("Failed to start local server: {err}"),
+                            Duration::from_secs(10),
+                        );
+                        return Err(err);
+                    }
+                    Ok(Some(Ok(_))) | Ok(None) => {
+                        // ignore
                     }
                 }
             }
@@ -493,7 +467,8 @@ impl ClientNativeImpl {
             ConnectLocalServerResult::ErrOrNotLocalServerAddr { addresses }
         } else if addresses.iter().any(|addr| addr.ip().is_loopback()) {
             let mut state = self.shared_info.state.lock().unwrap();
-            if let LocalServerState::Ready { connect_info, .. } = &mut *state {
+            if let LocalServerState::Ready(ready) = &mut *state {
+                let LocalServerStateReady { connect_info, .. } = ready.as_mut();
                 let rcon_secret = Some(connect_info.rcon_secret);
                 let server_cert = ServerCertMode::Hash(connect_info.server_cert_hash);
                 let addr = match connect_info.sock_addr {
@@ -542,38 +517,9 @@ impl ClientNativeImpl {
     fn on_window_change(&mut self, native: &mut dyn NativeImpl) {
         let config_wnd = &self.config.engine.wnd;
 
-        let logical_pixels = native::native::Pixels {
-            width: config_wnd.window_width,
-            height: config_wnd.window_height,
-        };
-        if let Err(err) = native.set_window_config(native::native::NativeWindowOptions {
-            mode: if config_wnd.fullscreen {
-                WindowMode::Fullscreen {
-                    resolution: (config_wnd.fullscreen_width != 0
-                        && config_wnd.fullscreen_height != 0)
-                        .then_some(native::native::Pixels {
-                            width: config_wnd.fullscreen_width,
-                            height: config_wnd.fullscreen_height,
-                        }),
-                    fallback_window: logical_pixels,
-                }
-            } else {
-                WindowMode::Windowed(logical_pixels)
-            },
-            decorated: config_wnd.decorated,
-            maximized: config_wnd.maximized,
-            refresh_rate_milli_hertz: config_wnd.refresh_rate_mhz,
-            monitor: (!config_wnd.monitor.name.is_empty()
-                && config_wnd.monitor.width != 0
-                && config_wnd.monitor.height != 0)
-                .then_some(NativeWindowMonitorDetails {
-                    name: config_wnd.monitor.name.clone(),
-                    size: PhysicalSize {
-                        width: config_wnd.monitor.width,
-                        height: config_wnd.monitor.height,
-                    },
-                }),
-        }) {
+        if let Err(err) = native.set_window_config(client_window_config_to_native_window_options(
+            config_wnd.clone(),
+        )) {
             log::warn!("Failed to apply window settings: {err}");
             self.notifications
                 .add_err(err.to_string(), Duration::from_secs(10));
@@ -598,7 +544,7 @@ impl ClientNativeImpl {
             let render = render.try_get().unwrap();
             render.render.render_full_design(
                 &render.data.buffered_map.map_visual,
-                &mut RenderPipeline {
+                &RenderPipeline {
                     base: RenderPipelineBase {
                         map: &render.data.buffered_map.map_visual,
                         config: &ConfigMap::default(),
@@ -609,15 +555,7 @@ impl ClientNativeImpl {
                             &intra_tick_time,
                         ),
                         include_last_anim_point: false,
-                        camera: &Camera {
-                            pos: vec2::new(21.0, 15.0),
-                            zoom: 1.0,
-                            parallax_aware_zoom: true,
-                            forced_aspect_ratio: None,
-                        },
-                        entities_container: &mut self.entities_container,
-                        entities_key: None,
-                        physics_group_name: "vanilla",
+                        camera: &Camera::new(vec2::new(21.0, 15.0), 1.0, None, true),
                         map_sound_volume: self.config.game.snd.render.map_sound_volume
                             * self.config.game.snd.global_volume,
                     },
@@ -1528,7 +1466,7 @@ impl ClientNativeImpl {
                                 name.as_ref(),
                                 self.font_data.clone(),
                                 Some(DemoVideoEncodeProperties {
-                                    file_name: format!("videos/{}.mp4", video_name).into(),
+                                    file_name: format!("videos/{video_name}.mp4").into(),
                                     pixels_per_point: self.config.game.cl.recorder.pixels_per_point,
                                     encoder_settings: EncoderSettings {
                                         fps: self.config.game.cl.recorder.fps,
@@ -2297,7 +2235,7 @@ impl ClientNativeImpl {
             let mut res = String::default();
             let cur_cmds_succeeded =
                 run_commands(&cmds, entries, config_engine, config_game, &mut res, true);
-            log::debug!("{}", res);
+            log::debug!("{res}");
             if !cur_cmds_succeeded {
                 on_log(res);
             }
@@ -2636,7 +2574,7 @@ impl ClientNativeImpl {
     }
 }
 
-impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
+impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNativeImpl> {
     fn new(
         mut loading: ClientNativeLoadingImpl,
         native: &mut dyn NativeImpl,
@@ -2676,42 +2614,13 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
 
         // read window props
         let wnd = native.window_options();
-        let config_wnd = &mut loading.config_engine.wnd;
-        config_wnd.fullscreen = wnd.mode.is_fullscreen();
-        config_wnd.decorated = wnd.decorated;
-        config_wnd.maximized = wnd.maximized;
-        match wnd.mode {
-            WindowMode::Fullscreen {
-                resolution,
-                fallback_window,
-            } => {
-                if let Some(resolution) = resolution {
-                    config_wnd.fullscreen_width = resolution.width;
-                    config_wnd.fullscreen_height = resolution.height;
-                }
-
-                config_wnd.window_width = fallback_window.width;
-                config_wnd.window_height = fallback_window.height;
-            }
-            WindowMode::Windowed(pixels) => {
-                config_wnd.window_width = pixels.width;
-                config_wnd.window_height = pixels.height;
-            }
-        }
-        config_wnd.refresh_rate_mhz = wnd.refresh_rate_milli_hertz;
-        config_wnd.monitor = wnd
-            .monitor
-            .map(|monitor| ConfigMonitor {
-                name: monitor.name,
-                width: monitor.size.width,
-                height: monitor.size.height,
-            })
-            .unwrap_or_default();
+        let refresh_rate_milli_hertz = wnd.refresh_rate_milli_hertz;
+        client_window_props_changed_update_config(&mut loading.config_engine, wnd);
 
         // do first time setup
         if first_time_setup {
-            loading.config_game.cl.refresh_rate = if wnd.refresh_rate_milli_hertz != 0 {
-                (wnd.refresh_rate_milli_hertz as u64) * 4 / 1000
+            loading.config_game.cl.refresh_rate = if refresh_rate_milli_hertz != 0 {
+                (refresh_rate_milli_hertz as u64) * 4 / 1000
             } else {
                 let fallback_refresh_rate = native_monitors
                     .iter()
@@ -2809,24 +2718,6 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
         benchmark.bench("init of graphics");
 
         let scene = sound.scene_handle.create(Default::default());
-        let default_entities =
-            EntitiesContainer::load_default(&io, ENTITIES_CONTAINER_PATH.as_ref());
-        let entities_container = EntitiesContainer::new(
-            io.clone(),
-            thread_pool.clone(),
-            default_entities,
-            None,
-            None,
-            "entities-container",
-            &graphics,
-            &sound,
-            &scene,
-            ENTITIES_CONTAINER_PATH.as_ref(),
-            ContainerLoadOptions {
-                assume_unused: true,
-                ..Default::default()
-            },
-        );
         let default_skin = SkinContainer::load_default(&io, SKIN_CONTAINER_PATH.as_ref());
         let skin_container = SkinContainer::new(
             io.clone(),
@@ -3056,7 +2947,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
 
         local_console.ui.ui_state.is_ui_open = false;
 
-        let mut client = Self {
+        let mut client = GraphicsApp::new(ClientNativeImpl {
             menu_map,
 
             cur_time,
@@ -3064,7 +2955,6 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
             shared_info: loading.shared_info,
             client_info,
 
-            entities_container,
             skin_container,
             render_tee,
 
@@ -3115,7 +3005,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for ClientNativeImpl {
 
             // pools & helpers
             string_pool: Pool::with_sized(256, || String::with_capacity(256)), // TODO: random values rn
-        };
+        });
 
         client.handle_console_events(native);
         benchmark.bench("finish init of client");
@@ -3224,7 +3114,15 @@ impl InputEventHandler for ClientNativeImpl {
     }
 }
 
-impl FromNativeImpl for ClientNativeImpl {
+impl AppWithGraphics for ClientNativeImpl {
+    fn get_graphics_data(&mut self) -> (&Graphics, &GraphicsBackend, &mut ConfigEngine) {
+        (
+            &self.graphics,
+            &self.graphics_backend,
+            &mut self.config.engine,
+        )
+    }
+
     fn run(&mut self, native: &mut dyn NativeImpl) {
         self.inp_manager.collect_events();
 
@@ -3267,7 +3165,7 @@ impl FromNativeImpl for ClientNativeImpl {
                 let mut legacy_proxy = self.legacy_proxy_thread.take().unwrap();
                 if let Err(err) = legacy_proxy.thread.try_join() {
                     self.notifications.add_err(
-                        format!("Legacy proxy crashed: {}", err),
+                        format!("Legacy proxy crashed: {err}"),
                         Duration::from_secs(10),
                     );
                     self.connecting_log.log(format!("Legacy proxy died: {err}"));
@@ -3717,67 +3615,6 @@ impl FromNativeImpl for ClientNativeImpl {
         self.inp_manager.new_frame();
     }
 
-    fn resized(&mut self, native: &mut dyn NativeImpl, new_width: u32, new_height: u32) {
-        let window_props = self.graphics_backend.resized(
-            &self.graphics.backend_handle.backend_cmds,
-            self.graphics.stream_handle.stream_data(),
-            native,
-            new_width,
-            new_height,
-        );
-        self.graphics.resized(window_props);
-        // update config variables
-        let wnd = &mut self.config.engine.wnd;
-        let window = native.borrow_window();
-        if wnd.fullscreen {
-            wnd.fullscreen_width = new_width;
-            wnd.fullscreen_height = new_height;
-        } else {
-            let scale_factor = window.scale_factor();
-            wnd.window_width = new_width as f64 / scale_factor;
-            wnd.window_height = new_height as f64 / scale_factor;
-        }
-        if let Some(monitor) = window.current_monitor() {
-            wnd.refresh_rate_mhz = monitor
-                .refresh_rate_millihertz()
-                .unwrap_or(wnd.refresh_rate_mhz);
-        }
-    }
-
-    fn window_options_changed(&mut self, wnd: NativeWindowOptions) {
-        let config_wnd = &mut self.config.engine.wnd;
-        config_wnd.fullscreen = wnd.mode.is_fullscreen();
-        config_wnd.decorated = wnd.decorated;
-        config_wnd.maximized = wnd.maximized;
-        match wnd.mode {
-            WindowMode::Fullscreen {
-                resolution,
-                fallback_window,
-            } => {
-                if let Some(resolution) = resolution {
-                    config_wnd.fullscreen_width = resolution.width;
-                    config_wnd.fullscreen_height = resolution.height;
-                }
-
-                config_wnd.window_width = fallback_window.width;
-                config_wnd.window_height = fallback_window.height;
-            }
-            WindowMode::Windowed(pixels) => {
-                config_wnd.window_width = pixels.width;
-                config_wnd.window_height = pixels.height;
-            }
-        }
-        config_wnd.refresh_rate_mhz = wnd.refresh_rate_milli_hertz;
-        config_wnd.monitor = wnd
-            .monitor
-            .map(|monitor| ConfigMonitor {
-                name: monitor.name,
-                width: monitor.size.width,
-                height: monitor.size.height,
-            })
-            .unwrap_or_default();
-    }
-
     fn destroy(mut self) {
         #[cfg(feature = "alloc_track")]
         track_report();
@@ -3787,8 +3624,8 @@ impl FromNativeImpl for ClientNativeImpl {
         }
 
         // destroy everything
-        config_fs::save(&self.config.engine, &self.io);
-        game_config_fs::fs::save(&self.config.game, &self.io);
+        config_fs::save(&self.config.engine, &self.io.clone().into());
+        game_config_fs::fs::save(&self.config.game, &self.io.clone().into());
     }
 
     fn focus_changed(&mut self, _focused: bool) {
@@ -3806,18 +3643,5 @@ impl FromNativeImpl for ClientNativeImpl {
         if let EditorState::Open(editor) = &mut self.editor {
             editor.file_hovered(file);
         }
-    }
-
-    fn window_created_ntfy(&mut self, native: &mut dyn NativeImpl) -> anyhow::Result<()> {
-        self.graphics_backend.window_created_ntfy(
-            BackendWindow::Winit {
-                window: native.borrow_window(),
-            },
-            &self.config.engine.dbg,
-        )
-    }
-
-    fn window_destroyed_ntfy(&mut self, _native: &mut dyn NativeImpl) -> anyhow::Result<()> {
-        self.graphics_backend.window_destroyed_ntfy()
     }
 }

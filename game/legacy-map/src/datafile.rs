@@ -1,9 +1,10 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ffi::{CStr, CString},
     io::{Read, Write},
     mem::size_of,
+    ops::ControlFlow,
     time::Duration,
 };
 
@@ -273,6 +274,10 @@ pub struct CDatafileWrapper {
     // files to read, if the user of this object
     // wants to have support for images etc.
     pub read_files: LinkedHashMap<String, ReadFile>,
+    // dup key to real key
+    pub duplicated_img_reads: HashMap<usize, usize>,
+    // real key with a list of dup keys
+    pub duplicated_img_reads_list: HashMap<usize, HashSet<usize>>,
 }
 
 #[derive(Default)]
@@ -365,6 +370,8 @@ impl CDatafileWrapper {
             tune_layer_index: usize::MAX,
 
             read_files: Default::default(),
+            duplicated_img_reads: Default::default(),
+            duplicated_img_reads_list: Default::default(),
         }
     }
 
@@ -505,7 +512,7 @@ impl CDatafileWrapper {
         benchmark.bench("loading the map header, items and data");
 
         // read items
-        thread_pool.install(|| {
+        let (_, _, c, _, _, _, g) = thread_pool.install(|| {
             join_all!(
                 || {
                     if !options.dont_load_map_item[MapItemTypes::Version as usize] {
@@ -588,30 +595,57 @@ impl CDatafileWrapper {
                             &mut num,
                         );
                         self.images.resize_with(num as usize, MapImage::default);
-                        self.images.par_iter_mut().enumerate().for_each(|(i, img)| {
-                            let data = &items[start as usize + i].data[0..item_size];
-                            img.item_data = CMapItemImage::read_from_slice(data);
+                        let r = self
+                            .images
+                            .par_iter_mut()
+                            .enumerate()
+                            .try_for_each(|(i, img)| {
+                                let data = &items[start as usize + i].data[0..item_size];
+                                img.item_data = CMapItemImage::read_from_slice(data);
 
-                            // read the image name
-                            img.img_name =
-                                Self::read_string(&data_file, img.item_data.image_name, data_start);
-                        });
+                                // read the image name
+                                img.img_name = match Self::read_string(
+                                    &data_file,
+                                    img.item_data.image_name,
+                                    data_start,
+                                ) {
+                                    Ok(name) => name,
+                                    Err(lossy_name) => {
+                                        if img.item_data.external != 0 {
+                                            return ControlFlow::Break(anyhow!(
+                                                "External image contained invalid utf8 string"
+                                            ));
+                                        }
+                                        format!("{i}-{lossy_name}")
+                                    }
+                                };
+                                ControlFlow::Continue(())
+                            });
+                        if let ControlFlow::Break(err) = r {
+                            anyhow::bail!("{err}")
+                        }
                         self.images.iter().enumerate().for_each(|(index, img)| {
                             if img.item_data.external != 0 {
                                 // add the external image to the read files
-                                let r = self.read_files.insert(
-                                    format!("legacy/mapres/{}.png", img.img_name),
-                                    ReadFile::Image(index, Vec::new()),
-                                );
-                                assert!(
-                                    r.is_none(),
-                                    "image with that name was already found {}",
-                                    img.img_name
-                                )
+                                let key = format!("legacy/mapres/{}.png", img.img_name);
+                                if let Some(ReadFile::Image(old_index, _)) =
+                                    self.read_files.get(&key)
+                                {
+                                    self.duplicated_img_reads.insert(index, *old_index);
+                                    let list = self
+                                        .duplicated_img_reads_list
+                                        .entry(*old_index)
+                                        .or_default();
+                                    list.insert(index);
+                                } else {
+                                    self.read_files
+                                        .insert(key, ReadFile::Image(index, Vec::new()));
+                                }
                             }
                         });
                         benchmark.bench_multi("loading the map images");
                     }
+                    anyhow::Ok(())
                 },
                 || {
                     if !options.dont_load_map_item[MapItemTypes::Envelope as usize] {
@@ -690,20 +724,8 @@ impl CDatafileWrapper {
                                 let layer = CMapItemLayer::read_from_slice(data);
 
                                 if layer.item_layer == MapLayerTypes::Tiles as i32 {
-                                    let item_size_non_ddrace =
-                                        CMapItemLayerTilemap::size_of_without_ddrace();
-                                    let item_size_non_ddrace_no_name =
-                                        CMapItemLayerTilemap::size_of_without_name();
-                                    let item_size_full = size_of::<CMapItemLayerTilemap>();
                                     let data_len = items[start as usize + i].data.len();
-                                    let data = if data_len >= item_size_full {
-                                        &items[start as usize + i].data[0..item_size_full]
-                                    } else if data_len >= item_size_non_ddrace {
-                                        &items[start as usize + i].data[0..item_size_non_ddrace]
-                                    } else {
-                                        &items[start as usize + i].data
-                                            [0..item_size_non_ddrace_no_name]
-                                    };
+                                    let data = &items[start as usize + i].data[0..data_len];
                                     let tile_layer = CMapItemLayerTilemap::read_from_slice(data);
 
                                     let tile_layer_impl = MapTileLayerDetail::Tile(Vec::new());
@@ -764,7 +786,17 @@ impl CDatafileWrapper {
                             let data = &items[start as usize + i].data[0..item_size];
                             let sound = CMapItemSound::read_from_slice(data);
                             let sound_name =
-                                Self::read_string(&data_file, sound.sound_name, data_start);
+                                match Self::read_string(&data_file, sound.sound_name, data_start) {
+                                    Ok(name) => name,
+                                    Err(lossy_name) => {
+                                        if sound.external != 0 {
+                                            anyhow::bail!(
+                                                "External sound contained invalid utf8 string"
+                                            );
+                                        }
+                                        format!("{i}-{lossy_name}")
+                                    }
+                                };
                             self.sounds.push(MapSound {
                                 name: sound_name,
                                 def: sound,
@@ -773,9 +805,12 @@ impl CDatafileWrapper {
                         }
                         benchmark.bench_multi("loading the map sounds");
                     }
+                    anyhow::Ok(())
                 }
-            );
+            )
         });
+        c?;
+        g?;
 
         if !options.dont_load_map_item[MapItemTypes::Envpoints as usize] {
             let has_bezier = self
@@ -1260,12 +1295,16 @@ impl CDatafileWrapper {
         self.init_tilemap_skip(thread_pool);
     }
 
-    fn read_string(data_file: &CDatafile, index: i32, data_start: &[u8]) -> String {
+    // On fail gives a lossy string
+    fn read_string(data_file: &CDatafile, index: i32, data_start: &[u8]) -> Result<String, String> {
         let data_name = Self::decompress_data(data_file, index as usize, data_start);
         let name_cstr = CStr::from_bytes_with_nul(data_name.as_slice()).unwrap_or_else(|_| {
             panic!("data name was not valid utf8 with null-termination {data_name:?}")
         });
-        name_cstr.to_str().unwrap().to_string()
+        name_cstr
+            .to_str()
+            .map(|s| s.to_string())
+            .map_err(|_| name_cstr.to_string_lossy().to_string())
     }
 
     fn read_char_array<const N: usize>(
@@ -1382,15 +1421,29 @@ impl CDatafileWrapper {
     }
 
     fn read_str_from_ints(inp: &[i32]) -> String {
+        // many old maps have empty names (with zeroes)
+        if inp.iter().all(|&i| i == 0) {
+            return Default::default();
+        }
         let mut res: [u8; 32] = Default::default();
 
         ints_to_str(inp, &mut res);
 
-        CStr::from_bytes_until_nul(&res)
+        let mut res = CStr::from_bytes_until_nul(&res)
             .map_err(|err| anyhow!("reading {inp:?} - {res:?} => err: {err}"))
             .unwrap()
             .to_string_lossy()
-            .to_string()
+            .to_string();
+
+        if res.len() >= 32 {
+            res = res
+                .char_indices()
+                .filter(|(byte_offset, c)| *byte_offset + c.len_utf8() < 32)
+                .map(|(_, char)| char)
+                .collect();
+        }
+
+        res
     }
 
     /// images are external images
@@ -1630,6 +1683,8 @@ impl CDatafileWrapper {
 
         let mut old_img_assign: HashMap<usize, usize> = Default::default();
         let mut old_img_array_assign: HashMap<usize, usize> = Default::default();
+        let mut images_high_ordered: Vec<(usize, MapImage, bool, bool)> = Default::default();
+        let mut images_low_ordered: Vec<(usize, MapImage, bool, bool)> = Default::default();
         let mut ext_image_count = 0;
         for (img_index, image) in self.images.into_iter().enumerate() {
             // was the image used in tile layer and/or quad layer?
@@ -1638,17 +1693,50 @@ impl CDatafileWrapper {
             for layer in &self.layers {
                 match layer {
                     MapLayer::Tile(layer) => {
-                        if layer.0.image == img_index as i32 {
+                        if layer.0.image == img_index as i32
+                            || (layer.0.image > 0
+                                && self
+                                    .duplicated_img_reads_list
+                                    .get(&img_index)
+                                    .is_some_and(|list| list.contains(&(layer.0.image as usize))))
+                        {
                             in_tile_layer = true;
                         }
                     }
                     MapLayer::Quads(layer) => {
-                        if layer.0.image == img_index as i32 {
+                        if layer.0.image == img_index as i32
+                            || (layer.0.image > 0
+                                && self
+                                    .duplicated_img_reads_list
+                                    .get(&img_index)
+                                    .is_some_and(|list| list.contains(&(layer.0.image as usize))))
+                        {
                             in_quad_layer = true;
                         }
                     }
                     _ => {}
                 }
+            }
+
+            if in_quad_layer {
+                images_high_ordered.push((img_index, image, in_quad_layer, in_tile_layer));
+            } else if in_tile_layer {
+                images_low_ordered.push((img_index, image, in_quad_layer, in_tile_layer));
+            }
+        }
+        for (img_index, image, in_quad_layer, in_tile_layer) in images_high_ordered
+            .into_iter()
+            .chain(images_low_ordered.into_iter())
+        {
+            // skip if duplicated
+            if let Some(old_index) = self.duplicated_img_reads.get(&img_index) {
+                if let Some(old_img_array_assign_index) = old_img_array_assign.get(old_index) {
+                    old_img_array_assign.insert(img_index, *old_img_array_assign_index);
+                }
+                if let Some(old_img_assign_index) = old_img_assign.get(old_index) {
+                    old_img_assign.insert(img_index, *old_img_assign_index);
+                }
+                continue;
             }
 
             fn check_size_and_dilate<'a>(
@@ -1756,14 +1844,16 @@ impl CDatafileWrapper {
                 },
                 hq_meta: None,
             };
-            image_resources.insert(
-                res_ref.meta.blake3_hash,
-                LegacyMapToNewRes {
-                    buf: png_data,
-                    ty: "png".into(),
-                    name: res_ref.name.to_string(),
-                },
-            );
+            if in_quad_layer || in_tile_layer {
+                image_resources.insert(
+                    res_ref.meta.blake3_hash,
+                    LegacyMapToNewRes {
+                        buf: png_data,
+                        ty: "png".into(),
+                        name: res_ref.name.to_string(),
+                    },
+                );
+            }
             if in_tile_layer {
                 old_img_array_assign.insert(img_index, map.resources.image_arrays.len());
                 map.resources.image_arrays.push(res_ref.clone());
@@ -2538,13 +2628,14 @@ impl CDatafileWrapper {
             }
         }
 
-        let images_len = map.resources.images.len();
+        let mut image_hash_to_index_mapping: HashMap<(String, Hash), usize> = Default::default();
+        let mut image_array_index_mapping: HashMap<usize, usize> = Default::default();
+        let mut img_counter = 0;
 
         // resources
         {
             // images
             let item_index = res.data_file.info.item_offsets.len() as i32;
-            let image_count = map.resources.images.len() + map.resources.image_arrays.len();
             for (index, image) in map.resources.images.into_iter().enumerate() {
                 res.data_file
                     .info
@@ -2603,10 +2694,22 @@ impl CDatafileWrapper {
                 };
                 data_item.write_to_vec(&mut data_items);
                 data_items.append(&mut img_data);
+
+                image_hash_to_index_mapping
+                    .insert((image.name.to_string(), image.meta.blake3_hash), index);
+                img_counter += 1;
             }
 
             // images 2d array
             for (index, image) in map.resources.image_arrays.into_iter().enumerate() {
+                if let Some(map_index) = image_hash_to_index_mapping
+                    .get(&(image.name.to_string(), image.meta.blake3_hash))
+                {
+                    image_array_index_mapping.insert(index, *map_index);
+                    continue;
+                }
+                image_array_index_mapping.insert(index, img_counter);
+
                 res.data_file
                     .info
                     .item_offsets
@@ -2664,12 +2767,14 @@ impl CDatafileWrapper {
                 };
                 data_item.write_to_vec(&mut data_items);
                 data_items.append(&mut img_data);
+
+                img_counter += 1;
             }
-            if image_count > 0 {
+            if img_counter > 0 {
                 res.data_file.info.item_types.push(CDatafileItemType {
                     item_type: MapItemTypes::Image as i32,
                     start: item_index,
-                    num: image_count as i32,
+                    num: img_counter as i32,
                 });
             }
 
@@ -2850,7 +2955,7 @@ impl CDatafileWrapper {
                                     image: layer
                                         .attr
                                         .image_array
-                                        .map(|i| (i + images_len) as i32)
+                                        .map(|i| *image_array_index_mapping.get(&i).unwrap() as i32)
                                         .unwrap_or(-1),
                                     data: data_index as i32,
                                     name: Default::default(),
@@ -3261,7 +3366,7 @@ impl CDatafileWrapper {
                                     tune_name,
                                     tune_val.value,
                                     if let Some(comment) = &tune_val.comment {
-                                        format!(" # {}", comment)
+                                        format!(" # {comment}")
                                     } else {
                                         String::default()
                                     }
@@ -3275,7 +3380,7 @@ impl CDatafileWrapper {
                             let mut msg = |postfix: &str, msg: &Option<String>| {
                                 let Some(msg) = msg else { return };
                                 let mut setting: [u8; 256] = vec![0; 256].try_into().unwrap();
-                                let cmd = format!("tune_zone_{postfix} {index} {}", msg);
+                                let cmd = format!("tune_zone_{postfix} {index} {msg}");
                                 let src = cmd.as_bytes();
                                 setting[0..src.len().min(256)]
                                     .copy_from_slice(&src[0..src.len().min(256)]);
@@ -3494,7 +3599,7 @@ impl CDatafileWrapper {
                             "{}{}",
                             cmd.value,
                             if let Some(comment) = &cmd.comment {
-                                format!(" # {}", comment)
+                                format!(" # {comment}")
                             } else {
                                 String::default()
                             }
@@ -3511,7 +3616,7 @@ impl CDatafileWrapper {
                             var_name,
                             value.value,
                             if let Some(comment) = &value.comment {
-                                format!(" # {}", comment)
+                                format!(" # {comment}")
                             } else {
                                 String::default()
                             }

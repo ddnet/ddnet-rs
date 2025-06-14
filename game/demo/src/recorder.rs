@@ -454,7 +454,7 @@ impl DemoRecorder {
 
             if let Some(tmp_file) = tmp_file.take() {
                 let (_, path) = tmp_file.keep()?;
-                std::fs::rename(path, final_path.join(format!("{}.twdemo", demo_name)))?;
+                std::fs::rename(path, final_path.join(format!("{demo_name}.twdemo")))?;
             }
         }
         // else the demo is invalid and can be dropped.

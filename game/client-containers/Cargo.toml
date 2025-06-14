@@ -14,7 +14,7 @@ image-utils = { path = "../../lib/image-utils" }
 hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_rayon", "enable_rustc_hash", "enable_url", "enable_fixed", "enable_either"] }
 math = { path = "../../lib/math" }
 
-client-extra = { path = "../client-extra" }
+assets-splitting = { path = "../assets-splitting" }
 game-interface = { path = "../game-interface" }
 assets-base = { path = "../assets-base" }
 

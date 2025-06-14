@@ -44,6 +44,7 @@ pub enum MapPipelineNames {
     EditorTilePipeline,
     TileBorderPipeline,
     QuadPipeline,
+    QuadGroupedPipeline,
 }
 
 #[derive(Debug, Hiarc, Clone, Copy, Serialize, Deserialize)]
@@ -125,14 +126,25 @@ impl QuadRenderInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CommandRenderQuadLayer {
+pub struct CommandRenderQuadLayerBase {
     pub state: State,
     pub texture_index: StateTexture,
 
     pub buffer_object_index: u128,
-    pub quad_info_uniform_instance: usize,
     pub quad_num: usize,
     pub quad_offset: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommandRenderQuadLayer {
+    pub base: CommandRenderQuadLayerBase,
+    pub quad_info_uniform_instance: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommandRenderQuadLayerGrouped {
+    pub base: CommandRenderQuadLayerBase,
+    pub quad_info: QuadRenderInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -141,6 +153,7 @@ pub enum CommandsRenderMap {
     EditorTileLayer(CommandRenderEditorTileLayer), // render a tilelayer for editor
     BorderTile(CommandRenderBorderTile),           // render one tile multiple times
     QuadLayer(CommandRenderQuadLayer),             // render a quad layer
+    QuadLayerGrouped(CommandRenderQuadLayerGrouped), // render a quad layer without anims
 }
 
 type UniformTilePos = [f32; 4 * 2];
@@ -200,6 +213,16 @@ pub struct UniformEditorTileGFragOffset {
 pub struct UniformQuadGPos {
     pub pos: [f32; 4 * 2],
     pub quad_offset: i32,
+}
+
+#[derive(Default)]
+#[repr(C)]
+pub struct UniformQuadGroupedGPos {
+    pub pos: [f32; 4 * 2],
+
+    pub color: ColorRgba,
+    pub offset: vec2,
+    pub rotation: f32,
 }
 
 const TILE_LAYER_VERTEX_SIZE: usize = std::mem::size_of::<u16>() + std::mem::size_of::<ubvec2>();
@@ -356,7 +379,7 @@ impl MapPipeline {
         }
     }
 
-    fn quad_pipeline_layout(is_textured: bool) -> BackendPipelineLayout {
+    fn quad_pipeline_vertex_inp(is_textured: bool) -> Vec<BackendVertexInputAttributeDescription> {
         let mut attribute_descriptors: Vec<BackendVertexInputAttributeDescription> =
             Default::default();
         attribute_descriptors.push(BackendVertexInputAttributeDescription {
@@ -379,7 +402,18 @@ impl MapPipeline {
                 offset: QUAD_LAYER_VERTEX_SIZE as u32,
             });
         }
+        attribute_descriptors
+    }
 
+    fn quad_pipeline_stride(is_textured: bool) -> BackendDeviceSize {
+        (if is_textured {
+            QUAD_LAYER_TEXTURED_VERTEX_SIZE
+        } else {
+            QUAD_LAYER_VERTEX_SIZE
+        }) as BackendDeviceSize
+    }
+
+    fn quad_pipeline_layout(is_textured: bool) -> BackendPipelineLayout {
         let mut set_layouts: Vec<BackendResourceDescription> = Default::default();
         if is_textured {
             set_layouts.push(BackendResourceDescription::Fragment2DTexture);
@@ -397,16 +431,35 @@ impl MapPipeline {
         }]
         .to_vec();
 
-        let stride = if is_textured {
-            QUAD_LAYER_TEXTURED_VERTEX_SIZE
-        } else {
-            QUAD_LAYER_VERTEX_SIZE
-        } as BackendDeviceSize;
         BackendPipelineLayout {
-            vertex_attributes: attribute_descriptors,
+            vertex_attributes: Self::quad_pipeline_vertex_inp(is_textured),
             descriptor_layouts: set_layouts,
             push_constants,
-            stride,
+            stride: Self::quad_pipeline_stride(is_textured),
+            geometry_is_line: false,
+        }
+    }
+
+    fn quad_grouped_pipeline_layout(is_textured: bool) -> BackendPipelineLayout {
+        let mut set_layouts: Vec<BackendResourceDescription> = Default::default();
+        if is_textured {
+            set_layouts.push(BackendResourceDescription::Fragment2DTexture);
+        }
+
+        let push_constant_size = std::mem::size_of::<UniformQuadGroupedGPos>();
+
+        let push_constants = [BackendPushConstant {
+            stage_flags: BackendShaderStage::VERTEX,
+            offset: 0,
+            size: push_constant_size as u32,
+        }]
+        .to_vec();
+
+        BackendPipelineLayout {
+            vertex_attributes: Self::quad_pipeline_vertex_inp(is_textured),
+            descriptor_layouts: set_layouts,
+            push_constants,
+            stride: Self::quad_pipeline_stride(is_textured),
             geometry_is_line: false,
         }
     }
@@ -510,9 +563,9 @@ impl MapPipeline {
         );
     }
 
-    fn cmd_render_quad_layer_fill_execute_buffer(
+    fn cmd_render_quad_layer_base_fill_execute_buffer(
         render_execute_manager: &mut dyn BackendRenderExecuteInterface,
-        cmd: &CommandRenderQuadLayer,
+        cmd: &CommandRenderQuadLayerBase,
     ) {
         render_execute_manager.set_vertex_buffer(cmd.buffer_object_index);
 
@@ -536,12 +589,6 @@ impl MapPipeline {
             }
         }
 
-        render_execute_manager.uses_stream_uniform_buffer(
-            0,
-            cmd.quad_info_uniform_instance as u64,
-            1,
-        );
-
         render_execute_manager.uses_index_buffer();
 
         render_execute_manager.estimated_render_calls(
@@ -549,6 +596,25 @@ impl MapPipeline {
         );
 
         render_execute_manager.exec_buffer_fill_dynamic_states(&cmd.state);
+    }
+
+    fn cmd_render_quad_layer_fill_execute_buffer(
+        render_execute_manager: &mut dyn BackendRenderExecuteInterface,
+        cmd: &CommandRenderQuadLayer,
+    ) {
+        Self::cmd_render_quad_layer_base_fill_execute_buffer(render_execute_manager, &cmd.base);
+        render_execute_manager.uses_stream_uniform_buffer(
+            0,
+            cmd.quad_info_uniform_instance as u64,
+            1,
+        );
+    }
+
+    fn cmd_render_quad_layer_grouped_fill_execute_buffer(
+        render_execute_manager: &mut dyn BackendRenderExecuteInterface,
+        cmd: &CommandRenderQuadLayerGrouped,
+    ) {
+        Self::cmd_render_quad_layer_base_fill_execute_buffer(render_execute_manager, &cmd.base);
     }
 
     fn render_tile_layer(
@@ -747,17 +813,71 @@ impl MapPipeline {
         )
     }
 
+    fn cmd_render_quad_layer_grouped(
+        &self,
+        render_manager: &mut dyn BackendRenderInterface,
+        cmd: &CommandRenderQuadLayerGrouped,
+    ) -> anyhow::Result<()> {
+        let mut m: [f32; 4 * 2] = Default::default();
+        render_manager.get_state_matrix(&cmd.base.state, &mut m);
+
+        render_manager.bind_pipeline(
+            &cmd.base.state,
+            &cmd.base.texture_index,
+            SubRenderPassAttributes::Additional(
+                MapPipelineNames::QuadGroupedPipeline as u64 + self.pipe_name_offset,
+            ),
+        );
+
+        render_manager.bind_vertex_buffer();
+
+        render_manager.bind_index_buffer(0);
+
+        if render_manager.is_textured() {
+            render_manager.bind_texture_descriptor_sets(0, 0);
+        }
+
+        let push_constant_vertex = UniformQuadGroupedGPos {
+            pos: m,
+            color: cmd.quad_info.color,
+            offset: cmd.quad_info.offsets,
+            rotation: cmd.quad_info.rotation,
+        };
+
+        render_manager.push_constants(BackendShaderStage::VERTEX, 0, unsafe {
+            std::slice::from_raw_parts(
+                &push_constant_vertex as *const UniformQuadGroupedGPos as *const u8,
+                std::mem::size_of::<UniformQuadGroupedGPos>(),
+            )
+        });
+
+        let draw_count = cmd.base.quad_num;
+        let render_offset: usize = 0;
+
+        let index_offset = (cmd.base.quad_offset + render_offset) * 6;
+
+        render_manager.draw_indexed(
+            draw_count.checked_mul(6).unwrap().try_into().unwrap(),
+            1,
+            index_offset as u32,
+            0,
+            0,
+        );
+
+        Ok(())
+    }
+
     fn cmd_render_quad_layer(
         &self,
         render_manager: &mut dyn BackendRenderInterface,
         cmd: &CommandRenderQuadLayer,
     ) -> anyhow::Result<()> {
         let mut m: [f32; 4 * 2] = Default::default();
-        render_manager.get_state_matrix(&cmd.state, &mut m);
+        render_manager.get_state_matrix(&cmd.base.state, &mut m);
 
         render_manager.bind_pipeline(
-            &cmd.state,
-            &cmd.texture_index,
+            &cmd.base.state,
+            &cmd.base.texture_index,
             SubRenderPassAttributes::Additional(
                 MapPipelineNames::QuadPipeline as u64 + self.pipe_name_offset,
             ),
@@ -773,7 +893,7 @@ impl MapPipeline {
 
         let push_constant_vertex = UniformQuadGPos {
             pos: m,
-            quad_offset: cmd.quad_offset as i32,
+            quad_offset: cmd.base.quad_offset as i32,
         };
 
         render_manager.push_constants(BackendShaderStage::VERTEX, 0, unsafe {
@@ -783,7 +903,7 @@ impl MapPipeline {
             )
         });
 
-        let mut draw_count = cmd.quad_num;
+        let mut draw_count = cmd.base.quad_num;
         let mut render_offset: usize = 0;
 
         while draw_count > 0 {
@@ -793,13 +913,13 @@ impl MapPipeline {
                 draw_count
             };
 
-            let index_offset = (cmd.quad_offset + render_offset) * 6;
+            let index_offset = (cmd.base.quad_offset + render_offset) * 6;
 
             render_manager
                 .bind_uniform_descriptor_sets(if render_manager.is_textured() { 2 } else { 0 }, 0);
 
             if render_offset > 0 {
-                let quad_offset: i32 = (cmd.quad_offset + render_offset) as i32;
+                let quad_offset: i32 = (cmd.base.quad_offset + render_offset) as i32;
                 render_manager.push_constants(
                     BackendShaderStage::VERTEX,
                     (std::mem::size_of::<UniformQuadGPos>() - std::mem::size_of::<i32>()) as u32,
@@ -848,6 +968,9 @@ impl BackendCustomPipeline for MapPipeline {
             MapPipelineNames::EditorTilePipeline => Self::editor_tile_pipeline_layout(),
             MapPipelineNames::TileBorderPipeline => Self::border_tile_pipeline_layout(is_textured),
             MapPipelineNames::QuadPipeline => Self::quad_pipeline_layout(is_textured),
+            MapPipelineNames::QuadGroupedPipeline => {
+                Self::quad_grouped_pipeline_layout(is_textured)
+            }
         }
     }
 
@@ -903,6 +1026,19 @@ impl BackendCustomPipeline for MapPipeline {
                     ))
                 }
             }
+            MapPipelineNames::QuadGroupedPipeline => {
+                if is_textured {
+                    Some((
+                        "shader/vulkan/quad_grouped_textured.vert.spv".into(),
+                        "shader/vulkan/quad_grouped_textured.frag.spv".into(),
+                    ))
+                } else {
+                    Some((
+                        "shader/vulkan/quad_grouped.vert.spv".into(),
+                        "shader/vulkan/quad_grouped.frag.spv".into(),
+                    ))
+                }
+            }
         }
     }
 
@@ -929,6 +1065,9 @@ impl BackendCustomPipeline for MapPipeline {
             CommandsRenderMap::QuadLayer(cmd) => {
                 Self::cmd_render_quad_layer_fill_execute_buffer(render_execute, &cmd);
             }
+            CommandsRenderMap::QuadLayerGrouped(cmd) => {
+                Self::cmd_render_quad_layer_grouped_fill_execute_buffer(render_execute, &cmd);
+            }
         }
     }
 
@@ -949,6 +1088,9 @@ impl BackendCustomPipeline for MapPipeline {
             }
             CommandsRenderMap::BorderTile(cmd) => self.cmd_render_border_tile(render, &cmd),
             CommandsRenderMap::QuadLayer(cmd) => self.cmd_render_quad_layer(render, &cmd),
+            CommandsRenderMap::QuadLayerGrouped(cmd) => {
+                self.cmd_render_quad_layer_grouped(render, &cmd)
+            }
         }
     }
 
@@ -1046,15 +1188,15 @@ impl BackendCustomPipeline for MapPipeline {
             CommandsRenderMap::QuadLayer(cmd) => f(GraphicsObjectRewriteFunc {
                 textures_2d_array: &mut [],
                 buffer_objects: &mut [GraphicsBufferObjectAccessAndRewrite {
-                    buffer_object_index: &mut cmd.buffer_object_index,
+                    buffer_object_index: &mut cmd.base.buffer_object_index,
                     accesses: {
                         let mut accesses = self.accesses_pool.new();
 
                         accesses.push(GraphicsBufferObjectAccess::Quad {
-                            quad_offset: cmd.quad_offset,
-                            quad_count: cmd.quad_num,
+                            quad_offset: cmd.base.quad_offset,
+                            quad_count: cmd.base.quad_num,
                             buffer_byte_offset: 0,
-                            vertex_byte_size: if cmd.texture_index.is_textured() {
+                            vertex_byte_size: if cmd.base.texture_index.is_textured() {
                                 QUAD_LAYER_TEXTURED_VERTEX_SIZE
                             } else {
                                 QUAD_LAYER_VERTEX_SIZE
@@ -1065,12 +1207,38 @@ impl BackendCustomPipeline for MapPipeline {
                         accesses
                     },
                 }],
-                textures: &mut [&mut cmd.texture_index],
+                textures: &mut [&mut cmd.base.texture_index],
                 uniform_instances: &mut [GraphicsUniformAccessAndRewrite {
                     index: &mut cmd.quad_info_uniform_instance,
-                    instance_count: cmd.quad_num,
+                    instance_count: cmd.base.quad_num,
                     single_instance_byte_size: std::mem::size_of::<QuadRenderInfo>(),
                 }],
+                shader_storages: &mut [],
+            }),
+            CommandsRenderMap::QuadLayerGrouped(cmd) => f(GraphicsObjectRewriteFunc {
+                textures_2d_array: &mut [],
+                buffer_objects: &mut [GraphicsBufferObjectAccessAndRewrite {
+                    buffer_object_index: &mut cmd.base.buffer_object_index,
+                    accesses: {
+                        let mut accesses = self.accesses_pool.new();
+
+                        accesses.push(GraphicsBufferObjectAccess::Quad {
+                            quad_offset: cmd.base.quad_offset,
+                            quad_count: cmd.base.quad_num,
+                            buffer_byte_offset: 0,
+                            vertex_byte_size: if cmd.base.texture_index.is_textured() {
+                                QUAD_LAYER_TEXTURED_VERTEX_SIZE
+                            } else {
+                                QUAD_LAYER_VERTEX_SIZE
+                            },
+                            alignment: 4.try_into().unwrap(),
+                        });
+
+                        accesses
+                    },
+                }],
+                textures: &mut [&mut cmd.base.texture_index],
+                uniform_instances: &mut [],
                 shader_storages: &mut [],
             }),
         }
@@ -1234,7 +1402,7 @@ impl MapGraphics {
         &self,
         state: &State,
         texture: TextureType,
-        buffer_object_index: &BufferObject,
+        buffer_object: &BufferObject,
         quad_info_uniform_instance: usize,
         quad_num: usize,
         quad_offset: usize,
@@ -1245,11 +1413,13 @@ impl MapGraphics {
 
         // add the VertexArrays and draw
         let cmd = CommandRenderQuadLayer {
-            state: *state,
-            texture_index: texture.into(),
-            quad_num,
-            quad_offset,
-            buffer_object_index: buffer_object_index.get_index_unsafe(),
+            base: CommandRenderQuadLayerBase {
+                state: *state,
+                texture_index: texture.into(),
+                quad_num,
+                quad_offset,
+                buffer_object_index: buffer_object.get_index_unsafe(),
+            },
 
             quad_info_uniform_instance,
         };
@@ -1258,6 +1428,50 @@ impl MapGraphics {
         let pooled_write: &mut Vec<_> = &mut pooled_cmd;
         bincode::serde::encode_into_std_write(
             CommandsRenderMap::QuadLayer(cmd),
+            pooled_write,
+            bincode::config::standard(),
+        )
+        .unwrap();
+        let mut mod_name = self.mod_name.new();
+        mod_name.push_str(MOD_NAME);
+        self.backend_handle
+            .add_cmd(AllCommands::Render(CommandsRender::Mod(
+                CommandsRenderMod {
+                    cmd: pooled_cmd,
+                    mod_name,
+                },
+            )));
+    }
+
+    pub fn render_quad_layer_grouped(
+        &self,
+        state: &State,
+        texture: TextureType,
+        buffer_object: &BufferObject,
+        quad_num: usize,
+        quad_offset: usize,
+        quad_info: QuadRenderInfo,
+    ) {
+        if quad_num == 0 {
+            return;
+        }
+
+        // add the VertexArrays and draw
+        let cmd = CommandRenderQuadLayerGrouped {
+            base: CommandRenderQuadLayerBase {
+                state: *state,
+                texture_index: texture.into(),
+                quad_num,
+                quad_offset,
+                buffer_object_index: buffer_object.get_index_unsafe(),
+            },
+            quad_info,
+        };
+
+        let mut pooled_cmd = self.cmd_pool.new();
+        let pooled_write: &mut Vec<_> = &mut pooled_cmd;
+        bincode::serde::encode_into_std_write(
+            CommandsRenderMap::QuadLayerGrouped(cmd),
             pooled_write,
             bincode::config::standard(),
         )

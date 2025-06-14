@@ -172,7 +172,7 @@ impl CommandType {
         };
         cmd
     }
-    pub fn as_ref(&self) -> CommandTypeRef {
+    pub fn as_ref(&self) -> CommandTypeRef<'_> {
         match self {
             CommandType::Full(cmd) => CommandTypeRef::Full(cmd),
             CommandType::Partial(cmd) => CommandTypeRef::Partial(cmd),

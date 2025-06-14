@@ -70,15 +70,13 @@ pub fn render<'a>(
                                             .unwrap_or_else(|| {
                                                 if matches!(ty, ContainerItemIndexType::Http) {
                                                     format!(
-                                                        "{}\n\
+                                                        "{entry_name}\n\
                                                         \u{f019} downloaded from the \
-                                                        assets database.",
-                                                        entry_name
+                                                        assets database."
                                                     )
                                                 } else {
                                                     format!(
-                                                    "{}\nStored as local asset in on your disk.",
-                                                    entry_name
+                                                    "{entry_name}\nStored as local asset in on your disk."
                                                 )
                                                 }
                                             }),

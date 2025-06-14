@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+legacy-map = { path = "../legacy-map" }
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }
 map = { path = "../map" }

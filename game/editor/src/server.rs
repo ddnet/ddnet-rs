@@ -21,7 +21,7 @@ use graphics::{
         texture::texture::GraphicsTextureHandle,
     },
 };
-use map::map::Map;
+use map::{file::MapFileReader, map::Map};
 use math::math::vector::vec2;
 use network::network::{
     connection::NetworkConnectionId,
@@ -356,8 +356,7 @@ impl EditorServer {
 
                         let send_map: Map = map.clone().into();
 
-                        let mut map_bytes = Vec::new();
-                        send_map.write(&mut map_bytes, tp).unwrap();
+                        let map_bytes = send_map.write(tp).unwrap();
 
                         self.network.send_to(
                             &id,
@@ -561,7 +560,7 @@ impl EditorServer {
                                                 if is_undo { "undo" } else { "redo" }
                                             );
                                             log::error!("{err}{}", act_err.backtrace());
-                                            log::error!("current action: {}", act_label);
+                                            log::error!("current action: {act_label}");
                                             log::error!(
                                                 "latest action log starting with \
                                                 the most recent:\n{}",
@@ -792,9 +791,8 @@ impl EditorServer {
                                 || props.full_map_validation_probability == u8::MAX
                             {
                                 let map: Map = map.clone().into();
-                                let mut map_file: Vec<_> = Default::default();
-                                map.write(&mut map_file, tp).unwrap();
-                                Map::read(&map_file, tp).unwrap();
+                                let map_file: Vec<_> = map.write(tp).unwrap();
+                                Map::read(&MapFileReader::new(map_file).unwrap(), tp).unwrap();
                             }
                         }
                     }
@@ -836,14 +834,15 @@ impl EditorServer {
                                             )
                                             .ok()
                                         })
-                                        .map(|r| (name, TileLayerAutoMapperRuleType::Wasm(r)))
+                                        .map(|r| {
+                                            (name, TileLayerAutoMapperRuleType::Wasm(Box::new(r)))
+                                        })
                                 })
                                 .flatten()
                                 .into_iter()
                                 .collect(),
-                            EditorEventRuleTy::LegacyRules(rules) => (generate_hash_for(&rules)
-                                == hash)
-                                .then(|| {
+                            EditorEventRuleTy::LegacyRules(rules) => {
+                                if generate_hash_for(&rules) == hash {
                                     LegacyRulesLoading::new(&rules)
                                         .ok()
                                         .map(|rules| {
@@ -867,8 +866,10 @@ impl EditorServer {
                                                 .collect()
                                         })
                                         .unwrap_or_default()
-                                })
-                                .unwrap_or_default(),
+                                } else {
+                                    Default::default()
+                                }
+                            }
                         };
                         if !rules.is_empty() {
                             for (name, rule) in rules {

@@ -9,6 +9,7 @@ use ash::vk;
 use config::config::AtomicGfxDebugModes;
 use hiarc::Hiarc;
 use libc::c_void;
+use strum::EnumCount;
 
 use super::{
     barriers::{image_barrier, memory_barrier},
@@ -34,8 +35,8 @@ use super::{
     vulkan_limits::Limits,
     vulkan_mem::{BufferAllocationError, ImageAllocationError, Memory},
     vulkan_types::{
-        BufferObject, BufferObjectMem, DescriptorPoolType, DeviceDescriptorPools,
-        ESupportedSamplerTypes, MemoryBlockType, ShaderStorage, TextureObject, SAMPLER_TYPES_COUNT,
+        BufferObject, BufferObjectMem, DescriptorPoolType, DeviceDescriptorPools, MemoryBlockType,
+        ShaderStorage, SupportedSamplerTypes, TextureObject,
     },
     Options,
 };
@@ -67,7 +68,7 @@ pub struct DescriptorLayouts {
 
     pub vertex_shader_storage_descriptor_set_layout: Arc<DescriptorSetLayout>,
 
-    pub samplers_layouts: Arc<[Arc<DescriptorSetLayout>; SAMPLER_TYPES_COUNT]>,
+    pub samplers_layouts: Arc<[Arc<DescriptorSetLayout>; SupportedSamplerTypes::COUNT]>,
 }
 
 #[derive(Debug, Hiarc)]
@@ -82,7 +83,7 @@ pub struct Device {
     #[hiarc_skip_unsafe]
     pub non_flushed_memory_ranges: Vec<vk::MappedMemoryRange<'static>>,
 
-    pub samplers: Arc<[(Arc<Sampler>, Arc<DescriptorSets>); SAMPLER_TYPES_COUNT]>,
+    pub samplers: Arc<[(Arc<Sampler>, Arc<DescriptorSets>); SupportedSamplerTypes::COUNT]>,
 
     pub textures: HashMap<u128, TextureObject>,
     pub buffer_objects: HashMap<u128, BufferObject>,
@@ -205,15 +206,15 @@ impl Device {
             options.gl.global_texture_lod_bias,
         )?;
 
-        let samplers: [Arc<Sampler>; SAMPLER_TYPES_COUNT] =
+        let samplers: [Arc<Sampler>; SupportedSamplerTypes::COUNT] =
             [repeat.0, clamp_to_edge.0, texture_2d_array.0];
 
-        let sampler_layouts: [Arc<DescriptorSetLayout>; SAMPLER_TYPES_COUNT] =
+        let sampler_layouts: [Arc<DescriptorSetLayout>; SupportedSamplerTypes::COUNT] =
             [repeat.1, clamp_to_edge.1, texture_2d_array.1];
 
         let sampler_descr_pool = DeviceDescriptorPools::new(
             &device,
-            SAMPLER_TYPES_COUNT as vk::DeviceSize,
+            SupportedSamplerTypes::COUNT as vk::DeviceSize,
             DescriptorPoolType::Sampler,
         )?;
         let (repeat_set, clamp_to_edge_set, texture_2d_set) =
@@ -945,10 +946,10 @@ impl Device {
 
     pub fn create_new_sampler_descriptor_set(
         device: &Arc<LogicalDevice>,
-        layouts: &[Arc<DescriptorSetLayout>; SAMPLER_TYPES_COUNT],
+        layouts: &[Arc<DescriptorSetLayout>; SupportedSamplerTypes::COUNT],
         sampler_descr_pool: &Arc<parking_lot::Mutex<DeviceDescriptorPools>>,
-        samplers: &[Arc<Sampler>; SAMPLER_TYPES_COUNT],
-        address_mode: ESupportedSamplerTypes,
+        samplers: &[Arc<Sampler>; SupportedSamplerTypes::COUNT],
+        address_mode: SupportedSamplerTypes,
     ) -> anyhow::Result<Arc<DescriptorSets>, ImageAllocationError> {
         let res = VulkanAllocator::get_descriptor_pool_for_alloc(
             device,
@@ -968,9 +969,9 @@ impl Device {
 
     pub fn create_new_sampler_descriptor_sets(
         device: &Arc<LogicalDevice>,
-        layouts: &[Arc<DescriptorSetLayout>; SAMPLER_TYPES_COUNT],
+        layouts: &[Arc<DescriptorSetLayout>; SupportedSamplerTypes::COUNT],
         sampler_descr_pool: &Arc<parking_lot::Mutex<DeviceDescriptorPools>>,
-        samplers: &[Arc<Sampler>; SAMPLER_TYPES_COUNT],
+        samplers: &[Arc<Sampler>; SupportedSamplerTypes::COUNT],
     ) -> anyhow::Result<DescriptorSetsRes, ImageAllocationError> {
         Ok((
             Self::create_new_sampler_descriptor_set(
@@ -978,21 +979,21 @@ impl Device {
                 layouts,
                 sampler_descr_pool,
                 samplers,
-                ESupportedSamplerTypes::Repeat,
+                SupportedSamplerTypes::Repeat,
             )?,
             Self::create_new_sampler_descriptor_set(
                 device,
                 layouts,
                 sampler_descr_pool,
                 samplers,
-                ESupportedSamplerTypes::ClampToEdge,
+                SupportedSamplerTypes::ClampToEdge,
             )?,
             Self::create_new_sampler_descriptor_set(
                 device,
                 layouts,
                 sampler_descr_pool,
                 samplers,
-                ESupportedSamplerTypes::Texture2DArray,
+                SupportedSamplerTypes::Texture2dArray,
             )?,
         ))
     }

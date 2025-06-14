@@ -448,13 +448,7 @@ impl TeeEditor {
         );*/
 
         // render all animation frames as plot lines to visualize their animation path
-        stream_handle.render_lines(
-            hi_closure!([], |mut stream_handle: LinesStreamHandle<'_>| -> () {
-                stream_handle.add_vertices(StreamedLine::new().into());
-                stream_handle.add_vertices(StreamedLine::new().into());
-            }),
-            State::new(),
-        );
+        stream_handle.render_lines(&[StreamedLine::new(), StreamedLine::new()], State::new());
 
         if item.atoms.selected_body_part.get() != "" {
             // add an overlay to show the current frames interpolated data(pos, scale, rotation)

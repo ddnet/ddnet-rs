@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use base::{linked_hash_map_view::FxLinkedHashMap, network_string::PoolNetworkString};
+use camera::Camera;
 use client_containers::utils::RenderGameContainers;
 use client_render_base::{
-    map::render_pipe::{Camera, GameTimeInfo},
-    render::particle_manager::ParticleManager,
+    map::render_pipe::GameTimeInfo, render::particle_manager::ParticleManager,
 };
 use client_render_game::components::{
     game_objects::{GameObjectsRender, GameObjectsRenderPipe},
@@ -105,12 +105,7 @@ pub fn test_ingame(
                 ticks_per_second: 50.try_into().unwrap(),
                 intra_tick_time: Default::default(),
             };
-            let camera = Camera {
-                pos: Default::default(),
-                zoom: 1.0,
-                parallax_aware_zoom: true,
-                forced_aspect_ratio: None,
-            };
+            let camera = Camera::new(Default::default(), 1.0, None, true);
 
             game_objects.render(&mut GameObjectsRenderPipe {
                 particle_manager: &mut particles,
@@ -144,7 +139,7 @@ pub fn test_ingame(
                 emoticons: &mut containers.emoticons_container,
                 particle_manager: &mut particles,
                 collision: &Collision::new(
-                    &MapGroupPhysics {
+                    MapGroupPhysics {
                         attr: MapGroupPhysicsAttr {
                             width: 1u16.try_into().unwrap(),
                             height: 1u16.try_into().unwrap(),
@@ -282,7 +277,7 @@ pub fn test_ingame_skins(
                 emoticons: &mut containers.emoticons_container,
                 particle_manager: &mut particles,
                 collision: &Collision::new(
-                    &MapGroupPhysics {
+                    MapGroupPhysics {
                         attr: MapGroupPhysicsAttr {
                             width: 1u16.try_into().unwrap(),
                             height: 1u16.try_into().unwrap(),

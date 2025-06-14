@@ -51,7 +51,7 @@ mod test {
     use crate::{config::config::ConfigVanilla, state::state::GameState};
 
     fn get_game<const NUM_PLAYERS: usize>() -> GameState {
-        let file = include_bytes!("../../../data/map/maps/ctf1.twmap");
+        let file = include_bytes!("../../../data/map/maps/ctf1.twmap.tar");
 
         let rt = create_runtime();
         let io_rt = IoRuntime::new(rt);

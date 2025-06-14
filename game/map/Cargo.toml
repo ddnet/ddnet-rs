@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+assets-base = { path = "../assets-base" }
+
 math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
 hiarc = { path = "../../lib/hiarc", features = ["enable_time", "enable_hashlink", "enable_rustc_hash"] }
+image-utils = { path = "../../lib/image-utils" }
 
 rayon = "1.10.0"
 bincode = { features = ["serde"], version = "2.0.1" }

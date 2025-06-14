@@ -16,6 +16,7 @@ use base::{
 };
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemInterface;
+use camera::CameraInterface;
 use client_containers::entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH};
 use client_notifications::overlay::ClientNotifications;
 use client_render_base::map::{
@@ -23,8 +24,6 @@ use client_render_base::map::{
     map_buffered::{
         ClientMapBufferQuadLayer, MapBufferPhysicsTileLayer, MapBufferTileLayer, SoundLayerSounds,
     },
-    render_pipe::Camera,
-    render_tools::{CanvasType, RenderTools},
 };
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
@@ -38,15 +37,15 @@ use graphics::{
         backend::backend::GraphicsBackendHandle,
         buffer_object::buffer_object::GraphicsBufferObjectHandle,
         shader_storage::shader_storage::GraphicsShaderStorageHandle,
-        stream::stream::LinesStreamHandle,
         stream_types::StreamedLine,
         texture::texture::{GraphicsTextureHandle, TextureContainer, TextureContainer2dArray},
     },
 };
 use graphics_types::{commands::TexFlags, rendering::State, types::GraphicsMemoryAllocationType};
-use hiarc::{hi_closure, HiarcTrait};
+use hiarc::HiarcTrait;
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
+    file::MapFileReader,
     map::{
         animations::{AnimBase, AnimPoint, AnimPointCurveType},
         config::Config,
@@ -74,6 +73,7 @@ use map::{
         },
     },
     types::NonZeroU16MinusOne,
+    utils::file_ext_or_twmap_tar,
 };
 use math::math::vector::{ffixed, fvec2, ubvec4, vec2};
 use network::network::types::{
@@ -419,7 +419,7 @@ impl Editor {
 
             sys,
         };
-        res.load_map("map/maps/ctf1.twmap".as_ref(), Default::default());
+        res.load_map("map/maps/ctf1.twmap.tar".as_ref(), Default::default());
         res
     }
 
@@ -1129,11 +1129,12 @@ impl Editor {
     }
 
     fn path_to_tab_name(path: &Path) -> anyhow::Result<String> {
-        Ok(path
+        let name = path
             .file_stem()
             .ok_or_else(|| anyhow!("{path:?} is not a valid file"))?
             .to_string_lossy()
-            .to_string())
+            .to_string();
+        Ok(name.replace(".twmap", ""))
     }
 
     fn load_legacy_map(
@@ -1266,7 +1267,7 @@ impl Editor {
             .rt
             .spawn(async move {
                 let file = read_file_editor(&fs, &path).await?;
-                let map = Map::read(&file, &tp)?;
+                let map = Map::read(&MapFileReader::new(file)?, &tp)?;
                 let mut resource_files: HashMap<Hash, Vec<u8>> = Default::default();
                 for (ty, i) in map
                     .resources
@@ -1409,8 +1410,7 @@ impl Editor {
         let tp = tp.clone();
         let fs = io.fs.clone();
         Ok(io.rt.spawn(async move {
-            let mut file: Vec<u8> = Default::default();
-            map.write(&mut file, &tp)?;
+            let file: Vec<u8> = map.write(&tp)?;
             let map_legacy = map_convert_lib::new_to_legacy::new_to_legacy_from_buf_async(
                 &file,
                 |map| {
@@ -1577,8 +1577,7 @@ impl Editor {
                 fs.create_dir("map/resources/images".as_ref()).await?;
                 fs.create_dir("map/resources/sounds".as_ref()).await?;
 
-                let mut file: Vec<u8> = Default::default();
-                map.write(&mut file, &tp)?;
+                let file: Vec<u8> = map.write(&tp)?;
                 write_file_editor(&fs, path.as_ref(), file).await?;
 
                 // now write all resources
@@ -1693,7 +1692,7 @@ impl Editor {
                 live_edited_layers,
             })) = update_res
             {
-                let map = Map::read(&map, &self.thread_pool).unwrap();
+                let map = Map::read(&MapFileReader::new(map).unwrap(), &self.thread_pool).unwrap();
                 tab.map = Self::map_to_editor_map_impl(
                     self.graphics.get_graphics_mt(),
                     self.sound_mt.clone(),
@@ -2048,12 +2047,7 @@ impl Editor {
                             &map.resources.sounds,
                             &group.attr,
                             layer,
-                            &Camera {
-                                pos: map.groups.user.pos,
-                                zoom: map.groups.user.zoom,
-                                parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
-                                forced_aspect_ratio: None,
-                            },
+                            &map.game_camera(),
                             0.3,
                         );
                     }
@@ -2086,12 +2080,7 @@ impl Editor {
             // TODO:
             "ddnet",
             layer,
-            &Camera {
-                pos: map.groups.user.pos,
-                zoom: map.groups.user.zoom,
-                parallax_aware_zoom: map.groups.user.parallax_aware_zoom,
-                forced_aspect_ratio: None,
-            },
+            &map.game_camera(),
             &time,
             &time,
             map.user.include_last_anim_point(),
@@ -2579,15 +2568,8 @@ impl Editor {
         let grid_size = grid_size as f32;
 
         let mut state = State::new();
-        RenderTools::map_canvas_of_group(
-            CanvasType::Handle(&self.graphics.canvas_handle),
-            &mut state,
-            tab.map.groups.user.pos.x,
-            tab.map.groups.user.pos.y,
-            Some(&attr),
-            tab.map.groups.user.zoom,
-            tab.map.groups.user.parallax_aware_zoom,
-        );
+        let camera = tab.map.game_camera();
+        camera.project(&self.graphics.canvas_handle, &mut state, Some(&attr));
         let (width, height) = (state.get_canvas_width(), state.get_canvas_height());
 
         let offset = state.canvas_tl;
@@ -2615,17 +2597,7 @@ impl Editor {
             y += grid_size;
         }
 
-        self.graphics.stream_handle.render_lines(
-            hi_closure!(
-                [lines: Vec<StreamedLine>],
-                |mut stream_handle: LinesStreamHandle<'_>| -> () {
-                    for line in lines {
-                        stream_handle.add_vertices(line.into());
-                    }
-                }
-            ),
-            state,
-        );
+        self.graphics.stream_handle.render_lines(&lines, state);
     }
 
     fn render_ui(
@@ -2936,7 +2908,7 @@ impl EditorInterface for Editor {
                 None
             }
         }) {
-            log::info!("[Editor] Copied the following text: {}", text);
+            log::info!("[Editor] Copied the following text: {text}");
         }
 
         // handle save tasks
@@ -2992,13 +2964,13 @@ impl EditorInterface for Editor {
     }
 
     fn file_dropped(&mut self, file: PathBuf) {
-        let Some(ext) = file.extension().and_then(|e| e.to_str()) else {
+        let Some(ext) = file_ext_or_twmap_tar(&file) else {
             return;
         };
 
         let fs = self.io.fs.clone();
         match ext {
-            "map" | "twmap" => {
+            "map" | "twmap.tar" => {
                 self.load_map(&file, Default::default());
             }
             "png" => {

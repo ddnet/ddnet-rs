@@ -78,13 +78,10 @@ fn render_conf_val(
                 v.config.name = v
                     .config
                     .name
-                    .replacen("$INDEX$", &format!("[{}]", modifier), 1);
+                    .replacen("$INDEX$", &format!("[{modifier}]"), 1);
             }
             ModifierTy::Key(modifier) => {
-                v.config.name = v
-                    .config
-                    .name
-                    .replacen("$KEY$", &format!("[{}]", modifier), 1);
+                v.config.name = v.config.name.replacen("$KEY$", &format!("[{modifier}]"), 1);
             }
         }
 
@@ -268,7 +265,7 @@ fn render_conf_val(
                             return;
                         };
                         for (index, _) in array.into_iter().enumerate() {
-                            let modifier = format!("{}", index);
+                            let modifier = format!("{index}");
                             CollapsingHeader::new(&modifier)
                                 .id_salt(format!("conf-val-array-{}-{}", value.config.name, index))
                                 .default_open(false)

@@ -2,7 +2,7 @@ use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 use arrayvec::ArrayVec;
 
-use client_extra::skin_split::Skin06Part;
+use assets_splitting::skin_split::Skin06Part;
 use fixed::{types::extra::U32, FixedI64};
 use game_interface::types::{emoticons::EnumCount, render::character::TeeEye};
 use graphics::{
@@ -282,7 +282,8 @@ impl LoadSkinTexturesData {
                 mem.resize(width * height * bytes_per_pixel, Default::default());
                 &mut mem
             })?;
-        let converted = client_extra::skin_split::split_06_skin(img.data, img.width, img.height)?;
+        let converted =
+            assets_splitting::skin_split::split_06_skin(img.data, img.width, img.height)?;
         let base: PathBuf = if let Some(skin_extra_path) = skin_extra_path {
             skin_extra_path.into()
         } else {
@@ -298,7 +299,7 @@ impl LoadSkinTexturesData {
                         file.clone(),
                     );
                 }
-                files.insert(base.join(format!("{}.png", name)), file);
+                files.insert(base.join(format!("{name}.png")), file);
                 Ok(())
             };
         insert_part("body", converted.body, false)?;
@@ -547,7 +548,7 @@ impl LoadSkinTexturesData {
         img_mem.as_mut_slice().copy_from_slice(&img.data);
         if let Err(err) = graphics_mt.try_flush_mem(&mut img_mem, true) {
             // Ignore the error, but log it.
-            log::debug!("err while flushing memory: {}", err);
+            log::debug!("err while flushing memory: {err}");
         }
         ContainerItemLoadData {
             width: img.width,

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
-use client_render_base::map::render_tools::{CanvasType, RenderTools};
+use camera::CameraInterface;
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
@@ -302,8 +302,8 @@ impl QuadSelection {
                                     index,
                                 })),
                                 Some(&format!(
-                                    "change-quad-attr-{}-{}-{}-{}",
-                                    is_background, group_index, layer_index, index
+                                    "change-quad-attr-\
+                                    {is_background}-{group_index}-{layer_index}-{index}"
                                 )),
                             );
                         }
@@ -455,19 +455,9 @@ impl QuadSelection {
 
         let range = self.range.as_ref().unwrap();
 
-        let (center, group_attr) = (
-            map.groups.user.pos,
-            layer.map(|layer| layer.get_or_fake_group_attr()),
-        );
-        RenderTools::map_canvas_of_group(
-            CanvasType::Handle(canvas_handle),
-            &mut state,
-            center.x,
-            center.y,
-            group_attr.as_ref(),
-            map.groups.user.zoom,
-            map.groups.user.parallax_aware_zoom,
-        );
+        let group_attr = layer.map(|layer| layer.get_or_fake_group_attr());
+        map.game_camera()
+            .project(canvas_handle, &mut state, group_attr.as_ref());
 
         let range_size = vec2::new(range.w, range.h);
         let rect = egui::Rect::from_min_max(

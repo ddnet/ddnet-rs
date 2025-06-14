@@ -84,7 +84,10 @@ use crate::{
 use game_base::{
     config_helper::handle_config_variable_cmd,
     game_types::{is_next_tick, time_until_tick},
-    local_server_info::{LocalServerConnectInfo, LocalServerInfo, LocalServerState, ServerDbgGame},
+    local_server_info::{
+        LocalServerConnectInfo, LocalServerInfo, LocalServerState, LocalServerStateReady,
+        ServerDbgGame,
+    },
     network::{
         messages::{
             AddLocalPlayerResponseError, MsgClChatMsg, MsgClLoadVotes, MsgClReadyResponse,
@@ -867,7 +870,7 @@ impl Server {
                 thread,
             } = std::mem::take(&mut *state)
             {
-                *state = LocalServerState::Ready {
+                *state = LocalServerState::Ready(Box::new(LocalServerStateReady {
                     connect_info: LocalServerConnectInfo {
                         sock_addr: sock_addrs[0],
                         dbg_games: Default::default(),
@@ -877,7 +880,7 @@ impl Server {
                     },
                     thread,
                     browser_info: None,
-                };
+                }));
             }
         }
 
@@ -1096,13 +1099,10 @@ impl Server {
         iter.enumerate().for_each(|(index, (net_id, _))| {
             self.network.send_unordered_to(
                 &ServerToClientMessage::QueueInfo(
-                    format!(
-                        "The server is full.\nYou are queued at position: #{}",
-                        index
-                    )
-                    .as_str()
-                    .try_into()
-                    .unwrap(),
+                    format!("The server is full.\nYou are queued at position: #{index}")
+                        .as_str()
+                        .try_into()
+                        .unwrap(),
                 ),
                 net_id,
             );
@@ -1897,7 +1897,7 @@ impl Server {
                             .map(|id| id.to_string())
                             .collect::<Vec<_>>()
                             .join(", ");
-                        res = format!("Banned the following id(s): {}", text);
+                        res = format!("Banned the following id(s): {text}");
                     })?;
                     anyhow::Ok(res)
                 }
@@ -1918,7 +1918,7 @@ impl Server {
                                 .map(|id| id.to_string())
                                 .collect::<Vec<_>>()
                                 .join(", ");
-                            res = format!("Kicked the following id(s): {}", text);
+                            res = format!("Kicked the following id(s): {text}");
                         },
                     )?;
                     anyhow::Ok(res)
@@ -2764,15 +2764,15 @@ impl Server {
                 .flat_map(|s| s.1.world.projectiles.iter())
                 .collect();
 
-            let players = format!("{:?}", player_infos);
-            let projectiles = format!("{:?}", projectiles);
+            let players = format!("{player_infos:?}");
+            let projectiles = format!("{projectiles:?}");
             let inputs = format!("{:?}", inputs.map(|inp| inp.collect::<Vec<_>>()));
 
-            if let LocalServerState::Ready {
-                connect_info: LocalServerConnectInfo { dbg_games, .. },
-                ..
-            } = &mut *shared_info.state.lock().unwrap()
-            {
+            if let LocalServerState::Ready(ready) = &mut *shared_info.state.lock().unwrap() {
+                let LocalServerStateReady {
+                    connect_info: LocalServerConnectInfo { dbg_games, .. },
+                    ..
+                } = ready.as_mut();
                 let dbg_game = dbg_games.get(&cur_tick);
                 if let Some(dbg_game) = dbg_game {
                     let now = std::time::Instant::now();
@@ -2896,13 +2896,14 @@ impl Server {
             requires_account: self.accounts_only,
         };
 
-        if let Some(LocalServerState::Ready { browser_info, .. }) = self
+        if let Some(LocalServerState::Ready(ready)) = self
             .shared_info
             .upgrade()
             .as_ref()
             .and_then(|info| info.state.lock().ok())
             .as_deref_mut()
         {
+            let LocalServerStateReady { browser_info, .. } = ready.as_mut();
             *browser_info = Some(register_info.clone())
         }
 
@@ -2944,28 +2945,25 @@ impl Server {
                                     port: u16| {
                         Box::pin(async move {
                             for master_server in master_servers {
+                                let headers = vec![
+                                    (
+                                        "Address",
+                                        format!(
+                                            "ddrs-0.1+quic://connecting-address.invalid:{port}"
+                                        )
+                                        .as_str(),
+                                    )
+                                        .into(),
+                                    ("Secret", fmt_hash(&secret).as_str()).into(),
+                                    ("Challenge-Secret", fmt_hash(&challenge_secret).as_str())
+                                        .into(),
+                                    ("Info-Serial", serial.to_string().as_str()).into(),
+                                    ("content-type", "application/json").into(),
+                                ];
                                 match http
                                     .custom_request(
                                         master_server.try_into().unwrap(),
-                                        vec![
-                                            (
-                                                "Address",
-                                                format!(
-                                                    "ddrs-0.1+quic://connecting-address.invalid:{}",
-                                                    port
-                                                )
-                                                .as_str(),
-                                            )
-                                                .into(),
-                                            ("Secret", fmt_hash(&secret).as_str()).into(),
-                                            (
-                                                "Challenge-Secret",
-                                                fmt_hash(&challenge_secret).as_str(),
-                                            )
-                                                .into(),
-                                            ("Info-Serial", serial.to_string().as_str()).into(),
-                                            ("content-type", "application/json").into(),
-                                        ],
+                                        headers,
                                         Some(register_info.as_bytes().to_vec()),
                                     )
                                     .await

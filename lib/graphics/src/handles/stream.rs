@@ -10,12 +10,13 @@ pub mod stream {
         rendering::{GlVertex, RenderMode, State},
         types::DrawModes,
     };
-    use hiarc::Hiarc;
+    use hiarc::{hi_closure, Hiarc};
     use hiarc::{HiFnMut, HiFnMutBase, HiFnOnce};
 
     use crate::handles::{
         backend::backend::GraphicsBackendHandle,
         canvas::canvas::OffscreenCanvas,
+        stream_types::{StreamedLine, StreamedQuad, StreamedTriangle},
         texture::texture::{TextureContainer, TextureType},
     };
 
@@ -169,6 +170,10 @@ pub mod stream {
             self.render_mode = render_mode;
         }
 
+        pub fn set_texture_ty(&mut self, texture: TextureType) {
+            self.texture = texture;
+        }
+
         pub fn set_texture(&mut self, tex_index: &TextureContainer) {
             self.texture = tex_index.into();
         }
@@ -178,8 +183,7 @@ pub mod stream {
         }
 
         pub fn set_offscreen_attachment_texture(&mut self, offscreen_canvas: &OffscreenCanvas) {
-            self.texture =
-                TextureType::ColorAttachmentOfOffscreen(offscreen_canvas.get_index_unsafe());
+            self.texture = TextureType::ColorAttachmentOfOffscreen(offscreen_canvas.clone());
         }
     }
 
@@ -227,7 +231,7 @@ pub mod stream {
         }
 
         /// use [`graphics::handles::stream_types::StreamedLine`] to build a line
-        pub fn render_lines<'a, F>(&'a self, draw: F, state: State)
+        pub fn stream_lines<'a, F>(&'a self, draw: F, state: State)
         where
             F: HiFnOnce<LinesStreamHandle<'a>, ()>,
         {
@@ -244,7 +248,7 @@ pub mod stream {
         }
 
         /// use [`graphics::handles::stream_types::StreamedQuad`] to build a quad
-        pub fn render_quads<'a, F>(&'a self, draw: F, state: State)
+        pub fn stream_quads<'a, F>(&'a self, draw: F, state: State)
         where
             F: HiFnOnce<QuadStreamHandle<'a>, ()>,
         {
@@ -261,7 +265,7 @@ pub mod stream {
         }
 
         /// use [`graphics::handles::stream_types::StreamedTriangle`] to build a triangle
-        pub fn render_triangles<'a, F>(&'a self, draw: F, state: State)
+        pub fn stream_triangles<'a, F>(&'a self, draw: F, state: State)
         where
             F: HiFnOnce<TriangleStreamHandle<'a>, ()>,
         {
@@ -275,6 +279,65 @@ pub mod stream {
                 texture: Default::default(),
             };
             draw.call_once(stream_handle);
+        }
+
+        /// Render [`graphics::handles::stream_types::StreamedLine`]s.
+        pub fn render_lines(&self, lines: &[StreamedLine], state: State) {
+            self.stream_lines(
+                hi_closure!([
+                        lines: &[StreamedLine],
+                    ],
+                    |mut stream_handle: LinesStreamHandle<'_>| -> () {
+                        for line in lines.iter().copied() {
+                            stream_handle.add_vertices(line.into());
+                        }
+                    }
+                ),
+                state,
+            );
+        }
+
+        /// Render [`graphics::handles::stream_types::StreamedQuad`]s.
+        pub fn render_quads(&self, quads: &[StreamedQuad], state: State, texture: TextureType) {
+            let texture = &texture;
+            self.stream_quads(
+                hi_closure!([
+                        quads: &[StreamedQuad],
+                        texture: &TextureType,
+                    ],
+                    |mut stream_handle: QuadStreamHandle<'_>| -> () {
+                        stream_handle.set_texture_ty(texture.clone());
+                        for quad in quads.iter().copied() {
+                            stream_handle.add_vertices(quad.into());
+                        }
+                    }
+                ),
+                state,
+            );
+        }
+
+        /// Render [`graphics::handles::stream_types::StreamedTriangle`]s.
+        pub fn render_triangles(
+            &self,
+            triangles: &[StreamedTriangle],
+            state: State,
+            texture: TextureType,
+        ) {
+            let texture = &texture;
+            self.stream_triangles(
+                hi_closure!([
+                        triangles: &[StreamedTriangle],
+                        texture: &TextureType,
+                    ],
+                    |mut stream_handle: TriangleStreamHandle<'_>| -> () {
+                        stream_handle.set_texture_ty(texture.clone());
+                        for triangle in triangles.iter().copied() {
+                            stream_handle.add_vertices(triangle.into());
+                        }
+                    }
+                ),
+                state,
+            );
         }
 
         fn flush_vertices(
