@@ -33,30 +33,23 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
 
                 ui.horizontal(|ui| {
                     ui.menu_button("File", |ui| {
-                        let cur_hotkeys = &mut *pipe.user_data.cur_hotkey_events;
                         let binds = &*pipe.user_data.hotkeys;
                         let per_ev = &mut *pipe.user_data.cached_binds_per_event;
-                        let by_hotkey = cur_hotkeys
-                            .remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::New));
                         if ui
                             .add(Button::new("New map").shortcut_text(binds.fmt_ev_bind(
                                 per_ev,
                                 &EditorHotkeyEvent::File(EditorHotkeyEventFile::New),
                             )))
                             .clicked()
-                            || by_hotkey
                         {
                             pipe.user_data.ui_events.push(EditorUiEvent::NewMap);
                         }
-                        let by_hotkey = cur_hotkeys
-                            .remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::Open));
                         if ui
                             .add(Button::new("Open map").shortcut_text(binds.fmt_ev_bind(
                                 per_ev,
                                 &EditorHotkeyEvent::File(EditorHotkeyEventFile::Open),
                             )))
                             .clicked()
-                            || by_hotkey
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::open(pipe.user_data.io);
                         }
@@ -321,6 +314,19 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         }
                     }
                 });
+
+                let cur_hotkeys = &mut *pipe.user_data.cur_hotkey_events;
+                let by_hotkey =
+                    cur_hotkeys.remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::New));
+                if by_hotkey {
+                    pipe.user_data.ui_events.push(EditorUiEvent::NewMap);
+                }
+
+                let by_hotkey =
+                    cur_hotkeys.remove(&EditorHotkeyEvent::File(EditorHotkeyEventFile::Open));
+                if by_hotkey {
+                    *menu_dialog_mode = EditorMenuDialogMode::open(pipe.user_data.io);
+                }
 
                 if let EditorMenuDialogMode::Open { file_dialog }
                 | EditorMenuDialogMode::Save { file_dialog }
