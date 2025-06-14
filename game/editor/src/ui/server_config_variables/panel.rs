@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use egui::{text::LayoutJob, Button, Color32, FontId, Layout, ScrollArea, TextFormat, UiBuilder};
+use egui::{
+    text::LayoutJob, Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat,
+    UiBuilder,
+};
 use map::map::command_value::CommandValue;
 use ui_base::{
     components::clearable_edit_field::clearable_edit_field,
@@ -23,7 +26,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         let mut panel = egui::TopBottomPanel::bottom("server_config_variables_panel")
             .resizable(true)
             .height_range(300.0..=600.0);
-        panel = panel.default_height(300.0);
+        panel = panel
+            .default_height(300.0)
+            .frame(Frame::side_top_panel(ui.style()).inner_margin(Margin::same(15)));
 
         Some(panel.show_inside(ui, |ui| {
             ui.allocate_new_ui(

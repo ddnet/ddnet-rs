@@ -1,7 +1,7 @@
 use std::{fmt::Debug, ops::IndexMut, time::Duration};
 
 use client_render_base::map::render_tools::RenderTools;
-use egui::UiBuilder;
+use egui::{Frame, Margin, UiBuilder};
 use egui_timeline::point::{Point, PointGroup};
 use fixed::traits::{FromFixed, ToFixed};
 use map::{
@@ -56,7 +56,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         let mut panel = egui::TopBottomPanel::bottom("animations_panel")
             .resizable(true)
             .height_range(300.0..=600.0);
-        panel = panel.default_height(300.0);
+        panel = panel
+            .default_height(300.0)
+            .frame(Frame::side_top_panel(ui.style()).inner_margin(Margin::same(15)));
 
         // if anim panel is open, and quads/sounds are selected
         // they basically automatically select their active animations
