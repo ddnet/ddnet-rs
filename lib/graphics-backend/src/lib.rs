@@ -204,6 +204,10 @@ mod tests {
         cmds.add_cmd(AllCommands::Misc(CommandsMisc::Swap));
 
         backend.run_cmds(&cmds, &stream_data);
+
+        // One extra swap to find errors from previous cmds
+        cmds.add_cmd(AllCommands::Misc(CommandsMisc::Swap));
+        backend.run_cmds(&cmds, &stream_data);
     }
 
     #[test]
@@ -258,6 +262,10 @@ mod tests {
         cmds.add_cmd(AllCommands::Misc(CommandsMisc::ConsumeMultiSamplingTargets));
         cmds.add_cmd(AllCommands::Misc(CommandsMisc::Swap));
 
+        backend.run_cmds(&cmds, &stream_data);
+
+        // One extra swap to find errors from previous cmds
+        cmds.add_cmd(AllCommands::Misc(CommandsMisc::Swap));
         backend.run_cmds(&cmds, &stream_data);
     }
 
@@ -337,6 +345,10 @@ mod tests {
         add();
         add();
 
+        backend.run_cmds(&cmds, &stream_data);
+
+        // One extra swap to find errors from previous cmds
+        cmds.add_cmd(AllCommands::Misc(CommandsMisc::Swap));
         backend.run_cmds(&cmds, &stream_data);
     }
 
