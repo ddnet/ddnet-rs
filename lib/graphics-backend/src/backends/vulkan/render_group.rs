@@ -8,7 +8,11 @@ use hiarc::Hiarc;
 use num_derive::FromPrimitive;
 use strum::EnumCount;
 
-use crate::{backend::CustomPipelines, window::BackendSwapchain};
+use crate::{
+    backend::CustomPipelines,
+    backends::vulkan::{fence::Fence, semaphore::Semaphore},
+    window::BackendSwapchain,
+};
 
 use super::{
     compiler::compiler::ShaderCompiler,
@@ -82,6 +86,15 @@ pub struct RenderSetup {
 
     cur_canvas_mode: CanvasModeInternal,
 
+    // swapped by use case
+    pub queue_submit_semaphores: Vec<Arc<Semaphore>>,
+
+    pub busy_acquire_image_semaphores: Vec<Arc<Semaphore>>,
+    pub acquired_image_semaphore: Arc<Semaphore>,
+
+    pub queue_submit_fences: Vec<Arc<Fence>>,
+    pub cur_image_index: u32,
+
     // required data
     pub shader_compiler: Arc<ShaderCompiler>,
     pub pipeline_compile_in_queue: Arc<AtomicUsize>,
@@ -127,11 +140,29 @@ impl RenderSetup {
             has_multi_sampling,
         )?;
 
+        let sync_object_count = onscreen.swap_chain_image_count();
+        let queue_submit_semaphores: Vec<_> = (0..sync_object_count)
+            .map(|_| Semaphore::new(device.clone(), device.is_headless))
+            .collect::<anyhow::Result<_>>()?;
+        let busy_acquire_image_semaphores: Vec<_> = (0..sync_object_count)
+            .map(|_| Semaphore::new(device.clone(), device.is_headless))
+            .collect::<anyhow::Result<_>>()?;
+
+        let queue_submit_fences: Vec<_> = (0..sync_object_count)
+            .map(|_| Fence::new(device.clone()))
+            .collect::<anyhow::Result<_>>()?;
+
         let res = Self {
             onscreen,
             offscreens: Default::default(),
 
             cur_canvas_mode: CanvasModeInternal::Onscreen,
+
+            queue_submit_semaphores,
+            busy_acquire_image_semaphores,
+            acquired_image_semaphore: Semaphore::new(device.clone(), device.is_headless)?,
+            queue_submit_fences,
+            cur_image_index: 0,
 
             shader_compiler,
             pipeline_compile_in_queue,

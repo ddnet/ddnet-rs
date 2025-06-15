@@ -131,11 +131,11 @@ impl BackendRenderExecuteInterface for RenderCommandExecuteManager<'_> {
         {
             &self.backend.render.get().switching.passes[1]
                 .surface
-                .image_list[self.backend.cur_image_index as usize]
+                .image_list[self.backend.render.cur_image_index as usize]
         } else {
             &self.backend.render.get().switching.passes[0]
                 .surface
-                .image_list[self.backend.cur_image_index as usize]
+                .image_list[self.backend.render.cur_image_index as usize]
         };
 
         self.exec_buffer.texture_descriptors[index as usize] = Some(
@@ -167,7 +167,7 @@ impl BackendRenderExecuteInterface for RenderCommandExecuteManager<'_> {
         };
 
         self.exec_buffer.texture_descriptors[index as usize] = Some(
-            descrs[self.backend.cur_image_index as usize]
+            descrs[self.backend.render.cur_image_index as usize]
                 .set(&mut self.backend.current_frame_resources),
         );
         self.exec_buffer.sampler_descriptors[index as usize] = Some(

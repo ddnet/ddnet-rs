@@ -95,7 +95,6 @@ use super::{
     render_group::{CanvasMode, OffscreenCanvasCreateProps, RenderSetup},
     render_pass::{CompileThreadpools, CompileThreadpoolsRef},
     render_setup::RenderSetupNativeType,
-    semaphore::Semaphore,
     stream_memory_pool::{StreamMemoryBlock, StreamMemoryPool},
     swapchain::Swapchain,
     vulkan_allocator::{
@@ -399,7 +398,6 @@ impl VulkanBackendLoading {
             buffer_memory_usage,
             stream_memory_usage,
             staging_memory_usage,
-            display_requirements.is_headless,
             options,
             command_pools[0].clone(),
         )?;
@@ -550,13 +548,6 @@ pub struct VulkanBackend {
     main_render_command_buffer: Option<AutoCommandBuffer>,
     pub(crate) frame: Arc<parking_lot::Mutex<Frame>>,
 
-    // swapped by use case
-    wait_semaphores: Vec<Arc<Semaphore>>,
-    sig_semaphores: Vec<Arc<Semaphore>>,
-
-    frame_fences: Vec<Arc<Fence>>,
-    image_fences: Vec<Option<Arc<Fence>>>,
-
     order_id_gen: usize,
     cur_frame: u64,
     image_last_frame_check: Vec<u64>,
@@ -576,9 +567,6 @@ pub struct VulkanBackend {
     next_multi_sampling_count: u32,
 
     render_setup_queue_full_pipeline_creation: bool,
-
-    cur_semaphore_index: u32,
-    pub(crate) cur_image_index: u32,
 
     window_width: u32,
     window_height: u32,
@@ -1096,7 +1084,9 @@ impl VulkanBackend {
                     .ash_vk
                     .vk_device
                     .device
-                    .reset_fences(&[fetch_frame_buffer.get_presented_img_data_helper_fence.fence])
+                    .reset_fences(&[fetch_frame_buffer
+                        .get_presented_img_data_helper_fence
+                        .fence(&mut self.current_frame_resources)])
             }
             .map_err(|err| anyhow!("Could not reset fences: {err}"))?;
             unsafe {
@@ -1104,13 +1094,17 @@ impl VulkanBackend {
                 self.props.ash_vk.vk_device.device.queue_submit(
                     queue.graphics_queue,
                     &[submit_info],
-                    fetch_frame_buffer.get_presented_img_data_helper_fence.fence,
+                    fetch_frame_buffer
+                        .get_presented_img_data_helper_fence
+                        .fence(&mut self.current_frame_resources),
                 )
             }
             .map_err(|err| anyhow!("Queue submit failed: {err}"))?;
             unsafe {
                 self.props.ash_vk.vk_device.device.wait_for_fences(
-                    &[fetch_frame_buffer.get_presented_img_data_helper_fence.fence],
+                    &[fetch_frame_buffer
+                        .get_presented_img_data_helper_fence
+                        .fence(&mut self.current_frame_resources)],
                     true,
                     u64::MAX,
                 )
@@ -1311,7 +1305,7 @@ impl VulkanBackend {
     }
 
     fn clear_frame_memory_usage(&mut self) {
-        self.clear_frame_data(self.cur_image_index);
+        self.clear_frame_data(self.render.cur_image_index);
     }
 
     fn start_new_render_pass(&mut self, render_pass_type: RenderPassType) -> anyhow::Result<()> {
@@ -1424,7 +1418,7 @@ impl VulkanBackend {
         let create_command_group = || {
             let mut command_group = ThreadCommandGroup::default();
             command_group.render_pass = render_pass_type;
-            command_group.cur_frame_index = self.cur_image_index;
+            command_group.cur_frame_index = self.render.cur_image_index;
             command_group.canvas_index = canvas_index;
             command_group
         };
@@ -1456,7 +1450,7 @@ impl VulkanBackend {
         current_command_group.render_pass_index = render_pass_index;
         current_command_group.in_order_id = self.order_id_gen;
         current_command_group.render_pass = render_pass_type;
-        current_command_group.cur_frame_index = self.cur_image_index;
+        current_command_group.cur_frame_index = self.render.cur_image_index;
         current_command_group.canvas_index = canvas_index;
 
         self.start_render_thread(self.last_render_thread_index)?;
@@ -1494,14 +1488,15 @@ impl VulkanBackend {
 
         // add frame resources
         self.frame_resources.insert(
-            self.cur_image_index,
+            self.render.cur_image_index,
             self.current_frame_resources
                 .take(Some(&self.frame_resources_pool)),
         );
 
         self.main_render_command_buffer = None;
 
-        let wait_semaphore = &self.wait_semaphores[self.cur_semaphore_index as usize];
+        let queue_submit_semaphore =
+            &self.render.queue_submit_semaphores[self.render.cur_image_index as usize];
 
         let mut submit_info = vk::SubmitInfo::default();
 
@@ -1518,9 +1513,13 @@ impl VulkanBackend {
             submit_info = submit_info.command_buffers(&command_buffers[..1]);
         }
 
-        let wait_semaphores = [wait_semaphore.semaphore];
+        let wait_semaphores = [self
+            .render
+            .acquired_image_semaphore
+            .semaphore(&mut self.current_frame_resources)];
         let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
-        let signal_semaphores = [self.sig_semaphores[self.cur_semaphore_index as usize].semaphore];
+        let signal_semaphores =
+            [queue_submit_semaphore.semaphore(&mut self.current_frame_resources)];
         submit_info = submit_info
             .wait_semaphores(&wait_semaphores)
             .wait_dst_stage_mask(&wait_stages)
@@ -1530,13 +1529,17 @@ impl VulkanBackend {
         let wait_counter: [u64; 1];
         let signal_counter: [u64; 1];
 
-        if wait_semaphore.is_timeline && self.ash_surf.surface.can_render() {
+        if self.render.acquired_image_semaphore.is_timeline && self.ash_surf.surface.can_render() {
             wait_counter = [unsafe {
                 self.props
                     .ash_vk
                     .vk_device
                     .device
-                    .get_semaphore_counter_value(wait_semaphore.semaphore)
+                    .get_semaphore_counter_value(
+                        self.render
+                            .acquired_image_semaphore
+                            .semaphore(&mut self.current_frame_resources),
+                    )
                     .unwrap()
             }];
             signal_counter = [unsafe {
@@ -1560,7 +1563,9 @@ impl VulkanBackend {
                 .ash_vk
                 .vk_device
                 .device
-                .reset_fences(&[self.frame_fences[self.cur_semaphore_index as usize].fence])
+                .reset_fences(&[self.render.queue_submit_fences
+                    [self.render.cur_image_index as usize]
+                    .fence(&mut self.current_frame_resources)])
                 .map_err(|err| anyhow!("could not reset fences {err}"))
         }?;
 
@@ -1569,22 +1574,23 @@ impl VulkanBackend {
             self.props.ash_vk.vk_device.device.queue_submit(
                 queue.graphics_queue,
                 &[submit_info],
-                self.frame_fences[self.cur_semaphore_index as usize].fence,
+                self.render.queue_submit_fences[self.render.cur_image_index as usize]
+                    .fence(&mut self.current_frame_resources),
             )
         }
         .map_err(|err| anyhow!("Submitting to graphics queue failed: {err}"))?;
 
         std::mem::swap(
-            &mut self.wait_semaphores[self.cur_semaphore_index as usize],
-            &mut self.sig_semaphores[self.cur_semaphore_index as usize],
+            &mut self.render.busy_acquire_image_semaphores[self.render.cur_image_index as usize],
+            &mut self.render.acquired_image_semaphore,
         );
 
-        let image_indices = [self.cur_image_index];
+        let image_indices = [self.render.cur_image_index];
         let present_info = vk::PresentInfoKHR::default()
             .wait_semaphores(&signal_semaphores)
             .image_indices(&image_indices);
 
-        self.last_presented_swap_chain_image_index = self.cur_image_index;
+        self.last_presented_swap_chain_image_index = self.render.cur_image_index;
 
         if !self.frame_fetchers.is_empty() {
             // TODO: removed cloning
@@ -1658,9 +1664,6 @@ impl VulkanBackend {
             }
         }
 
-        self.cur_semaphore_index =
-            (self.cur_semaphore_index + 1) % self.sig_semaphores.len() as u32;
-
         Ok(())
     }
 
@@ -1676,7 +1679,9 @@ impl VulkanBackend {
         let acquire_res = unsafe {
             self.ash_surf.vk_swap_chain_ash.acquire_next_image(
                 u64::MAX,
-                self.sig_semaphores[self.cur_semaphore_index as usize].semaphore,
+                self.render
+                    .acquired_image_semaphore
+                    .semaphore(&mut self.current_frame_resources),
                 vk::Fence::null(),
             )
         };
@@ -1712,28 +1717,22 @@ impl VulkanBackend {
             }
         }
 
-        self.cur_image_index = next_image_index;
-        std::mem::swap(
-            &mut self.wait_semaphores[self.cur_semaphore_index as usize],
-            &mut self.sig_semaphores[self.cur_semaphore_index as usize],
-        );
-
-        if let Some(img_fence) = &self.image_fences[self.cur_image_index as usize] {
-            unsafe {
-                self.props.ash_vk.vk_device.device.wait_for_fences(
-                    &[img_fence.fence],
-                    true,
-                    u64::MAX,
-                )
-            }?;
-        }
-        self.image_fences[self.cur_image_index as usize] =
-            Some(self.frame_fences[self.cur_semaphore_index as usize].clone());
+        self.render.cur_image_index = next_image_index;
+        unsafe {
+            self.props.ash_vk.vk_device.device.wait_for_fences(
+                &[
+                    self.render.queue_submit_fences[self.render.cur_image_index as usize]
+                        .fence(&mut self.current_frame_resources),
+                ],
+                true,
+                u64::MAX,
+            )
+        }?;
 
         // next frame
         self.cur_frame += 1;
         self.order_id_gen = 0;
-        self.image_last_frame_check[self.cur_image_index as usize] = self.cur_frame;
+        self.image_last_frame_check[self.render.cur_image_index as usize] = self.cur_frame;
         self.current_command_groups.clear();
         self.new_command_group(
             FrameCanvasIndex::Onscreen,
@@ -1750,17 +1749,15 @@ impl VulkanBackend {
         for frame_image_index in 0..self.image_last_frame_check.len() {
             let last_frame = self.image_last_frame_check[frame_image_index];
             if self.cur_frame - last_frame > self.render.onscreen.swap_chain_image_count() as u64 {
-                if let Some(img_fence) = &self.image_fences[frame_image_index] {
-                    unsafe {
-                        self.props.ash_vk.vk_device.device.wait_for_fences(
-                            &[img_fence.fence],
-                            true,
-                            u64::MAX,
-                        )
-                    }?;
-                    self.clear_frame_data(frame_image_index as u32);
-                    self.image_fences[frame_image_index] = None;
-                }
+                unsafe {
+                    self.props.ash_vk.vk_device.device.wait_for_fences(
+                        &[self.render.queue_submit_fences[frame_image_index]
+                            .fence(&mut self.current_frame_resources)],
+                        true,
+                        u64::MAX,
+                    )
+                }?;
+                self.clear_frame_data(frame_image_index as u32);
                 self.image_last_frame_check[frame_image_index] = self.cur_frame;
             }
         }
@@ -1774,7 +1771,7 @@ impl VulkanBackend {
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             thread
                 .sender
-                .send(RenderThreadEvent::ClearFrame(self.cur_image_index))?;
+                .send(RenderThreadEvent::ClearFrame(self.render.cur_image_index))?;
         }
 
         // prepare new frame_collection frame
@@ -2055,43 +2052,6 @@ impl VulkanBackend {
         self.props.device.memory_command_buffer = None;
     }
 
-    fn create_sync_objects(&mut self) -> anyhow::Result<()> {
-        let sync_object_count = self.render.onscreen.swap_chain_image_count() + 1;
-        for _ in 0..sync_object_count {
-            self.wait_semaphores.push(Semaphore::new(
-                self.props.ash_vk.vk_device.clone(),
-                self.props.device.is_headless,
-            )?)
-        }
-        for _ in 0..sync_object_count {
-            self.sig_semaphores.push(Semaphore::new(
-                self.props.ash_vk.vk_device.clone(),
-                self.props.device.is_headless,
-            )?)
-        }
-
-        for _ in 0..sync_object_count {
-            self.frame_fences
-                .push(Fence::new(self.props.ash_vk.vk_device.clone())?);
-        }
-        self.image_fences.resize(
-            self.render.onscreen.swap_chain_image_count(),
-            Default::default(),
-        );
-
-        Ok(())
-    }
-
-    fn destroy_sync_objects(&mut self) {
-        self.wait_semaphores.clear();
-        self.sig_semaphores.clear();
-
-        self.frame_fences.clear();
-        self.image_fences.clear();
-
-        self.cur_semaphore_index = 0;
-    }
-
     /*************
      * SWAP CHAIN
      **************/
@@ -2106,7 +2066,6 @@ impl VulkanBackend {
             self.delete_presented_image_data_image();
         }
 
-        self.destroy_sync_objects();
         self.destroy_command_buffer();
     }
 
@@ -2210,8 +2169,6 @@ impl VulkanBackend {
     }
 
     fn init_vulkan_with_io(&mut self) -> anyhow::Result<()> {
-        self.create_sync_objects()?;
-
         self.image_last_frame_check
             .resize(self.render.onscreen.swap_chain_image_count(), 0);
 
@@ -3160,10 +3117,6 @@ impl VulkanBackend {
             dynamic_viewport_size: Default::default(),
 
             main_render_command_buffer: Default::default(),
-            wait_semaphores: Default::default(),
-            sig_semaphores: Default::default(),
-            frame_fences: Default::default(),
-            image_fences: Default::default(),
             cur_frame: Default::default(),
             order_id_gen: Default::default(),
             image_last_frame_check: Default::default(),
@@ -3176,8 +3129,6 @@ impl VulkanBackend {
 
             frame: Frame::new(),
 
-            cur_semaphore_index: Default::default(),
-            cur_image_index: Default::default(),
             window_width,
             window_height,
             clear_color: [

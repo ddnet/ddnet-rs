@@ -3,12 +3,14 @@ use std::sync::Arc;
 use ash::vk;
 use hiarc::Hiarc;
 
+use crate::backends::vulkan::frame_resources::FrameResources;
+
 use super::logical_device::LogicalDevice;
 
 #[derive(Debug, Hiarc)]
 pub struct Semaphore {
     #[hiarc_skip_unsafe]
-    pub semaphore: vk::Semaphore,
+    semaphore: vk::Semaphore,
     pub is_timeline: bool,
 
     device: Arc<LogicalDevice>,
@@ -36,6 +38,11 @@ impl Semaphore {
             is_timeline,
             device,
         }))
+    }
+
+    pub fn semaphore(self: &Arc<Self>, resources: &mut FrameResources) -> vk::Semaphore {
+        resources.semaphores.push(self.clone());
+        self.semaphore
     }
 }
 

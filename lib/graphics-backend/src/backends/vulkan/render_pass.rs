@@ -603,7 +603,7 @@ impl CanvasSetup {
         color_attachment.initial_layout = if is_first_render_pass_in_frame {
             vk::ImageLayout::UNDEFINED
         } else {
-            vk::ImageLayout::PRESENT_SRC_KHR
+            device.final_layout()
         };
         color_attachment.final_layout = device.final_layout();
         color_attachment

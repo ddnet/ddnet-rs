@@ -849,7 +849,7 @@ impl VulkanAllocator {
 
     fn execute_command_buffer(
         device: &Arc<LogicalDevice>,
-        fence: &Fence,
+        fence: &Arc<Fence>,
         command_buffers: &Rc<CommandBuffers>,
         queue: &Arc<Queue>,
     ) -> anyhow::Result<(vk::Fence, vk::CommandBuffer, ash::Device)> {
@@ -862,14 +862,22 @@ impl VulkanAllocator {
         let command_buffers = [command_buffers.get(&mut RenderThreadFrameResources::new(None))];
         let submit_info = vk::SubmitInfo::default().command_buffers(&command_buffers);
         unsafe {
-            device.device.reset_fences(&[fence.fence])?;
-            let queue = queue.queues.lock();
             device
                 .device
-                .queue_submit(queue.graphics_queue, &[submit_info], fence.fence)?;
+                .reset_fences(&[fence.fence(&mut FrameResources::new(None))])?;
+            let queue = queue.queues.lock();
+            device.device.queue_submit(
+                queue.graphics_queue,
+                &[submit_info],
+                fence.fence(&mut FrameResources::new(None)),
+            )?;
         }
 
-        Ok((fence.fence, command_buffers[0], device.device.clone()))
+        Ok((
+            fence.fence(&mut FrameResources::new(None)),
+            command_buffers[0],
+            device.device.clone(),
+        ))
     }
 
     pub fn flush_img_memory(
