@@ -46,7 +46,7 @@ fn prepare(
 ) {
     let (io, tp, graphics, graphics_backend, sound) = get_base(backend_validation, options);
 
-    let font_loading = UiFontDataLoading::new(&io);
+    let font_loading = UiFontDataLoading::new(&io.clone().into());
     let font_data = UiFontData::new(font_loading)
         .unwrap()
         .into_font_definitions();

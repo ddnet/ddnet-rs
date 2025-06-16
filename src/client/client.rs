@@ -2585,7 +2585,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
         let io = Io::from(loading.io, Arc::new(HttpClient::new()));
         benchmark.bench("upgrading io with http client");
 
-        let font_loading = UiFontDataLoading::new(&io);
+        let font_loading = UiFontDataLoading::new(&io.clone().into());
         let accounts_loading = AccountsLoading::new(&io);
         benchmark.bench("loading client files");
 
