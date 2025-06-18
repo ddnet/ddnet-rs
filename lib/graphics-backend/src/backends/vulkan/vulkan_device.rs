@@ -96,8 +96,6 @@ pub struct Device {
     // command buffers
     pub command_pool: Rc<CommandPool>,
     pub memory_command_buffer: Option<AutoCommandBuffer>,
-
-    pub is_headless: bool,
 }
 
 impl Device {
@@ -195,7 +193,6 @@ impl Device {
         stream_memory_usage: Arc<AtomicU64>,
         staging_memory_usage: Arc<AtomicU64>,
 
-        is_headless: bool,
         options: &Options,
 
         command_pool: Rc<CommandPool>,
@@ -290,8 +287,6 @@ impl Device {
             memory_command_buffer: Default::default(),
 
             command_pool,
-
-            is_headless,
         })
     }
 

@@ -3,6 +3,8 @@ use std::{rc::Rc, sync::Arc};
 use hiarc::Hiarc;
 use pool::{arc::PoolArc, datatypes::PoolVec, pool::Pool};
 
+use crate::backends::vulkan::{fence::Fence, semaphore::Semaphore};
+
 use super::{
     buffer::Buffer, command_buffer::CommandBuffers, descriptor_set::DescriptorSets, image::Image,
     image_view::ImageView, memory::MemoryBlock, memory_block::DeviceMemoryBlock,
@@ -43,6 +45,9 @@ pub struct FrameResources {
 
     pub memory_blocks: PoolVec<Arc<MemoryBlock>>,
 
+    pub semaphores: PoolVec<Arc<Semaphore>>,
+    pub fences: PoolVec<Arc<Fence>>,
+
     pub stream_vertex_buffers: PoolVec<PoolArc<StreamMemoryBlock<()>>>,
     pub stream_uniform_buffers: PoolVec<PoolArc<StreamMemoryBlock<StreamedUniformBuffer>>>,
 
@@ -64,6 +69,8 @@ impl FrameResources {
                 samplers: pool.sampler.new(),
                 descriptor_sets: pool.descriptor_sets.new(),
                 memory_blocks: pool.memory_blocks.new(),
+                semaphores: pool.semaphores.new(),
+                fences: pool.fences.new(),
                 stream_vertex_buffers: pool.stream_vertex_buffers.new(),
                 stream_uniform_buffers: pool.stream_uniform_buffers.new(),
                 render_setups: pool.render_setups.new(),
@@ -79,6 +86,8 @@ impl FrameResources {
                 samplers: PoolVec::new_without_pool(),
                 descriptor_sets: PoolVec::new_without_pool(),
                 memory_blocks: PoolVec::new_without_pool(),
+                semaphores: PoolVec::new_without_pool(),
+                fences: PoolVec::new_without_pool(),
                 stream_vertex_buffers: PoolVec::new_without_pool(),
                 stream_uniform_buffers: PoolVec::new_without_pool(),
                 render_setups: PoolVec::new_without_pool(),
@@ -128,6 +137,9 @@ pub struct FrameResourcesPool {
 
     pub memory_blocks: Pool<Vec<Arc<MemoryBlock>>>,
 
+    pub semaphores: Pool<Vec<Arc<Semaphore>>>,
+    pub fences: Pool<Vec<Arc<Fence>>>,
+
     pub stream_vertex_buffers: Pool<Vec<PoolArc<StreamMemoryBlock<()>>>>,
     pub stream_uniform_buffers: Pool<Vec<PoolArc<StreamMemoryBlock<StreamedUniformBuffer>>>>,
 
@@ -154,6 +166,9 @@ impl FrameResourcesPool {
             sampler: Pool::with_capacity(4),
             descriptor_sets: Pool::with_capacity(64),
             memory_blocks: Pool::with_capacity(64),
+
+            semaphores: Pool::with_capacity(8),
+            fences: Pool::with_capacity(8),
 
             stream_vertex_buffers: Pool::with_capacity(8),
             stream_uniform_buffers: Pool::with_capacity(8),

@@ -481,19 +481,20 @@ impl<'a> FrameCollector<'a> {
                 render_setup,
                 &render_canvas.canvas,
                 main_command_buffer,
-                self.backend.cur_image_index,
+                self.backend.render.cur_image_index,
                 &self.backend.clear_color,
             )?;
             image_barrier(
                 &mut self.backend.current_frame_resources,
                 &self.backend.props.ash_vk.vk_device,
                 main_command_buffer,
-                &render_setup.native.swap_chain_images[self.backend.cur_image_index as usize],
+                &render_setup.native.swap_chain_images
+                    [self.backend.render.cur_image_index as usize],
                 0,
                 1,
                 0,
                 1,
-                vk::ImageLayout::PRESENT_SRC_KHR,
+                self.backend.props.ash_vk.vk_device.final_layout(),
                 vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
             )
             .map_err(|_| anyhow!("could not transition image for offscreen framebuffer"))?;
@@ -506,7 +507,7 @@ impl<'a> FrameCollector<'a> {
             &self.backend.render.onscreen,
             &frame.render.onscreen_canvas,
             main_command_buffer,
-            self.backend.cur_image_index,
+            self.backend.render.cur_image_index,
             &self.backend.clear_color,
         )?;
 
