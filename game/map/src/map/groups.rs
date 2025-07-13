@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use assets_base::tar::tar_entry_to_file;
 use base::join_all;
 use hiarc::Hiarc;
-use math::math::vector::{fvec2, ufvec2};
+use math::math::vector::{ffixed, fvec2, ufvec2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -23,12 +23,22 @@ pub struct MapGroupAttrClipping {
     pub size: ufvec2,
 }
 
-#[derive(Debug, Hiarc, Clone, Default, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Hiarc, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MapGroupAttr {
     pub offset: fvec2,
     pub parallax: fvec2,
 
     pub clipping: Option<MapGroupAttrClipping>,
+}
+
+impl Default for MapGroupAttr {
+    fn default() -> Self {
+        Self {
+            offset: Default::default(),
+            parallax: fvec2::new(ffixed::from_num(100.0), ffixed::from_num(100.0)),
+            clipping: None,
+        }
+    }
 }
 
 #[derive(Debug, Hiarc, Clone, Serialize, Deserialize, PartialEq, Eq)]
