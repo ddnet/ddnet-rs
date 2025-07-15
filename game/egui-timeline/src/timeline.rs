@@ -168,7 +168,7 @@ impl Timeline {
         let rect = ui.available_rect_before_wrap();
         ui.input(|i| {
             let pointer_pos = i.pointer.interact_pos().unwrap_or_default();
-            if i.pointer.primary_down() {
+            if i.pointer.button_down(egui::PointerButton::Middle) {
                 let should_scroll_y =
                     if let PointerDownState::Graph { scroll_y, .. } = &self.pointer_down_pos {
                         *scroll_y
@@ -189,7 +189,8 @@ impl Timeline {
                         self.props.offset.x = self.props.offset.x.clamp(0.0, f32::MAX);
                     }
                 }
-                if (rect.contains(pointer_pos) && i.pointer.primary_pressed())
+                if (rect.contains(pointer_pos)
+                    && i.pointer.button_pressed(egui::PointerButton::Middle))
                     || self.pointer_down_pos.is_graph()
                 {
                     self.pointer_down_pos = PointerDownState::Graph {
@@ -200,8 +201,9 @@ impl Timeline {
             } else {
                 self.pointer_down_pos = PointerDownState::None;
             }
+
             if rect.contains(pointer_pos) {
-                if can_y_scroll && !i.modifiers.shift {
+                if i.modifiers.shift && can_y_scroll {
                     let prev_scale_y = self.props.scale.y;
                     self.props.scale.y -= i.smooth_scroll_delta.y / 100.0;
                     self.props.scale.y = self.props.scale.y.clamp(0.5, f32::MAX);
@@ -1078,235 +1080,259 @@ impl Timeline {
         point_changed: &mut bool,
     ) {
         Self::background(ui, true);
-        self.handle_input_value_points(ui, point_groups, point_changed);
-        self.handle_input(ui, true);
 
         let inner_rect = self.inner_graph_rect(ui);
         let rect = ui.available_rect_before_wrap();
-        ui.allocate_new_ui(
-            UiBuilder::new().max_rect(egui::Rect::from_min_size(
-                pos2(rect.min.x + self.point_radius, rect.min.y),
-                vec2(rect.width() - self.point_radius * 2.0, rect.height()),
-            )),
-            |ui| {
-                ui.set_clip_rect(rect);
 
-                // render a blue line for where the current time is
-                let x_off = inner_rect.min.x;
-                let y_off = inner_rect.min.y;
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .id_salt("value_graph_scroll")
+            .show(ui, |ui| {
+                self.handle_input_value_points(ui, point_groups, point_changed);
+                self.handle_input(ui, true);
 
-                let time_offset = (self.time.time.as_secs_f32() * size_per_int(self.props.scale.x))
-                    - self.props.offset.x;
-                let x_off = x_off + time_offset;
-                ui.painter().line(
-                    vec![
-                        egui::pos2(x_off, y_off),
-                        egui::pos2(x_off, y_off + ui.available_height()),
-                    ],
-                    Stroke::new(2.0, Color32::from_rgb(50, 50, 200)),
-                );
+                let content_height = rect.height().max(300.0).min(500.0);
+                ui.allocate_new_ui(
+                    UiBuilder::new().max_rect(egui::Rect::from_min_size(
+                        pos2(rect.min.x + self.point_radius, rect.min.y),
+                        vec2(rect.width() - self.point_radius * 2.0, content_height),
+                    )),
+                    |ui| {
+                        // render a blue line for where the current time is
+                        let x_off = inner_rect.min.x;
+                        let y_off = inner_rect.min.y;
 
-                let width = ui.available_width();
+                        let time_offset = (self.time.time.as_secs_f32()
+                            * size_per_int(self.props.scale.x))
+                            - self.props.offset.x;
+                        let x_off = x_off + time_offset;
+                        ui.painter().line(
+                            vec![
+                                egui::pos2(x_off, y_off),
+                                egui::pos2(x_off, y_off + ui.available_height()),
+                            ],
+                            Stroke::new(2.0, Color32::from_rgb(50, 50, 200)),
+                        );
 
-                let AxisValue {
-                    x_axis_y_off: y_extra,
-                    ..
-                } = self.draw_axes(ui, true);
+                        let width = ui.available_width();
 
-                // render points
-                let zoom_x = size_per_int(self.props.scale.x);
-                let zoom_y = size_per_int(self.props.scale.y);
+                        let AxisValue {
+                            x_axis_y_off: y_extra,
+                            ..
+                        } = self.draw_axes(ui, true);
 
-                let y_extra = y_extra - self.props.offset.y;
+                        // render points
+                        let zoom_x = size_per_int(self.props.scale.x);
+                        let zoom_y = size_per_int(self.props.scale.y);
 
-                let time_min = self.props.offset.x / zoom_x;
-                let time_range = time_min..time_min + width / zoom_x;
-                let point_radius = self.point_radius;
-                // multiply by two since the graph view also adds point radius as margin for the render area
-                let point_radius_extra = point_radius / zoom_x * 2.0;
+                        let y_extra = y_extra - self.props.offset.y;
 
-                for points_group in point_groups.iter_mut() {
-                    let points_copy: Vec<_> = points_group
-                        .points
-                        .iter_mut()
-                        .map(|p| {
-                            (
-                                *p.time(),
-                                p.channels()
-                                    .into_iter()
-                                    .map(|(_, _, _, c)| c.value())
-                                    .collect::<Vec<_>>(),
-                            )
-                        })
-                        .collect();
-                    let mut points = Vec::default();
-                    let mut bezier_points = Vec::default();
-                    let mut bezier_ends = Vec::default();
-                    let mut it = points_group.points.iter_mut().enumerate().peekable();
-                    while let Some((p, point)) = it.next() {
-                        let is_inside = time_range
-                            .contains(&(point.time().as_secs_f32() - point_radius_extra))
-                            || time_range
-                                .contains(&(point.time().as_secs_f32() + point_radius_extra));
-                        let next_point = points_copy.get(p + 1);
-                        let point_time = *point.time();
-                        let channels: Vec<_> = point
-                            .channels()
-                            .into_iter()
-                            .map(|(_, color, _, channel)| (color, channel.value()))
-                            .collect();
-                        points.resize_with(channels.len(), || {
-                            (Color32::BLACK, Vec::<Pos2>::default())
-                        });
-                        for (index, (color, channel_value)) in channels.into_iter().enumerate() {
-                            let selected = points_group
-                                .selected_point_channels
-                                .get(&p)
-                                .is_some_and(|m| m.contains(&index));
-                            let hovered = points_group
-                                .hovered_point_channel
-                                .get(&p)
-                                .is_some_and(|m| m.contains(&index));
-                            let y = y_extra - channel_value * zoom_y;
-                            if is_inside {
-                                if hovered || selected {
-                                    self.draw_point_radius_scale(
-                                        ui,
-                                        &point_time,
-                                        if selected && hovered {
-                                            Color32::LIGHT_RED
-                                        } else if selected {
-                                            Color32::RED
-                                        } else {
-                                            Color32::WHITE
-                                        },
-                                        y,
-                                        1.2,
+                        let time_min = self.props.offset.x / zoom_x;
+                        let time_range = time_min..time_min + width / zoom_x;
+                        let point_radius = self.point_radius;
+                        // multiply by two since the graph view also adds point radius as margin for the render area
+                        let point_radius_extra = point_radius / zoom_x * 2.0;
+
+                        for points_group in point_groups.iter_mut() {
+                            let points_copy: Vec<_> = points_group
+                                .points
+                                .iter_mut()
+                                .map(|p| {
+                                    (
+                                        *p.time(),
+                                        p.channels()
+                                            .into_iter()
+                                            .map(|(_, _, _, c)| c.value())
+                                            .collect::<Vec<_>>(),
+                                    )
+                                })
+                                .collect();
+                            let mut points = Vec::default();
+                            let mut bezier_points = Vec::default();
+                            let mut bezier_ends = Vec::default();
+                            let mut it = points_group.points.iter_mut().enumerate().peekable();
+                            while let Some((p, point)) = it.next() {
+                                let is_inside = time_range
+                                    .contains(&(point.time().as_secs_f32() - point_radius_extra))
+                                    || time_range.contains(
+                                        &(point.time().as_secs_f32() + point_radius_extra),
                                     );
+                                let next_point = points_copy.get(p + 1);
+                                let point_time = *point.time();
+                                let channels: Vec<_> = point
+                                    .channels()
+                                    .into_iter()
+                                    .map(|(_, color, _, channel)| (color, channel.value()))
+                                    .collect();
+                                points.resize_with(channels.len(), || {
+                                    (Color32::BLACK, Vec::<Pos2>::default())
+                                });
+                                for (index, (color, channel_value)) in
+                                    channels.into_iter().enumerate()
+                                {
+                                    let selected = points_group
+                                        .selected_point_channels
+                                        .get(&p)
+                                        .is_some_and(|m| m.contains(&index));
+                                    let hovered = points_group
+                                        .hovered_point_channel
+                                        .get(&p)
+                                        .is_some_and(|m| m.contains(&index));
+                                    let y = y_extra - channel_value * zoom_y;
+                                    if is_inside {
+                                        if hovered || selected {
+                                            self.draw_point_radius_scale(
+                                                ui,
+                                                &point_time,
+                                                if selected && hovered {
+                                                    Color32::LIGHT_RED
+                                                } else if selected {
+                                                    Color32::RED
+                                                } else {
+                                                    Color32::WHITE
+                                                },
+                                                y,
+                                                1.2,
+                                            );
+                                        }
+                                        self.draw_point(ui, &point_time, color, y);
+                                    }
+
+                                    if let (Some((next_time, _)), Some((_, next_point))) = (
+                                        next_point.and_then(|(next_time, channel_values)| {
+                                            channel_values.get(index).map(|v| (next_time, v))
+                                        }),
+                                        it.peek_mut(),
+                                    ) {
+                                        let line_range = point.time().as_secs_f32()
+                                            - point_radius_extra
+                                            ..next_time.as_secs_f32() + point_radius_extra;
+                                        let is_inside_line = line_range.contains(&time_range.start)
+                                            || line_range.contains(&time_range.end);
+                                        let is_inside_next = time_range.contains(
+                                            &(next_time.as_secs_f32() - point_radius_extra),
+                                        ) || time_range.contains(
+                                            &(next_time.as_secs_f32() + point_radius_extra),
+                                        );
+                                        if is_inside_line || is_inside || is_inside_next {
+                                            let start_time = point_time.as_nanos();
+                                            let end_time = next_time.as_nanos();
+                                            let time_diff =
+                                                end_time.saturating_sub(start_time) / 20;
+
+                                            for i in 0..=20 {
+                                                let point_time = Duration::from_nanos(
+                                                    (start_time + time_diff * i) as u64,
+                                                );
+
+                                                let y = point.channel_value_at(
+                                                    index,
+                                                    **next_point,
+                                                    &point_time,
+                                                );
+                                                let next_y = y_extra - y * zoom_y;
+                                                let (x, y) =
+                                                    self.pos_point(ui, &point_time, next_y);
+
+                                                let (points_color, points) = &mut points[index];
+                                                *points_color = color;
+                                                points.push(Pos2::new(x, y));
+                                            }
+
+                                            // additionally draw bezier if needed
+                                            if let PointCurve::Bezier(bezier) = point.curve() {
+                                                let color = Color32::from_rgb(
+                                                    color.r().saturating_add(100),
+                                                    color.g().saturating_add(100),
+                                                    color.b().saturating_add(100),
+                                                );
+                                                let next_y = y_extra - channel_value * zoom_y;
+                                                let (x, y) =
+                                                    self.pos_point(ui, &point_time, next_y);
+                                                let p1 = Pos2::new(x, y);
+                                                let next_y = y_extra
+                                                    - (channel_value
+                                                        + bezier[index]
+                                                            .out_tangent
+                                                            .y
+                                                            .to_num::<f32>())
+                                                        * zoom_y;
+                                                let (x, y) = self.pos_point(
+                                                    ui,
+                                                    &(point_time + bezier[index].out_tangent.x),
+                                                    next_y,
+                                                );
+                                                let p2 = Pos2::new(x, y);
+
+                                                let bezier_hovered = points_group
+                                                    .hovered_point_channel_beziers
+                                                    .get(&p)
+                                                    .is_some_and(|m| m.contains(&(index, true)));
+                                                bezier_points.push((color, vec![p1, p2]));
+                                                bezier_ends.push((color, p2, bezier_hovered));
+
+                                                let channel_value =
+                                                    next_point.channels()[index].3.value();
+                                                let next_y = y_extra - channel_value * zoom_y;
+                                                let (x, y) = self.pos_point(ui, next_time, next_y);
+                                                let p1 = Pos2::new(x, y);
+                                                let next_y = y_extra
+                                                    - (channel_value
+                                                        + bezier[index]
+                                                            .in_tangent
+                                                            .y
+                                                            .to_num::<f32>())
+                                                        * zoom_y;
+                                                let (x, y) = self.pos_point(
+                                                    ui,
+                                                    &(next_time.saturating_sub(
+                                                        bezier[index].in_tangent.x,
+                                                    )),
+                                                    next_y,
+                                                );
+                                                let p2 = Pos2::new(x, y);
+
+                                                let bezier_hovered = points_group
+                                                    .hovered_point_channel_beziers
+                                                    .get(&p)
+                                                    .is_some_and(|m| m.contains(&(index, false)));
+                                                bezier_points.push((color, vec![p1, p2]));
+                                                bezier_ends.push((color, p2, bezier_hovered));
+                                            }
+                                        }
+                                    }
                                 }
-                                self.draw_point(ui, &point_time, color, y);
                             }
-
-                            if let (Some((next_time, _)), Some((_, next_point))) = (
-                                next_point.and_then(|(next_time, channel_values)| {
-                                    channel_values.get(index).map(|v| (next_time, v))
-                                }),
-                                it.peek_mut(),
-                            ) {
-                                let line_range = point.time().as_secs_f32() - point_radius_extra
-                                    ..next_time.as_secs_f32() + point_radius_extra;
-                                let is_inside_line = line_range.contains(&time_range.start)
-                                    || line_range.contains(&time_range.end);
-                                let is_inside_next = time_range
-                                    .contains(&(next_time.as_secs_f32() - point_radius_extra))
-                                    || time_range
-                                        .contains(&(next_time.as_secs_f32() + point_radius_extra));
-                                if is_inside_line || is_inside || is_inside_next {
-                                    let start_time = point_time.as_nanos();
-                                    let end_time = next_time.as_nanos();
-                                    let time_diff = end_time.saturating_sub(start_time) / 20;
-
-                                    for i in 0..=20 {
-                                        let point_time = Duration::from_nanos(
-                                            (start_time + time_diff * i) as u64,
-                                        );
-
-                                        let y = point.channel_value_at(
-                                            index,
-                                            **next_point,
-                                            &point_time,
-                                        );
-                                        let next_y = y_extra - y * zoom_y;
-                                        let (x, y) = self.pos_point(ui, &point_time, next_y);
-
-                                        let (points_color, points) = &mut points[index];
-                                        *points_color = color;
-                                        points.push(Pos2::new(x, y));
-                                    }
-
-                                    // additionally draw bezier if needed
-                                    if let PointCurve::Bezier(bezier) = point.curve() {
-                                        let color = Color32::from_rgb(
-                                            color.r().saturating_add(100),
-                                            color.g().saturating_add(100),
-                                            color.b().saturating_add(100),
-                                        );
-                                        let next_y = y_extra - channel_value * zoom_y;
-                                        let (x, y) = self.pos_point(ui, &point_time, next_y);
-                                        let p1 = Pos2::new(x, y);
-                                        let next_y = y_extra
-                                            - (channel_value
-                                                + bezier[index].out_tangent.y.to_num::<f32>())
-                                                * zoom_y;
-                                        let (x, y) = self.pos_point(
-                                            ui,
-                                            &(point_time + bezier[index].out_tangent.x),
-                                            next_y,
-                                        );
-                                        let p2 = Pos2::new(x, y);
-
-                                        let bezier_hovered = points_group
-                                            .hovered_point_channel_beziers
-                                            .get(&p)
-                                            .is_some_and(|m| m.contains(&(index, true)));
-                                        bezier_points.push((color, vec![p1, p2]));
-                                        bezier_ends.push((color, p2, bezier_hovered));
-
-                                        let channel_value = next_point.channels()[index].3.value();
-                                        let next_y = y_extra - channel_value * zoom_y;
-                                        let (x, y) = self.pos_point(ui, next_time, next_y);
-                                        let p1 = Pos2::new(x, y);
-                                        let next_y = y_extra
-                                            - (channel_value
-                                                + bezier[index].in_tangent.y.to_num::<f32>())
-                                                * zoom_y;
-                                        let (x, y) = self.pos_point(
-                                            ui,
-                                            &(next_time.saturating_sub(bezier[index].in_tangent.x)),
-                                            next_y,
-                                        );
-                                        let p2 = Pos2::new(x, y);
-
-                                        let bezier_hovered = points_group
-                                            .hovered_point_channel_beziers
-                                            .get(&p)
-                                            .is_some_and(|m| m.contains(&(index, false)));
-                                        bezier_points.push((color, vec![p1, p2]));
-                                        bezier_ends.push((color, p2, bezier_hovered));
-                                    }
-                                }
+                            let painter = ui.painter();
+                            for (color, points) in points {
+                                painter.line(points, Stroke::new(2.0, color));
+                            }
+                            for (color, points) in bezier_points {
+                                painter.line(points, Stroke::new(2.0, color));
+                            }
+                            for (color, point, bezier_hovered) in bezier_ends {
+                                let color = if bezier_hovered {
+                                    Color32::from_rgb(
+                                        color.r().saturating_add(100),
+                                        color.g().saturating_add(100),
+                                        color.b().saturating_add(100),
+                                    )
+                                } else {
+                                    color
+                                };
+                                painter.rect_filled(
+                                    Rect::from_center_size(
+                                        point,
+                                        (self.point_radius * 2.0, self.point_radius * 2.0).into(),
+                                    ),
+                                    2.0,
+                                    color,
+                                );
                             }
                         }
-                    }
-                    let painter = ui.painter();
-                    for (color, points) in points {
-                        painter.line(points, Stroke::new(2.0, color));
-                    }
-                    for (color, points) in bezier_points {
-                        painter.line(points, Stroke::new(2.0, color));
-                    }
-                    for (color, point, bezier_hovered) in bezier_ends {
-                        let color = if bezier_hovered {
-                            Color32::from_rgb(
-                                color.r().saturating_add(100),
-                                color.g().saturating_add(100),
-                                color.b().saturating_add(100),
-                            )
-                        } else {
-                            color
-                        };
-                        painter.rect_filled(
-                            Rect::from_center_size(
-                                point,
-                                (self.point_radius * 2.0, self.point_radius * 2.0).into(),
-                            ),
-                            2.0,
-                            color,
-                        );
-                    }
-                }
-            },
-        );
+                    },
+                );
+            });
     }
 
     fn render_selected_points_ui(
@@ -1384,27 +1410,62 @@ impl Timeline {
                 }
             }
             PointSelectionMode::None => {
-                ui.label("no points selected.");
+                ui.horizontal(|ui| {
+                    ui.add_space(25.0); // magic number
+                    ui.vertical(|ui| {
+                        ui.add_space(10.0); // magic number again
+                    });
+                });
             }
         }
     }
 
     fn controls_ui(&mut self, ui: &mut egui::Ui) {
-        // add a row to play/pause/reverse the graph time
         ui.horizontal(|ui| {
-            if ui.button("\u{f04a}").clicked() {
+            let button_width = 55.0;
+            let button_height = 30.0;
+
+            if ui
+                .add_sized(
+                    [button_width, button_height],
+                    egui::Button::new(RichText::new("\u{f04a}").size(16.0)),
+                )
+                .on_hover_text("Play Backward")
+                .clicked()
+            {
                 self.play_dir = PlayDir::Backward;
             }
-            if ui.button("\u{f04d}").clicked() {
+            if ui
+                .add_sized(
+                    [button_width, button_height],
+                    egui::Button::new(RichText::new("\u{f04d}").size(16.0)),
+                )
+                .on_hover_text("Stop and Reset")
+                .clicked()
+            {
                 self.play_dir = PlayDir::Paused;
                 self.time.time = Duration::ZERO;
                 self.last_time = None;
             }
             if matches!(self.play_dir, PlayDir::Paused) {
-                if ui.button("\u{f04b}").clicked() {
+                if ui
+                    .add_sized(
+                        [button_width, button_height],
+                        egui::Button::new(RichText::new("\u{f04b}").size(16.0)),
+                    )
+                    .on_hover_text("Play Forward")
+                    .clicked()
+                {
                     self.play_dir = PlayDir::Forward;
                 }
-            } else if ui.button("\u{f04c}").clicked() {
+            } else if ui
+                .add_sized(
+                    [button_width, button_height],
+                    egui::Button::new(RichText::new("\u{f04c}").size(16.0)),
+                )
+                .on_hover_text("Pause")
+                .clicked()
+            {
                 self.play_dir = PlayDir::Paused;
                 self.last_time = None;
             }
@@ -1440,40 +1501,71 @@ impl Timeline {
                 .with_main_justify(true)
                 .with_cross_justify(true),
             |ui| {
-                ui.add_space(10.0);
                 let rect = ui.available_rect_before_wrap();
                 ui.set_clip_rect(rect);
 
-                // time dragger
                 let width = ui.available_width();
                 ui.allocate_new_ui(
                     UiBuilder::new()
-                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 20.0))),
+                        .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 18.0))),
                     |ui| {
                         ui.set_height(ui.available_height());
+                        ui.painter().rect_filled(
+                            ui.available_rect_before_wrap(),
+                            3.0,
+                            Color32::from_rgb(30, 30, 30),
+                        );
                         self.draw_time_tri(ui, point_groups);
                     },
                 );
 
                 let height = ui.available_height();
 
-                let top_height = height * 1.0 / 3.0;
-                let curve_height = 20.0;
+                let top_height = height * 0.28;
+                let curve_height = 15.0;
+                let controls_height = 42.0;
                 StripBuilder::new(ui)
                     .size(Size::exact(top_height))
                     .size(Size::exact(curve_height))
+                    .size(Size::exact(controls_height))
                     .size(Size::remainder())
                     .vertical(|mut strip| {
                         strip.cell(|ui| {
-                            // timeline graph
+                            ui.painter().rect_filled(
+                                ui.available_rect_before_wrap(),
+                                2.0,
+                                Color32::from_rgb(35, 35, 35),
+                            );
                             self.timeline_graph(ui, point_groups, point_changed, point_deleted);
                         });
                         strip.cell(|ui| {
-                            // envelope curve types
+                            ui.painter().rect_filled(
+                                ui.available_rect_before_wrap(),
+                                2.0,
+                                Color32::from_rgb(25, 25, 25),
+                            );
                             self.curves(ui, point_groups, point_changed);
                         });
                         strip.cell(|ui| {
-                            // value graph
+                            ui.painter().rect_filled(
+                                ui.available_rect_before_wrap(),
+                                3.0,
+                                Color32::from_rgb(45, 45, 45),
+                            );
+                            ui.with_layout(
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    ui.add_space((ui.available_width() - 180.0) / 2.0);
+                                    self.controls_ui(ui);
+                                },
+                            );
+                        });
+                        strip.cell(|ui| {
+                            ui.painter().rect_filled(
+                                ui.available_rect_before_wrap(),
+                                2.0,
+                                Color32::from_rgb(35, 35, 35),
+                            );
                             self.value_graph(ui, point_groups, point_changed);
                         });
                     });
@@ -1491,12 +1583,8 @@ impl Timeline {
 
         ui.set_height(ui.available_height());
 
-        // controls like play, stop etc.
-        self.controls_ui(ui);
-
         let width = ui.available_width();
-        let points_props_width = 100.0;
-
+        let points_props_width = 85.0;
         StripBuilder::new(ui)
             .size(Size::exact(width - points_props_width))
             .size(Size::exact(points_props_width))

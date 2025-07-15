@@ -222,81 +222,148 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             ) where
                 S: FnOnce(usize, &AnimBaseSkeleton<EditorAnimationProps, A>) -> EditorAction,
             {
-                ui.label(format!("{name}:"));
-                // selection of animation
-                if ui.button("\u{f060}").clicked() {
-                    *index = index.map(|i| i.checked_sub(1)).flatten();
-                    *active_anim = None;
-                    *active_anim_point = None;
-                }
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("{name}:"))
+                            .strong()
+                            .color(egui::Color32::WHITE),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "{}/{}",
+                                index.map(|i| i + 1).unwrap_or(0),
+                                anims.len()
+                            ))
+                            .color(egui::Color32::GRAY),
+                        );
+                    });
+                });
 
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    let add_btn = ui.add_sized(
+                        [35.0, 20.0],
+                        egui::Button::new(egui::RichText::new("➕").size(12.0)),
+                    );
+                    if add_btn
+                        .on_hover_text(format!("Add new {name} animation"))
+                        .clicked()
+                    {
+                        let index = anims.len();
+                        client.execute(
+                            add(index),
+                            Some(&format!("{name}-anim-insert-anim-at-{index}")),
+                        );
+                    }
+
+                    // Delete button (only if selection exists)
+                    if let Some(index) = index
+                        .as_mut()
+                        .and_then(|index| (*index < anims.len()).then_some(index))
+                    {
+                        let del_btn = ui.add_sized(
+                            [35.0, 20.0],
+                            egui::Button::new(egui::RichText::new("🗑").size(12.0)),
+                        );
+                        if del_btn
+                            .on_hover_text(format!("Delete selected {name} animation"))
+                            .clicked()
+                        {
+                            client.execute_group(del(*index, anims, groups));
+                            *index = index.saturating_sub(1);
+                            *active_anim = None;
+                            *active_anim_point = None;
+                        }
+                    }
+
+                    ui.add_space(8.0);
+
+                    let prev_btn = ui.add_sized(
+                        [25.0, 20.0],
+                        egui::Button::new(egui::RichText::new("◀").size(10.0)),
+                    );
+                    if prev_btn.on_hover_text("Previous animation (←)").clicked() {
+                        *index = index.map(|i| i.checked_sub(1)).flatten();
+                        *active_anim = None;
+                        *active_anim_point = None;
+                    }
+
+                    let next_btn = ui.add_sized(
+                        [25.0, 20.0],
+                        egui::Button::new(egui::RichText::new("▶").size(10.0)),
+                    );
+                    if next_btn.on_hover_text("Next animation (→)").clicked() {
+                        *index = index.map(|i| (i + 1).clamp(0, anims.len() - 1));
+                        if index.is_none() && !anims.is_empty() {
+                            *index = Some(0);
+                        }
+                        *active_anim = None;
+                        *active_anim_point = None;
+                    }
+                });
+
+                ui.add_space(4.0);
                 fn combobox_name(ty: &str, index: usize, name: &str) -> String {
                     name.is_empty()
                         .then_some(format!("{ty} #{index}"))
                         .unwrap_or_else(|| name.to_owned())
                 }
+
+                let selected_text = anims
+                    .get(index.unwrap_or(usize::MAX))
+                    .map(|anim| combobox_name(name, index.unwrap(), &anim.def.name.clone()))
+                    .unwrap_or_else(|| "None".to_string());
+
                 egui::ComboBox::new(format!("animations-select-anim{name}"), "")
-                    .selected_text(
-                        anims
-                            .get(index.unwrap_or(usize::MAX))
-                            .map(|anim| combobox_name(name, index.unwrap(), &anim.def.name.clone()))
-                            .unwrap_or_else(|| "None".to_string()),
-                    )
+                    .selected_text(egui::RichText::new(&selected_text).color(egui::Color32::WHITE))
+                    .width(ui.available_width() - 10.0)
                     .show_ui(ui, |ui| {
-                        if ui.button("None").clicked() {
+                        if ui.selectable_label(index.is_none(), "None").clicked() {
                             *index = None;
                         }
                         for (a, anim) in anims.iter().enumerate() {
-                            if ui.button(combobox_name(name, a, &anim.def.name)).clicked() {
+                            let is_selected = Some(a) == *index;
+                            if ui
+                                .selectable_label(
+                                    is_selected,
+                                    combobox_name(name, a, &anim.def.name),
+                                )
+                                .clicked()
+                            {
                                 *index = Some(a);
                             }
                         }
                     });
-
-                if ui.button("\u{f061}").clicked() {
-                    *index = index.map(|i| (i + 1).clamp(0, anims.len() - 1));
-                    if index.is_none() && !anims.is_empty() {
-                        *index = Some(0);
-                    }
-                    *active_anim = None;
-                    *active_anim_point = None;
-                }
-
-                // add new anim
-                if ui.button("\u{f0fe}").clicked() {
-                    let index = anims.len();
-
-                    client.execute(
-                        add(index),
-                        Some(&format!("{name}-anim-insert-anim-at-{index}")),
-                    );
-                }
-
                 if let Some(index) = index
                     .as_mut()
                     .and_then(|index| (*index < anims.len()).then_some(index))
                 {
-                    // delete currently selected anim
-                    if ui.button("\u{f1f8}").clicked() {
-                        client.execute_group(del(*index, anims, groups));
-                        *index = index.saturating_sub(1);
+                    ui.add_space(4.0);
+                    ui.separator();
+                    ui.add_space(4.0);
 
-                        *active_anim = None;
-                        *active_anim_point = None;
-                    }
-
-                    // Whether to sync the current animation to server time
-                    let mut is_sync = anims[*index].def.synchronized;
-                    if ui.checkbox(&mut is_sync, "Synchronize").changed() {
-                        client.execute(sync(*index, &anims[*index]), None);
-                    }
+                    ui.horizontal(|ui| {
+                        let mut is_sync = anims[*index].def.synchronized;
+                        let sync_icon = if is_sync { "🔄" } else { "⏸" };
+                        if ui
+                            .checkbox(&mut is_sync, format!("{} Sync", sync_icon))
+                            .on_hover_text("Synchronize animation with server time")
+                            .changed()
+                        {
+                            client.execute(sync(*index, &anims[*index]), None);
+                        }
+                    });
                 }
             }
-            egui::Grid::new("anim-active-selectors")
-                .spacing([2.0, 4.0])
-                .num_columns(4)
-                .show(ui, |ui| {
-                    let client = &pipe.user_data.editor_tab.client;
+            ui.horizontal(|ui| {
+                let client = &pipe.user_data.editor_tab.client;
+                let available_width = ui.available_width();
+                let column_width = (available_width - 20.0) / 3.0;
+
+                ui.vertical(|ui| {
+                    ui.set_width(column_width);
                     add_selector(
                         ui,
                         &map.animations.color,
@@ -341,7 +408,12 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         &mut map.animations.user.active_anims.color,
                         &mut map.animations.user.active_anim_points.color,
                     );
-                    ui.end_row();
+                });
+
+                ui.add_space(10.0);
+
+                ui.vertical(|ui| {
+                    ui.set_width(column_width);
                     add_selector(
                         ui,
                         &map.animations.pos,
@@ -386,8 +458,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         &mut map.animations.user.active_anims.pos,
                         &mut map.animations.user.active_anim_points.pos,
                     );
+                });
+                ui.add_space(10.0);
 
-                    ui.end_row();
+                ui.vertical(|ui| {
+                    ui.set_width(column_width);
                     add_selector(
                         ui,
                         &map.animations.sound,
@@ -432,9 +507,8 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         &mut map.animations.user.active_anims.sound,
                         &mut map.animations.user.active_anim_points.sound,
                     );
-
-                    ui.end_row();
                 });
+            });
 
             // init animations if not done yet
             fn try_init_group<'a, F, T, const CHANNELS: usize>(
