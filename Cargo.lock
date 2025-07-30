@@ -12584,3 +12584,8 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "ffmpeg-sys-next"
+version = "7.1.0"
+source = "git+https://github.com/Jupeyy/rust-ffmpeg-sys.git?branch=pr_mingw_workaround#554c0a709cf93471f03ada8939fe979b9d757300"
