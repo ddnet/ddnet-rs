@@ -47,7 +47,7 @@ mod test {
         let map_name = map_name.to_string();
         let map_legacy = io.rt.spawn(async move {
             let map = fs
-                .read_file(format!("map/maps/{}.twmap.tar", map_name).as_ref())
+                .read_file(format!("map/maps/{map_name}.twmap.tar").as_ref())
                 .await?;
 
             Map::read(&MapFileReader::new(map)?, &tp)

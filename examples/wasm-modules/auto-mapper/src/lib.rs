@@ -42,11 +42,7 @@ impl AutoMapperInterface for AutoMapperGrassMain {
 
         // skip, layers of such sizes are not supported.
         if width.get() < 2 || height.get() < 2 {
-            log::info!(
-                "Skipped layer, since width or height was < 2: {}, {}",
-                width,
-                height
-            );
+            log::info!("Skipped layer, since width or height was < 2: {width}, {height}");
             return Ok(AutoMapperOutputModes::DesignTileLayer { tiles });
         }
 

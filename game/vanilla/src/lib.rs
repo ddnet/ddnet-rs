@@ -181,7 +181,7 @@ mod test {
             let took = Instant::now().duration_since(now);
             println!("{} s - pos: {:?}, vel: {:?}", took.as_secs_f64(), pos, vel);
             let calls_per_second = iterations as f64 / took.as_secs_f64();
-            println!("{} call/s", calls_per_second);
+            println!("{calls_per_second} call/s");
         };
         bench();
         bench();
