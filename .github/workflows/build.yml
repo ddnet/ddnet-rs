@@ -39,6 +39,7 @@ jobs:
       uses: msys2/setup-msys2@v2
       if: contains(matrix.os, 'windows')
       with:
+        update: true
         msystem: MINGW64
   
     - name: Configure Windows Path for msys2
@@ -50,10 +51,15 @@ jobs:
 
     - name: Configure rustup for msys2
       if: contains(matrix.os, 'windows')
+      env:
+        MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
       run: |
         export PATH="/c/users/$(whoami)/.cargo/bin:$PATH"
         echo -e "export PATH=\"/c/users/$(whoami)/.cargo/bin:\$PATH\"\n" >> ~/.bash_profile
         echo -e "export MINGW_ARCH=mingw64\n" >> ~/.bash_profile
+        # Clearify the libclang path
+        echo "export LIBCLANG_PATH=${MSYS2_LOCATION}/mingw64/bin" >> ~/.bash_profile
+        echo "export BINDGEN_EXTRA_CLANG_ARGS=--target=x86_64-w64-windows-gnu -isystem${MSYS2_LOCATION}/mingw64/include" >> ~/.bash_profile
 
     - uses: actions/checkout@v4
       with:
