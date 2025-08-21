@@ -11,5 +11,5 @@ api-wasm-macros = { path = "../../lib/api-wasm-macros" }
 base-io-traits = { path = "../../lib/base-io-traits" }
 cache = { path = "../../lib/cache" }
 
-wasmer = { version = "6.0.0", default-features = false, features = ["sys", "cranelift"] }
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+wasmer = { version = "6.1.0-rc.3", default-features = false, features = ["sys", "cranelift"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }

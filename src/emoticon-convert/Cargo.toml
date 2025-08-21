@@ -9,4 +9,4 @@ assets-splitting = { path = "../../game/assets-splitting" }
 
 image-utils = { path = "../../lib/image-utils" }
 
-clap = { version = "4.5.37", features = ["derive"] }
+clap = { version = "4.5.45", features = ["derive"] }

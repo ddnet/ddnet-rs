@@ -12,9 +12,9 @@ http-accounts = { path = "../http-accounts" }
 
 ddnet-accounts-shared = { version = "0.2.0" }
 ddnet-account-client-http-fs = { version = "0.3.0" }
-async-trait = "0.1.88"
-url = { version = "2.5.4", features = ["serde"] }
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+async-trait = "0.1.89"
+url = { version = "2.5.6", features = ["serde"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 email_address = { version = "0.2.9", features = ["serde"] }
 chrono = { version = "0.4.41" }
-serde_json = "1.0.140"
+serde_json = "1.0.143"

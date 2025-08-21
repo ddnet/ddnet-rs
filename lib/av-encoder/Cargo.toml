@@ -18,9 +18,9 @@ hiarc = { path = "../hiarc", features = ["derive", "enable_tokio"] }
 #av-format = "0.7"
 
 log = "0.4.27"
-anyhow = { version = "1.0.98", features = ["backtrace"] }
-tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
-rayon = "1.10.0"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+rayon = "1.11.0"
 sendable = "0.6.1"
 
 ffmpeg-next = { version = "7.1.0", features = ["build", "build-license-gpl", "build-lib-x264", "static"], optional = true }

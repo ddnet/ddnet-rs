@@ -19,13 +19,13 @@ sound-backend = { path = "../../lib/sound-backend" }
 
 editor = { path = "../../game/editor" }
 
-clap = { version = "4.5.37", features = ["derive"] }
-rayon = "1.10.0"
+clap = { version = "4.5.45", features = ["derive"] }
+rayon = "1.11.0"
 env_logger = "0.11.8"
 log = "0.4.27"
-serde_json = "1.0.140"
+serde_json = "1.0.143"
 serde = { version = "1.0.219", features = ["derive"] }
 chrono = { version = "0.4.41" }
 x509-cert = { version = "0.2.5" }
-ed25519-dalek = { version = "2.1.1", features = ["serde"] }
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+ed25519-dalek = { version = "2.2.0", features = ["serde"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }

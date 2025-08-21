@@ -21,7 +21,7 @@ client-render-game = { path = "../client-render-game" }
 render-game-wasm = { path = "../render-game-wasm" }
 game-state-wasm = { path = "../game-state-wasm" }
 
-rayon = "1.10.0"
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+rayon = "1.11.0"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 wasmparser = "0.230.0"
 log = "0.4.27"

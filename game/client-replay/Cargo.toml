@@ -10,6 +10,6 @@ client-demo = { path = "../client-demo", default-features = false }
 demo = { path = "../demo", features = ["recorder"] }
 game-interface = { path = "../game-interface" }
 
-rayon = "1.10.0"
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+rayon = "1.11.0"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }

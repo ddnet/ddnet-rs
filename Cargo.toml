@@ -183,11 +183,11 @@ legacy-proxy = { path = "game/legacy-proxy" }
 camera = { path = "game/camera" }
 
 egui-winit = { version = "0.31.1", default-features = false, features = ["x11", "arboard", "links"] }
-tokio = { version = "1.45.0", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
 num = "0.4.3"
 arrayvec = "0.7.6"
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-rayon = "1.10.0"
+rayon = "1.11.0"
 bincode = { version = "2.0.1", features = ["serde"] }
 bytes = "1.10.1"
 egui_extras = { version = "0.31.1" }
@@ -195,16 +195,16 @@ emath = "0.31.1"
 fixed = "1.29.0"
 serde = "1.0.219"
 serde-value = "0.7.0"
-serde_json = "1.0.140"
+serde_json = "1.0.143"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-anyhow = { version = "1.0.98", features = ["backtrace"] }
-parking_lot = "0.12.3"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+parking_lot = "0.12.4"
 thread-priority = "1.2.0"
 hiarc = { path = "lib/hiarc", features = ["derive"] }
 trybuild = "1.0"
 env_logger = "0.11.8"
-rand = { version = "0.9.1", features = ["std_rng"], default-features = false }
-url = "2.5.4"
+rand = { version = "0.9.2", features = ["std_rng"], default-features = false }
+url = "2.5.6"
 log = "0.4.27"
 x509-cert = { version = "0.2.5" }
 crossbeam = "0.8.4"
@@ -219,7 +219,7 @@ stats_alloc = { version = "0.1.10", optional = true }
 ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branch = "pr_mingw_workaround" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.15.0"
+android_logger = "0.15.1"
 ndk = { version = "0.9.0", default-features = false }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]

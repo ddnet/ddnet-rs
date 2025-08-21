@@ -29,15 +29,15 @@ camera = { path = "../camera" }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 
 serde = { version = "1.0.219", features = ["derive"] }
-rayon = "1.10.0"
+rayon = "1.11.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 bincode = { version = "2.0.1", features = ["serde"] }
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 time = { version = "0.3.41", features = ["serde"] }
 fixed = "1.29.0"
 log = "0.4.27"
-url = { version = "2.5.4", features = ["serde"] }
+url = { version = "2.5.6", features = ["serde"] }
 futures = "0.3.31"
-strum = { version = "0.27.1", features = ["derive"] }
+strum = { version = "0.27.2", features = ["derive"] }
 rustc-hash = "2.1.1"

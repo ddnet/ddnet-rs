@@ -8,4 +8,4 @@ math = { path = "../../lib/math" }
 
 [dev-dependencies]
 textplots = "0.8.7"
-rgb = "0.8.50"
+rgb = "0.8.52"

@@ -11,6 +11,6 @@ hiarc = { path = "../../lib/hiarc" }
 input-binds = { path = "../../lib/input-binds" }
 command-parser = { path = "../../lib/command-parser" }
 
-serde_json = "1.0.140"
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+serde_json = "1.0.143"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 log = "0.4.27"
