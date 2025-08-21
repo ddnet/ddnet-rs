@@ -624,8 +624,8 @@ pub enum EditorMapSetGroup {
 }
 
 pub trait EditorMapInterface {
-    fn active_layer(&self) -> Option<EditorLayerUnionRef>;
-    fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
+    fn active_layer(&'_ self) -> Option<EditorLayerUnionRef<'_>>;
+    fn active_layer_mut(&'_ mut self) -> Option<EditorLayerUnionRefMut<'_>>;
 
     fn set_active_layer(&mut self, layer: EditorMapSetLayer);
 
@@ -640,10 +640,10 @@ pub trait EditorMapInterface {
 }
 
 pub trait EditorMapGroupsInterface {
-    fn active_layer(&self) -> Option<EditorLayerUnionRef>;
-    fn active_layer_mut(&mut self) -> Option<EditorLayerUnionRefMut>;
+    fn active_layer(&'_ self) -> Option<EditorLayerUnionRef<'_>>;
+    fn active_layer_mut(&'_ mut self) -> Option<EditorLayerUnionRefMut<'_>>;
 
-    fn selected_layers(&self) -> Vec<EditorLayerUnionRef>;
+    fn selected_layers(&'_ self) -> Vec<EditorLayerUnionRef<'_>>;
 
     fn live_edited_layers(&self) -> Vec<EditorEventLayerIndex>;
 }

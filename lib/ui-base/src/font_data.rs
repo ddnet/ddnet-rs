@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use base_io::{io::Io, runtime::IoRuntimeTask};
+use base_io::{io::IoFileSys, runtime::IoRuntimeTask};
 pub use egui::FontDefinitions;
 use egui::{FontData, FontFamily};
 use hiarc::Hiarc;
@@ -12,7 +12,7 @@ pub struct UiFontDataLoading {
 }
 
 impl UiFontDataLoading {
-    pub fn new(io: &Io) -> Self {
+    pub fn new(io: &IoFileSys) -> Self {
         let fs = io.fs.clone();
         let task = io.rt.spawn(async move {
             let mut icon = fs.read_file("fonts/Icons.otf".as_ref()).await?;

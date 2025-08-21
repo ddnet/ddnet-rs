@@ -3475,8 +3475,8 @@ impl Client {
                 feet_color,
             } => (
                 true,
-                rgba_to_legacy_color(body_color),
-                rgba_to_legacy_color(feet_color),
+                rgba_to_legacy_color(body_color, true, true),
+                rgba_to_legacy_color(feet_color, true, true),
             ),
         };
         game::ClStartInfo {

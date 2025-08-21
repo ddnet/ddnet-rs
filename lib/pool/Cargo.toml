@@ -10,7 +10,7 @@ hiarc = { path = "../hiarc", features = ["enable_parking_lot", "derive"], option
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
 bincode = { version = "2.0.1", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive", "rc"] }
-parking_lot = "0.12.3"
+parking_lot = "0.12.4"
 rustc-hash = "2.1.1"
 
 [features]

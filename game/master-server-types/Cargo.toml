@@ -10,13 +10,13 @@ license = "Zlib"
 arrayvec = { version = "=0.5.2", features = ["serde"] }
 csv = "1.3.1"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140", features = [
+serde_json = { version = "1.0.143", features = [
   "float_roundtrip",
   "preserve_order",
   "raw_value",
 ] }
-url = { version = "2.5.4", features = ["serde"] }
+url = { version = "2.5.6", features = ["serde"] }
 ipnet = { version = "2.11.0", features = ["serde"] }
 http = "=0.2.12"
 
-serde_with = "3.12.0"
+serde_with = "3.14.0"

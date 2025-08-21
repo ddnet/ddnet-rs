@@ -10,4 +10,4 @@ base-fs = { path = "../base-fs" }
 base-io-traits = { path = "../base-io-traits" }
 hiarc = { path = "../hiarc", features = ["enable_tokio"] }
 
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }

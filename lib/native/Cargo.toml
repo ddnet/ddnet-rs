@@ -7,7 +7,7 @@ edition = "2021"
 base = { path = "../base" }
 native-display = { path = "../native-display" }
 
-anyhow = { version = "1.0.98", features = ["backtrace"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 raw-window-handle = "0.6.2"
 log = "0.4.27"
-winit = { version = "0.30.10", features = ["serde", "android-native-activity"] }
+winit = { version = "0.30.12", features = ["serde", "android-native-activity"] }

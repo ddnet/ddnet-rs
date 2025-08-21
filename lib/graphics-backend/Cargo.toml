@@ -29,30 +29,30 @@ graphics-backend-traits = { path = "../graphics-backend-traits" }
 pool = { path = "../pool" }
 math = { path = "../math" }
 
-libc = "0.2.172"
+libc = "0.2.175"
 ash-window = "0.13.0"
 naga = { version = "24.0.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
-naga_oil = "0.17.0"
+naga_oil = "0.17.1"
 raw-window-handle = "0.6.2"
-anyhow = { version = "1.0.98", features = ["backtrace"] }
-rayon = "1.10.0"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+rayon = "1.11.0"
 ash = "0.38.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-thiserror = "2.0.12"
+thiserror = "2.0.16"
 atomic_enum = "0.3.0"
-parking_lot = "0.12.3"
-serde_json = "1.0.140"
+parking_lot = "0.12.4"
+serde_json = "1.0.143"
 serde = { version = "1.0.219", features = ["derive"] }
 arc-swap = "1.7.1"
 thread-priority = "1.2.0"
 bincode = { features = ["serde"], version = "2.0.1" }
 log = "0.4.27"
 either = "1.15.0"
-replace_with = "0.1.7"
+replace_with = "0.1.8"
 crossbeam = "0.8.4"
 futures = "0.3.31"
-strum = { version = "0.27.1", features = ["derive"] }
+strum = { version = "0.27.2", features = ["derive"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 ash-molten = { version = "0.20.0" }

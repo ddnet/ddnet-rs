@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 hiarc = { path = "../hiarc", features = ["derive", "enable_fixed"] }
 serde = { version = "1.0.219", features = ["derive"] }
-rand = { version = "0.9.1", default-features = false }
+rand = { version = "0.9.2", default-features = false }
 rand_xoshiro = "0.7.0"
 num-traits = { version = "0.2.19", features = ["libm"] }
 palette = "0.7.6"
