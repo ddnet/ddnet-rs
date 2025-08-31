@@ -110,6 +110,7 @@ members = [
     "game/client-notifications", "src/editor-server", "src/extra-convert", "game/editor-interface", "game/editor-auto-mapper-wasm",
     "game/api-auto-mapper",
     "examples/wasm-modules/auto-mapper", "game/legacy-proxy", "game/camera", "game/legacy-map",
+    "lib/auto-updater",
 ]
 
 [package]
@@ -153,6 +154,8 @@ pool = { path = "lib/pool" }
 bin-patch = { path = "lib/bin-patch" }
 steam = { path = "lib/steam" }
 command-parser = { path = "lib/command-parser" }
+
+auto-updater = { path = "lib/auto-updater", optional = true }
 
 game-config = { path = "game/game-config" }
 game-config-fs = { path = "game/game-config-fs" }
@@ -247,6 +250,7 @@ ffmpeg = ["client-demo/ffmpeg"]
 
 alloc_track = ["dep:alloc-track"]
 alloc_stats = ["dep:stats_alloc"]
+auto_updater = ["dep:auto-updater"]
 
 #[profile.release]
 #lto = true

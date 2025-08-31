@@ -16,18 +16,18 @@ jobs:
         include:
         - os: ubuntu-latest
           features-debug: "bundled_data_dir,ffmpeg,microphone"
-          features: "bundled_data_dir,ffmpeg,microphone"
+          features: "bundled_data_dir,ffmpeg,microphone,auto_updater"
           bin: ddnet-rs
           server-bin: server
         - os: macOS-latest
           features-debug: "bundled_data_dir,ffmpeg,microphone"
-          features: "bundled_data_dir,ffmpeg,microphone"
+          features: "bundled_data_dir,ffmpeg,microphone,auto_updater"
           bin: ddnet-rs
           server-bin: server
         - os: windows-latest
           # ffmpeg takes years on win
           features-debug: "bundled_data_dir,microphone"
-          features: "bundled_data_dir,ffmpeg,microphone"
+          features: "bundled_data_dir,ffmpeg,microphone,auto_updater"
           bin: ddnet-rs.exe
           server-bin: server.exe
     runs-on: ${{ matrix.os }}
@@ -118,6 +118,9 @@ jobs:
       run: |
         rm /mingw64/lib/libx264.dll.a
         cp /c/build-x264/libx264.a /mingw64/lib/libx264.a
+        # also copy headers to match the compiled static library
+        cp /c/x264/x264.h /mingw64/include/x264.h
+        cp /c/build-x264/x264_config.h /mingw64/include/x264_config.h
         rustup target add x86_64-pc-windows-gnu
         rustup update stable
         rustup set default-host x86_64-pc-windows-gnu
@@ -142,6 +145,15 @@ jobs:
         cargo clippy --release --verbose --features ${{ matrix.features }} -- -D warnings
         cargo clippy -p server --release --verbose --features bundled_data_dir -- -D warnings
 
+    - name: Compute lowercase name parts
+      id: nameparts
+      run: |
+        set -euo pipefail
+        os_lc=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+        arch_lc=$(echo "${{ runner.arch }}" | tr '[:upper:]' '[:lower:]')
+        echo "os=$os_lc" >> "$GITHUB_OUTPUT"
+        echo "arch=$arch_lc" >> "$GITHUB_OUTPUT"
+
     - name: Prepare artifacts
       run: |
         mkdir bin-artifacts || true
@@ -151,13 +163,13 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ddnet-rs-${{ matrix.os }}
+        name: ddnet-rs-${{ steps.nameparts.outputs.os }}-${{ steps.nameparts.outputs.arch }}
         path: bin-artifacts
 
     - name: Build release with steam
       run: cargo build --release --verbose --features ${{ matrix.features }},enable_steam
 
-    - name: Prepare artifacts
+    - name: Prepare artifacts steam
       run: |
         mkdir bin-artifacts || true
         mv target/release/${{ matrix.bin }} bin-artifacts
@@ -165,5 +177,5 @@ jobs:
     - name: Upload Artifacts steam
       uses: actions/upload-artifact@v4
       with:
-        name: ddnet-rs-${{ matrix.os }}-steam
+        name: ddnet-rs-${{ steps.nameparts.outputs.os }}-${{ steps.nameparts.outputs.arch }}-steam
         path: bin-artifacts

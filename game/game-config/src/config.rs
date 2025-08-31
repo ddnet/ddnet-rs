@@ -270,6 +270,9 @@ pub struct ConfigClient {
     /// Whether the client showed a warning when joining a legacy
     /// server and should not show it again.
     pub shown_legacy_server_warning: bool,
+    #[default = true]
+    /// Enables the auto update if available
+    pub auto_updater: bool,
 }
 
 #[config_default]
