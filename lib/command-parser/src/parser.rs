@@ -69,7 +69,7 @@ impl HumanReadableToken for CommandArgType {
             ),
             CommandArgType::TextArrayFrom { from, separator } => {
                 format!(
-                    "list of [{}] serparated by {}",
+                    "list of [{}] separated by {}",
                     from.iter()
                         .map(|s| s.as_str())
                         .collect::<Vec<_>>()
