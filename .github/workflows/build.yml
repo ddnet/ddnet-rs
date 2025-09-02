@@ -118,6 +118,9 @@ jobs:
       run: |
         rm /mingw64/lib/libx264.dll.a
         cp /c/build-x264/libx264.a /mingw64/lib/libx264.a
+        # also copy headers to match the compiled static library
+        cp /c/x264/x264.h /mingw64/include/x264.h
+        cp /c/build-x264/x264_config.h /mingw64/include/x264_config.h
         rustup target add x86_64-pc-windows-gnu
         rustup update stable
         rustup set default-host x86_64-pc-windows-gnu
