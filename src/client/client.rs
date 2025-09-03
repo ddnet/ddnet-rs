@@ -420,6 +420,10 @@ struct ClientNativeImpl {
     // input & helper
     inp_manager: InputHandling,
 
+    // auto updater, should be at the end
+    #[cfg(feature = "auto_updater")]
+    auto_updater: Option<auto_updater::AutoUpdater>,
+
     // put graphics at the end, so it's dropped last
     graphics: Graphics,
     graphics_backend: Rc<GraphicsBackend>,
@@ -2948,6 +2952,20 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
         local_console.ui.ui_state.is_ui_open = false;
 
         let mut client = GraphicsApp::new(ClientNativeImpl {
+            #[cfg(feature = "auto_updater")]
+            auto_updater: loading.config_game.cl.auto_updater.then(|| {
+                auto_updater::AutoUpdater::new(
+                    &io,
+                    "ddnet",
+                    "ddnet-rs",
+                    "nightly",
+                    #[cfg(feature = "enable_steam")]
+                    "-steam",
+                    #[cfg(not(feature = "enable_steam"))]
+                    "",
+                )
+            }),
+
             menu_map,
 
             cur_time,
@@ -3551,6 +3569,18 @@ impl AppWithGraphics for ClientNativeImpl {
                 (game.game_data.last_game_tick.as_secs_f64()
                     + game.game_data.prediction_timer.smooth_adjustment_time())
                 .clamp(0.0, f64::MAX),
+            );
+        }
+
+        #[cfg(feature = "auto_updater")]
+        if self
+            .auto_updater
+            .as_ref()
+            .is_some_and(|auto_updater| auto_updater.consume_has_update())
+        {
+            self.notifications.add_info(
+                "A new update is available. Restart client to apply",
+                Duration::from_secs(10),
             );
         }
 
