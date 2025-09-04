@@ -15,14 +15,18 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use url::Url;
 
-/// Determine the current binary's stem name.
-fn current_bin_name() -> anyhow::Result<String> {
+/// Determine the current binary's stem & full name.
+fn current_bin_stem_and_name() -> anyhow::Result<(String, String)> {
     let exe = std::env::current_exe()?;
     let stem = exe
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow!("Failed to get current binary name"))?;
+    let name = exe
         .file_name()
         .and_then(|s| s.to_str())
         .ok_or_else(|| anyhow!("Failed to get current binary name"))?;
-    Ok(stem.to_string())
+    Ok((stem.to_string(), name.to_string()))
 }
 
 /// matches github actions `runner.arch` style
@@ -119,29 +123,26 @@ impl AutoUpdater {
                                             last_check: time,
                                         });
                                     }
-                                    // if commit hashes were equal, see if auto updater info did not yet exist, to write it down
+                                    // if commit hashes were equal, write down the updater info
                                     Either::Right(git_commit_hash) => {
-                                        let should_write = info.is_none();
                                         let new_info = AutoUpdateInfo {
                                             git_commit_hash,
                                             last_check: Utc::now(),
                                         };
-                                        if should_write {
-                                            log::info!(
-                                                "Writing auto updater info, \
-                                                because git hashes matched"
+                                        log::info!(
+                                            "Writing auto updater info, \
+                                            because git hashes matched"
+                                        );
+                                        if let Err(err) = fs
+                                            .write_file(
+                                                INFO_NAME.as_ref(),
+                                                serde_json::to_vec_pretty(&new_info)?,
+                                            )
+                                            .await
+                                        {
+                                            log::error!(
+                                                "Error while writing auto updater info: {err}"
                                             );
-                                            if let Err(err) = fs
-                                                .write_file(
-                                                    INFO_NAME.as_ref(),
-                                                    serde_json::to_vec_pretty(&new_info)?,
-                                                )
-                                                .await
-                                            {
-                                                log::error!(
-                                                    "Error while writing auto updater info: {err}"
-                                                );
-                                            }
                                         }
                                         info = Some(new_info);
                                     }
@@ -185,7 +186,7 @@ impl AutoUpdater {
         suffix: &str,
         current_git_commit_hash: Option<&GitCommitHash>,
     ) -> anyhow::Result<Either<DownloadResult, GitCommitHash>> {
-        let bin_name = current_bin_name()?;
+        let (bin_stem, bin_name) = current_bin_stem_and_name()?;
 
         let tag_url = Url::parse("https://github.com/")?
             .join(&format!("{owner}/{repo}/releases/download/{tag}/"))?;
@@ -194,7 +195,7 @@ impl AutoUpdater {
             .download_text(tag_url.join("blake3_checksum.txt")?)
             .await?;
 
-        let asset_name = format!("{bin_name}-{OS}-{}{suffix}.zip", normalized_arch());
+        let asset_name = format!("{bin_stem}-{OS}-{}{suffix}.zip", normalized_arch());
 
         let mut lines = checksums.lines();
         let git_commit_hash = GitCommitHash(
