@@ -4,6 +4,7 @@ use base_io::io::Io;
 use base_io::runtime::IoRuntimeTask;
 use base_io_traits::http_traits::HttpClientInterface;
 use chrono::{DateTime, Duration, Utc};
+use either::Either;
 use git_version::git_version;
 use serde::{Deserialize, Serialize};
 use std::env::consts::{ARCH, OS};
@@ -104,17 +105,46 @@ impl AutoUpdater {
                             Ok(download_res) => {
                                 // wait a full day
                                 update_interval = std::time::Duration::from_secs(60 * 60 * 24);
-                                if let Some((git_commit_hash, file, time)) = download_res {
-                                    *current_update_task.lock().await =
-                                        Some((git_commit_hash.clone(), file, time));
+                                match download_res {
+                                    Either::Left((git_commit_hash, file, time)) => {
+                                        log::info!("A new update was downloaded successfully.");
+                                        *current_update_task.lock().await =
+                                            Some((git_commit_hash.clone(), file, time));
 
-                                    has_update_task
-                                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                                        has_update_task
+                                            .store(true, std::sync::atomic::Ordering::SeqCst);
 
-                                    info = Some(AutoUpdateInfo {
-                                        git_commit_hash,
-                                        last_check: time,
-                                    });
+                                        info = Some(AutoUpdateInfo {
+                                            git_commit_hash,
+                                            last_check: time,
+                                        });
+                                    }
+                                    // if commit hashes were equal, see if auto updater info did not yet exist, to write it down
+                                    Either::Right(git_commit_hash) => {
+                                        let should_write = info.is_none();
+                                        let new_info = AutoUpdateInfo {
+                                            git_commit_hash,
+                                            last_check: Utc::now(),
+                                        };
+                                        if should_write {
+                                            log::info!(
+                                                "Writing auto updater info, \
+                                                because git hashes matched"
+                                            );
+                                            if let Err(err) = fs
+                                                .write_file(
+                                                    INFO_NAME.as_ref(),
+                                                    serde_json::to_vec_pretty(&new_info)?,
+                                                )
+                                                .await
+                                            {
+                                                log::error!(
+                                                    "Error while writing auto updater info: {err}"
+                                                );
+                                            }
+                                        }
+                                        info = Some(new_info);
+                                    }
                                 }
                             }
                             Err(err) => {
@@ -154,7 +184,7 @@ impl AutoUpdater {
         tag: &str,
         suffix: &str,
         current_git_commit_hash: Option<&GitCommitHash>,
-    ) -> anyhow::Result<Option<DownloadResult>> {
+    ) -> anyhow::Result<Either<DownloadResult, GitCommitHash>> {
         let bin_name = current_bin_name()?;
 
         let tag_url = Url::parse("https://github.com/")?
@@ -187,7 +217,7 @@ impl AutoUpdater {
         if current_git_commit_hash
             .is_some_and(|current_git_commit_hash| git_commit_hash == *current_git_commit_hash)
         {
-            return Ok(None);
+            return Ok(Either::Right(current_git_commit_hash.unwrap().clone()));
         }
 
         let asset_hash = lines
@@ -234,7 +264,7 @@ impl AutoUpdater {
         let file =
             extracted.ok_or_else(|| anyhow!("Binary '{bin_name}' not found in downloaded zip"))?;
 
-        Ok(Some((git_commit_hash, file, Utc::now())))
+        Ok(Either::Left((git_commit_hash, file, Utc::now())))
     }
 
     fn blocking_replace(file: &[u8]) -> anyhow::Result<()> {
