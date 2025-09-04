@@ -725,6 +725,7 @@ dependencies = [
  "base-io",
  "base-io-traits",
  "chrono",
+ "either",
  "git-version",
  "log 0.4.27",
  "self-replace",
