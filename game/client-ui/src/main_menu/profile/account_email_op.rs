@@ -72,6 +72,7 @@ pub fn render(
                         .and_then(|email| email_address::EmailAddress::from_str(email).ok())
                         .zip(path.query.get("token").cloned())
                     {
+                        let token = token.trim().into();
                         path.query.remove("token");
                         path.query.remove("email");
                         path.query.remove("veri-token");
