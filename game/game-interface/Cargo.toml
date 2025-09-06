@@ -1,30 +1,39 @@
 [package]
 name = "game-interface"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[package.metadata.cargo-machete]
+ignored = ["num-traits"]
 
 [dependencies]
-command-parser = { path = "../../lib/command-parser" }
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
+command-parser = { path = "../../lib/command-parser" }
+game-database = { path = "../../lib/game-database" }
+hiarc = { path = "../../lib/hiarc", features = [
+  "derive",
+  "enable_hashlink",
+  "enable_rustc_hash",
+  "enable_ascii",
+  "enable_chrono",
+] }
 math = { path = "../../lib/math" }
 pool = { path = "../../lib/pool", features = ["enable_hiarc"] }
-hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_hashlink", "enable_rustc_hash", "enable_ascii", "enable_chrono"] }
-game-database = { path = "../../lib/game-database" }
 
 # non-local libs
 ddnet-accounts-types = { version = "0.1.0" }
 
-serde = { version = "1.0.219", features = ["derive"] }
+ascii = { version = "1.1.0", features = ["serde"] }
+bitflags = { version = "2.9.4", features = ["serde"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
+either = { version = "1.15.0", features = ["serde"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-strum = { version = "0.27.2", features = ["derive"] }
-bitflags = { version = "2.9.2", features = ["serde"] }
-ascii = { version = "1.1.0", features = ["serde"] }
-either = { version = "1.15.0", features = ["serde"] }
-chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
 rustc-hash = "2.1.1"
-
-[package.metadata.cargo-machete]
-ignored = ["num-traits"]
+serde = { version = "1.0.219", features = ["derive"] }
+strum = { version = "0.27.2", features = ["derive"] }

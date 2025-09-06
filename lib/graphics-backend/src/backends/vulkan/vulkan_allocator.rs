@@ -818,14 +818,14 @@ impl VulkanAllocator {
                 .mapped_memory_cache_image
                 .remove(&std::ptr::NonNull::new(mem).unwrap());
             if let None = res {
+                let res = self
+                    .ptr_work
+                    .mapped_memory_cache_shader_storage
+                    .remove(&std::ptr::NonNull::new(mem).unwrap());
                 if let None = res {
-                    let res = self
-                        .ptr_work
-                        .mapped_memory_cache_shader_storage
-                        .remove(&std::ptr::NonNull::new(mem).unwrap());
-                    if let None = res {
-                        panic!("memory that was tried to be deallocated was not found. That could mean it was already free'd (dobule free).");
-                    }
+                    panic!(
+                        "memory that was tried to be deallocated was not found. That could mean it was already free'd (dobule free)."
+                    );
                 }
             }
         }

@@ -4,7 +4,7 @@ use api_ui_game::render::create_skin_container;
 use client_containers::skins::SkinContainer;
 use client_render_base::render::tee::RenderTee;
 use client_ui::{
-    thumbnail_container::{ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH},
+    thumbnail_container::{DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer},
     vote::user_data::{VoteRenderData, VoteRenderType},
 };
 use game_interface::votes::{

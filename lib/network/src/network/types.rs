@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
-    sync::{mpsc::SyncSender, Arc},
+    sync::{Arc, mpsc::SyncSender},
     time::Duration,
 };
 

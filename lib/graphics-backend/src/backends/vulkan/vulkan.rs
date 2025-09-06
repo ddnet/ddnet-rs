@@ -5,13 +5,13 @@ use std::{
     os::raw::c_void,
     rc::Rc,
     sync::{
-        atomic::{AtomicU64, AtomicUsize},
         Arc,
+        atomic::{AtomicU64, AtomicUsize},
     },
 };
 
 use base_io::{io::IoFileSys, runtime::IoRuntimeTask};
-use crossbeam::channel::{bounded, unbounded, Receiver};
+use crossbeam::channel::{Receiver, bounded, unbounded};
 use graphics_backend_traits::{
     frame_fetcher_plugin::{
         BackendFrameFetcher, BackendPresentedImageDataRgba, FetchCanvasError, FetchCanvasIndex,
@@ -37,8 +37,8 @@ use graphics_types::{
         CommandTextureUpdate, CommandUpdateBufferObject, CommandUpdateBufferRegion,
         CommandUpdateShaderStorage, CommandUpdateViewport, CommandVsync, CommandsMisc,
         CommandsRender, CommandsRenderMod, CommandsRenderQuadContainer, CommandsRenderStream,
-        GlVertexTex3DStream, RenderSpriteInfo, StreamDataMax, GRAPHICS_DEFAULT_UNIFORM_SIZE,
-        GRAPHICS_MAX_UNIFORM_RENDER_COUNT, GRAPHICS_UNIFORM_INSTANCE_COUNT,
+        GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        GRAPHICS_UNIFORM_INSTANCE_COUNT, GlVertexTex3DStream, RenderSpriteInfo, StreamDataMax,
     },
     gpu::Gpus,
     rendering::{GlVertex, State, StateTexture},
@@ -70,11 +70,12 @@ use base::{benchmark::Benchmark, join_thread::JoinThread, linked_hash_map_view::
 use config::config::{AtomicGfxDebugModes, ConfigDebug, GfxDebugModes};
 
 use super::{
+    Options,
     buffer::Buffer,
     command_pool::{AutoCommandBuffer, AutoCommandBufferType, CommandPool},
     compiler::compiler::{ShaderCompiler, ShaderCompilerType},
     dbg_utils_messenger::DebugUtilsMessengerEXT,
-    descriptor_set::{split_descriptor_sets, DescriptorSet},
+    descriptor_set::{DescriptorSet, split_descriptor_sets},
     fence::Fence,
     frame::{Frame, FrameCanvasIndex},
     frame_collection::FrameCollector,
@@ -107,7 +108,6 @@ use super::{
         RenderPassType, RenderThread, RenderThreadEvent, StreamedUniformBuffer, TextureData,
         TextureObject, ThreadCommandGroup,
     },
-    Options,
 };
 
 #[derive(Debug, Hiarc)]
@@ -1599,13 +1599,12 @@ impl VulkanBackend {
                 // get current frame and fill the frame fetcher with it
                 let fetch_index = self.frame_fetchers.get(i).unwrap().current_fetch_index();
                 // ignore offscreen canvases that requested to skip this frame
-                if let FetchCanvasIndex::Offscreen(index) = fetch_index {
-                    if self
+                if let FetchCanvasIndex::Offscreen(index) = fetch_index
+                    && self
                         .offscreen_canvases_frame_fetching_skips
                         .contains(&index)
-                    {
-                        continue;
-                    }
+                {
+                    continue;
                 }
                 let img_data = self.get_presented_image_data_impl(fetch_index);
                 if let Ok(img_data) = img_data {
@@ -1713,7 +1712,9 @@ impl VulkanBackend {
                 RenderSetupNativeType::Offscreen { .. } => true,
             };
             if self.recreate_swap_chain && is_verbose(&self.props.dbg) {
-                info!("recreating swap chain requested by acquire next image - suboptimal (prepare frame).");
+                info!(
+                    "recreating swap chain requested by acquire next image - suboptimal (prepare frame)."
+                );
             }
         }
 
@@ -2318,7 +2319,9 @@ impl VulkanBackend {
                 self.window_height = cmd.height;
                 self.recreate_swap_chain = true;
                 if is_verbose(&self.props.dbg) {
-                    info!("queue recreate swapchain because of a viewport update with by_resize == true.");
+                    info!(
+                        "queue recreate swapchain because of a viewport update with by_resize == true."
+                    );
                 }
             }
         } else {
@@ -2823,7 +2826,9 @@ impl VulkanBackend {
         let is_supported =
             unsafe { surface.get_physical_device_surface_support(*phy_gpu, queue_family_index) }?;
         if !is_supported {
-            return Err(anyhow!("The device surface does not support presenting the framebuffer to a screen. (maybe the wrong GPU was selected?)"));
+            return Err(anyhow!(
+                "The device surface does not support presenting the framebuffer to a screen. (maybe the wrong GPU was selected?)"
+            ));
         }
 
         Ok(surface)

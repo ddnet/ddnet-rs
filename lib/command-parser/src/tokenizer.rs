@@ -65,7 +65,7 @@ pub fn tokenize(s: &str) -> anyhow::Result<Tokens, (Tokens, (String, Range<usize
 mod test {
     use logos::Logos;
 
-    use crate::tokenizer::{tokenize, Token};
+    use crate::tokenizer::{Token, tokenize};
 
     #[test]
     fn console_tests() {

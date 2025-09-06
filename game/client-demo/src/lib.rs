@@ -14,7 +14,7 @@ use std::{
 
 use anyhow::anyhow;
 pub use av_encoder::types::EncoderSettings;
-use av_encoder::{traits::AudioVideoEncoder, AvEncoder};
+use av_encoder::{AvEncoder, traits::AudioVideoEncoder};
 use base::system::{System, SystemTime, SystemTimeInterface};
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use client_map::client_map::{ClientMapFile, ClientMapLoading, GameMap, RenderGameWasmManager};
@@ -26,9 +26,9 @@ use client_render_game::render_game::{
 use client_ui::demo_player::user_data::{DemoViewerEvent, DemoViewerUiState, UserData};
 use config::config::ConfigEngine;
 use demo::{
+    ChunkHeader, DemoEvent, DemoEvents, DemoHeader, DemoHeaderExt, DemoSnapshot, DemoTail,
     recorder::{DemoRecorder, DemoRecorderCreateProps, DemoRecorderCreatePropsBase},
     utils::{decomp, deser, deser_ex},
-    ChunkHeader, DemoEvent, DemoEvents, DemoHeader, DemoHeaderExt, DemoSnapshot, DemoTail,
 };
 use egui::{FontDefinitions, Rect};
 use game_base::{assets_url::HTTP_RESOURCE_URL, game_types::intra_tick_time_to_ratio};
@@ -210,10 +210,10 @@ impl DemoViewerInner {
         index: &BTreeMap<u64, u64>,
     ) {
         let mut it = index.range(tick_range);
-        if let Some((_, chunk_byte_offset)) = if rev { it.next_back() } else { it.next() } {
-            if let Ok(mut chunks) = Self::read_chunks::<A>(demo, *chunk_byte_offset as usize) {
-                cur_data.append(&mut chunks);
-            }
+        if let Some((_, chunk_byte_offset)) = if rev { it.next_back() } else { it.next() }
+            && let Ok(mut chunks) = Self::read_chunks::<A>(demo, *chunk_byte_offset as usize)
+        {
+            cur_data.append(&mut chunks);
         }
     }
 

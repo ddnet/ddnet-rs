@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use math::math::{vector::vec2, PI};
+use math::math::{PI, vector::vec2};
 
 use super::animation::{TeeAnimation, TeeAnimationFrame, TeeAnimationFrames};
 

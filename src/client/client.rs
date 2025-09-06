@@ -24,7 +24,7 @@ use client_console::console::{
 };
 use client_containers::{
     container::ContainerLoadOptions,
-    skins::{SkinContainer, SKIN_CONTAINER_PATH},
+    skins::{SKIN_CONTAINER_PATH, SkinContainer},
 };
 use client_demo::{DemoVideoEncodeProperties, DemoViewer, DemoViewerSettings, EncoderSettings};
 use client_map::client_map::{ClientMapFile, ClientMapLoading, GameMap};
@@ -44,7 +44,7 @@ use client_render_game::render_game::{
 };
 use client_types::{
     cert::ServerCertMode,
-    console::{entries_to_parser, ConsoleEntry},
+    console::{ConsoleEntry, entries_to_parser},
 };
 use client_ui::{
     chat::user_data::{ChatEvent, ChatMode},
@@ -82,8 +82,8 @@ use graphics_backend::{
         GraphicsBackend, GraphicsBackendBase, GraphicsBackendIoLoading, GraphicsBackendLoading,
     },
     utils::{
-        client_window_config_to_native_window_options, client_window_props_changed_update_config,
-        AppWithGraphics, GraphicsApp,
+        AppWithGraphics, GraphicsApp, client_window_config_to_native_window_options,
+        client_window_props_changed_update_config,
     },
     window::BackendWindow,
 };
@@ -98,7 +98,7 @@ use game_interface::{
         game::{GameEntityId, GameTickType},
         id_types::{CharacterId, PlayerId, StageId},
         input::{
-            dyn_cam::CharacterInputDynCamOffset, CharacterInputConsumableDiff, CharacterInputInfo,
+            CharacterInputConsumableDiff, CharacterInputInfo, dyn_cam::CharacterInputDynCamOffset,
         },
         render::{
             character::{CharacterInfo, PlayerCameraMode, PlayerIngameMode, TeeEye},
@@ -122,8 +122,8 @@ use math::math::{
 use native::{
     input::InputEventHandler,
     native::{
-        app::NativeApp, FromNativeLoadingImpl, KeyCode, Native, NativeCreateOptions,
-        NativeDisplayBackend, NativeImpl, PhysicalKey, WindowEvent,
+        FromNativeLoadingImpl, KeyCode, Native, NativeCreateOptions, NativeDisplayBackend,
+        NativeImpl, PhysicalKey, WindowEvent, app::NativeApp,
     },
 };
 use network::network::types::{NetworkInOrderChannel, NetworkServerCertModeResult};
@@ -442,19 +442,19 @@ impl ClientNativeImpl {
             LocalServerState::Starting { thread, .. } => Some(thread),
             LocalServerState::Ready(ready) => Some(&mut ready.thread),
         };
-        if let Some(thread) = thread {
-            if thread.thread.is_finished() {
-                match thread.thread.try_join() {
-                    Err(err) | Ok(Some(Err(err))) => {
-                        notifications.add_err(
-                            format!("Failed to start local server: {err}"),
-                            Duration::from_secs(10),
-                        );
-                        return Err(err);
-                    }
-                    Ok(Some(Ok(_))) | Ok(None) => {
-                        // ignore
-                    }
+        if let Some(thread) = thread
+            && thread.thread.is_finished()
+        {
+            match thread.thread.try_join() {
+                Err(err) | Ok(Some(Err(err))) => {
+                    notifications.add_err(
+                        format!("Failed to start local server: {err}"),
+                        Duration::from_secs(10),
+                    );
+                    return Err(err);
+                }
+                Ok(Some(Ok(_))) | Ok(None) => {
+                    // ignore
                 }
             }
         }
@@ -691,29 +691,29 @@ impl ClientNativeImpl {
                         .collect(),
                 );
             }
-            if self.client_info.wants_active_client_info() {
-                if let Some(player_info) = active_local_player_info {
-                    let scoreboard_info = main_game.collect_scoreboard_info();
-                    self.client_info.set_active_client_info(ActiveClientInfo {
-                        ingame_mode: player_info.ingame_mode,
-                        stage_names: {
-                            let it: Box<dyn Iterator<Item = _>> = match &scoreboard_info.game {
-                                ScoreboardGameType::SidedPlay {
-                                    red_stages,
-                                    blue_stages,
-                                    ..
-                                } => Box::new(red_stages.values().chain(blue_stages.values())),
-                                ScoreboardGameType::SoloPlay { stages, .. } => {
-                                    Box::new(stages.values())
-                                }
-                            };
-                            it.map(|s| s.name.to_string()).collect()
-                        },
-                        camera_mode: active_local_player_info
-                            .map(|p| p.cam_mode.clone())
-                            .unwrap_or_else(|| PlayerCameraMode::Default),
-                    });
-                }
+            if self.client_info.wants_active_client_info()
+                && let Some(player_info) = active_local_player_info
+            {
+                let scoreboard_info = main_game.collect_scoreboard_info();
+                self.client_info.set_active_client_info(ActiveClientInfo {
+                    ingame_mode: player_info.ingame_mode,
+                    stage_names: {
+                        let it: Box<dyn Iterator<Item = _>> = match &scoreboard_info.game {
+                            ScoreboardGameType::SidedPlay {
+                                red_stages,
+                                blue_stages,
+                                ..
+                            } => Box::new(red_stages.values().chain(blue_stages.values())),
+                            ScoreboardGameType::SoloPlay { stages, .. } => {
+                                Box::new(stages.values())
+                            }
+                        };
+                        it.map(|s| s.name.to_string()).collect()
+                    },
+                    camera_mode: active_local_player_info
+                        .map(|p| p.cam_mode.clone())
+                        .unwrap_or_else(|| PlayerCameraMode::Default),
+                });
             }
 
             let mut stages = main_game.all_stages(main_intra_tick_ratio);
@@ -759,12 +759,10 @@ impl ClientNativeImpl {
                                                     .local_players
                                                     .contains_key(&id)
                                             })
-                                        }) {
-                                            if let Some(unpredicted_char) =
-                                                stage.world.characters.get(id)
-                                            {
-                                                char.lerped_hook = unpredicted_char.lerped_hook;
-                                            }
+                                        }) && let Some(unpredicted_char) =
+                                            stage.world.characters.get(id)
+                                        {
+                                            char.lerped_hook = unpredicted_char.lerped_hook;
                                         }
                                         stage.world.characters.insert(*id, char);
                                     }
@@ -1138,41 +1136,39 @@ impl ClientNativeImpl {
             }
 
             // if miniscreens of the dummies should show up, add additional infor for player.
-            if self.config.game.cl.dummy.mini_screen {
-                if let Some((_, player)) = render_game_input.players.iter_mut().next() {
-                    player
-                        .observed_players
-                        .extend(render_game_input.dummies.iter().map(|&player_id| {
-                            ObservedPlayer::Dummy {
-                                // here we don't need to use the anti ping predicted game
-                                // TODO: but maybe make it a config variable? Hard to say if a miniscreen
-                                // should really show anti ping predicted worlds _ever_.
-                                local_player_info: main_game
-                                    .collect_character_local_render_info(&player_id),
-                                player_id,
-                                anchor: self.config.game.cl.dummy.screen_anchor.into(),
-                            }
-                        }));
-                }
+            if self.config.game.cl.dummy.mini_screen
+                && let Some((_, player)) = render_game_input.players.iter_mut().next()
+            {
+                player
+                    .observed_players
+                    .extend(render_game_input.dummies.iter().map(|&player_id| {
+                        ObservedPlayer::Dummy {
+                            // here we don't need to use the anti ping predicted game
+                            // TODO: but maybe make it a config variable? Hard to say if a miniscreen
+                            // should really show anti ping predicted worlds _ever_.
+                            local_player_info: main_game
+                                .collect_character_local_render_info(&player_id),
+                            player_id,
+                            anchor: self.config.game.cl.dummy.screen_anchor.into(),
+                        }
+                    }));
             }
             // if a vote is ongoing and the server allows following voted players, add that to observed players
             if let (Some((_, player)), Some((vote, _, _))) = (
                 render_game_input.players.iter_mut().next(),
                 &render_game_input.vote,
-            ) {
-                if main_game.info.options.allows_voted_player_miniscreen {
-                    match &vote.vote {
-                        VoteType::Map { .. }
-                        | VoteType::RandomUnfinishedMap { .. }
-                        | VoteType::Misc { .. } => {
-                            // ignore
-                        }
-                        VoteType::VoteKickPlayer { key, .. }
-                        | VoteType::VoteSpecPlayer { key, .. } => {
-                            player.observed_players.push(ObservedPlayer::Vote {
-                                player_id: key.voted_player_id,
-                            });
-                        }
+            ) && main_game.info.options.allows_voted_player_miniscreen
+            {
+                match &vote.vote {
+                    VoteType::Map { .. }
+                    | VoteType::RandomUnfinishedMap { .. }
+                    | VoteType::Misc { .. } => {
+                        // ignore
+                    }
+                    VoteType::VoteKickPlayer { key, .. } | VoteType::VoteSpecPlayer { key, .. } => {
+                        player.observed_players.push(ObservedPlayer::Vote {
+                            player_id: key.voted_player_id,
+                        });
                     }
                 }
             }
@@ -1670,79 +1666,72 @@ impl ClientNativeImpl {
                             native.quit();
                         }
                         UiEvent::Kill => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::Kill,
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::Kill,
+                                    )),
+                                );
                             }
                         }
                         UiEvent::JoinSpectators => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::JoinSpectator,
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::JoinSpectator,
+                                    )),
+                                );
                             }
                         }
                         UiEvent::JoinGame => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::JoinStage(
-                                                JoinStage::Default,
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::JoinStage(JoinStage::Default),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::SwitchToFreeCam => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::SwitchToCamera(
-                                                ClientCameraMode::FreeCam(Default::default()),
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::SwitchToCamera(
+                                            ClientCameraMode::FreeCam(Default::default()),
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::SwitchToDefaultCam => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::SwitchToCamera(
-                                                ClientCameraMode::None,
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::SwitchToCamera(
+                                            ClientCameraMode::None,
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::WindowChange => {
@@ -1755,83 +1744,78 @@ impl ClientNativeImpl {
                             self.on_msaa_change();
                         }
                         UiEvent::VoteKickPlayer(key) => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::StartVote(
-                                                VoteIdentifierType::VoteKickPlayer(key),
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::StartVote(
+                                            VoteIdentifierType::VoteKickPlayer(key),
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::VoteSpecPlayer(key) => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::StartVote(
-                                                VoteIdentifierType::VoteSpecPlayer(key),
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::StartVote(
+                                            VoteIdentifierType::VoteSpecPlayer(key),
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::VoteMap(key) => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::StartVote(
-                                                VoteIdentifierType::Map(key),
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::StartVote(
+                                            VoteIdentifierType::Map(key),
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::VoteRandomUnfinishedMap(key) => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::StartVote(
-                                                VoteIdentifierType::RandomUnfinishedMap(key),
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::StartVote(
+                                            VoteIdentifierType::RandomUnfinishedMap(key),
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::VoteMisc(key) => {
-                            if let Game::Active(game) = &mut self.game {
-                                if let Some((player_id, _)) =
+                            if let Game::Active(game) = &mut self.game
+                                && let Some((player_id, _)) =
                                     game.game_data.local.active_local_player()
-                                {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::PlayerMsg((
-                                            *player_id,
-                                            ClientToServerPlayerMessage::StartVote(
-                                                VoteIdentifierType::Misc(key),
-                                            ),
-                                        )),
-                                    );
-                                }
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::PlayerMsg((
+                                        *player_id,
+                                        ClientToServerPlayerMessage::StartVote(
+                                            VoteIdentifierType::Misc(key),
+                                        ),
+                                    )),
+                                );
                             }
                         }
                         UiEvent::JoinOwnTeam { name, color } => {
@@ -1931,12 +1915,12 @@ impl ClientNativeImpl {
                             }
                         }
                         UiEvent::RequestAccountInfo => {
-                            if let Game::Active(game) = &mut self.game {
-                                if !std::mem::replace(&mut game.requested_account_details, true) {
-                                    game.network.send_unordered_to_server(
-                                        &ClientToServerMessage::AccountRequestInfo,
-                                    );
-                                }
+                            if let Game::Active(game) = &mut self.game
+                                && !std::mem::replace(&mut game.requested_account_details, true)
+                            {
+                                game.network.send_unordered_to_server(
+                                    &ClientToServerMessage::AccountRequestInfo,
+                                );
                             }
                         }
                         UiEvent::ConnectLegacy {
@@ -2390,27 +2374,26 @@ impl ClientNativeImpl {
                     self.notifications.add_info(text, Duration::from_secs(2));
                 }
                 LocalConsoleEvent::Say { ref text } | LocalConsoleEvent::SayTeam { ref text } => {
-                    if let Game::Active(game) = &mut self.game {
-                        if let Some((active_player_id, _)) =
+                    if let Game::Active(game) = &mut self.game
+                        && let Some((active_player_id, _)) =
                             game.game_data.local.active_local_player()
-                        {
-                            let msg = if matches!(event, LocalConsoleEvent::Say { .. }) {
-                                MsgClChatMsg::Global {
-                                    msg: NetworkString::new_lossy(text),
-                                }
-                            } else {
-                                MsgClChatMsg::GameTeam {
-                                    msg: NetworkString::new_lossy(text),
-                                }
-                            };
-                            game.network.send_in_order_to_server(
-                                &ClientToServerMessage::PlayerMsg((
-                                    *active_player_id,
-                                    ClientToServerPlayerMessage::Chat(msg),
-                                )),
-                                NetworkInOrderChannel::Global,
-                            );
-                        }
+                    {
+                        let msg = if matches!(event, LocalConsoleEvent::Say { .. }) {
+                            MsgClChatMsg::Global {
+                                msg: NetworkString::new_lossy(text),
+                            }
+                        } else {
+                            MsgClChatMsg::GameTeam {
+                                msg: NetworkString::new_lossy(text),
+                            }
+                        };
+                        game.network.send_in_order_to_server(
+                            &ClientToServerMessage::PlayerMsg((
+                                *active_player_id,
+                                ClientToServerPlayerMessage::Chat(msg),
+                            )),
+                            NetworkInOrderChannel::Global,
+                        );
                     }
                 }
                 LocalConsoleEvent::ChangeDummy { dummy_index } => {
@@ -2449,8 +2432,8 @@ impl ClientNativeImpl {
                     }
                 }
                 LocalConsoleEvent::ToggleDummy => {
-                    if let Game::Active(game) = &mut self.game {
-                        if let Some(((&dummy_index, _), (&player_index, _))) = game
+                    if let Game::Active(game) = &mut self.game
+                        && let Some(((&dummy_index, _), (&player_index, _))) = game
                             .game_data
                             .local
                             .expected_local_players
@@ -2465,13 +2448,12 @@ impl ClientNativeImpl {
                                     ClientConnectedPlayer::Connected { is_dummy, .. } => !*is_dummy,
                                 },
                             ))
-                        {
-                            let active_index = &mut game.game_data.local.active_local_player_id;
-                            if *active_index == player_index {
-                                *active_index = dummy_index;
-                            } else {
-                                *active_index = player_index;
-                            }
+                    {
+                        let active_index = &mut game.game_data.local.active_local_player_id;
+                        if *active_index == player_index {
+                            *active_index = dummy_index;
+                        } else {
+                            *active_index = player_index;
                         }
                     }
                 }
@@ -2487,21 +2469,21 @@ impl ClientNativeImpl {
                         self.on_window_change(native);
                     }
 
-                    if name.starts_with("inp.") || name == "inp" {
-                        if let Game::Active(game) = &mut self.game {
-                            // make sure all cursors are updated
-                            for local_player in game.game_data.local.local_players.values_mut() {
-                                InputHandling::clamp_cursor(&self.config.game, local_player);
-                                local_player.cursor_pos = local_player.input.inp.cursor.to_vec2();
-                                local_player.input.inp.dyn_cam_offset.set(
-                                    CharacterInputDynCamOffset::from_vec2(
-                                        InputHandling::dyn_camera_offset(
-                                            &self.config.game,
-                                            local_player,
-                                        ),
+                    if (name.starts_with("inp.") || name == "inp")
+                        && let Game::Active(game) = &mut self.game
+                    {
+                        // make sure all cursors are updated
+                        for local_player in game.game_data.local.local_players.values_mut() {
+                            InputHandling::clamp_cursor(&self.config.game, local_player);
+                            local_player.cursor_pos = local_player.input.inp.cursor.to_vec2();
+                            local_player.input.inp.dyn_cam_offset.set(
+                                CharacterInputDynCamOffset::from_vec2(
+                                    InputHandling::dyn_camera_offset(
+                                        &self.config.game,
+                                        local_player,
                                     ),
-                                );
-                            }
+                                ),
+                            );
                         }
                     }
 
@@ -3177,20 +3159,21 @@ impl AppWithGraphics for ClientNativeImpl {
         let sys = &mut self.sys;
         self.cur_time = sys.time_get();
 
-        if let Some(legacy_proxy) = &self.legacy_proxy_thread {
-            if !matches!(self.game, Game::Active(_)) && legacy_proxy.thread.is_finished() {
-                // check for an error from the thread
-                let mut legacy_proxy = self.legacy_proxy_thread.take().unwrap();
-                if let Err(err) = legacy_proxy.thread.try_join() {
-                    self.notifications.add_err(
-                        format!("Legacy proxy crashed: {err}"),
-                        Duration::from_secs(10),
-                    );
-                    self.connecting_log.log(format!("Legacy proxy died: {err}"));
-                } else {
-                    self.connecting_log
-                        .log("Legacy proxy was shutdown gracefully.");
-                }
+        if let Some(legacy_proxy) = &self.legacy_proxy_thread
+            && !matches!(self.game, Game::Active(_))
+            && legacy_proxy.thread.is_finished()
+        {
+            // check for an error from the thread
+            let mut legacy_proxy = self.legacy_proxy_thread.take().unwrap();
+            if let Err(err) = legacy_proxy.thread.try_join() {
+                self.notifications.add_err(
+                    format!("Legacy proxy crashed: {err}"),
+                    Duration::from_secs(10),
+                );
+                self.connecting_log.log(format!("Legacy proxy died: {err}"));
+            } else {
+                self.connecting_log
+                    .log("Legacy proxy was shutdown gracefully.");
             }
         }
         self.game.update(
@@ -3420,10 +3403,8 @@ impl AppWithGraphics for ClientNativeImpl {
 
             let instant_input = self.config.game.cl.instant_input;
             // Reset the game state if needed
-            if instant_input {
-                if let Some(cur_state_snap) = game.game_data.cur_state_snap.take() {
-                    let _ = game_state.build_from_snapshot(&cur_state_snap);
-                }
+            if instant_input && let Some(cur_state_snap) = game.game_data.cur_state_snap.take() {
+                let _ = game_state.build_from_snapshot(&cur_state_snap);
             }
 
             fn apply_input(

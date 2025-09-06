@@ -3,7 +3,7 @@ use std::{
     net::{SocketAddr, ToSocketAddrs},
     num::NonZeroUsize,
     ops::DerefMut,
-    sync::{mpsc::sync_channel, Arc},
+    sync::{Arc, mpsc::sync_channel},
     time::Duration,
 };
 

@@ -1,18 +1,18 @@
 [package]
 name = "map-convert"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
-base-io = { path = "../../lib/base-io" }
 base-fs = { path = "../../lib/base-fs" }
+base-io = { path = "../../lib/base-io" }
 
 map = { path = "../../game/map" }
 map-convert-lib = { path = "../../game/map-convert-lib" }
 
-clap = { version = "4.5.45", features = ["derive"] }
-rayon = "1.11.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+clap = { version = "4.5.47", features = ["derive"] }
 env_logger = "0.11.8"
+log = "0.4.28"
+rayon = "1.11.0"

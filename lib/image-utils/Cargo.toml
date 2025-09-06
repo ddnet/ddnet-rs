@@ -1,10 +1,10 @@
 [package]
 name = "image-utils"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-png = "0.17.16"
-image = { version = "0.25.6", default-features = false }
+image = { version = "0.25.8", default-features = false }
+png = "0.18.0"
 rayon = "1.11.0"

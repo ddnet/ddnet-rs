@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 
 use crate::types::ConfRgb;
@@ -244,10 +244,13 @@ impl<V: Default + ConfigInterface + DeserializeOwned + Serialize> ConfigInterfac
     fn conf_value() -> ConfigValue {
         let val_ty = V::conf_value();
         // TODO: make this compile time assert as soon as rust supports it
-        assert!(!matches!(
-            val_ty,
-            ConfigValue::Array { .. } | ConfigValue::JsonLikeRecord { .. }
-        ), "Currently arrays in arrays or records in arrays or the other way around are not allowed");
+        assert!(
+            !matches!(
+                val_ty,
+                ConfigValue::Array { .. } | ConfigValue::JsonLikeRecord { .. }
+            ),
+            "Currently arrays in arrays or records in arrays or the other way around are not allowed"
+        );
         ConfigValue::Array {
             val_ty: Box::new(val_ty),
 
@@ -365,10 +368,13 @@ where
     fn conf_value() -> crate::traits::ConfigValue {
         let val_ty = T::conf_value();
         // TODO: make this compile time assert as soon as rust supports it
-        assert!(!matches!(
-            val_ty,
-            ConfigValue::Array { .. } | ConfigValue::JsonLikeRecord { .. }
-        ), "Currently arrays in arrays or records in arrays or the other way around are not allowed");
+        assert!(
+            !matches!(
+                val_ty,
+                ConfigValue::Array { .. } | ConfigValue::JsonLikeRecord { .. }
+            ),
+            "Currently arrays in arrays or records in arrays or the other way around are not allowed"
+        );
         ConfigValue::JsonLikeRecord {
             val_ty: Box::new(val_ty),
         }

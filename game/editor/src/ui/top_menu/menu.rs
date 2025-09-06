@@ -1,7 +1,7 @@
 use std::{path::PathBuf, time::Duration};
 
 use base::hash::fmt_hash;
-use egui::{Align2, Button, DragValue, Grid, TextEdit, Window};
+use egui::{Align2, Button, DragValue, Grid, Popup, TextEdit, Window};
 use egui_file_dialog::{DialogMode, DialogState};
 use network::network::utils::create_certifified_keys;
 use ui_base::types::{UiRenderPipe, UiState};
@@ -152,13 +152,12 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         {
                             pipe.user_data.auto_mapper.active = !pipe.user_data.auto_mapper.active;
                         }
-                        if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
-                            if ui
+                        if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab()
+                            && ui
                                 .add(Button::new("Auto-Saver").selected(tab.auto_saver.active))
                                 .clicked()
-                            {
-                                tab.auto_saver.active = !tab.auto_saver.active;
-                            }
+                        {
+                            tab.auto_saver.active = !tab.auto_saver.active;
                         }
                     });
 
@@ -472,7 +471,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             }
                         });
                         if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                            && !ui.memory(|i| i.any_popup_open())
+                            && !Popup::is_any_open(ui.ctx())
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }
@@ -569,7 +568,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                             }
                         });
                         if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                            && !ui.memory(|i| i.any_popup_open())
+                            && !Popup::is_any_open(ui.ctx())
                         {
                             *menu_dialog_mode = EditorMenuDialogMode::None;
                         }

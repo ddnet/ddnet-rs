@@ -9,7 +9,7 @@ use guest_funcs::impl_guest_functions;
 use mod_prepare::wasm_mod_prepare;
 use proc_macro::TokenStream;
 use quote::ToTokens;
-use syn::{parse_macro_input, token::Semi, Expr, FnArg, Item, Pat, ReturnType, Stmt, Type};
+use syn::{Expr, FnArg, Item, Pat, ReturnType, Stmt, Type, parse_macro_input, token::Semi};
 
 /// prepare a host function to automatically call a wasm function
 #[proc_macro_attribute]

@@ -89,7 +89,7 @@ pub trait NetworkConnectionInterface: Clone + Send + Sync + 'static {
         channel: NetworkInOrderChannel,
     );
     async fn send_one_ordered_reliable(&self, channel: NetworkInOrderChannel)
-        -> anyhow::Result<()>;
+    -> anyhow::Result<()>;
     async fn read_ordered_reliable<
         F: Fn(anyhow::Result<Vec<u8>>) -> JoinHandle<()> + Send + Sync + 'static,
     >(

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use assets_base::tar::{new_tar, tar_add_file, TarBuilder};
+use assets_base::tar::{TarBuilder, new_tar, tar_add_file};
 use assets_splitting::game_split::Game06Part;
 use clap::Parser;
 

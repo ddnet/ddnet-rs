@@ -1,5 +1,4 @@
-pub const TEXT_QUAD_BRUSH: &str =
-"\
+pub const TEXT_QUAD_BRUSH: &str = "\
 # Quad brush\n\
 \n\
 The quad brush allows to select a range of quads (`left click`) and paste the selection again (`left click`)  \n\
@@ -17,8 +16,7 @@ Press `right click` to unset the selection.  \n\
 If the grid is active, then hold `alt` while dragging to snap to the next grid point.\
 ";
 
-pub const TEXT_QUAD_SELECTION: &str =
-"\
+pub const TEXT_QUAD_SELECTION: &str = "\
 # Quad selection\n\
 \n\
 The quad selection is a specialized tool that focuses on making working with existing quads easier.\n\n\
@@ -47,8 +45,7 @@ The property's value is the interpreted as `value = base-value * animation-point
 to calculate the value of the animation points.\
 ";
 
-pub const TEXT_TILE_BRUSH: &str =
-"\
+pub const TEXT_TILE_BRUSH: &str = "\
 # Tile brush\n\
 \n\
 The tile brush allows to select a range of tiles (`left click`) and apply different actions on this selection:\n\
@@ -62,8 +59,7 @@ Hold `shift` without any tile selected to delete a range of tiles.  \n\
 Hold `space` to open the tile picker, which is basically an overview of all tiles within a tile layer image.\
 ";
 
-pub const TEXT_TILE_SELECT: &str =
-"\
+pub const TEXT_TILE_SELECT: &str = "\
 # Tile selection\n\
 \n\
 The tile selection allows to select a range of tiles (`left click`) and apply different actions on this selection \n\
@@ -71,8 +67,7 @@ such as flipping and rotating, which can be found in the tool bar below.  \n\
 Press `right click` to unset the selection.\
 ";
 
-pub const TEXT_SOUND_BRUSH: &str =
-"\
+pub const TEXT_SOUND_BRUSH: &str = "\
 # Sound brush\n\
 \n\
 The sound brush allows to select a range of sounds (`left click`) and paste the selection again (`left click`)  \n\
@@ -108,8 +103,7 @@ evaluated color of the animation.  \n\
 The rendered color value is the result of `color = base-color * animation-point-color`.\
 ";
 
-pub const TEXT_ANIM_PANEL_OPEN: &str =
-"\
+pub const TEXT_ANIM_PANEL_OPEN: &str = "\
 # Animations panel + properties\n\n\
 To make animating easier, properties that are affected by animations like position, color & sound volume \
 are entering a different mode when the `Animations`-panel is open.  \n\
@@ -138,8 +132,7 @@ evaluated color of the animation.  \n\
 The final rendered color value is the the product of `color = base-color * animation-point-color`.\
 ";
 
-pub const TEXT_LAYERS_AND_GROUPS_OVERVIEW: &str =
-"\
+pub const TEXT_LAYERS_AND_GROUPS_OVERVIEW: &str = "\
 # Layers & groups overview\n\n\
 This gives an overview over all groups and their layers.\n\
 \n\
@@ -153,16 +146,14 @@ This will allow to modify the overlapping properties of multiple groups/layers a
 To activate a layer `left click` the name.\n\
 ";
 
-pub const TEXT_IMAGES: &str =
-"\
+pub const TEXT_IMAGES: &str = "\
 # Images (quad layers)\n\n\
 Quad layers support any kind of images without special requirements.\n\
 > You can still use the same image for quad layers and tile layers, simply include it in both tabs, \
 the client's implementation prevents loading the image twice.\
 ";
 
-pub const TEXT_2D_IMAGE_ARRAY: &str =
-"\
+pub const TEXT_2D_IMAGE_ARRAY: &str = "\
 # 2D image arrays (tile layers)\n\n\
 Tile layers need special images. Their requirement is that the width and height must\n\
 be divisible by 16 (e.g. `1024 / 16 = 64` without a rest => divisible by 16).  \n\

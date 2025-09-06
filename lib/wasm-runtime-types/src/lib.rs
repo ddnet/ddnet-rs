@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::Mutex};
 
 use pool::{mt_datatypes::PoolVec, mt_pool::Pool};
 use sendable::SendOption;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use wasmer::{AsStoreRef, Instance, Memory, StoreMut, StoreRef, TypedFunction};
 
 #[derive(Debug, Clone, Copy)]

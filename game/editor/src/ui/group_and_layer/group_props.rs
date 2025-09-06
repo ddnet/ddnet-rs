@@ -199,171 +199,172 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
         .enumerate()
         .filter(|(_, fg)| fg.user.selected.is_some())
         .map(|(g, _)| (false, g));
-    let window_res = match attr_mode {
-        GroupAttrMode::Design => {
-            let (is_background, g) = bg_selection
-                .next()
-                .unwrap_or_else(|| fg_selection.next().unwrap());
-            let (bg_move_limit, g_limit) = move_limits(&map.groups, is_background);
-            let group = if is_background {
-                &mut map.groups.background[g]
-            } else {
-                &mut map.groups.foreground[g]
-            };
+    let window_res =
+        match attr_mode {
+            GroupAttrMode::Design => {
+                let (is_background, g) = bg_selection
+                    .next()
+                    .unwrap_or_else(|| fg_selection.next().unwrap());
+                let (bg_move_limit, g_limit) = move_limits(&map.groups, is_background);
+                let group = if is_background {
+                    &mut map.groups.background[g]
+                } else {
+                    &mut map.groups.foreground[g]
+                };
 
-            let window = egui::Window::new("Design Group Attributes")
-                .resizable(false)
-                .collapsible(false);
+                let window = egui::Window::new("Design Group Attributes")
+                    .resizable(false)
+                    .collapsible(false);
 
-            // render group attributes
-            let group_editor = group.user.selected.as_mut().unwrap();
-            let attr = &mut group_editor.attr;
-            let attr_cmp = *attr;
-            let name_cmp = group_editor.name.clone();
+                // render group attributes
+                let group_editor = group.user.selected.as_mut().unwrap();
+                let attr = &mut group_editor.attr;
+                let attr_cmp = *attr;
+                let name_cmp = group_editor.name.clone();
 
-            let mut delete_group = false;
-            let mut move_group = None;
+                let mut delete_group = false;
+                let mut move_group = None;
 
-            let res = window.show(ui.ctx(), |ui| {
-                egui::Grid::new("design group attr grid")
-                    .num_columns(2)
-                    .spacing([20.0, 4.0])
-                    .show(ui, |ui| {
-                        // pos x
-                        ui.label("Pos x");
-                        let mut x = attr.offset.x.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
-                        attr.offset.x = ffixed::from_num(x);
-                        ui.end_row();
-                        // pos y
-                        ui.label("Pos y");
-                        let mut y = attr.offset.y.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
-                        attr.offset.y = ffixed::from_num(y);
-                        ui.end_row();
-                        // para x
-                        ui.label("Parallax x");
-                        let mut x = attr.parallax.x.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
-                        attr.parallax.x = ffixed::from_num(x);
-                        ui.end_row();
-                        // para y
-                        ui.label("Parallax y");
-                        let mut y = attr.parallax.y.to_num::<f64>();
-                        ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
-                        attr.parallax.y = ffixed::from_num(y);
-                        ui.end_row();
-                        // clipping on/off
-                        ui.label("Clipping");
-                        let mut clip_on_off = attr.clipping.is_some();
-                        toggle_ui(ui, &mut clip_on_off);
-                        ui.end_row();
-                        if attr.clipping.is_some() != clip_on_off {
-                            if clip_on_off {
-                                attr.clipping = Some(Default::default());
-                            } else {
-                                attr.clipping = None;
-                            }
-                        }
-                        if let Some(clipping) = &mut attr.clipping {
-                            // clipping x
-                            ui.label("Clipping - x");
-                            let mut x = clipping.pos.x.to_num::<f64>();
+                let res = window.show(ui.ctx(), |ui| {
+                    egui::Grid::new("design group attr grid")
+                        .num_columns(2)
+                        .spacing([20.0, 4.0])
+                        .show(ui, |ui| {
+                            // pos x
+                            ui.label("Pos x");
+                            let mut x = attr.offset.x.to_num::<f64>();
                             ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
-                            clipping.pos.x = ffixed::from_num(x);
+                            attr.offset.x = ffixed::from_num(x);
                             ui.end_row();
-                            // clipping y
-                            ui.label("Clipping - y");
-                            let mut y = clipping.pos.y.to_num::<f64>();
+                            // pos y
+                            ui.label("Pos y");
+                            let mut y = attr.offset.y.to_num::<f64>();
                             ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
-                            clipping.pos.y = ffixed::from_num(y);
+                            attr.offset.y = ffixed::from_num(y);
                             ui.end_row();
-                            // clipping w
-                            ui.label("Clipping - width");
-                            let mut x = clipping.size.x.to_num::<f64>();
-                            ui.add(
-                                egui::DragValue::new(&mut x)
-                                    .update_while_editing(false)
-                                    .range(0.0..=f64::MAX),
-                            );
-                            clipping.size.x = uffixed::from_num(x);
+                            // para x
+                            ui.label("Parallax x");
+                            let mut x = attr.parallax.x.to_num::<f64>();
+                            ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
+                            attr.parallax.x = ffixed::from_num(x);
                             ui.end_row();
-                            // clipping h
-                            ui.label("Clipping - height");
-                            let mut y = clipping.size.y.to_num::<f64>();
-                            ui.add(
-                                egui::DragValue::new(&mut y)
-                                    .update_while_editing(false)
-                                    .range(0.0..=f64::MAX),
-                            );
-                            clipping.size.y = uffixed::from_num(y);
+                            // para y
+                            ui.label("Parallax y");
+                            let mut y = attr.parallax.y.to_num::<f64>();
+                            ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
+                            attr.parallax.y = ffixed::from_num(y);
                             ui.end_row();
-                        }
-                        // name
-                        ui.label("Group name");
-                        ui.text_edit_singleline(&mut group_editor.name);
-                        ui.end_row();
-                        // delete
-                        if ui.button("Delete group").clicked() {
-                            delete_group = true;
-                        }
-                        ui.end_row();
+                            // clipping on/off
+                            ui.label("Clipping");
+                            let mut clip_on_off = attr.clipping.is_some();
+                            toggle_ui(ui, &mut clip_on_off);
+                            ui.end_row();
+                            if attr.clipping.is_some() != clip_on_off {
+                                if clip_on_off {
+                                    attr.clipping = Some(Default::default());
+                                } else {
+                                    attr.clipping = None;
+                                }
+                            }
+                            if let Some(clipping) = &mut attr.clipping {
+                                // clipping x
+                                ui.label("Clipping - x");
+                                let mut x = clipping.pos.x.to_num::<f64>();
+                                ui.add(egui::DragValue::new(&mut x).update_while_editing(false));
+                                clipping.pos.x = ffixed::from_num(x);
+                                ui.end_row();
+                                // clipping y
+                                ui.label("Clipping - y");
+                                let mut y = clipping.pos.y.to_num::<f64>();
+                                ui.add(egui::DragValue::new(&mut y).update_while_editing(false));
+                                clipping.pos.y = ffixed::from_num(y);
+                                ui.end_row();
+                                // clipping w
+                                ui.label("Clipping - width");
+                                let mut x = clipping.size.x.to_num::<f64>();
+                                ui.add(
+                                    egui::DragValue::new(&mut x)
+                                        .update_while_editing(false)
+                                        .range(0.0..=f64::MAX),
+                                );
+                                clipping.size.x = uffixed::from_num(x);
+                                ui.end_row();
+                                // clipping h
+                                ui.label("Clipping - height");
+                                let mut y = clipping.size.y.to_num::<f64>();
+                                ui.add(
+                                    egui::DragValue::new(&mut y)
+                                        .update_while_editing(false)
+                                        .range(0.0..=f64::MAX),
+                                );
+                                clipping.size.y = uffixed::from_num(y);
+                                ui.end_row();
+                            }
+                            // name
+                            ui.label("Group name");
+                            ui.text_edit_singleline(&mut group_editor.name);
+                            ui.end_row();
+                            // delete
+                            if ui.button("Delete group").clicked() {
+                                delete_group = true;
+                            }
+                            ui.end_row();
 
-                        ui.label("Move group");
-                        ui.end_row();
+                            ui.label("Move group");
+                            ui.end_row();
 
-                        // group moving
-                        move_group =
-                            render_group_move(ui, is_background, g, bg_move_limit, g_limit);
-                    });
-            });
+                            // group moving
+                            move_group =
+                                render_group_move(ui, is_background, g, bg_move_limit, g_limit);
+                        });
+                });
 
-            if *attr != attr_cmp {
-                tab.client.execute(
-                    EditorAction::ChangeGroupAttr(ActChangeGroupAttr {
-                        is_background,
-                        group_index: g,
-                        old_attr: group.attr,
-                        new_attr: *attr,
-                    }),
-                    Some(&format!("change-design-group-attr-{is_background}-{g}")),
-                );
-            } else if group_editor.name != name_cmp {
-                tab.client.execute(
-                    EditorAction::ChangeGroupName(ActChangeGroupName {
-                        is_background,
-                        group_index: g,
-                        old_name: group.name.clone(),
-                        new_name: group_editor.name.clone(),
-                    }),
-                    Some(&format!("change-design-group-name-{is_background}-{g}")),
-                );
-            } else if delete_group {
-                tab.client.execute(
-                    EditorAction::RemGroup(ActRemGroup {
-                        base: ActAddRemGroup {
+                if *attr != attr_cmp {
+                    tab.client.execute(
+                        EditorAction::ChangeGroupAttr(ActChangeGroupAttr {
                             is_background,
-                            index: g,
-                            group: group.clone().into(),
-                        },
-                    }),
-                    None,
-                );
-            } else if let Some(move_act) =
-                move_group.and_then(|mv| group_move_to_act(mv, is_background, g, map))
-            {
-                tab.client.execute(EditorAction::MoveGroup(move_act), None);
-            }
+                            group_index: g,
+                            old_attr: group.attr,
+                            new_attr: *attr,
+                        }),
+                        Some(&format!("change-design-group-attr-{is_background}-{g}")),
+                    );
+                } else if group_editor.name != name_cmp {
+                    tab.client.execute(
+                        EditorAction::ChangeGroupName(ActChangeGroupName {
+                            is_background,
+                            group_index: g,
+                            old_name: group.name.clone(),
+                            new_name: group_editor.name.clone(),
+                        }),
+                        Some(&format!("change-design-group-name-{is_background}-{g}")),
+                    );
+                } else if delete_group {
+                    tab.client.execute(
+                        EditorAction::RemGroup(ActRemGroup {
+                            base: ActAddRemGroup {
+                                is_background,
+                                index: g,
+                                group: group.clone().into(),
+                            },
+                        }),
+                        None,
+                    );
+                } else if let Some(move_act) =
+                    move_group.and_then(|mv| group_move_to_act(mv, is_background, g, map))
+                {
+                    tab.client.execute(EditorAction::MoveGroup(move_act), None);
+                }
 
-            res
-        }
-        GroupAttrMode::Physics => {
-            // width & height, nothing else
-            let group = &mut map.groups.physics;
-            let window = egui::Window::new("Physics Group Attributes")
-                .resizable(false)
-                .collapsible(false);
-            let res =
+                res
+            }
+            GroupAttrMode::Physics => {
+                // width & height, nothing else
+                let group = &mut map.groups.physics;
+                let window = egui::Window::new("Physics Group Attributes")
+                    .resizable(false)
+                    .collapsible(false);
+
                 window.show(ui.ctx(), |ui| {
                     egui::Grid::new("design group attr grid")
                         .num_columns(2)
@@ -504,16 +505,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                                 );
                             }
                         });
-                });
-            res
-        }
-        GroupAttrMode::DesignMulti => todo!(),
-        GroupAttrMode::DesignAndPhysicsMulti => todo!(),
-        GroupAttrMode::None => {
-            // render nothing
-            None
-        }
-    };
+                })
+            }
+            GroupAttrMode::DesignMulti => todo!(),
+            GroupAttrMode::DesignAndPhysicsMulti => todo!(),
+            GroupAttrMode::None => {
+                // render nothing
+                None
+            }
+        };
 
     if let Some(window_res) = &window_res {
         ui_state.add_blur_rect(window_res.response.rect, 0.0);

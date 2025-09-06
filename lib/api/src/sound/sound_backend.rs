@@ -9,7 +9,7 @@ use sound::{
 
 use crate::upload_param;
 
-extern "C" {
+unsafe extern "C" {
     fn sound_api_run_cmds();
 }
 

@@ -1,6 +1,6 @@
 use master_server_types::addr::Addr;
 use serde::Deserialize;
-use serde_with::{serde_as, DefaultOnError};
+use serde_with::{DefaultOnError, serde_as};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Skin {

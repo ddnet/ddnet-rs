@@ -2,14 +2,13 @@ use std::marker::PhantomData;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, TokenTree};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::{
-    braced, bracketed,
+    FnArg, GenericArgument, PatType, Result, Token, Type, braced, bracketed,
     parse::{Parse, ParseStream, Parser},
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
     token::Bracket,
-    FnArg, GenericArgument, PatType, Result, Token, Type,
 };
 
 #[derive(Debug)]

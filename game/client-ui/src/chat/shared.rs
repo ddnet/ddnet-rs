@@ -1,4 +1,4 @@
-use egui::{epaint::Shadow, Color32, Stroke};
+use egui::{Color32, Stroke, epaint::Shadow};
 
 /// Since egui's frame's inner margin makes trouble,
 /// use this instead.

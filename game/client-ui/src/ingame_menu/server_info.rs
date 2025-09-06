@@ -1,7 +1,7 @@
 pub mod main_frame;
 
 use game_interface::interface::GameStateServerOptions;
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 #[derive(Debug, Hiarc, Default, Clone)]
 pub struct GameInfo {

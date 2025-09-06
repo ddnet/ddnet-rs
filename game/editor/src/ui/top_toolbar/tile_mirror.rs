@@ -10,7 +10,7 @@ use graphics::{
 };
 use legacy_map::mapdef_06::tile_can_rotate;
 use map::map::groups::layers::tiles::{
-    rotate_by_plus_90, MapTileLayerPhysicsTiles, MapTileLayerTiles, TileBase, TileFlags,
+    MapTileLayerPhysicsTiles, MapTileLayerTiles, TileBase, TileFlags, rotate_by_plus_90,
 };
 use math::math::vector::{dvec2, usvec2};
 use rayon::{

@@ -2,7 +2,7 @@
 //! E.g. skin changes, name changes, changes regarding team name etc.
 //! Basically all the stuff that was to be sync'd with the server.
 
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 /// Notifies about setting changes in the UI
 /// that are related to the player.

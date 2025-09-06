@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use base::linked_hash_map_view::FxLinkedHashMap;
-use hiarc::{hiarc_safer_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_refcell};
 use sound::{
     backend_handle::SoundBackendHandle,
     commands::{
@@ -51,16 +51,17 @@ impl SoundCheckerApi {
                     SoundCommandState::SoundScene(cmd) => match cmd {
                         SoundCommandSoundScene::Create { id, .. } => {
                             *id += self.id_offset;
-                            anyhow::ensure!(self
-                                .scenes
-                                .insert(
-                                    *id,
-                                    Scene {
-                                        sounds: Default::default(),
-                                        listeners: Default::default(),
-                                    },
-                                )
-                                .is_none());
+                            anyhow::ensure!(
+                                self.scenes
+                                    .insert(
+                                        *id,
+                                        Scene {
+                                            sounds: Default::default(),
+                                            listeners: Default::default(),
+                                        },
+                                    )
+                                    .is_none()
+                            );
                         }
                         SoundCommandSoundScene::Destroy { id } => {
                             *id += self.id_offset;
@@ -87,15 +88,17 @@ impl SoundCheckerApi {
                             let scene = self.scenes.get_mut(scene_id).ok_or_else(|| {
                                 anyhow!("scene with id {scene_id} did not exist.")
                             })?;
-                            anyhow::ensure!(scene
-                                .sounds
-                                .insert(
-                                    *id,
-                                    Sound {
-                                        plays: Default::default()
-                                    }
-                                )
-                                .is_none());
+                            anyhow::ensure!(
+                                scene
+                                    .sounds
+                                    .insert(
+                                        *id,
+                                        Sound {
+                                            plays: Default::default()
+                                        }
+                                    )
+                                    .is_none()
+                            );
                         }
                         SoundCommandSoundObject::Destroy { id, scene_id } => {
                             *id += self.id_offset;
@@ -205,7 +208,7 @@ impl SoundCheckerApi {
             SoundCommand::Stream(_) => {
                 return Err(anyhow!(
                     "Stream commands are not supported by this checker or WASM modules."
-                ))
+                ));
             }
         }
         Ok(())

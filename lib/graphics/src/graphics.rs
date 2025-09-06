@@ -207,18 +207,16 @@ pub mod graphics {
                 .borrow()
                 .as_ref()
                 .is_some_and(|(_, s)| s.data.lock().unwrap().is_some())
+                && let Some((screenshot_db, fetcher)) = self.pending_screenshot.borrow_mut().take()
             {
-                if let Some((screenshot_db, fetcher)) = self.pending_screenshot.borrow_mut().take()
-                {
-                    let Some(data) = fetcher.data.lock().unwrap().take() else {
-                        panic!("Logic error, screenshot must exist at this point")
-                    };
-                    screenshot_db.on_screenshot(data);
-                    self.backend_handle
-                        .backend
-                        .detach_frame_fetcher("screenshot".to_string())
-                        .unwrap();
-                }
+                let Some(data) = fetcher.data.lock().unwrap().take() else {
+                    panic!("Logic error, screenshot must exist at this point")
+                };
+                screenshot_db.on_screenshot(data);
+                self.backend_handle
+                    .backend
+                    .detach_frame_fetcher("screenshot".to_string())
+                    .unwrap();
             }
         }
 

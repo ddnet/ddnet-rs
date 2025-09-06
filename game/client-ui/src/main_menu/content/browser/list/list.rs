@@ -1,4 +1,4 @@
-use egui::{epaint::RectShape, Layout, Sense, Shape};
+use egui::{Layout, Sense, Shape, epaint::RectShape};
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
 
 use ui_base::{style::bg_frame_color, types::UiRenderPipe};

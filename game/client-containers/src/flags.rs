@@ -8,7 +8,7 @@ use hiarc::Hiarc;
 use rustc_hash::FxHashMap;
 use sound::{sound_handle::SoundObjectHandle, sound_mt::SoundMultiThreaded};
 
-use crate::container::{load_file_part_and_upload, ContainerLoadedItem, ContainerLoadedItemDir};
+use crate::container::{ContainerLoadedItem, ContainerLoadedItemDir, load_file_part_and_upload};
 
 use super::container::{Container, ContainerItemLoadData, ContainerLoad};
 

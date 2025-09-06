@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use math::math::vector::vec2;
 
 use crate::{scene_object_shared::SceneObjectInner, sound_listener::SoundListener};

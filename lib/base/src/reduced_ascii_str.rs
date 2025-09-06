@@ -2,7 +2,7 @@ use std::{ops::Deref, path::Path, str::FromStr};
 
 use crate::hash::Hash;
 use hiarc::Hiarc;
-use serde::{de, Serialize};
+use serde::{Serialize, de};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -172,12 +172,10 @@ impl ReducedAsciiString {
             .file_stem()
             .and_then(|s| s.to_str())
             .and_then(|s| s.rsplit_once('_'))
+            && name_hash.len() == Hash::default().len() * 2
+            && name_hash.find(|c: char| !c.is_ascii_hexdigit()).is_none()
         {
-            if name_hash.len() == Hash::default().len() * 2
-                && name_hash.find(|c: char| !c.is_ascii_hexdigit()).is_none()
-            {
-                return Err(());
-            }
+            return Err(());
         }
         Ok(())
     }

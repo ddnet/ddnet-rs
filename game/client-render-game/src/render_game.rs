@@ -18,7 +18,7 @@ use base::{
 };
 use base_io::io::Io;
 use camera::Camera;
-use client_containers::utils::{load_containers, RenderGameContainers};
+use client_containers::utils::{RenderGameContainers, load_containers};
 pub use client_render::emote_wheel::render::EmoteWheelInput;
 use client_render::{
     actionfeed::render::{ActionfeedRender, ActionfeedRenderPipe},
@@ -49,7 +49,7 @@ use client_ui::{
     emote_wheel::user_data::EmoteWheelEvent,
     spectator_selection::user_data::SpectatorSelectionEvent,
     thumbnail_container::{
-        load_thumbnail_container, ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH,
+        DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
     },
     time_display::TimeDisplay,
     vote::user_data::{VoteRenderData, VoteRenderPlayer, VoteRenderType},
@@ -96,7 +96,7 @@ use graphics::{
     handles::{backend::backend::GraphicsBackendHandle, canvas::canvas::GraphicsCanvasHandle},
 };
 use graphics_types::rendering::ColorRgba;
-use math::math::{vector::vec2, Rng, RngSlice};
+use math::math::{Rng, RngSlice, vector::vec2};
 use pool::{
     datatypes::{
         PoolBTreeMap, PoolFxHashSet, PoolFxLinkedHashMap, PoolFxLinkedHashSet, PoolVec,
@@ -702,7 +702,7 @@ impl RenderGame {
         for ((_, stage), local_characters_stage) in render_info
             .stages
             .iter()
-            .filter(|(&stage_id, _)| {
+            .filter(|&(&stage_id, _)| {
                 camera_character_info.and_then(|c| c.stage_id) != Some(stage_id)
             })
             .map(|s| (s, false))

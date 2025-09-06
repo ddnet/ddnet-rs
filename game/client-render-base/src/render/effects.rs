@@ -4,9 +4,8 @@ use client_containers::particles::ParticleType;
 use game_interface::types::id_types::CharacterId;
 use graphics_types::rendering::ColorRgba;
 use math::math::{
-    mix,
+    PI, Rng, mix,
     vector::{vec2, vec4},
-    Rng, PI,
 };
 
 use super::{

@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 
 use base::linked_hash_map_view::FxLinkedHashMap;
-use egui::{epaint::RectShape, Color32, Rect, Shape};
+use egui::{Color32, Rect, Shape, epaint::RectShape};
 use egui_extras::{Size, StripBuilder};
 
 use game_interface::types::{

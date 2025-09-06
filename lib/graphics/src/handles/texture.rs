@@ -8,7 +8,7 @@ pub mod texture {
         rendering::{StateTexture, StateTexture2dArray},
         types::{GraphicsBackendMemory, GraphicsMemoryAllocationType},
     };
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
     use crate::handles::{
         backend::backend::GraphicsBackendHandle, canvas::canvas::OffscreenCanvas,

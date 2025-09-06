@@ -2,7 +2,7 @@ use std::{
     marker::PhantomData,
     mem::ManuallyDrop,
     num::NonZeroUsize,
-    sync::{atomic::AtomicUsize, Arc},
+    sync::{Arc, atomic::AtomicUsize},
 };
 
 use crate::{mt_recycle::Recycle, traits::Recyclable};

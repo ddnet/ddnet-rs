@@ -5,9 +5,9 @@ use std::{
 
 use arrayvec::ArrayString;
 use arrayvec::ArrayVec;
-use clap::value_t_or_exit;
 use clap::App;
 use clap::Arg;
+use clap::value_t_or_exit;
 use headers::HeaderMapExt as _;
 use master_server_types::{
     addr::{Addr, Protocol, RegisterAddr},
@@ -22,9 +22,9 @@ use serde_json as json;
 use sha2::Digest;
 use sha2::Sha512_256 as SecureHash;
 use std::borrow::Cow;
-use std::collections::hash_map;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::hash_map;
 use std::ffi::OsStr;
 use std::fmt;
 use std::io;
@@ -926,12 +926,12 @@ async fn main() {
         } else {
             addr.unwrap().ip()
         };
-        if let IpAddr::V6(v6) = addr {
-            if let Some(v4) = v6.to_ipv4() {
-                // TODO: switch to `to_ipv4_mapped` in the future.
-                if !v6.is_loopback() {
-                    addr = IpAddr::from(v4);
-                }
+        if let IpAddr::V6(v6) = addr
+            && let Some(v4) = v6.to_ipv4()
+        {
+            // TODO: switch to `to_ipv4_mapped` in the future.
+            if !v6.is_loopback() {
+                addr = IpAddr::from(v4);
             }
         }
         Ok(addr)

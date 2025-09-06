@@ -1,7 +1,7 @@
 use std::{
     sync::{
-        mpsc::{channel, Sender},
         Arc,
+        mpsc::{Sender, channel},
     },
     time::Duration,
 };
@@ -9,7 +9,7 @@ use std::{
 use anyhow::anyhow;
 use async_trait::async_trait;
 use base::join_thread::JoinThread;
-use steamworks::{SingleClient, TicketForWebApiResponse};
+use steamworks::{Client, TicketForWebApiResponse};
 use tokio::sync::Mutex;
 
 use crate::traits::{SteamClient, SteamRaii};
@@ -25,22 +25,24 @@ pub struct SteamSt {
 }
 
 impl SteamSt {
-    pub fn new(steam: SingleClient, steam_mutex: Arc<Mutex<()>>) -> Self {
+    pub fn new(steam: Client, steam_mutex: Arc<Mutex<()>>) -> Self {
         let steam_mutex_thread = steam_mutex.clone();
         let (client_sender, client_recv) = channel();
         let client_thread = std::thread::Builder::new()
             .name("steam-loop".to_string())
-            .spawn(move || loop {
-                let g = steam_mutex_thread.blocking_lock();
-                steam.run_callbacks();
-                drop(g);
-                if client_recv
-                    .recv_timeout(Duration::from_millis(150))
-                    .is_err_and(|err| {
-                        matches!(err, std::sync::mpsc::RecvTimeoutError::Disconnected)
-                    })
-                {
-                    break;
+            .spawn(move || {
+                loop {
+                    let g = steam_mutex_thread.blocking_lock();
+                    steam.run_callbacks();
+                    drop(g);
+                    if client_recv
+                        .recv_timeout(Duration::from_millis(150))
+                        .is_err_and(|err| {
+                            matches!(err, std::sync::mpsc::RecvTimeoutError::Disconnected)
+                        })
+                    {
+                        break;
+                    }
                 }
             })
             .unwrap();

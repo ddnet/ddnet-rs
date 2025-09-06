@@ -36,12 +36,12 @@ use pool::datatypes::PoolFxLinkedHashMap;
 use vanilla::collision::collision::Collision;
 
 use game_interface::types::{
-    character_info::{NetworkSkinInfo, MAX_ASSET_NAME_LEN},
+    character_info::{MAX_ASSET_NAME_LEN, NetworkSkinInfo},
     id_types::CharacterId,
     render::character::{CharacterBuff, CharacterDebuff, CharacterInfo, CharacterRenderInfo},
     resource_key::NetworkResourceKey,
 };
-use math::math::{length, normalize, vector::vec2, RngSlice};
+use math::math::{RngSlice, length, normalize, vector::vec2};
 use sound::types::SoundPlayProps;
 use ui_base::ui::UiCreator;
 

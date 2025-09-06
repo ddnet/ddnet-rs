@@ -22,21 +22,20 @@ use graphics::{
         stream_types::StreamedLine,
     },
     quad_container::Quad,
-    streaming::{quad_scope_begin, DrawScope},
+    streaming::{DrawScope, quad_scope_begin},
 };
 use graphics_types::{
     commands::RenderSpriteInfo,
     rendering::{ColorRgba, State},
 };
-use hiarc::{hi_closure, hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hi_closure, hiarc_safer_rc_refcell};
 use math::math::{
-    angle, distance, mix, normalize,
+    PI, PI_F64, Rng, RngSlice, angle, distance, mix, normalize,
     vector::{dvec2, ubvec4, vec2},
-    Rng, RngSlice, PI, PI_F64,
 };
 use vanilla::weapons::definitions::weapon_def::{
-    get_ninja_sprite_scale, get_scale, get_weapon_sprite_scale, get_weapon_visual_scale,
-    NINJA_PICKUP_VISUAL_SIZE, NINJA_WEAPON_VISUAL_SIZE,
+    NINJA_PICKUP_VISUAL_SIZE, NINJA_WEAPON_VISUAL_SIZE, get_ninja_sprite_scale, get_scale,
+    get_weapon_sprite_scale, get_weapon_visual_scale,
 };
 
 use crate::map::render_pipe::GameTimeInfo;

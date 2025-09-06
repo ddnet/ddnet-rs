@@ -8,7 +8,7 @@ use sound::stream::{DecodeError, StreamDecoder};
 
 use crate::stream::MicrophoneStream;
 
-use super::sound_stream::{SoundStream, OPUS_10_MS, OPUS_SAMPLE_RATE};
+use super::sound_stream::{OPUS_10_MS, OPUS_SAMPLE_RATE, SoundStream};
 
 pub struct AnalyzeStream {
     _inner: SoundStream,

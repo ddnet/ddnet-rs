@@ -2,7 +2,7 @@ pub mod character_score {
     use std::collections::BTreeMap;
 
     use game_interface::types::id_types::CharacterId;
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use pool::{datatypes::PoolVec, pool::Pool};
     use rustc_hash::{FxHashMap, FxHashSet};
 

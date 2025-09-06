@@ -1,5 +1,5 @@
 use graphics_types::commands::AllCommands;
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 #[hiarc_safer_rc_refcell]
 #[derive(Debug, Hiarc)]

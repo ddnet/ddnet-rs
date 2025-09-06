@@ -1,10 +1,12 @@
 use graphics::handles::texture::texture::{TextureContainer, TextureContainer2dArray};
 use map::skeleton::{
+    MapSkeleton,
     animations::{
         AnimationsSkeleton, ColorAnimationSkeleton, PosAnimationSkeleton, SoundAnimationSkeleton,
     },
     config::ConfigSkeleton,
     groups::{
+        MapGroupPhysicsSkeleton, MapGroupSkeleton, MapGroupsSkeleton,
         layers::{
             design::{
                 MapLayerArbitrarySkeleton, MapLayerQuadSkeleton, MapLayerSkeleton,
@@ -12,11 +14,9 @@ use map::skeleton::{
             },
             physics::MapLayerPhysicsSkeleton,
         },
-        MapGroupPhysicsSkeleton, MapGroupSkeleton, MapGroupsSkeleton,
     },
     metadata::MetadataSkeleton,
     resources::{MapResourceRefSkeleton, MapResourcesSkeleton},
-    MapSkeleton,
 };
 use sound::{scene_object::SceneObject, sound_listener::SoundListener, sound_object::SoundObject};
 

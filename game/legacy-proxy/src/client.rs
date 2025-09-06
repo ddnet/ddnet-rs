@@ -14,12 +14,12 @@ use libtw2_gamenet_ddnet::{
     msg::{Connless, Game, System},
     snap_obj,
 };
-use libtw2_net::{net::Chunk, net::ChunkOrEvent, net::PeerId, Net};
+use libtw2_net::{Net, net::Chunk, net::ChunkOrEvent, net::PeerId};
 use libtw2_packer::with_packer;
 use libtw2_snapshot::Manager;
-use log::{debug, log, log_enabled, Level};
+use log::{Level, debug, log, log_enabled};
 
-use crate::{socket::Socket, ServerInfo};
+use crate::{ServerInfo, socket::Socket};
 
 pub struct SocketClient {
     pub socket: Socket,

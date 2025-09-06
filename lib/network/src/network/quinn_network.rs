@@ -22,8 +22,8 @@ use super::{
     networks::Networks,
     quinnminimal::{make_client_endpoint, make_server_endpoint},
     traits::{
-        NetworkConnectingInterface, NetworkConnectionInterface, NetworkEndpointInterface,
-        NetworkIncomingInterface, UnreliableUnorderedError, NUM_BIDI_STREAMS,
+        NUM_BIDI_STREAMS, NetworkConnectingInterface, NetworkConnectionInterface,
+        NetworkEndpointInterface, NetworkIncomingInterface, UnreliableUnorderedError,
     },
     types::{
         NetworkClientInitOptions, NetworkInOrderChannel, NetworkServerCertMode,
@@ -189,11 +189,11 @@ impl NetworkConnectionInterface for QuinnNetworkConnectionWrapper {
     ) -> anyhow::Result<()> {
         let cur_channel = {
             let mut channels = self.channels.lock().unwrap();
-            let cur_channel = channels
+
+            channels
                 .get_mut(&channel)
                 .cloned()
-                .or_else(|| channels.get_mut(&NetworkInOrderChannel::Global).cloned());
-            cur_channel
+                .or_else(|| channels.get_mut(&NetworkInOrderChannel::Global).cloned())
         };
         if let Some(cur_channel) = cur_channel {
             let mut cur_channel = cur_channel.lock().await;

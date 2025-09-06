@@ -65,9 +65,9 @@ impl Scoreboard {
 
         let mut red_players = PoolVec::new_without_pool();
         let mut character_infos: FxLinkedHashMap<CharacterId, CharacterInfo> = Default::default();
-        let gen = IdGenerator::new();
+        let g = IdGenerator::new();
         for i in 0..64 {
-            let id = gen.next_id();
+            let id = g.next_id();
             character_infos.insert(
                 id,
                 CharacterInfo {
@@ -118,7 +118,7 @@ impl Scoreboard {
 
             if i % 3 == 0 {
                 red_stages.insert(
-                    gen.next_id(),
+                    g.next_id(),
                     ScoreboardStageInfo {
                         characters: std::mem::replace(
                             &mut red_players,
@@ -139,7 +139,7 @@ impl Scoreboard {
         }
         let mut blue_players = PoolVec::new_without_pool();
         for i in 0..12 {
-            let id = gen.next_id();
+            let id = g.next_id();
             character_infos.insert(
                 id,
                 CharacterInfo {
@@ -182,7 +182,7 @@ impl Scoreboard {
             });
             if i % 3 == 0 {
                 blue_stages.insert(
-                    gen.next_id(),
+                    g.next_id(),
                     ScoreboardStageInfo {
                         characters: std::mem::replace(
                             &mut blue_players,
@@ -203,7 +203,7 @@ impl Scoreboard {
         }
         let mut spectator_players = PoolVec::new_without_pool();
         for _ in 0..12 {
-            let id = gen.next_id();
+            let id = g.next_id();
             character_infos.insert(
                 id,
                 CharacterInfo {

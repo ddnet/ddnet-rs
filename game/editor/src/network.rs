@@ -5,7 +5,7 @@ use base::system::System;
 use network::network::{
     connection::NetworkConnectionId,
     event::{NetworkEvent, NetworkEventDisconnect},
-    packet_compressor::{types::DecompressionByteLimit, DefaultNetworkPacketCompressor},
+    packet_compressor::{DefaultNetworkPacketCompressor, types::DecompressionByteLimit},
     plugins::NetworkPlugins,
     quinn_network::QuinnNetwork,
     types::{

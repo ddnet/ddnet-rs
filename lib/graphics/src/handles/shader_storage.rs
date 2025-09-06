@@ -6,7 +6,7 @@ pub mod shader_storage {
         },
         types::GraphicsBackendMemory,
     };
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
     use crate::handles::backend::backend::GraphicsBackendHandle;
 

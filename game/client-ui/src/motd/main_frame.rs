@@ -1,4 +1,4 @@
-use egui::{vec2, Align2, Frame, Vec2, Window};
+use egui::{Align2, Frame, Vec2, Window, vec2};
 
 use ui_base::{
     style::bg_frame_color,

@@ -95,7 +95,7 @@ pub trait Point {
     fn channels(&mut self) -> Vec<(&str, Color32, RangeInclusive<f32>, &mut dyn PointChannel)>;
 
     fn channel_value_at(&self, channel_index: usize, other: &mut dyn Point, time: &Duration)
-        -> f32;
+    -> f32;
 
     fn curve(&self) -> PointCurve;
     fn set_curve(&mut self, curve: PointCurve);

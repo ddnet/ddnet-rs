@@ -12,7 +12,7 @@ use safe_wrapper::{
     arc_mutex::hiarc_safer_arc_mutex_impl, rc_refcell::hiarc_safer_rc_refcell_impl,
     refcell::hiarc_safer_refcell_impl,
 };
-use syn::{parse_macro_input, Item};
+use syn::{Item, parse_macro_input};
 
 /// the `Hiarc` derive macro can be used to proof hierarchy of other types that implement
 /// this macro at compile time, which leads to a strict and clear hierarchy.

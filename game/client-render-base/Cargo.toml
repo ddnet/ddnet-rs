@@ -1,43 +1,46 @@
 [package]
 name = "client-render-base"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
-math = { path = "../../lib/math" }
 config = { path = "../../lib/config" }
-graphics-backend-traits = { path = "../../lib/graphics-backend-traits" }
 graphics = { path = "../../lib/graphics" }
+graphics-backend-traits = { path = "../../lib/graphics-backend-traits" }
 graphics-types = { path = "../../lib/graphics-types" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
+image-utils = { path = "../../lib/image-utils" }
+math = { path = "../../lib/math" }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
-image-utils = { path = "../../lib/image-utils" }
 
-client-containers = { path = "../client-containers" }
 assets-base = { path = "../assets-base" }
-legacy-map = { path = "../legacy-map" }
+camera = { path = "../camera" }
+client-containers = { path = "../client-containers" }
 game-base = { path = "../game-base" }
-vanilla = { path = "../vanilla" }
-map = { path = "../map" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
-camera = { path = "../camera" }
+legacy-map = { path = "../legacy-map" }
+map = { path = "../map" }
+vanilla = { path = "../vanilla" }
 
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 
-serde = { version = "1.0.219", features = ["derive"] }
-rayon = "1.11.0"
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+bincode = { version = "2.0.1", features = ["serde"] }
+fixed = "1.29.0"
+futures = "0.3.31"
+log = "0.4.28"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-bincode = { version = "2.0.1", features = ["serde"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-time = { version = "0.3.41", features = ["serde"] }
-fixed = "1.29.0"
-log = "0.4.27"
-url = { version = "2.5.6", features = ["serde"] }
-futures = "0.3.31"
-strum = { version = "0.27.2", features = ["derive"] }
+rayon = "1.11.0"
 rustc-hash = "2.1.1"
+serde = { version = "1.0.219", features = ["derive"] }
+strum = { version = "0.27.2", features = ["derive"] }
+time = { version = "0.3.43", features = ["serde"] }
+url = { version = "2.5.7", features = ["serde"] }

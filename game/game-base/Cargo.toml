@@ -1,26 +1,29 @@
 [package]
 name = "game-base"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
-config = { path = "../../lib/config" }
 command-parser = { path = "../../lib/command-parser" }
-pool = { path = "../../lib/pool" }
+config = { path = "../../lib/config" }
 hiarc = { path = "../../lib/hiarc", features = ["enable_time"] }
+math = { path = "../../lib/math" }
+pool = { path = "../../lib/pool" }
 
-game-interface = { path = "../game-interface" }
 game-config = { path = "../game-config" }
+game-interface = { path = "../game-interface" }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
+indexmap = "2.11.0"
 serde = { version = "1.0.219", features = ["derive"] }
-indexmap = "2.10.0"
-time = { version = "0.3.41", features = ["serde"] }
 serde_with = "3.14.0"
 thiserror = "2.0.16"
+time = { version = "0.3.43", features = ["serde"] }
 
 [dev-dependencies]
 rustc-hash = "2.1.1"

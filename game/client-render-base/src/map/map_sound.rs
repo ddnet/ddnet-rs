@@ -3,16 +3,15 @@ use std::{borrow::Borrow, time::Duration};
 use camera::{Camera, CameraInterface};
 use hiarc::Hiarc;
 use map::{
-    map::groups::{layers::design::SoundShape, MapGroupAttr},
+    map::groups::{MapGroupAttr, layers::design::SoundShape},
     skeleton::{
         animations::AnimationsSkeleton, groups::layers::design::MapLayerSoundSkeleton,
         resources::MapResourceRefSkeleton,
     },
 };
 use math::math::{
-    length,
+    PI, length,
     vector::{fvec2, nffixed, vec2},
-    PI,
 };
 use sound::{
     sound_object::SoundObject,

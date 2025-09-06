@@ -1,13 +1,14 @@
 [package]
 name = "editor_wasm"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-ui-base = { path = "../../../lib/ui-base" }
-api = { path = "../../../lib/api" }
-api-editor = { path = "../../../game/api-editor" }
-editor = { path = "../../../game/editor" }
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
+
+[dependencies]
+api = { path = "../../../lib/api" }
+ui-base = { path = "../../../lib/ui-base" }
+
+api-editor = { path = "../../../game/api-editor" }
+editor = { path = "../../../game/editor" }

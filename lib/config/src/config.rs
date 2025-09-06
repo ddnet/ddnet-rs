@@ -4,7 +4,7 @@ use crate::{self as config, types::ConfRgb};
 
 use anyhow::anyhow;
 use atomic_enum::atomic_enum;
-use config_macro::{config_default, ConfigInterface};
+use config_macro::{ConfigInterface, config_default};
 use hiarc::Hiarc;
 use num_derive::FromPrimitive;
 use serde::{Deserialize, Serialize};
@@ -258,7 +258,7 @@ impl ConfigEngine {
 #[cfg(test)]
 mod test {
     use crate::{self as config, traits::ConfigValue};
-    use config_macro::{config_default, ConfigInterface};
+    use config_macro::{ConfigInterface, config_default};
     use serde::{Deserialize, Serialize};
 
     #[test]

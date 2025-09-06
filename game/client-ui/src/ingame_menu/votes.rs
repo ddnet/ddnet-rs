@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use base::network_string::NetworkString;
-use game_interface::votes::{MapVote, MapVoteKey, MiscVote, MiscVoteKey, MAX_CATEGORY_NAME_LEN};
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use game_interface::votes::{MAX_CATEGORY_NAME_LEN, MapVote, MapVoteKey, MiscVote, MiscVoteKey};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use url::Url;
 
 #[hiarc_safer_rc_refcell]

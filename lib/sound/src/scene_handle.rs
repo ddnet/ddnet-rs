@@ -1,4 +1,4 @@
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 use crate::{
     backend_handle::SoundBackendHandle, commands::SoundSceneCreateProps, scene_object::SceneObject,

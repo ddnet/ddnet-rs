@@ -9,7 +9,7 @@ use editor_interface::auto_mapper::{
 use api::read_param_from_host_ex;
 use api::upload_return_val;
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// Returns an instance of the auto mapper
     fn mod_auto_mapper_new() -> Result<Box<dyn AutoMapperInterface>, String>;
 }
@@ -31,13 +31,13 @@ impl ApiAutoMapper {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn auto_mapper_new() {
     let res = API_AUTO_MAPPER.with(|g| g.create());
     upload_return_val(res);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn auto_mapper_drop() {
     API_AUTO_MAPPER.with(|g| *g.state.borrow_mut() = None);
 }

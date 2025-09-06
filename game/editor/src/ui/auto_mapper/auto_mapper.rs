@@ -7,13 +7,13 @@ use base::hash::fmt_hash;
 use client_render_base::map::map_buffered::graphic_tile::tile_flags_to_uv;
 use client_ui::utils::render_texture_for_ui;
 use egui::{
-    vec2, Color32, ComboBox, DragValue, Frame, Rect, ScrollArea, Sense, Spacing, Stroke, Window,
+    Color32, ComboBox, DragValue, Frame, Rect, ScrollArea, Sense, Spacing, Stroke, Window, vec2,
 };
 use egui_file_dialog::{DialogMode, DialogState};
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
-use map::map::groups::layers::tiles::{rotate_by_plus_90, TileFlags};
+use map::map::groups::layers::tiles::{TileFlags, rotate_by_plus_90};
 use math::math::vector::{ivec2, vec2};
 use ui_base::{
     components::clearable_edit_field::clearable_edit_field,

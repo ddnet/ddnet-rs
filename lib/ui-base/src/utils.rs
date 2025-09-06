@@ -156,7 +156,7 @@ pub fn password_ui(ui: &mut egui::Ui, password: &mut String) -> egui::Response {
                         ui.style_mut().wrap_mode = None;
                         // Toggle the `show_plaintext` bool with a button:
                         let response = ui
-                            .add(egui::SelectableLabel::new(
+                            .add(egui::Button::selectable(
                                 show_plaintext,
                                 if show_plaintext {
                                     "\u{f070}"

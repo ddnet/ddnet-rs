@@ -1,6 +1,6 @@
 use std::{
     num::NonZeroUsize,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
 };
 
 use anyhow::anyhow;
@@ -342,10 +342,12 @@ impl Memory {
                         // TODO: add case for image
                         return Err(BufferAllocationError::HeapAllocationFailed);
                     }
-                    assert!(memory_cache
-                        .memory_heaps
-                        .insert(found_id, new_heap)
-                        .is_none());
+                    assert!(
+                        memory_cache
+                            .memory_heaps
+                            .insert(found_id, new_heap)
+                            .is_none()
+                    );
                 } else {
                     let memory_cache = memory_cache.lock();
                     let heap = memory_cache.memory_heaps.get(&found_id).unwrap();

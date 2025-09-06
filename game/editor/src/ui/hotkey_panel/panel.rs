@@ -72,13 +72,13 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
                     (Default::default(), None)
                 };
                 *options = Some(EditorHotkeyEdit { modifiers, key, ev });
-            } else if btn.secondary_clicked() {
-                if let Some(bind) = binds_per_event.get(&ev) {
-                    let bind = bind.first().unwrap();
-                    binds
-                        .binds
-                        .remove(&KeyboardShortcut::new(bind.modifiers, bind.logical_key));
-                }
+            } else if btn.secondary_clicked()
+                && let Some(bind) = binds_per_event.get(&ev)
+            {
+                let bind = bind.first().unwrap();
+                binds
+                    .binds
+                    .remove(&KeyboardShortcut::new(bind.modifiers, bind.logical_key));
             }
             ui.end_row();
 

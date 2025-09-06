@@ -1,7 +1,7 @@
 use assets_base::{
+    AssetsIndex, AssetsMeta,
     tar::read_tar_files,
     verify::{ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
-    AssetsIndex, AssetsMeta,
 };
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use std::{
@@ -16,7 +16,7 @@ use std::{
 use tokio::sync::Semaphore;
 
 use anyhow::anyhow;
-use base::hash::{fmt_hash, Hash};
+use base::hash::{Hash, fmt_hash};
 use base_io_traits::{fs_traits::FileSystemInterface, http_traits::HttpClientInterface};
 
 use base_io::{io::Io, path_to_url::relative_path_to_url, runtime::IoRuntimeTask};
@@ -33,7 +33,7 @@ use graphics_types::{
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
 use image_utils::{
-    png::{is_png_image_valid, load_png_image_as_rgba, PngResultPersistent, PngValidatorOptions},
+    png::{PngResultPersistent, PngValidatorOptions, is_png_image_valid, load_png_image_as_rgba},
     utils::texture_2d_to_3d,
 };
 use log::{debug, info};
@@ -502,26 +502,25 @@ where
         resource_http_download_url: &Url,
     ) {
         // try to download index
-        if http_index.is_none() {
-            if let Some(download_url) = relative_path_to_url(&base_path.join("index.json"))
+        if http_index.is_none()
+            && let Some(download_url) = relative_path_to_url(&base_path.join("index.json"))
                 .ok()
                 .and_then(|name| resource_http_download_url.join(&name).ok())
-            {
-                let r = http
-                    .download_text(download_url)
-                    .await
-                    .map_err(|err| anyhow!(err))
-                    .and_then(|index_file| {
-                        serde_json::from_str::<AssetsIndex>(&index_file)
-                            .map_err(|err| anyhow::anyhow!(err))
-                    });
+        {
+            let r = http
+                .download_text(download_url)
+                .await
+                .map_err(|err| anyhow!(err))
+                .and_then(|index_file| {
+                    serde_json::from_str::<AssetsIndex>(&index_file)
+                        .map_err(|err| anyhow::anyhow!(err))
+                });
 
-                if let Err(err) = &r {
-                    info!(target: &container_name, "failed to create http index for {container_name}: {err}");
-                }
-
-                *http_index = Some(Arc::new(r));
+            if let Err(err) = &r {
+                info!(target: &container_name, "failed to create http index for {container_name}: {err}");
             }
+
+            *http_index = Some(Arc::new(r));
         }
     }
 
@@ -533,26 +532,24 @@ where
         resource_http_download_url: &Url,
     ) {
         // try to download meta index
-        if http_meta.is_none() {
-            if let Some(download_url) = relative_path_to_url(&base_path.join("meta.json"))
+        if http_meta.is_none()
+            && let Some(download_url) = relative_path_to_url(&base_path.join("meta.json"))
                 .ok()
                 .and_then(|name| resource_http_download_url.join(&name).ok())
-            {
-                let r = http
-                    .download_text(download_url)
-                    .await
-                    .map_err(|err| anyhow!(err))
-                    .and_then(|file| {
-                        serde_json::from_str::<AssetsMeta>(&file)
-                            .map_err(|err| anyhow::anyhow!(err))
-                    });
+        {
+            let r = http
+                .download_text(download_url)
+                .await
+                .map_err(|err| anyhow!(err))
+                .and_then(|file| {
+                    serde_json::from_str::<AssetsMeta>(&file).map_err(|err| anyhow::anyhow!(err))
+                });
 
-                if let Err(err) = &r {
-                    debug!(target: &container_name, "failed to create http meta index for {container_name}: {err}");
-                }
-
-                *http_meta = Some(Arc::new(r));
+            if let Err(err) = &r {
+                debug!(target: &container_name, "failed to create http meta index for {container_name}: {err}");
             }
+
+            *http_meta = Some(Arc::new(r));
         }
     }
 
@@ -596,7 +593,8 @@ where
         // if key hash a hash, try to load item with that hash from disk
         // or download it from the game server if supported
         // else it will be ignored
-        let files = if let Some(hash) = key.hash {
+
+        if let Some(hash) = key.hash {
             // try to load dir with that name
             let mut files = None;
 
@@ -614,36 +612,33 @@ where
             }
 
             // else try to load tar with that name
-            if files.is_none() {
-                if let Ok(file) = fs
+            if files.is_none()
+                && let Ok(file) = fs
                     .read_file(&download_base_path.join(format!(
                         "{}_{}.tar",
                         key.name.as_str(),
                         fmt_hash(&hash)
                     )))
                     .await
-                {
-                    if let Ok(tar_files) = read_tar_files(file.into()) {
-                        files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
-                            tar_files,
-                        )));
-                    }
-                }
+                && let Ok(tar_files) = read_tar_files(file.into())
+            {
+                files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
+                    tar_files,
+                )));
             }
 
             // else try to load single file (.png, .ogg or similar)
             // Note: for now only try image files, doesn't seem worth it for sound files
-            if files.is_none() {
-                if let Ok(file) = fs
+            if files.is_none()
+                && let Ok(file) = fs
                     .read_file(&download_base_path.join(format!(
                         "{}_{}.png",
                         key.name.as_str(),
                         fmt_hash(&hash)
                     )))
                     .await
-                {
-                    files = Some(ContainerLoadedItem::SingleFile(file));
-                }
+            {
+                files = Some(ContainerLoadedItem::SingleFile(file));
             }
 
             // if loading still failed, switch to http download
@@ -654,26 +649,26 @@ where
                         .ok()
                 }) {
                     let _g = http_download_tasks.acquire().await?;
-                    if let Ok(file) = http.download_binary(game_server_http, &hash).await {
-                        if let Ok(tar_files) = read_tar_files(file.as_ref().into()) {
-                            let mut verified = true;
-                            for (name, file) in &tar_files {
-                                if !Self::verify_resource(
-                                    name.extension().and_then(|s| s.to_str()).unwrap_or(""),
-                                    name.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
-                                    file,
-                                    allow_hq_assets,
-                                ) {
-                                    verified = false;
-                                    break;
-                                }
+                    if let Ok(file) = http.download_binary(game_server_http, &hash).await
+                        && let Ok(tar_files) = read_tar_files(file.as_ref().into())
+                    {
+                        let mut verified = true;
+                        for (name, file) in &tar_files {
+                            if !Self::verify_resource(
+                                name.extension().and_then(|s| s.to_str()).unwrap_or(""),
+                                name.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
+                                file,
+                                allow_hq_assets,
+                            ) {
+                                verified = false;
+                                break;
                             }
-                            if verified {
-                                save_to_disk(&name, &file).await;
-                                files = Some(ContainerLoadedItem::Directory(
-                                    ContainerLoadedItemDir::new(tar_files),
-                                ));
-                            }
+                        }
+                        if verified {
+                            save_to_disk(&name, &file).await;
+                            files = Some(ContainerLoadedItem::Directory(
+                                ContainerLoadedItemDir::new(tar_files),
+                            ));
                         }
                     }
                 }
@@ -688,11 +683,11 @@ where
                         .ok()
                 }) {
                     let _g = http_download_tasks.acquire().await?;
-                    if let Ok(file) = http.download_binary(game_server_http, &hash).await {
-                        if Self::verify_resource("png", &name, &file, allow_hq_assets) {
-                            save_to_disk(&name, &file).await;
-                            files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
-                        }
+                    if let Ok(file) = http.download_binary(game_server_http, &hash).await
+                        && Self::verify_resource("png", &name, &file, allow_hq_assets)
+                    {
+                        save_to_disk(&name, &file).await;
+                        files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
                     }
                 }
             }
@@ -750,29 +745,27 @@ where
                 else if let Ok(file) = fs
                     .read_file(&base_path.join(format!("{}.tar", key.name.as_str())))
                     .await
+                    && let Ok(tar_files) = read_tar_files(file.into())
                 {
-                    if let Ok(tar_files) = read_tar_files(file.into()) {
-                        files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
-                            tar_files,
-                        )));
-                    }
+                    files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
+                        tar_files,
+                    )));
                 }
                 // if still not found, try directory
-                if files.is_none() || key.name.as_str() == "default" {
-                    if let Ok(dir_files) = fs
+                if (files.is_none() || key.name.as_str() == "default")
+                    && let Ok(dir_files) = fs
                         .files_in_dir_recursive(&base_path.join(key.name.as_str()))
                         .await
-                    {
-                        files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
-                            dir_files,
-                        )));
-                    }
+                {
+                    files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
+                        dir_files,
+                    )));
                 }
             }
 
             // else if an entry exists, first try to load from disk using the entries hash
-            if let Some((entry, _)) = files.is_none().then_some(http_entry.as_ref()).flatten() {
-                if let Ok(file) = fs
+            if let Some((entry, _)) = files.is_none().then_some(http_entry.as_ref()).flatten()
+                && let Ok(file) = fs
                     .read_file(
                         download_base_path
                             .join(format!(
@@ -784,25 +777,24 @@ where
                             .as_ref(),
                     )
                     .await
-                {
-                    if entry.ty == "tar" {
-                        if let Ok(tar_files) = read_tar_files(file.into()) {
-                            files = Some(ContainerLoadedItem::Directory(
-                                ContainerLoadedItemDir::new(tar_files),
-                            ));
-                        }
-                    } else if entry.ty == "png"
-                        || (allows_single_audio_or_txt_files && entry.ty == "ogg")
-                        || (allows_single_audio_or_txt_files && entry.ty == "txt")
-                    {
-                        files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+            {
+                if entry.ty == "tar" {
+                    if let Ok(tar_files) = read_tar_files(file.into()) {
+                        files = Some(ContainerLoadedItem::Directory(ContainerLoadedItemDir::new(
+                            tar_files,
+                        )));
                     }
+                } else if entry.ty == "png"
+                    || (allows_single_audio_or_txt_files && entry.ty == "ogg")
+                    || (allows_single_audio_or_txt_files && entry.ty == "txt")
+                {
+                    files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
                 }
             }
 
             // else try to load the entry from http (if active)
-            if files.is_none() {
-                if let Some((url, name, hash, ty)) = http_entry.and_then(|(entry, download_url)| {
+            if files.is_none()
+                && let Some((url, name, hash, ty)) = http_entry.and_then(|(entry, download_url)| {
                     let name = format!(
                         "{}_{}.{}",
                         key.name.as_str(),
@@ -813,72 +805,72 @@ where
                         .join(&relative_path_to_url(&base_path.join(&name)).ok()?)
                         .map(|url| (url, name, entry.hash, entry.ty))
                         .ok()
-                }) {
-                    let res = {
-                        let _g = http_download_tasks.acquire().await?;
-                        http.download_binary(url, &hash).await
-                    };
-                    match res {
-                        Ok(file) => {
-                            let write_to_disk = if ty == "tar" {
-                                if let Ok(tar_files) = read_tar_files(file.as_ref().into()) {
-                                    let mut verified = true;
-                                    for (name, file) in &tar_files {
-                                        if !Self::verify_resource(
-                                            name.extension().and_then(|s| s.to_str()).unwrap_or(""),
-                                            name.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
-                                            file,
-                                            allow_hq_assets,
-                                        ) {
-                                            verified = false;
-                                            break;
-                                        }
+                })
+            {
+                let res = {
+                    let _g = http_download_tasks.acquire().await?;
+                    http.download_binary(url, &hash).await
+                };
+                match res {
+                    Ok(file) => {
+                        let write_to_disk = if ty == "tar" {
+                            if let Ok(tar_files) = read_tar_files(file.as_ref().into()) {
+                                let mut verified = true;
+                                for (name, file) in &tar_files {
+                                    if !Self::verify_resource(
+                                        name.extension().and_then(|s| s.to_str()).unwrap_or(""),
+                                        name.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
+                                        file,
+                                        allow_hq_assets,
+                                    ) {
+                                        verified = false;
+                                        break;
                                     }
-                                    if verified {
-                                        files = Some(ContainerLoadedItem::Directory(
-                                            ContainerLoadedItemDir::new(tar_files),
-                                        ));
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                } else {
-                                    false
                                 }
-                            } else if ty == "png" {
-                                if Self::verify_resource("png", &name, &file, allow_hq_assets) {
-                                    files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else if allows_single_audio_or_txt_files && ty == "ogg" {
-                                if Self::verify_resource("ogg", &name, &file, allow_hq_assets) {
-                                    files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else if allows_single_audio_or_txt_files && ty == "txt" {
-                                if Self::verify_resource("txt", &name, &file, allow_hq_assets) {
-                                    files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+                                if verified {
+                                    files = Some(ContainerLoadedItem::Directory(
+                                        ContainerLoadedItemDir::new(tar_files),
+                                    ));
                                     true
                                 } else {
                                     false
                                 }
                             } else {
                                 false
-                            };
-                            if write_to_disk {
-                                save_to_disk(&name, &file).await;
                             }
+                        } else if ty == "png" {
+                            if Self::verify_resource("png", &name, &file, allow_hq_assets) {
+                                files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+                                true
+                            } else {
+                                false
+                            }
+                        } else if allows_single_audio_or_txt_files && ty == "ogg" {
+                            if Self::verify_resource("ogg", &name, &file, allow_hq_assets) {
+                                files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+                                true
+                            } else {
+                                false
+                            }
+                        } else if allows_single_audio_or_txt_files && ty == "txt" {
+                            if Self::verify_resource("txt", &name, &file, allow_hq_assets) {
+                                files = Some(ContainerLoadedItem::SingleFile(file.to_vec()));
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        };
+                        if write_to_disk {
+                            save_to_disk(&name, &file).await;
                         }
-                        Err(err) => {
-                            log::warn!(
-                                "Download for {} failed, even tho it was part of the index: {err}",
-                                key.name.as_str()
-                            );
-                        }
+                    }
+                    Err(err) => {
+                        log::warn!(
+                            "Download for {} failed, even tho it was part of the index: {err}",
+                            key.name.as_str()
+                        );
                     }
                 }
             }
@@ -890,8 +882,7 @@ where
                     key.name.as_str(),
                 )),
             }
-        };
-        files
+        }
     }
 
     pub fn load_default(io: &Io, base_path: &Path) -> IoRuntimeTask<ContainerLoadedItem> {
@@ -1026,35 +1017,35 @@ where
                     .map(|(q, v)| (q, v, false))
             };
 
-            if let Some((name, load_item, should_return_new_item)) = task {
-                if load_item.is_finished() {
-                    let name = name.clone();
-                    if let Some(load_item) = self.loading_tasks.remove(&name) {
-                        let loaded_item = load_item.get();
-                        match loaded_item {
-                            Ok(item) => {
-                                let new_item =
-                                    item.convert(&self.texture_handle, &self.sound_object_handle);
-                                self.items.insert(
-                                    name.clone(),
-                                    ContainerItem {
-                                        item: new_item,
-                                        used_last_in: self.last_update_time.unwrap_or_default(),
-                                    },
-                                );
-                                if should_return_new_item {
-                                    return &self.items.get(&name).unwrap().item;
-                                }
+            if let Some((name, load_item, should_return_new_item)) = task
+                && load_item.is_finished()
+            {
+                let name = name.clone();
+                if let Some(load_item) = self.loading_tasks.remove(&name) {
+                    let loaded_item = load_item.get();
+                    match loaded_item {
+                        Ok(item) => {
+                            let new_item =
+                                item.convert(&self.texture_handle, &self.sound_object_handle);
+                            self.items.insert(
+                                name.clone(),
+                                ContainerItem {
+                                    item: new_item,
+                                    used_last_in: self.last_update_time.unwrap_or_default(),
+                                },
+                            );
+                            if should_return_new_item {
+                                return &self.items.get(&name).unwrap().item;
                             }
-                            Err(err) => {
-                                log::info!(
-                                    target: &self.container_name,
-                                    "Error while loading item \"{}\": {}",
-                                    name.name.as_str(),
-                                    err
-                                );
-                                self.failed_tasks.insert(name);
-                            }
+                        }
+                        Err(err) => {
+                            log::info!(
+                                target: &self.container_name,
+                                "Error while loading item \"{}\": {}",
+                                name.name.as_str(),
+                                err
+                            );
+                            self.failed_tasks.insert(name);
                         }
                     }
                 }
@@ -1193,13 +1184,13 @@ where
                         Some(task) => {
                             match task {
                                 Some(inner_task) => {
-                                    if inner_task.is_finished() {
-                                        if let Err(err) = task.take().map(|t| t.get()).transpose() {
-                                            log::error!(
-                                                "Failed to download http index for {}: {err}",
-                                                self.container_name
-                                            );
-                                        }
+                                    if inner_task.is_finished()
+                                        && let Err(err) = task.take().map(|t| t.get()).transpose()
+                                    {
+                                        log::error!(
+                                            "Failed to download http index for {}: {err}",
+                                            self.container_name
+                                        );
                                     }
                                 }
                                 None => {
@@ -1292,14 +1283,12 @@ where
                                         .file_stem()
                                         .and_then(|s| s.to_str())
                                         .and_then(|s| s.rsplit_once('_'))
+                                        && name_hash.len() == Hash::default().len() * 2
+                                        && name_hash
+                                            .find(|c: char| !c.is_ascii_hexdigit())
+                                            .is_none()
                                     {
-                                        if name_hash.len() == Hash::default().len() * 2
-                                            && name_hash
-                                                .find(|c: char| !c.is_ascii_hexdigit())
-                                                .is_none()
-                                        {
-                                            return false;
-                                        }
+                                        return false;
                                     }
                                     true
                                 });
@@ -1351,13 +1340,13 @@ where
                     Some(task) => {
                         match task {
                             Some(inner_task) => {
-                                if inner_task.is_finished() {
-                                    if let Err(err) = task.take().map(|t| t.get()).transpose() {
-                                        log::error!(
-                                            "Failed to download http meta index for {}: {err}",
-                                            self.container_name
-                                        );
-                                    }
+                                if inner_task.is_finished()
+                                    && let Err(err) = task.take().map(|t| t.get()).transpose()
+                                {
+                                    log::error!(
+                                        "Failed to download http meta index for {}: {err}",
+                                        self.container_name
+                                    );
                                 }
                             }
                             None => {

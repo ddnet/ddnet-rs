@@ -31,7 +31,7 @@ use client_ui::{
         monitors::UiMonitors, profiles_interface::ProfilesInterface,
         theme_container::ThemeContainer, user_data::MainMenuInterface,
     },
-    thumbnail_container::{ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH},
+    thumbnail_container::{DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer},
 };
 use game_base::server_browser::{
     ServerBrowserData, ServerBrowserInfo, ServerBrowserInfoMap, ServerBrowserServer,

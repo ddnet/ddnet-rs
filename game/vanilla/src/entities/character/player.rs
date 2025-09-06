@@ -13,8 +13,8 @@ pub mod player {
     use game_interface::types::player_info::PlayerUniqueId;
     use game_interface::types::render::character::TeeEye;
     use game_interface::types::snapshot::SnapshotLocalPlayer;
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
     use hiarc::{HiFnMut, HiFnOnce};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use pool::datatypes::{PoolFxHashSet, PoolFxLinkedHashMap, PoolVec};
     use pool::pool::Pool;
     use pool::rc::PoolRc;

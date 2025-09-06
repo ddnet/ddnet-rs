@@ -1,8 +1,8 @@
 use std::{num::NonZeroU64, str::FromStr};
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_macro_input, parse_quote, GenericParam, Item};
+use quote::{ToTokens, quote};
+use syn::{GenericParam, Item, parse_macro_input, parse_quote};
 
 pub(crate) fn hi_arc_trait_impl(
     tokens: TokenStream,

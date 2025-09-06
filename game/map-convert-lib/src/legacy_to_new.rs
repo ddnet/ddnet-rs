@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     future::Future,
     io::Cursor,
-    num::{NonZeroU32, NonZeroU8},
+    num::{NonZeroU8, NonZeroU32},
     path::Path,
     pin::Pin,
     sync::{Arc, Mutex},
@@ -11,7 +11,7 @@ use std::{
 use anyhow::anyhow;
 use base::{
     benchmark::Benchmark,
-    hash::{generate_hash_for, Hash},
+    hash::{Hash, generate_hash_for},
 };
 use base_io::io::IoFileSys;
 use legacy_map::datafile::{

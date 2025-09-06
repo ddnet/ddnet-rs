@@ -1,10 +1,10 @@
 use std::borrow::Borrow;
 
 use egui::{
-    scroll_area::ScrollBarVisibility, text::LayoutJob, Color32, Frame, Margin, ScrollArea, Shadow,
-    TextFormat,
+    Color32, Frame, Margin, ScrollArea, Shadow, TextFormat, scroll_area::ScrollBarVisibility,
+    text::LayoutJob,
 };
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;
 use ui_base::{
@@ -153,7 +153,7 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
                 .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                 .show(ui, |ui| {
                     ui.horizontal_centered(|ui| {
-                        for (&char_id, msg_char, _, (_, matching_char_indices)) in &matches {
+                        for &(&char_id, msg_char, _, (_, ref matching_char_indices)) in &matches {
                             let (bg_color_text, match_color, default_color, margin, shadow) =
                                 if *whispered_id == Some(char_id) {
                                     (
@@ -251,8 +251,8 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
             // chain here so we can simply call it.next()
             let mut it = matches
                 .iter()
-                .map(|(&id, _, _, _)| id)
-                .chain(matches.iter().map(|(&id, _, _, _)| id).take(1))
+                .map(|&(&id, _, _, _)| id)
+                .chain(matches.iter().map(|&(&id, _, _, _)| id).take(1))
                 .skip_while(|id| Some(*id) != *whispered_id);
             // this would be current selection
             it.next();
@@ -260,12 +260,12 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
                 *whispered_id = Some(next_id);
             }
             if whispered_id.is_none() {
-                *whispered_id = matches.iter().map(|(&id, _, _, _)| id).next();
+                *whispered_id = matches.iter().map(|&(&id, _, _, _)| id).next();
             }
         } else if let Some(whisper_id) = is_enter.then_some(*whispered_id).and_then(|find_id| {
             matches
                 .iter()
-                .any(|(&id, _, _, _)| Some(id) == find_id)
+                .any(|&(&id, _, _, _)| Some(id) == find_id)
                 .then_some(find_id)
         }) {
             pipe.user_data.mode = ChatMode::Whisper(whisper_id);

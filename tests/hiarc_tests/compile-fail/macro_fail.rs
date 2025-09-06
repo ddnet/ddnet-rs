@@ -1,6 +1,6 @@
 fn main() {
-    use hiarc::hiarc;
     use hiarc::HiBox;
+    use hiarc::hiarc;
     #[hiarc]
     pub struct A {
         #[hiarc(inner)]

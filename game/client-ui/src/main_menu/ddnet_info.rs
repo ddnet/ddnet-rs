@@ -10,8 +10,8 @@ use base::{
 };
 use game_interface::{interface::MAX_MAP_NAME_LEN, types::character_info::MAX_CHARACTER_NAME_LEN};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use serde_with::DefaultOnError;
+use serde_with::serde_as;
 use url::Url;
 
 use super::communities::{Community, ServerIpList};

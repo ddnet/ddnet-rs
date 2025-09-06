@@ -15,8 +15,8 @@ use graphics_backend_traits::traits::GraphicsBackendInterface;
 use graphics_types::{commands::AllCommands, rendering::GlVertex};
 use hiarc::Hiarc;
 use sendable::SendOption;
-use wasm_runtime_types::{read_param, RawBytesEnv};
-use wasmer::{imports, AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store};
+use wasm_runtime_types::{RawBytesEnv, read_param};
+use wasmer::{AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store, imports};
 
 #[derive(Debug, Hiarc)]
 pub struct WasmGraphicsLogicImpl {

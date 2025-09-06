@@ -1,15 +1,22 @@
 [package]
 name = "sound-backend"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
-math = { path = "../math" }
-hiarc = { path = "../hiarc", features = ["derive", "enable_kira", "enable_hashlink", "enable_rustc_hash", "enable_mint"] }
-sound = { path = "../sound" }
 config = { path = "../config" }
-kira = "0.9.6"
-mint = "0.5.9"
+hiarc = { path = "../hiarc", features = [
+  "derive",
+  "enable_kira",
+  "enable_hashlink",
+  "enable_rustc_hash",
+  "enable_mint",
+] }
+math = { path = "../math" }
+sound = { path = "../sound" }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+kira = "0.9.6"
+log = "0.4.28"
+mint = "0.5.9"

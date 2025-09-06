@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
 };
 
 use anyhow::anyhow;
@@ -400,9 +400,9 @@ mod test {
     use std::sync::Arc;
 
     use game_database::{
+        StatementArgs, StatementResult,
         statement::{Statement, StatementBuilder},
         traits::{DbKind, DbKindExtra},
-        StatementArgs, StatementResult,
     };
     use sql::database::{Database, DatabaseDetails};
 

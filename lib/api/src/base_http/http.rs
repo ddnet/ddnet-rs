@@ -9,7 +9,7 @@ use url::Url;
 
 use crate::{read_result_from_host, upload_param};
 
-extern "C" {
+unsafe extern "C" {
     fn api_download_text();
     fn api_download_binary();
     fn api_post_json();

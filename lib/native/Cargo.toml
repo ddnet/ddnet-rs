@@ -1,13 +1,13 @@
 [package]
 name = "native"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
 native-display = { path = "../native-display" }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+log = "0.4.28"
 raw-window-handle = "0.6.2"
-log = "0.4.27"
 winit = { version = "0.30.12", features = ["serde", "android-native-activity"] }

@@ -1,15 +1,18 @@
 [package]
 name = "bin-patch"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+zstd = { version = "0.13", default-features = false, features = [
+  "experimental",
+  "zdict_builder",
+] }
 
 [dev-dependencies]
-bidiff = "1.0.0"
-qbsdiff = "1.4.3"
-bsdiff = "0.2.1"
-brotli = "8.0.2"
 base = { path = "../base" }
+bidiff = "1.0.0"
+brotli = "8.0.2"
+bsdiff = "0.2.1"
+qbsdiff = "1.4.4"

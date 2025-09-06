@@ -19,7 +19,7 @@ use crate::{
         spatial_chat::SpatialChat,
     },
     thumbnail_container::{
-        load_thumbnail_container, ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH,
+        DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
     },
 };
 

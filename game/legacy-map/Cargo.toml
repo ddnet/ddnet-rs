@@ -1,27 +1,30 @@
 [package]
 name = "legacy-map"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-image-utils = { path = "../../lib/image-utils" }
-graphics-types = { path = "../../lib/graphics-types" }
-hiarc = { path = "../../lib/hiarc", features = ["derive"] }
-math = { path = "../../lib/math" }
-base = { path = "../../lib/base" }
-config = { path = "../../lib/config" }
-
-map = { path = "../map" }
-
-rayon = "1.11.0"
-num-derive = "0.4.2"
-flate2 = "1.1.2"
-itertools = "0.14.0"
-num-traits = "0.2.19"
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-serde = { version = "1.0.219", features = ["derive"] }
-time = { version = "0.3.41", features = ["serde"] }
+edition = "2024"
 
 [package.metadata.cargo-machete]
 ignored = ["num-traits"]
+
+[dependencies]
+base = { path = "../../lib/base" }
+config = { path = "../../lib/config" }
+graphics-types = { path = "../../lib/graphics-types" }
+hiarc = { path = "../../lib/hiarc", features = ["derive"] }
+image-utils = { path = "../../lib/image-utils" }
+math = { path = "../../lib/math" }
+
+map = { path = "../map" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+flate2 = "1.1.2"
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
+itertools = "0.14.0"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
+rayon = "1.11.0"
+serde = { version = "1.0.219", features = ["derive"] }
+time = { version = "0.3.43", features = ["serde"] }

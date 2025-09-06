@@ -1,28 +1,32 @@
 [package]
 name = "render-game-wasm"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
+api-wasm-macros = { path = "../../lib/api-wasm-macros" }
 base = { path = "../../lib/base" }
-base-io-traits = { path = "../../lib/base-io-traits" }
 base-io = { path = "../../lib/base-io" }
+base-io-traits = { path = "../../lib/base-io-traits" }
 cache = { path = "../../lib/cache" }
 config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
-graphics-types = { path = "../../lib/graphics-types" }
 graphics-backend = { path = "../../lib/graphics-backend" }
-wasm-runtime = { path = "../../lib/wasm-runtime" }
-api-wasm-macros = { path = "../../lib/api-wasm-macros" }
-wasm-logic-fs = { path = "../../lib/wasm-logic-fs" }
-wasm-logic-http = { path = "../../lib/wasm-logic-http" }
-wasm-logic-graphics = { path = "../../lib/wasm-logic-graphics" }
-wasm-logic-sound = { path = "../../lib/wasm-logic-sound" }
+graphics-types = { path = "../../lib/graphics-types" }
 sound = { path = "../../lib/sound" }
-game-interface = { path = "../game-interface" }
+wasm-logic-fs = { path = "../../lib/wasm-logic-fs" }
+wasm-logic-graphics = { path = "../../lib/wasm-logic-graphics" }
+wasm-logic-http = { path = "../../lib/wasm-logic-http" }
+wasm-logic-sound = { path = "../../lib/wasm-logic-sound" }
+wasm-runtime = { path = "../../lib/wasm-runtime" }
+
 client-render-game = { path = "../client-render-game" }
 game-config = { path = "../game-config" }
+game-interface = { path = "../game-interface" }
 
-wasmer = { version = "6.1.0-rc.3", default-features = false, features = ["sys", "cranelift"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 rayon = "1.11.0"
+wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
+  "sys",
+  "cranelift",
+] }

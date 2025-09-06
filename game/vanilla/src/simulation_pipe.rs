@@ -11,8 +11,8 @@ pub mod simulation_pipe {
     use game_interface::types::id_types::{
         CharacterId, CtfFlagId, LaserId, PickupId, ProjectileId, StageId,
     };
-    use hiarc::{hi_closure, HiFnMut};
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{HiFnMut, hi_closure};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use math::math::vector::vec2;
     use serde::{Deserialize, Serialize};
 

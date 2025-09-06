@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use client_types::chat::ChatMsg;
-use egui::{text::LayoutJob, Align, Color32, FontId, Layout, Stroke, Vec2};
+use egui::{Align, Color32, FontId, Layout, Stroke, Vec2, text::LayoutJob};
 use game_base::network::types::chat::NetChatMsgPlayerChannel;
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;
@@ -10,7 +10,7 @@ use ui_base::types::{UiRenderPipe, UiState};
 use crate::utils::render_tee_for_ui;
 
 use super::{
-    shared::{entry_frame, MARGIN, MARGIN_FROM_TEE, TEE_SIZE},
+    shared::{MARGIN, MARGIN_FROM_TEE, TEE_SIZE, entry_frame},
     user_data::UserData,
 };
 

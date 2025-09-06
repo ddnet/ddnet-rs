@@ -1,26 +1,28 @@
 [package]
 name = "mainmenu"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-base-io = { path = "../../../lib/base-io" }
-api = { path = "../../../lib/api" }
-api-ui = { path = "../../../lib/api-ui" }
-graphics = { path = "../../../lib/graphics" }
-ui-base = { path = "../../../lib/ui-base" }
-ui-generic = { path = "../../../lib/ui-generic" }
-api-ui-game = { path = "../../../game/api-ui-game" }
-client-ui = { path = "../../../game/client-ui" }
-client-render-base = { path = "../../../game/client-render-base" }
-client-containers = { path = "../../../game/client-containers" }
-game-base = { path = "../../../game/game-base" }
-game-config = { path = "../../../game/game-config" }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-async-trait = "0.1.89"
-email_address = { version = "0.2.9", features = ["serde"] }
-serde_json = "1.0.143"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
+
+[dependencies]
+api = { path = "../../../lib/api" }
+api-ui = { path = "../../../lib/api-ui" }
+base-io = { path = "../../../lib/base-io" }
+graphics = { path = "../../../lib/graphics" }
+ui-base = { path = "../../../lib/ui-base" }
+ui-generic = { path = "../../../lib/ui-generic" }
+
+api-ui-game = { path = "../../../game/api-ui-game" }
+client-containers = { path = "../../../game/client-containers" }
+client-render-base = { path = "../../../game/client-render-base" }
+client-ui = { path = "../../../game/client-ui" }
+game-base = { path = "../../../game/game-base" }
+game-config = { path = "../../../game/game-config" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+async-trait = "0.1.89"
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+email_address = { version = "0.2.9", features = ["serde"] }
+serde_json = "1.0.143"

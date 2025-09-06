@@ -1,7 +1,7 @@
 use std::{
     ffi::{CStr, CString},
     ops::Deref,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
 };
 
 use anyhow::anyhow;

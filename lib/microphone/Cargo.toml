@@ -1,30 +1,40 @@
 [package]
 name = "microphone"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-base = { path = "../base" }
-sound = { path = "../sound" }
-hiarc = { path = "../hiarc", features = ["enable_crossbeam"] }
-
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = { version = "0.4.27" }
-crossbeam = { version = "0.8.4" }
-serde = { version = "1.0.219", features = ["derive"] }
-
-cpal = { version = "0.15.3", optional = true }
-deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "978576aa8400552a4ce9730838c635aa30db5e61", default-features = false, features = ["tract", "default-model-ll"], optional = true }
-# pinned for deep_filter dep
-ndarray = { version = "=0.15", optional = true }
-atomic_enum = { version = "0.3.0", optional = true }
-opus = { version = "0.3.0", optional = true }
-audiopus_sys = { version = "0.2.2", features = ["static"], optional = true }
-rubato = { version = "0.16.2", optional = true }
+edition = "2024"
 
 [package.metadata.cargo-machete]
 ignored = ["deep_filter", "audiopus_sys"]
 
 [features]
-cpal_opus = ["dep:cpal", "dep:deep_filter", "dep:ndarray", "dep:atomic_enum", "dep:audiopus_sys", "dep:opus", "dep:rubato"]
+cpal_opus = [
+  "dep:cpal",
+  "dep:deep_filter",
+  "dep:ndarray",
+  "dep:atomic_enum",
+  "dep:audiopus_sys",
+  "dep:opus",
+  "dep:rubato",
+]
 default = []
+
+[dependencies]
+base = { path = "../base" }
+hiarc = { path = "../hiarc", features = ["enable_crossbeam"] }
+sound = { path = "../sound" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+atomic_enum = { version = "0.3.0", optional = true }
+audiopus_sys = { version = "0.2.2", features = ["static"], optional = true }
+cpal = { version = "0.16.0", optional = true }
+crossbeam = { version = "0.8.4" }
+deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "978576aa8400552a4ce9730838c635aa30db5e61", default-features = false, features = [
+  "tract",
+  "default-model-ll",
+], optional = true }
+log = { version = "0.4.28" }
+# pinned for deep_filter dep
+ndarray = { version = "=0.15", optional = true }
+opus = { version = "0.3.0", optional = true }
+rubato = { version = "0.16.2", optional = true }
+serde = { version = "1.0.219", features = ["derive"] }

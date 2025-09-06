@@ -59,7 +59,9 @@ impl Swapchain {
             }
         }
 
-        warn!("requested presentation mode was not available. falling back to mailbox / fifo relaxed.");
+        warn!(
+            "requested presentation mode was not available. falling back to mailbox / fifo relaxed."
+        );
         vk_io_mode = if options.vsync {
             vk::PresentModeKHR::FIFO_RELAXED
         } else {

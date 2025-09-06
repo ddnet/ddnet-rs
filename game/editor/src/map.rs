@@ -26,20 +26,22 @@ use map::{
         },
         command_value::CommandValue,
         groups::{
+            MapGroupAttr, MapGroupPhysicsAttr,
             layers::{
                 design::{MapLayerQuadsAttrs, MapLayerSoundAttrs},
                 tiles::MapTileLayerAttr,
             },
-            MapGroupAttr, MapGroupPhysicsAttr,
         },
     },
     skeleton::{
+        MapSkeleton,
         animations::{
             AnimationsSkeleton, ColorAnimationSkeleton, PosAnimationSkeleton,
             SoundAnimationSkeleton,
         },
         config::ConfigSkeleton,
         groups::{
+            MapGroupPhysicsSkeleton, MapGroupSkeleton, MapGroupsSkeleton,
             layers::{
                 design::{
                     MapLayerArbitrarySkeleton, MapLayerQuadSkeleton, MapLayerSkeleton,
@@ -47,11 +49,9 @@ use map::{
                 },
                 physics::MapLayerPhysicsSkeleton,
             },
-            MapGroupPhysicsSkeleton, MapGroupSkeleton, MapGroupsSkeleton,
         },
         metadata::MetadataSkeleton,
         resources::{MapResourceRefSkeleton, MapResourcesSkeleton},
-        MapSkeleton,
     },
     types::NonZeroU16MinusOne,
 };

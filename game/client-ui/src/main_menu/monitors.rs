@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 #[derive(Debug, Hiarc)]
 pub struct UiMonitorVideoMode {

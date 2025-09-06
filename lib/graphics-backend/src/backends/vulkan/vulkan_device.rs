@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     rc::Rc,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
 };
 
 use anyhow::anyhow;
@@ -12,6 +12,7 @@ use libc::c_void;
 use strum::EnumCount;
 
 use super::{
+    Options,
     barriers::{image_barrier, memory_barrier},
     buffer::Buffer,
     command_pool::{AutoCommandBuffer, AutoCommandBufferType, CommandPool},
@@ -38,7 +39,6 @@ use super::{
         BufferObject, BufferObjectMem, DescriptorPoolType, DeviceDescriptorPools, MemoryBlockType,
         ShaderStorage, SupportedSamplerTypes, TextureObject,
     },
-    Options,
 };
 
 type TextureSamplersRes = (

@@ -176,7 +176,9 @@ impl DemoRecorder {
         } else if let Some(mem) = &mut mem {
             Box::new(mem)
         } else {
-            panic!("Neither memory nor file could be written for the demo. This is an implementation bug");
+            panic!(
+                "Neither memory nor file could be written for the demo. This is an implementation bug"
+            );
         };
         let size = Cell::new(0);
 

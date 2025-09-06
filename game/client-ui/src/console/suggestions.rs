@@ -2,14 +2,14 @@ use client_types::console::ConsoleEntry;
 use command_parser::parser::CommandsTyped;
 use config::traits::ConfigInterface;
 use egui::{
-    epaint::Shadow, scroll_area::ScrollBarVisibility, text::LayoutJob, Color32, FontId, Frame,
-    Margin, ScrollArea, TextFormat, UiBuilder,
+    Color32, FontId, Frame, Margin, ScrollArea, TextFormat, UiBuilder, epaint::Shadow,
+    scroll_area::ScrollBarVisibility, text::LayoutJob,
 };
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::{
     user_data::UserData,
-    utils::{find_matches, MatchedType},
+    utils::{MatchedType, find_matches},
 };
 
 pub fn render(
@@ -32,7 +32,7 @@ pub fn render(
         rect.min.x += 5.0;
         rect.max.x -= 5.0;
         let shadow_color = ui.style().visuals.window_shadow.color;
-        ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+        ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             ui.vertical(|ui| {
                 let found_entries_is_empty = found_entries.is_empty();
 

@@ -10,8 +10,8 @@ use hiarc::Hiarc;
 use log::{info, warn};
 
 use super::{
-    instance::Instance, vulkan_config::Config, vulkan_dbg::is_verbose_mode, vulkan_limits::Limits,
-    Options,
+    Options, instance::Instance, vulkan_config::Config, vulkan_dbg::is_verbose_mode,
+    vulkan_limits::Limits,
 };
 
 #[derive(Debug, Hiarc)]

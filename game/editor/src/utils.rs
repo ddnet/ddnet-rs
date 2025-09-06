@@ -1,5 +1,5 @@
 use camera::{Camera, CameraInterface};
-use egui::{vec2, Rect};
+use egui::{Rect, vec2};
 use graphics::handles::canvas::canvas::GraphicsCanvasHandle;
 use graphics_types::rendering::State;
 use map::map::groups::MapGroupAttr;

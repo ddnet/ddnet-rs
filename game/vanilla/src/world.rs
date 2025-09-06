@@ -4,7 +4,7 @@ pub mod world {
     use hashlink::linked_hash_map::view::{
         LinkedHashMapEntryAndRes, LinkedHashMapExceptView, LinkedHashMapIterExt,
     };
-    use hiarc::{hi_closure, Hiarc};
+    use hiarc::{Hiarc, hi_closure};
     use math::math::{
         closest_point_on_line, distance, distance_squared,
         vector::{ivec2, vec2},
@@ -106,16 +106,16 @@ pub mod world {
             ) -> ControlFlow<()>,
         ) -> ControlFlow<()> {
             ids.iter().try_for_each(|id| {
-                if self.phased_characters.is_empty() || !self.phased_characters.contains(id) {
-                    if let Some(char) = self.other_characters.get_mut(id) {
-                        let (core, reusable_core) = (&mut char.core, &mut char.reusable_core);
-                        return for_each_func(
-                            id,
-                            &mut core.core,
-                            &mut reusable_core.core,
-                            &mut char.pos,
-                        );
-                    }
+                if (self.phased_characters.is_empty() || !self.phased_characters.contains(id))
+                    && let Some(char) = self.other_characters.get_mut(id)
+                {
+                    let (core, reusable_core) = (&mut char.core, &mut char.reusable_core);
+                    return for_each_func(
+                        id,
+                        &mut core.core,
+                        &mut reusable_core.core,
+                        &mut char.pos,
+                    );
                 }
                 ControlFlow::Continue(())
             })

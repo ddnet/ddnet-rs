@@ -1,8 +1,8 @@
 use base::reduced_ascii_str::ReducedAsciiString;
 use base_io::io::Io;
 use map::map::{
-    resources::{MapResourceMetaData, MapResourceRef},
     Map,
+    resources::{MapResourceMetaData, MapResourceRef},
 };
 
 use crate::{
@@ -59,27 +59,27 @@ pub fn render(
             let mut change_layers = |groups: &Vec<EditorGroup>, is_background: bool| {
                 for (g, group) in groups.iter().enumerate() {
                     for (l, layer) in group.layers.iter().enumerate() {
-                        if let EditorLayer::Tile(layer) = layer {
-                            if layer.layer.attr.image_array >= Some(index) {
-                                let mut attr = layer.layer.attr;
-                                attr.image_array = if layer.layer.attr.image_array == Some(index) {
-                                    None
-                                } else {
-                                    layer.layer.attr.image_array.map(|index| index - 1)
-                                };
-                                actions.push(EditorAction::ChangeTileLayerDesignAttr(
-                                    ActChangeTileLayerDesignAttr {
-                                        is_background,
-                                        group_index: g,
-                                        layer_index: l,
-                                        old_attr: layer.layer.attr,
-                                        new_attr: attr,
+                        if let EditorLayer::Tile(layer) = layer
+                            && layer.layer.attr.image_array >= Some(index)
+                        {
+                            let mut attr = layer.layer.attr;
+                            attr.image_array = if layer.layer.attr.image_array == Some(index) {
+                                None
+                            } else {
+                                layer.layer.attr.image_array.map(|index| index - 1)
+                            };
+                            actions.push(EditorAction::ChangeTileLayerDesignAttr(
+                                ActChangeTileLayerDesignAttr {
+                                    is_background,
+                                    group_index: g,
+                                    layer_index: l,
+                                    old_attr: layer.layer.attr,
+                                    new_attr: attr,
 
-                                        old_tiles: layer.layer.tiles.clone(),
-                                        new_tiles: layer.layer.tiles.clone(),
-                                    },
-                                ));
-                            }
+                                    old_tiles: layer.layer.tiles.clone(),
+                                    new_tiles: layer.layer.tiles.clone(),
+                                },
+                            ));
                         }
                     }
                 }

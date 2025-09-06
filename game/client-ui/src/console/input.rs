@@ -1,20 +1,20 @@
 use std::ops::Range;
 
 use client_types::console::{
-    entries_to_parser, ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable,
+    ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable, entries_to_parser,
 };
-use command_parser::parser::{parse, Command, CommandParseResult, CommandType, CommandsTyped, Syn};
+use command_parser::parser::{Command, CommandParseResult, CommandType, CommandsTyped, Syn, parse};
 use egui::{
+    Color32, FontId, Id, Layout, RichText, TextBuffer, TextFormat,
     text::{CCursor, LayoutJob},
     text_selection::CCursorRange,
-    Color32, FontId, Id, Layout, RichText, TextFormat,
 };
 
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::{
     user_data::UserData,
-    utils::{find_matches, run_commands, MatchedType},
+    utils::{MatchedType, find_matches, run_commands},
 };
 
 /// console input
@@ -39,7 +39,8 @@ pub fn render(
             |ui| {
                 let inp_id = Id::new("console-input");
 
-                let mut layouter = |ui: &egui::Ui, string: &str, _wrap_width: f32| {
+                let mut layouter = |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width: f32| {
+                    let string = string.as_str();
                     let cmd = cmds.iter();
                     let mut layout_job = LayoutJob::default();
                     let mut last_range = 0;

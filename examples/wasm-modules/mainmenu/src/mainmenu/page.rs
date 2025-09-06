@@ -349,10 +349,9 @@ impl UiPageInterface<()> for MainMenu {
             .servers
             .as_ref()
             .is_some_and(|servers| servers.is_finished())
+            && let Ok(servers) = self.servers.take().unwrap().get()
         {
-            if let Ok(servers) = self.servers.take().unwrap().get() {
-                self.browser_data = servers;
-            }
+            self.browser_data = servers;
         }
 
         self.render_impl(ui, pipe, ui_state)

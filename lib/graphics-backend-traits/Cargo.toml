@@ -1,13 +1,14 @@
 [package]
 name = "graphics-backend-traits"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-pool = { path = "../pool" }
-graphics-types = { path = "../graphics-types" }
 graphics-base-traits = { path = "../graphics-base-traits" }
+graphics-types = { path = "../graphics-types" }
 hiarc = { path = "../hiarc", features = ["derive"] }
+pool = { path = "../pool" }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+bitflags = { version = "2.9.4", features = ["serde"] }
 thiserror = "2.0.16"
-bitflags = { version = "2.9.2", features = ["serde"] }

@@ -6,7 +6,7 @@ use assets_base::{AssetIndexEntry, AssetUpload, AssetUploadResponse, AssetsMeta}
 use axum::Json;
 use base::hash::generate_hash_for;
 use tokio::sync::Mutex;
-use verify::{verify_resource, AllowedResources};
+use verify::{AllowedResources, verify_resource};
 
 use crate::index_dir::Index;
 

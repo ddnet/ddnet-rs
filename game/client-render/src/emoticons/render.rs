@@ -13,8 +13,8 @@ use graphics::{
 };
 use graphics_types::rendering::State;
 use math::math::{
-    vector::{ubvec4, vec2},
     PI,
+    vector::{ubvec4, vec2},
 };
 
 pub struct RenderEmoticonPipe<'a> {
@@ -36,10 +36,12 @@ pub struct RenderEmoticon {
 
 impl RenderEmoticon {
     pub fn new(graphics: &Graphics) -> Self {
-        let quads: Vec<Quad> = vec![Quad::new()
-            .from_size_centered(2.0)
-            .with_color(&ubvec4::new(255, 255, 255, 255))
-            .with_uv_from_points(&vec2::new(0.0, 0.0), &vec2::new(1.0, 1.0))];
+        let quads: Vec<Quad> = vec![
+            Quad::new()
+                .from_size_centered(2.0)
+                .with_color(&ubvec4::new(255, 255, 255, 255))
+                .with_uv_from_points(&vec2::new(0.0, 0.0), &vec2::new(1.0, 1.0)),
+        ];
 
         let quad_container = graphics.quad_container_handle.create_quad_container(quads);
 

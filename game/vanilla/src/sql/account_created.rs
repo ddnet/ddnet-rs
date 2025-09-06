@@ -3,9 +3,9 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use ddnet_accounts_types::account_id::AccountId;
 use game_database::{
+    StatementArgs,
     statement::{Statement, StatementBuilder},
     traits::{DbInterface, DbKind},
-    StatementArgs,
 };
 use game_interface::types::player_info::Hash;
 

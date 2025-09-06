@@ -3,7 +3,7 @@ pub mod entity {
     use math::math::{round_to_int, vector::vec2};
 
     use crate::reusable::ReusableCore;
-    use serde::{de::DeserializeOwned, Serialize};
+    use serde::{Serialize, de::DeserializeOwned};
 
     #[derive(Debug, PartialEq, Eq)]
     pub enum EntityTickResult {

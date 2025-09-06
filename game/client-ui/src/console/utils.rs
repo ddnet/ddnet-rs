@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use client_types::console::{entries_to_parser, ConsoleEntry};
+use client_types::console::{ConsoleEntry, entries_to_parser};
 use command_parser::parser::{
     self, Command, CommandArgType, CommandParseResult, CommandType, CommandTypeRef, CommandsTyped,
     Syn,
@@ -10,7 +10,7 @@ use config::{
     parsing::find_modifiers,
     traits::{ConfigFromStrErr, ConfigInterface},
 };
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use game_config::config::ConfigGame;
 
 #[derive(Debug, Clone)]

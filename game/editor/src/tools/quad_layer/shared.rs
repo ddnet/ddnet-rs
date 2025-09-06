@@ -8,14 +8,14 @@ use graphics::handles::{
     stream_types::StreamedQuad,
 };
 use graphics_types::rendering::State;
-use hiarc::{hi_closure, Hiarc};
+use hiarc::{Hiarc, hi_closure};
 use map::map::groups::layers::design::Quad;
 use math::math::vector::{ffixed, fvec2, nffixed, nfvec4, ubvec4, vec2};
 
 use crate::{
     map::{EditorLayer, EditorLayerQuad, EditorLayerUnionRef, EditorMap, EditorMapInterface},
     tools::shared::{in_radius, rotate},
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{UiCanvasSize, ui_pos_to_world_pos},
 };
 
 #[derive(Debug, Hiarc, Clone, Copy)]

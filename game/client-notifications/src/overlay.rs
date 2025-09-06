@@ -53,28 +53,26 @@ impl ClientNotifications {
         if self.toasts.is_empty() {
             return;
         }
+
+        struct Render;
+
+        impl UiPageInterface<&mut Toasts> for Render {
+            fn render(
+                &mut self,
+                ui: &mut egui::Ui,
+                pipe: &mut UiRenderPipe<&mut Toasts>,
+                _ui_state: &mut ui_base::types::UiState,
+            ) {
+                pipe.user_data.show(ui.ctx());
+            }
+        }
         generic_ui_renderer::render(
             &self.backend_handle,
             &self.texture_handle,
             &self.stream_handle,
             &self.canvas_handle,
             &mut self.ui,
-            {
-                struct Render;
-
-                impl UiPageInterface<&mut Toasts> for Render {
-                    fn render(
-                        &mut self,
-                        ui: &mut egui::Ui,
-                        pipe: &mut UiRenderPipe<&mut Toasts>,
-                        _ui_state: &mut ui_base::types::UiState,
-                    ) {
-                        pipe.user_data.show(ui.ctx());
-                    }
-                }
-
-                &mut Render
-            },
+            &mut Render,
             &mut UiRenderPipe::new(self.sys.time_get(), &mut &mut self.toasts),
             Default::default(),
         );

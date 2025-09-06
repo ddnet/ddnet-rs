@@ -173,6 +173,10 @@ impl EditorMenuDialogMode {
                 err_empty_file_name: "The file name cannot be empty".to_string(),
                 err_directory_exists: "A directory with the name already exists".to_string(),
                 err_file_exists: "A file with the name already exists".to_string(),
+
+                rename_pinned_folder: "\u{f303} Rename".to_string(),
+                working_directory: "\u{f08e}  Go to working directory".to_string(),
+                save_extension_any: "Any".to_string(),
             })
     }
 

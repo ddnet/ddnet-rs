@@ -5,7 +5,7 @@ mod tests {
     use std::collections::{BTreeMap, HashMap};
 
     use base::system::{System, SystemTimeInterface};
-    use hashlink::{linked_hash_map::view::LinkedHashMapIterExt, LinkedHashMap};
+    use hashlink::{LinkedHashMap, linked_hash_map::view::LinkedHashMapIterExt};
     use indexmap::IndexMap;
 
     #[test]

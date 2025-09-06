@@ -1,29 +1,39 @@
 [package]
 name = "av-encoder"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[features]
+ffmpeg = ["ffmpeg-next"]
 
 [dependencies]
 base = { path = "../base" }
-pool = { path = "../pool", features = ["enable_hiarc"] }
-sound = { path = "../sound" }
-sound-backend = { path = "../sound-backend" }
 graphics-backend = { path = "../graphics-backend" }
 graphics-backend-traits = { path = "../graphics-backend-traits" }
 hiarc = { path = "../hiarc", features = ["derive", "enable_tokio"] }
-
+pool = { path = "../pool", features = ["enable_hiarc"] }
+sound = { path = "../sound" }
+sound-backend = { path = "../sound-backend" }
 #matroska = { git = "https://github.com/rust-av/matroska" }
 #rav1e = { version = "0.7.1", default-features = false, features = ["threading"] }
 #av-data = "0.4.2"
 #av-format = "0.7"
 
-log = "0.4.27"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+log = "0.4.28"
 rayon = "1.11.0"
 sendable = "0.6.1"
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }
 
-ffmpeg-next = { version = "8.0.0", features = ["build", "build-license-gpl", "build-lib-x264", "static"], optional = true }
-
-[features]
-ffmpeg = ["ffmpeg-next"]
+ffmpeg-next = { version = "8.0.0", features = [
+  "build",
+  "build-license-gpl",
+  "build-lib-x264",
+  "static",
+], optional = true }

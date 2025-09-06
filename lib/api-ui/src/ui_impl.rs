@@ -1,6 +1,6 @@
 use std::{cell::RefCell, time::Duration};
 
-use api::{read_param_from_host, upload_return_val, GRAPHICS, GRAPHICS_BACKEND};
+use api::{GRAPHICS, GRAPHICS_BACKEND, read_param_from_host, upload_return_val};
 
 use graphics_types::types::WindowProps;
 use ui_base::{
@@ -10,7 +10,7 @@ use ui_base::{
 };
 use ui_generic::traits::UiPageInterface;
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// returns an instance of the game state and the game tick speed
     fn mod_ui_new() -> Box<dyn UiPageInterface<()>>;
 }
@@ -25,7 +25,7 @@ static API_UI_USER: once_cell::unsync::Lazy<RefCell<Box<dyn UiPageInterface<U>>>
     once_cell::unsync::Lazy::new(|| RefCell::new(unsafe { mod_ui_new() }));
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn ui_new() {
     let fonts = read_param_from_host::<UiFonts>(0);
     API_UI.with(|g| {
@@ -91,17 +91,17 @@ fn ui_run_impl(
     )
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn ui_mount() {
     API_UI_USER.with(|g| g.borrow_mut().mount());
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn ui_unmount() {
     API_UI_USER.with(|g| g.borrow_mut().unmount());
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn ui_run() {
     let cur_time = read_param_from_host::<Duration>(0);
     let window_props = read_param_from_host::<WindowProps>(1);

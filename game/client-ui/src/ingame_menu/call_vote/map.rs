@@ -9,12 +9,12 @@ use game_config::config::Config;
 use game_interface::votes::{
     MapCategoryVoteKey, MapDifficulty, MapVote, MapVoteDetails, MapVoteKey, RandomUnfinishedMapKey,
 };
-use math::math::{vector::vec2, RngSlice};
+use math::math::{RngSlice, vector::vec2};
 use serde::{Deserialize, Serialize};
 use ui_base::{
     components::{
         clearable_edit_field::clearable_edit_field,
-        menu_top_button::{menu_top_button, MenuTopButtonProps},
+        menu_top_button::{MenuTopButtonProps, menu_top_button},
     },
     style::{bg_frame_color, topbar_buttons},
     types::{UiRenderPipe, UiState},
@@ -205,11 +205,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     categories.sort();
     let mut vote_category = map_votes.remove(&category);
 
-    if vote_category.is_none() {
-        if let Some((name, votes)) = categories.first().and_then(|c| map_votes.remove_entry(c)) {
-            category = name;
-            vote_category = Some(votes);
-        }
+    if vote_category.is_none()
+        && let Some((name, votes)) = categories.first().and_then(|c| map_votes.remove_entry(c))
+    {
+        category = name;
+        vote_category = Some(votes);
     }
 
     let mut map_infos: Vec<(_, _)> = vote_category
@@ -627,15 +627,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     strip.cell(|ui| {
                         ui.style_mut().wrap_mode = None;
                         ui.horizontal(|ui| {
-                            if ui.button("Change").clicked() {
-                                if let Some((map, _)) = map_infos.get(index) {
-                                    pipe.user_data.browser_menu.events.push(UiEvent::VoteMap(
-                                        MapCategoryVoteKey {
-                                            category: category.as_str().try_into().unwrap(),
-                                            map: map.clone(),
-                                        },
-                                    ));
-                                }
+                            if ui.button("Change").clicked()
+                                && let Some((map, _)) = map_infos.get(index)
+                            {
+                                pipe.user_data.browser_menu.events.push(UiEvent::VoteMap(
+                                    MapCategoryVoteKey {
+                                        category: category.as_str().try_into().unwrap(),
+                                        map: map.clone(),
+                                    },
+                                ));
                             }
 
                             if has_unfinished_map_votes {

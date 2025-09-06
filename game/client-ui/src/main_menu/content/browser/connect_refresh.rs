@@ -29,37 +29,33 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             && ui.ctx().memory(|m| m.focused().is_none());
 
         // connect
-        if ui
+        if (ui
             .add(Button::new("\u{f2f6}"))
             .on_hover_text(match &server_addr {
                 Ok(addr) => format!("connect to {addr}"),
                 Err(err) => format!("canno't connect to {server_addr_str}: {err}"),
             })
             .clicked()
-            || enter_clicked
+            || enter_clicked)
+            && let Ok(addr) = server_addr
         {
-            if let Ok(addr) = server_addr {
-                let is_legacy_server: bool = pipe.user_data.config.storage("server-is-legacy");
-                if is_legacy_server {
-                    pipe.user_data.events.push(UiEvent::ConnectLegacy {
-                        addr,
-                        can_show_warning: true,
-                    });
-                } else {
-                    pipe.user_data.events.push(UiEvent::Connect {
-                        addr,
-                        cert_hash: pipe.user_data.config.storage("server-cert"),
-                        rcon_secret: pipe.user_data.config.storage("rcon-secret"),
-                        can_start_internal_server: pipe
-                            .user_data
-                            .config
-                            .storage("server-is-internal"),
-                        can_connect_internal_server: pipe
-                            .user_data
-                            .config
-                            .storage("server-is-internal"),
-                    });
-                }
+            let is_legacy_server: bool = pipe.user_data.config.storage("server-is-legacy");
+            if is_legacy_server {
+                pipe.user_data.events.push(UiEvent::ConnectLegacy {
+                    addr,
+                    can_show_warning: true,
+                });
+            } else {
+                pipe.user_data.events.push(UiEvent::Connect {
+                    addr,
+                    cert_hash: pipe.user_data.config.storage("server-cert"),
+                    rcon_secret: pipe.user_data.config.storage("rcon-secret"),
+                    can_start_internal_server: pipe.user_data.config.storage("server-is-internal"),
+                    can_connect_internal_server: pipe
+                        .user_data
+                        .config
+                        .storage("server-is-internal"),
+                });
             }
         }
     });

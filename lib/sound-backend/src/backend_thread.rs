@@ -1,6 +1,6 @@
 use std::sync::{
-    mpsc::{Receiver, Sender},
     Arc,
+    mpsc::{Receiver, Sender},
 };
 
 use anyhow::anyhow;

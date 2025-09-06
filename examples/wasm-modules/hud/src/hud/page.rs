@@ -9,8 +9,8 @@ use game_interface::types::{
     render::{
         character::{CharacterInfo, TeeEye},
         game::{
-            game_match::{FlagCarrierCharacter, MatchStandings},
             GameRenderInfo, MatchRoundTimeType,
+            game_match::{FlagCarrierCharacter, MatchStandings},
         },
     },
 };

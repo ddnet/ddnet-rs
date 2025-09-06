@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 

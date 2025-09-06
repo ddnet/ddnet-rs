@@ -41,7 +41,7 @@ pub mod reusable {
 pub use api::{DB, IO_RUNTIME};
 pub use api_state::*;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn mod_state_new(
     map: Vec<u8>,
     map_name: NetworkReducedAsciiString<MAX_MAP_NAME_LEN>,

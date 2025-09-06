@@ -16,7 +16,7 @@ use anyhow::anyhow;
 use assets_base::verify::ogg_vorbis::verify_ogg_vorbis;
 use base::{
     benchmark::Benchmark,
-    hash::{fmt_hash, Hash},
+    hash::{Hash, fmt_hash},
     join_all,
 };
 use base_io::{io::Io, path_to_url::relative_path_to_url, runtime::IoRuntimeTask};
@@ -34,7 +34,7 @@ use graphics::{
 };
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
 use image_utils::{
-    png::{is_png_image_valid, load_png_image_as_rgba, resize_rgba, PngValidatorOptions},
+    png::{PngValidatorOptions, is_png_image_valid, load_png_image_as_rgba, resize_rgba},
     utils::{highest_bit, texture_2d_to_3d},
 };
 use map::{file::MapFileReader, map::Map};
@@ -526,7 +526,7 @@ impl RenderMapLoading {
                     "Unsupported resource type {} \
                 could not be validated",
                     file_ty
-                ))
+                ));
             }
         }
         Ok(())

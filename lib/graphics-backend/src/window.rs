@@ -4,8 +4,8 @@ use ash::{prelude::VkResult, vk};
 use either::Either;
 use hiarc::Hiarc;
 use native::native::{
-    app::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH},
     NativeDisplayBackend, PhysicalSize,
+    app::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH},
 };
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, WindowHandle};
 
@@ -251,35 +251,37 @@ impl BackendSurfaceAndHandles<'_> {
         instance: &ash::Instance,
         mem_allocator: &Arc<parking_lot::Mutex<VulkanAllocator>>,
     ) -> anyhow::Result<BackendSurface> {
-        match self {
-            Self::Winit {
-                mut surface,
-                display_handle,
-                window_handle,
-            } => {
-                let surf = ash_window::create_surface(
-                    entry,
-                    instance,
-                    display_handle.as_raw(),
-                    window_handle.as_raw(),
-                    None,
-                )?;
-                surface = SurfaceKHR::from_existing(surface.ash_surface.clone(), surf);
-                Ok(BackendSurface::Winit { surface })
-            }
-            Self::Headless {
-                mut surface,
-                width,
-                height,
-                should_render,
-            } => {
-                surface.create_surface_images_headless(mem_allocator, width, height);
-                Ok(BackendSurface::Headless {
+        unsafe {
+            match self {
+                Self::Winit {
+                    mut surface,
+                    display_handle,
+                    window_handle,
+                } => {
+                    let surf = ash_window::create_surface(
+                        entry,
+                        instance,
+                        display_handle.as_raw(),
+                        window_handle.as_raw(),
+                        None,
+                    )?;
+                    surface = SurfaceKHR::from_existing(surface.ash_surface.clone(), surf);
+                    Ok(BackendSurface::Winit { surface })
+                }
+                Self::Headless {
+                    mut surface,
                     width,
                     height,
-                    surface,
                     should_render,
-                })
+                } => {
+                    surface.create_surface_images_headless(mem_allocator, width, height);
+                    Ok(BackendSurface::Headless {
+                        width,
+                        height,
+                        surface,
+                        should_render,
+                    })
+                }
             }
         }
     }
@@ -338,15 +340,17 @@ impl BackendSurface {
         physical_device: vk::PhysicalDevice,
         queue_family_index: u32,
     ) -> VkResult<bool> {
-        match self {
-            BackendSurface::Winit { surface } => {
-                surface.ash_surface.get_physical_device_surface_support(
-                    physical_device,
-                    queue_family_index,
-                    surface.surface,
-                )
+        unsafe {
+            match self {
+                BackendSurface::Winit { surface } => {
+                    surface.ash_surface.get_physical_device_surface_support(
+                        physical_device,
+                        queue_family_index,
+                        surface.surface,
+                    )
+                }
+                BackendSurface::Headless { .. } => Ok(true),
             }
-            BackendSurface::Headless { .. } => Ok(true),
         }
     }
 
@@ -354,14 +358,16 @@ impl BackendSurface {
         &self,
         physical_device: vk::PhysicalDevice,
     ) -> VkResult<Vec<vk::SurfaceFormatKHR>> {
-        match self {
-            BackendSurface::Winit { surface } => surface
-                .ash_surface
-                .get_physical_device_surface_formats(physical_device, surface.surface),
-            BackendSurface::Headless { .. } => Ok(vec![vk::SurfaceFormatKHR {
-                format: vk::Format::B8G8R8A8_UNORM,
-                color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
-            }]),
+        unsafe {
+            match self {
+                BackendSurface::Winit { surface } => surface
+                    .ash_surface
+                    .get_physical_device_surface_formats(physical_device, surface.surface),
+                BackendSurface::Headless { .. } => Ok(vec![vk::SurfaceFormatKHR {
+                    format: vk::Format::B8G8R8A8_UNORM,
+                    color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
+                }]),
+            }
         }
     }
 
@@ -369,11 +375,13 @@ impl BackendSurface {
         &self,
         physical_device: vk::PhysicalDevice,
     ) -> VkResult<Vec<vk::PresentModeKHR>> {
-        match self {
-            BackendSurface::Winit { surface } => surface
-                .ash_surface
-                .get_physical_device_surface_present_modes(physical_device, surface.surface),
-            BackendSurface::Headless { .. } => Ok(vec![vk::PresentModeKHR::IMMEDIATE]),
+        unsafe {
+            match self {
+                BackendSurface::Winit { surface } => surface
+                    .ash_surface
+                    .get_physical_device_surface_present_modes(physical_device, surface.surface),
+                BackendSurface::Headless { .. } => Ok(vec![vk::PresentModeKHR::IMMEDIATE]),
+            }
         }
     }
 
@@ -381,27 +389,29 @@ impl BackendSurface {
         &self,
         physical_device: vk::PhysicalDevice,
     ) -> VkResult<vk::SurfaceCapabilitiesKHR> {
-        match self {
-            BackendSurface::Winit { surface } => surface
-                .ash_surface
-                .get_physical_device_surface_capabilities(physical_device, surface.surface),
-            BackendSurface::Headless { width, height, .. } => {
-                let ext = vk::Extent2D {
-                    width: *width,
-                    height: *height,
-                };
-                // use build here, but make sure the lifetime is 'static
-                Ok(vk::SurfaceCapabilitiesKHR::default()
-                    .min_image_count(2)
-                    .max_image_count(2)
-                    .current_extent(ext)
-                    .max_image_extent(ext)
-                    .min_image_extent(ext)
-                    .supported_usage_flags(
-                        vk::ImageUsageFlags::COLOR_ATTACHMENT
-                            | vk::ImageUsageFlags::TRANSFER_SRC
-                            | vk::ImageUsageFlags::TRANSFER_DST,
-                    ))
+        unsafe {
+            match self {
+                BackendSurface::Winit { surface } => surface
+                    .ash_surface
+                    .get_physical_device_surface_capabilities(physical_device, surface.surface),
+                BackendSurface::Headless { width, height, .. } => {
+                    let ext = vk::Extent2D {
+                        width: *width,
+                        height: *height,
+                    };
+                    // use build here, but make sure the lifetime is 'static
+                    Ok(vk::SurfaceCapabilitiesKHR::default()
+                        .min_image_count(2)
+                        .max_image_count(2)
+                        .current_extent(ext)
+                        .max_image_extent(ext)
+                        .min_image_extent(ext)
+                        .supported_usage_flags(
+                            vk::ImageUsageFlags::COLOR_ATTACHMENT
+                                | vk::ImageUsageFlags::TRANSFER_SRC
+                                | vk::ImageUsageFlags::TRANSFER_DST,
+                        ))
+                }
             }
         }
     }
@@ -452,14 +462,16 @@ impl BackendSwapchain {
         queue: vk::Queue,
         present_info: vk::PresentInfoKHR,
     ) -> VkResult<bool> {
-        match self {
-            BackendSwapchain::Winit { swapchain, .. } => {
-                let swap_chains = [swapchain.swapchain];
-                swapchain
-                    .ash_swapchain
-                    .queue_present(queue, &present_info.swapchains(&swap_chains))
+        unsafe {
+            match self {
+                BackendSwapchain::Winit { swapchain, .. } => {
+                    let swap_chains = [swapchain.swapchain];
+                    swapchain
+                        .ash_swapchain
+                        .queue_present(queue, &present_info.swapchains(&swap_chains))
+                }
+                BackendSwapchain::Headless { .. } => Ok(false),
             }
-            BackendSwapchain::Headless { .. } => Ok(false),
         }
     }
 
@@ -469,36 +481,38 @@ impl BackendSwapchain {
         semaphore: vk::Semaphore,
         fence: vk::Fence,
     ) -> VkResult<(u32, bool)> {
-        match self {
-            BackendSwapchain::Winit { swapchain, .. } => swapchain
-                .ash_swapchain
-                .acquire_next_image(swapchain.swapchain, timeout, semaphore, fence),
-            BackendSwapchain::Headless {
-                device,
-                queue,
-                can_render,
-                ..
-            } => {
-                // TODO: remove this wait idle call. better do it over semaphores
-                let queue_guard = queue.queues.lock();
-                device.device.device_wait_idle().unwrap();
-                drop(queue_guard);
-                if *can_render {
-                    if semaphore != vk::Semaphore::null() {
-                        let counter = device
-                            .device
-                            .get_semaphore_counter_value(semaphore)
-                            .unwrap();
-                        let signal_info = vk::SemaphoreSignalInfo::default()
-                            .semaphore(semaphore)
-                            .value(counter + 1);
-                        device.device.signal_semaphore(&signal_info).unwrap();
+        unsafe {
+            match self {
+                BackendSwapchain::Winit { swapchain, .. } => swapchain
+                    .ash_swapchain
+                    .acquire_next_image(swapchain.swapchain, timeout, semaphore, fence),
+                BackendSwapchain::Headless {
+                    device,
+                    queue,
+                    can_render,
+                    ..
+                } => {
+                    // TODO: remove this wait idle call. better do it over semaphores
+                    let queue_guard = queue.queues.lock();
+                    device.device.device_wait_idle().unwrap();
+                    drop(queue_guard);
+                    if *can_render {
+                        if semaphore != vk::Semaphore::null() {
+                            let counter = device
+                                .device
+                                .get_semaphore_counter_value(semaphore)
+                                .unwrap();
+                            let signal_info = vk::SemaphoreSignalInfo::default()
+                                .semaphore(semaphore)
+                                .value(counter + 1);
+                            device.device.signal_semaphore(&signal_info).unwrap();
+                        }
+                        if fence != vk::Fence::null() {
+                            device.device.reset_fences(&[fence]).unwrap();
+                        }
                     }
-                    if fence != vk::Fence::null() {
-                        device.device.reset_fences(&[fence]).unwrap();
-                    }
+                    Ok((0, false))
                 }
-                Ok((0, false))
             }
         }
     }
@@ -607,10 +621,10 @@ impl BackendSwapchain {
                         };
 
                         // check if old swapchain should be reused
-                        if let Either::Left(old_swapchain) = &old_swapchain {
-                            if old_swapchain.surface == new_surface {
-                                swap_info.old_swapchain = old_swapchain.swapchain;
-                            }
+                        if let Either::Left(old_swapchain) = &old_swapchain
+                            && old_swapchain.surface == new_surface
+                        {
+                            swap_info.old_swapchain = old_swapchain.swapchain;
                         }
 
                         match SwapchainKHR::new_with_alloc(ash_swapchain, swap_info, new_surface) {
@@ -646,11 +660,13 @@ impl BackendSwapchain {
     }
 
     pub unsafe fn get_swapchain_images(&self) -> VkResult<Vec<vk::Image>> {
-        match self {
-            BackendSwapchain::Winit { swapchain, .. } => swapchain
-                .ash_swapchain
-                .get_swapchain_images(swapchain.swapchain),
-            BackendSwapchain::Headless { images, .. } => Ok(images.clone()),
+        unsafe {
+            match self {
+                BackendSwapchain::Winit { swapchain, .. } => swapchain
+                    .ash_swapchain
+                    .get_swapchain_images(swapchain.swapchain),
+                BackendSwapchain::Headless { images, .. } => Ok(images.clone()),
+            }
         }
     }
 

@@ -44,14 +44,12 @@ mod test {
         }
 
         let comp = ZstdNetworkPacketCompressor::new();
-        let gen = NetworkConnectionIdCounter::default();
+        let g = NetworkConnectionIdCounter::default();
 
         // this should be smaller than the number of inputs saved on the server
         let as_diff = true;
 
-        comp.prepare_write(&gen.get_next(0), &mut data)
-            .await
-            .unwrap();
+        comp.prepare_write(&g.get_next(0), &mut data).await.unwrap();
         dbg!(data.len());
 
         let mut msg = bincode::serde::encode_to_vec(
@@ -64,9 +62,7 @@ mod test {
         )
         .unwrap();
 
-        comp.prepare_write(&gen.get_next(0), &mut msg)
-            .await
-            .unwrap();
+        comp.prepare_write(&g.get_next(0), &mut msg).await.unwrap();
 
         dbg!(msg.len());
     }

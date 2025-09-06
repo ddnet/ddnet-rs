@@ -49,9 +49,9 @@ fn compile_test_unsafe_rc() {
 /// in contrast to `compile_test_unsafe_rc` this enforces safety of the borrow
 #[test]
 fn compile_test_safe_rc() {
+    use hiarc::Hiarc;
     use hiarc::hiarc;
     use hiarc::hiarc_safer_rc_refcell;
-    use hiarc::Hiarc;
 
     #[hiarc_safer_rc_refcell]
     #[derive(Debug, Hiarc, Default)]

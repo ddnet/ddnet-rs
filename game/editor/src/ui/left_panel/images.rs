@@ -1,8 +1,8 @@
 use base::reduced_ascii_str::ReducedAsciiString;
 use base_io::io::Io;
 use map::map::{
-    resources::{MapResourceMetaData, MapResourceRef},
     Map,
+    resources::{MapResourceMetaData, MapResourceRef},
 };
 
 use crate::{
@@ -59,24 +59,24 @@ pub fn render(
             let mut change_layers = |groups: &Vec<EditorGroup>, is_background: bool| {
                 for (g, group) in groups.iter().enumerate() {
                     for (l, layer) in group.layers.iter().enumerate() {
-                        if let EditorLayer::Quad(layer) = layer {
-                            if layer.layer.attr.image >= Some(index) {
-                                let mut attr = layer.layer.attr;
-                                attr.image = if layer.layer.attr.image == Some(index) {
-                                    None
-                                } else {
-                                    layer.layer.attr.image.map(|index| index - 1)
-                                };
-                                actions.push(EditorAction::ChangeQuadLayerAttr(
-                                    ActChangeQuadLayerAttr {
-                                        is_background,
-                                        group_index: g,
-                                        layer_index: l,
-                                        old_attr: layer.layer.attr,
-                                        new_attr: attr,
-                                    },
-                                ));
-                            }
+                        if let EditorLayer::Quad(layer) = layer
+                            && layer.layer.attr.image >= Some(index)
+                        {
+                            let mut attr = layer.layer.attr;
+                            attr.image = if layer.layer.attr.image == Some(index) {
+                                None
+                            } else {
+                                layer.layer.attr.image.map(|index| index - 1)
+                            };
+                            actions.push(EditorAction::ChangeQuadLayerAttr(
+                                ActChangeQuadLayerAttr {
+                                    is_background,
+                                    group_index: g,
+                                    layer_index: l,
+                                    old_attr: layer.layer.attr,
+                                    new_attr: attr,
+                                },
+                            ));
                         }
                     }
                 }

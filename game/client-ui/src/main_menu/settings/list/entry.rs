@@ -19,7 +19,7 @@ pub fn render(
     let entry_size = entry_visual_size + 25.0;
     let (rect, sense) = ui.allocate_exact_size(egui::vec2(entry_size, entry_size), Sense::click());
 
-    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+    ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
         ui.with_layout(
             Layout::top_down(egui::Align::Center)
                 .with_main_justify(true)

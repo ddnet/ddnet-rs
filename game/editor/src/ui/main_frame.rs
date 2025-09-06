@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, FontId, Modal, ModifierNames, Window};
+use egui::{Align2, Color32, FontId, Modal, ModifierNames, Popup, Window};
 use map::utils::file_ext_or_twmap_tar;
 use ui_base::types::{UiRenderPipe, UiState};
 
@@ -112,7 +112,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
 
     super::close_modal::render(ui, pipe);
 
-    *pipe.user_data.pointer_is_used |= ui.memory(|i| i.any_popup_open());
+    *pipe.user_data.pointer_is_used |= Popup::is_any_open(ui.ctx());
 
     *pipe.user_data.unused_rect = Some(ui.available_rect_before_wrap());
     if *pipe.user_data.pointer_is_used {

@@ -1,4 +1,4 @@
-use egui::{epaint::RectShape, Shape};
+use egui::{Shape, epaint::RectShape};
 use egui_extras::{Column, TableBuilder};
 use game_base::browser_favorite_player::FavoritePlayers;
 use ui_base::{

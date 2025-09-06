@@ -1,4 +1,4 @@
-use egui::{epaint::RectShape, Rect, Shape};
+use egui::{Rect, Shape, epaint::RectShape};
 use egui_extras::{Column, TableBuilder};
 use game_base::server_browser::ServerBrowserServer;
 use ui_base::{

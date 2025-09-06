@@ -1,6 +1,6 @@
 use hiarc::Hiarc;
 use math::math::vector::{dvec2, ffixed};
-use serde::{de, ser, Serialize};
+use serde::{Serialize, de, ser};
 
 /// the character cursor has few guarantees:
 /// - x and y are never both 0 at the same time

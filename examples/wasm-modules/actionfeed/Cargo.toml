@@ -1,24 +1,25 @@
 [package]
 name = "actionfeed"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
-math = { path = "../../../lib/math" }
 api = { path = "../../../lib/api" }
 api-ui = { path = "../../../lib/api-ui" }
 graphics = { path = "../../../lib/graphics" }
+math = { path = "../../../lib/math" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
 
 api-ui-game = { path = "../../../game/api-ui-game" }
-client-ui = { path = "../../../game/client-ui" }
+client-containers = { path = "../../../game/client-containers" }
 client-render-base = { path = "../../../game/client-render-base" }
 client-types = { path = "../../../game/client-types" }
-client-containers = { path = "../../../game/client-containers" }
+client-ui = { path = "../../../game/client-ui" }
 game-interface = { path = "../../../game/game-interface" }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-num-traits = "0.2.19"
 
-[lib]
-crate-type = ["cdylib"]
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+num-traits = "0.2.19"

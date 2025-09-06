@@ -6,27 +6,27 @@ use std::{
 
 use anyhow::anyhow;
 use config::config::ConfigSoundLimits;
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use kira::{
+    ResourceLimitReached,
     clock::{ClockHandle, ClockSpeed, ClockTime},
     effect::Effect,
     manager::{
+        AudioManager, AudioManagerSettings, Capacities,
         backend::{
-            mock::{MockBackend, MockBackendSettings},
             DefaultBackend,
+            mock::{MockBackend, MockBackendSettings},
         },
         error::PlaySoundError,
-        AudioManager, AudioManagerSettings, Capacities,
     },
     sound::{
+        SoundData,
         static_sound::{StaticSoundData, StaticSoundHandle},
         streaming::{StreamingSoundData, StreamingSoundHandle},
-        SoundData,
     },
     spatial::scene::{SpatialSceneHandle, SpatialSceneSettings},
     track::{TrackBuilder, TrackHandle, TrackId},
     tween::Value,
-    ResourceLimitReached,
 };
 use sound::frame_fetcher_plugin::{BackendAudioFrame, BackendFrameFetcher, FetchSoundManagerIndex};
 

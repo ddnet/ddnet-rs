@@ -1,12 +1,12 @@
 use base_io::{io::Io, runtime::IoRuntimeTask};
-use libtw2_net::{net::Callback, Timestamp};
+use libtw2_net::{Timestamp, net::Callback};
 use rand::RngCore as _;
 use std::{error, fmt, future, io, net::SocketAddr, sync::Arc, time::Instant};
 use tokio::{
     net::UdpSocket,
     sync::{
-        mpsc::{channel, error::TryRecvError, Receiver, Sender},
         Mutex,
+        mpsc::{Receiver, Sender, channel, error::TryRecvError},
     },
 };
 

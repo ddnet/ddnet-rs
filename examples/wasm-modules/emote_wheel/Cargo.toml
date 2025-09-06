@@ -1,7 +1,10 @@
 [package]
 name = "emote_wheel"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
 api = { path = "../../../lib/api" }
@@ -9,11 +12,10 @@ api-ui = { path = "../../../lib/api-ui" }
 graphics = { path = "../../../lib/graphics" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
-api-ui-game = { path = "../../../game/api-ui-game" }
-client-ui = { path = "../../../game/client-ui" }
-client-render-base = { path = "../../../game/client-render-base" }
-client-containers = { path = "../../../game/client-containers" }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 
-[lib]
-crate-type = ["cdylib"]
+api-ui-game = { path = "../../../game/api-ui-game" }
+client-containers = { path = "../../../game/client-containers" }
+client-render-base = { path = "../../../game/client-render-base" }
+client-ui = { path = "../../../game/client-ui" }
+
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }

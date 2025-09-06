@@ -227,8 +227,14 @@ impl BackendRenderExecuteInterface for RenderCommandExecuteManager<'_> {
     }
 
     fn exec_buffer_fill_dynamic_states(&mut self, state: &State) {
-        let dynamic_state_index: usize = self.get_dynamic_mode_index_from_state(state);
-        if dynamic_state_index == CanvasClipModes::DynamicScissorAndViewport as usize {
+        #[cfg(not(target_os = "macos"))]
+        let has_dynamic_state = self.get_dynamic_mode_index_from_state(state)
+            == CanvasClipModes::DynamicScissorAndViewport as usize;
+        // bug in molten-vk: https://github.com/KhronosGroup/MoltenVK/issues/2304
+        #[cfg(target_os = "macos")]
+        let has_dynamic_state = true;
+
+        if has_dynamic_state {
             let mut viewport = vk::Viewport::default();
             if self.backend.has_dynamic_viewport {
                 viewport.x = self.backend.dynamic_viewport_offset.x as f32;

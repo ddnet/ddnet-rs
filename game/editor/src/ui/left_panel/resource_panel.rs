@@ -2,7 +2,7 @@ use std::path::Path;
 
 use base::hash::generate_hash_for;
 use base_io::io::Io;
-use egui::{vec2, Button, Layout, ScrollArea};
+use egui::{Button, Layout, ScrollArea, vec2};
 use egui_file_dialog::{DialogMode, DialogState};
 use map::skeleton::resources::MapResourceRefSkeleton;
 

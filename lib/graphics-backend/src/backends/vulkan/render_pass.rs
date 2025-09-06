@@ -1,6 +1,6 @@
 use std::ops::Deref;
-use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use anyhow::anyhow;
 use arc_swap::{ArcSwap, Guard};
@@ -263,18 +263,18 @@ impl RenderPass {
 
     pub fn try_finish_compile(&self, frame_resources: &mut FrameResources) -> anyhow::Result<()> {
         let task_guard = self.subpasses_to_compile.read();
-        if let Some(task) = task_guard.as_ref() {
-            if task.is_finished() {
-                drop(task_guard);
-                let old_subpasses = self.subpasses.swap(Arc::new(
-                    self.subpasses_to_compile
-                        .write()
-                        .take()
-                        .unwrap()
-                        .drop_in_place()?,
-                ));
-                frame_resources.sub_render_passes.push(old_subpasses);
-            }
+        if let Some(task) = task_guard.as_ref()
+            && task.is_finished()
+        {
+            drop(task_guard);
+            let old_subpasses = self.subpasses.swap(Arc::new(
+                self.subpasses_to_compile
+                    .write()
+                    .take()
+                    .unwrap()
+                    .drop_in_place()?,
+            ));
+            frame_resources.sub_render_passes.push(old_subpasses);
         }
 
         Ok(())

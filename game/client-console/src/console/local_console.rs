@@ -8,16 +8,16 @@ use std::{
 
 use anyhow::anyhow;
 use binds::binds::{
-    bind_to_str, gen_local_player_action_hash_map, gen_local_player_action_hash_map_rev,
-    syn_to_bind, syn_to_bind_keys, BindActionsLocalPlayer, BindKey,
+    BindActionsLocalPlayer, BindKey, bind_to_str, gen_local_player_action_hash_map,
+    gen_local_player_action_hash_map_rev, syn_to_bind, syn_to_bind_keys,
 };
 use client_types::{
     cert::ServerCertMode,
-    console::{entries_to_parser, ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable},
+    console::{ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable, entries_to_parser},
 };
 use client_ui::console::utils::{syn_vec_to_config_val, try_apply_config_val};
 use command_parser::parser::{
-    self, format_args, CommandArg, CommandArgType, CommandType, ParserCache, Syn,
+    self, CommandArg, CommandArgType, CommandType, ParserCache, Syn, format_args,
 };
 use config::{
     config::ConfigEngine,
@@ -26,7 +26,7 @@ use config::{
 };
 use egui::Color32;
 use game_config::config::ConfigGame;
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use ui_base::ui::UiCreator;
 
 use super::console::ConsoleRender;

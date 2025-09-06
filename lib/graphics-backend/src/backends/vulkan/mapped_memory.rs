@@ -74,13 +74,15 @@ impl MappedMemoryOffset {
     }
 
     pub unsafe fn get_mem_typed<T>(&self, required_instance_count: usize) -> &'static mut [T] {
-        std::slice::from_raw_parts_mut::<T>(
-            self.mem.get_mem().offset(self.offset) as *mut _,
-            required_instance_count,
-        )
+        unsafe {
+            std::slice::from_raw_parts_mut::<T>(
+                self.mem.get_mem().offset(self.offset) as *mut _,
+                required_instance_count,
+            )
+        }
     }
 
     pub unsafe fn get_mem(&self, required_size: usize) -> &'static mut [u8] {
-        self.get_mem_typed(required_size)
+        unsafe { self.get_mem_typed(required_size) }
     }
 }

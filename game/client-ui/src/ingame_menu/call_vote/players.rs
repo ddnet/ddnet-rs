@@ -1,6 +1,6 @@
 use egui::{Frame, Sense, Shadow};
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
-use game_interface::votes::{PlayerVoteKey, MAX_VOTE_REASON_LEN};
+use game_interface::votes::{MAX_VOTE_REASON_LEN, PlayerVoteKey};
 use ui_base::{
     components::clearable_edit_field::clearable_edit_field,
     style::bg_frame_color,
@@ -98,25 +98,25 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                                 );
                                 let reason = reason.to_string();
 
-                                if ui.button("Kick").clicked() {
-                                    if let Some((id, _)) = server_players.get(index) {
-                                        pipe.user_data.browser_menu.events.push(
-                                            UiEvent::VoteKickPlayer(PlayerVoteKey {
-                                                voted_player_id: *id,
-                                                reason: reason.as_str().try_into().unwrap(),
-                                            }),
-                                        );
-                                    }
+                                if ui.button("Kick").clicked()
+                                    && let Some((id, _)) = server_players.get(index)
+                                {
+                                    pipe.user_data.browser_menu.events.push(
+                                        UiEvent::VoteKickPlayer(PlayerVoteKey {
+                                            voted_player_id: *id,
+                                            reason: reason.as_str().try_into().unwrap(),
+                                        }),
+                                    );
                                 }
-                                if ui.button("Move to spec").clicked() {
-                                    if let Some((id, _)) = server_players.get(index) {
-                                        pipe.user_data.browser_menu.events.push(
-                                            UiEvent::VoteSpecPlayer(PlayerVoteKey {
-                                                voted_player_id: *id,
-                                                reason: reason.try_into().unwrap(),
-                                            }),
-                                        );
-                                    }
+                                if ui.button("Move to spec").clicked()
+                                    && let Some((id, _)) = server_players.get(index)
+                                {
+                                    pipe.user_data.browser_menu.events.push(
+                                        UiEvent::VoteSpecPlayer(PlayerVoteKey {
+                                            voted_player_id: *id,
+                                            reason: reason.try_into().unwrap(),
+                                        }),
+                                    );
                                 }
                             });
                         });

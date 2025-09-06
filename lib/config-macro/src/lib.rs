@@ -2,8 +2,8 @@ use std::str::FromStr;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse_macro_input, parse_quote, Item, Type};
+use quote::{ToTokens, format_ident, quote};
+use syn::{Item, Type, parse_macro_input, parse_quote};
 
 fn create_config_attr(
     ident: &str,

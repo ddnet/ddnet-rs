@@ -7,18 +7,18 @@ use url::Url;
 
 use crate::{
     container::ContainerLoadOptions,
-    ctf::{CtfContainer, CTF_CONTAINER_PATH},
-    emoticons::{EmoticonsContainer, EMOTICONS_CONTAINER_PATH},
-    entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH},
-    flags::{FlagsContainer, FLAGS_CONTAINER_PATH},
-    freezes::{FreezeContainer, FREEZE_CONTAINER_PATH},
-    game::{GameContainer, GAME_CONTAINER_PATH},
-    hooks::{HookContainer, HOOK_CONTAINER_PATH},
-    hud::{HudContainer, HUD_CONTAINER_PATH},
-    ninja::{NinjaContainer, NINJA_CONTAINER_PATH},
-    particles::{ParticlesContainer, PARTICLES_CONTAINER_PATH},
-    skins::{SkinContainer, SKIN_CONTAINER_PATH},
-    weapons::{WeaponContainer, WEAPON_CONTAINER_PATH},
+    ctf::{CTF_CONTAINER_PATH, CtfContainer},
+    emoticons::{EMOTICONS_CONTAINER_PATH, EmoticonsContainer},
+    entities::{ENTITIES_CONTAINER_PATH, EntitiesContainer},
+    flags::{FLAGS_CONTAINER_PATH, FlagsContainer},
+    freezes::{FREEZE_CONTAINER_PATH, FreezeContainer},
+    game::{GAME_CONTAINER_PATH, GameContainer},
+    hooks::{HOOK_CONTAINER_PATH, HookContainer},
+    hud::{HUD_CONTAINER_PATH, HudContainer},
+    ninja::{NINJA_CONTAINER_PATH, NinjaContainer},
+    particles::{PARTICLES_CONTAINER_PATH, ParticlesContainer},
+    skins::{SKIN_CONTAINER_PATH, SkinContainer},
+    weapons::{WEAPON_CONTAINER_PATH, WeaponContainer},
 };
 
 #[derive(Debug)]

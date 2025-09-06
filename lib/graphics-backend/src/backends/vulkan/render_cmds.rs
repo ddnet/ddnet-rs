@@ -8,8 +8,8 @@ use graphics_types::{
     commands::{
         CommandClear, CommandRender, CommandRenderQuadContainer,
         CommandRenderQuadContainerAsSpriteMultiple, CommandsRender, CommandsRenderMod,
-        CommandsRenderQuadContainer, CommandsRenderStream, PrimType, RenderSpriteInfo,
-        GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        CommandsRenderQuadContainer, CommandsRenderStream, GRAPHICS_DEFAULT_UNIFORM_SIZE,
+        GRAPHICS_MAX_UNIFORM_RENDER_COUNT, PrimType, RenderSpriteInfo,
     },
     rendering::{ColorRgba, State, StateTexture, WrapType},
 };

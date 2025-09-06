@@ -4,7 +4,7 @@ use base::network_string::NetworkReducedAsciiString;
 use game_interface::votes::{
     MapCategoryVoteKey, MiscVoteCategoryKey, PlayerVoteKey, RandomUnfinishedMapKey,
 };
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use math::math::vector::ubvec4;
 
 #[derive(Debug, Hiarc)]

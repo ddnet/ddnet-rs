@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use assets_base::tar::{tar_entry_to_file, tar_file_entries, tar_reader, TarEntries};
+use assets_base::tar::{TarEntries, tar_entry_to_file, tar_file_entries, tar_reader};
 
 /// The map file reader wraps around file in memory.
 pub struct MapFileReader {

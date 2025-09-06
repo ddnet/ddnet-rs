@@ -90,7 +90,7 @@ pub fn test_scoreboard(
         },
     };
 
-    let gen = IdGenerator::new();
+    let g = IdGenerator::new();
     let gen_players_or_stages =
         |i: usize,
          players: Option<&mut PoolVec<ScoreboardCharacterInfo>>,
@@ -109,7 +109,7 @@ pub fn test_scoreboard(
 
                 if let Some(stages) = (i % 3 == 0).then_some(stages.as_deref_mut()).flatten() {
                     stages.insert(
-                        gen.next_id(),
+                        g.next_id(),
                         ScoreboardStageInfo {
                             characters: std::mem::replace(players, PoolVec::new_without_pool()),
                             max_size: 0,

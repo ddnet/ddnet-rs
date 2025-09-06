@@ -7,7 +7,7 @@ use std::{
 };
 
 use base::{
-    hash::{fmt_hash, Hash},
+    hash::{Hash, fmt_hash},
     reduced_ascii_str::ReducedAsciiString,
     system::System,
 };
@@ -207,10 +207,9 @@ impl GhostViewer {
                             if let Some(stage) = char_info
                                 .stage_id
                                 .and_then(|stage_id| render_input.stages.get_mut(&stage_id))
+                                && let Some(render_char) = stage.world.characters.remove(&real_id)
                             {
-                                if let Some(render_char) = stage.world.characters.remove(&real_id) {
-                                    render_stage.world.characters.insert(id.into(), render_char);
-                                }
+                                render_stage.world.characters.insert(id.into(), render_char);
                             }
                             input.character_infos.insert(id.into(), char_info);
                         }

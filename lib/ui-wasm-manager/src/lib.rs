@@ -11,7 +11,7 @@ use config::config::ConfigPath;
 use graphics::graphics::graphics::Graphics;
 use graphics_backend::backend::GraphicsBackend;
 
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use serde::Serialize;
 use sound::sound::SoundManager;
 use ui_base::{
@@ -383,10 +383,10 @@ where
         }
 
         // check if the current path unmounted
-        if self.last_path != path {
-            if let Some(cb) = self.ui_paths.get_mut(&self.last_path) {
-                Self::unmount_path(cb);
-            }
+        if self.last_path != path
+            && let Some(cb) = self.ui_paths.get_mut(&self.last_path)
+        {
+            Self::unmount_path(cb);
         }
 
         let (success, platform_output) =

@@ -1,6 +1,6 @@
 //! copied and modified from egui/src/containers/frame.rs
 
-use egui::{layers::ShapeIdx, Frame, Rect, Response, Sense, Shape, Ui, UiBuilder};
+use egui::{Frame, Rect, Response, Sense, Shape, Ui, UiBuilder, layers::ShapeIdx};
 
 pub struct Prepared {
     /// The frame that was prepared.

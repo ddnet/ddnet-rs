@@ -6,7 +6,7 @@ use game_config::config::Config;
 use ui_base::style::bg_frame_color;
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_base::{
-    components::menu_top_button::{menu_top_button_icon, MenuTopButtonProps},
+    components::menu_top_button::{MenuTopButtonProps, menu_top_button_icon},
     style::topbar_buttons,
     utils::add_horizontal_margins,
 };

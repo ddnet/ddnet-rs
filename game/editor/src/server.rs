@@ -1,12 +1,12 @@
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 
 use anyhow::anyhow;
 use base::{
-    hash::{generate_hash_for, Hash},
+    hash::{Hash, generate_hash_for},
     system::{System, SystemTimeInterface},
 };
 use base_io::io::Io;
@@ -28,7 +28,7 @@ use network::network::{
     event::NetworkEvent,
     types::{NetworkServerCertMode, NetworkServerCertModeResult},
 };
-use rand::{seq::SliceRandom, RngCore};
+use rand::{RngCore, seq::SliceRandom};
 use sound::sound_mt::SoundMultiThreaded;
 
 use crate::{

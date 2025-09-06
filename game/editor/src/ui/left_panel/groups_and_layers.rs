@@ -15,8 +15,9 @@ use crate::{
     ui::utils::{group_name, layer_name, layer_name_phy},
 };
 
-use egui::{collapsing_header::CollapsingState, Button, Color32, Layout};
+use egui::{Button, Color32, Layout, collapsing_header::CollapsingState};
 use egui_extras::{Size, StripBuilder};
+use map::map::groups::MapGroup;
 use map::map::groups::layers::design::{
     MapLayerQuad, MapLayerQuadsAttrs, MapLayerSound, MapLayerSoundAttrs, MapLayerTile,
 };
@@ -25,7 +26,6 @@ use map::map::groups::layers::physics::{
     MapLayerTilePhysicsTune,
 };
 use map::map::groups::layers::tiles::MapTileLayerAttr;
-use map::map::groups::MapGroup;
 use map::types::NonZeroU16MinusOne;
 use math::math::vector::{ivec2, nffixed, nfvec4, vec2};
 use ui_base::types::UiRenderPipe;

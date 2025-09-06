@@ -10,8 +10,8 @@ use hiarc::hi_closure;
 use map::map::animations::AnimPoint;
 
 use math::math::{
-    vector::{ubvec4, vec2},
     PI,
+    vector::{ubvec4, vec2},
 };
 
 use graphics_types::rendering::State;

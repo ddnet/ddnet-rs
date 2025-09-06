@@ -5,8 +5,8 @@ use sound::{
     backend_handle::SoundBackendHandle, commands::SoundCommand, scene_handle::SoundSceneHandle,
     sound::SoundManager,
 };
-use wasm_runtime_types::{read_param, RawBytesEnv};
-use wasmer::{imports, AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store};
+use wasm_runtime_types::{RawBytesEnv, read_param};
+use wasmer::{AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store, imports};
 
 use crate::checker::SoundCheckerApi;
 

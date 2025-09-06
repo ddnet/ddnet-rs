@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 
@@ -353,16 +353,15 @@ impl EditorClient {
                         // ignore
                     }
                     EditorNetEvent::NetworkEvent(ev) => {
-                        if let NetworkEvent::NetworkStats(stats) = &ev {
-                            if self
+                        if let NetworkEvent::NetworkStats(stats) = &ev
+                            && self
                                 .last_keep_alive_id_and_time
                                 .0
                                 .is_none_or(|last_id| stats.last_keep_alive_id != last_id)
-                                && timestamp >= self.last_keep_alive_id_and_time.1
-                            {
-                                self.last_keep_alive_id_and_time =
-                                    (Some(stats.last_keep_alive_id), timestamp);
-                            }
+                            && timestamp >= self.last_keep_alive_id_and_time.1
+                        {
+                            self.last_keep_alive_id_and_time =
+                                (Some(stats.last_keep_alive_id), timestamp);
                         }
 
                         match self.network.handle_network_ev(id, ev) {

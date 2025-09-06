@@ -3,7 +3,7 @@ use std::{path::PathBuf, rc::Rc, sync::Arc};
 use arrayvec::ArrayVec;
 
 use assets_splitting::skin_split::Skin06Part;
-use fixed::{types::extra::U32, FixedI64};
+use fixed::{FixedI64, types::extra::U32};
 use game_interface::types::{emoticons::EnumCount, render::character::TeeEye};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
@@ -22,10 +22,10 @@ use sound::{
 };
 
 use crate::container::{
-    load_sound_file_part_list_and_upload, ContainerLoadedItem, ContainerLoadedItemDir,
+    ContainerLoadedItem, ContainerLoadedItemDir, load_sound_file_part_list_and_upload,
 };
 
-use super::container::{load_file_part_as_png, Container, ContainerItemLoadData, ContainerLoad};
+use super::container::{Container, ContainerItemLoadData, ContainerLoad, load_file_part_as_png};
 
 #[derive(Debug, Hiarc, Clone)]
 pub struct SkinMetricVariable {

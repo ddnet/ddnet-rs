@@ -15,20 +15,20 @@ use game_interface::account_info::MAX_ACCOUNT_NAME_LEN;
 use game_interface::interface::MAX_MAP_NAME_LEN;
 use game_interface::interface::MAX_PHYSICS_GAME_TYPE_NAME_LEN;
 use game_interface::interface::MAX_VERSION_LEN;
-use game_interface::types::character_info::NetworkSkinInfo;
 use game_interface::types::character_info::MAX_ASSET_NAME_LEN;
 use game_interface::types::character_info::MAX_CHARACTER_CLAN_LEN;
 use game_interface::types::character_info::MAX_CHARACTER_NAME_LEN;
 use game_interface::types::character_info::MAX_FLAG_NAME_LEN;
-use game_interface::types::render::character::TeeEye;
+use game_interface::types::character_info::NetworkSkinInfo;
 use game_interface::types::render::character::MAX_SCORE_STR_LEN;
+use game_interface::types::render::character::TeeEye;
 use game_interface::types::resource_key::NetworkResourceKey;
-use hiarc::hiarc_safer_rc_refcell;
 use hiarc::Hiarc;
+use hiarc::hiarc_safer_rc_refcell;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_with::serde_as;
 use serde_with::DefaultOnError;
+use serde_with::serde_as;
 
 use crate::browser_favorite_player::FavoritePlayers;
 

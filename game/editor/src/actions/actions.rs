@@ -6,6 +6,7 @@ use map::{
         animations::{ColorAnimation, PosAnimation, SoundAnimation},
         command_value::CommandValue,
         groups::{
+            MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
             layers::{
                 design::{
                     MapLayerQuad, MapLayerQuadsAttrs, MapLayerSound, MapLayerSoundAttrs,
@@ -14,7 +15,6 @@ use map::{
                 physics::MapLayerPhysics,
                 tiles::{MapTileLayerAttr, MapTileLayerPhysicsTiles, Tile},
             },
-            MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
         },
         metadata::Metadata,
         resources::MapResourceRef,

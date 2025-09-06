@@ -16,8 +16,8 @@ use graphics_backend_traits::plugin::{
 };
 use graphics_types::{
     commands::{
-        AllCommands, CommandsRender, CommandsRenderMod, SColorf, GRAPHICS_DEFAULT_UNIFORM_SIZE,
-        GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        AllCommands, CommandsRender, CommandsRenderMod, GRAPHICS_DEFAULT_UNIFORM_SIZE,
+        GRAPHICS_MAX_UNIFORM_RENDER_COUNT, SColorf,
     },
     rendering::{ColorRgba, GlColorf, State, StateTexture, StateTexture2dArray},
 };

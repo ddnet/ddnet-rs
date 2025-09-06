@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     client_commands::MAX_TEAM_NAME_LEN,
     types::{
-        character_info::{NetworkSkinInfo, MAX_ASSET_NAME_LEN, MAX_CHARACTER_NAME_LEN},
+        character_info::{MAX_ASSET_NAME_LEN, MAX_CHARACTER_NAME_LEN, NetworkSkinInfo},
         game::GameTickType,
         resource_key::PoolNetworkResourceKey,
     },

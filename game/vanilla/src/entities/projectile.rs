@@ -20,7 +20,7 @@ pub mod projectile {
     use crate::collision::collision::{Collision, CollisionTile, CollisionTypes};
     use crate::entities::character::character::{Character, DamageBy, DamageTypes};
     use crate::entities::entity::entity::{
-        calc_pos_and_vel, DropMode, Entity, EntityInterface, EntityTickResult,
+        DropMode, Entity, EntityInterface, EntityTickResult, calc_pos_and_vel,
     };
     use crate::events::events::ProjectileEvent;
     use crate::simulation_pipe::simulation_pipe::{

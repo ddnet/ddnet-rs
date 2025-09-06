@@ -7,7 +7,7 @@ use crate::types::{MicrophoneDevices, MicrophoneHosts, MicrophoneNoiseFilterSett
 use anyhow::anyhow;
 use base::join_thread::JoinThread;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use crossbeam::channel::{bounded, Sender};
+use crossbeam::channel::{Sender, bounded};
 use df::tract::DfParams;
 use rubato::{Resampler, SincInterpolationParameters, SincInterpolationType, WindowFunction};
 
@@ -283,7 +283,7 @@ impl crate::traits::Microphone for MicrophoneManager {
             sample_format => {
                 return Err(anyhow::Error::msg(format!(
                     "Unsupported sample format '{sample_format}'"
-                )))
+                )));
             }
         };
 

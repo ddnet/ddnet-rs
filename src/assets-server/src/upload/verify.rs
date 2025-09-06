@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use assets_base::{
+    AssetUploadResponse,
     tar::read_tar_files,
     verify::{ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
-    AssetUploadResponse,
 };
-use image_utils::png::{is_png_image_valid, PngValidatorOptions};
+use image_utils::png::{PngValidatorOptions, is_png_image_valid};
 
 #[derive(Debug, Clone)]
 pub enum AllowedResource {

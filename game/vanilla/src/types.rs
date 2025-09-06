@@ -1,7 +1,7 @@
 pub mod types {
     use std::time::Duration;
 
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use serde::{Deserialize, Serialize};
 
     use crate::config::config::{ConfigGameType, ConfigVanilla};

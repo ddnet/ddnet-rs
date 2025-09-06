@@ -4,13 +4,13 @@ use std::{fmt::Debug, sync::Arc};
 
 use hiarc::Hiarc;
 use kira::{
+    OutputDestination,
     sound::streaming::{StreamingSoundData, StreamingSoundHandle, StreamingSoundSettings},
     spatial::{
         emitter::{EmitterDistances, EmitterHandle, EmitterSettings},
         scene::SpatialSceneHandle,
     },
     tween::Easing,
-    OutputDestination,
 };
 use mint::Vector3;
 

@@ -41,8 +41,8 @@ pub fn render(
                     ui.end_row();
                 });
 
-            if ui.button("\u{f2f6} Request code by email").clicked() {
-                if let Some(email) = path.query.get("email").and_then(|email| {
+            if ui.button("\u{f2f6} Request code by email").clicked()
+                && let Some(email) = path.query.get("email").and_then(|email| {
                     email_address::EmailAddress::parse_with_options(
                         email,
                         email_address::Options::default()
@@ -51,34 +51,34 @@ pub fn render(
                             .with_required_tld(),
                     )
                     .ok()
-                }) {
-                    let accounts = accounts.clone();
-                    tasks.state = ProfileState::EmailAccountToken {
-                        op: op.clone(),
-                        task: io
-                            .rt
-                            .spawn(async move {
-                                Ok(accounts
-                                    .account_email_token(
-                                        match op {
-                                            AccountOperation::LogoutAll { .. } => {
-                                                AccountTokenOperation::LogoutAll
-                                            }
-                                            AccountOperation::LinkCredential { .. } => {
-                                                AccountTokenOperation::LinkCredential
-                                            }
-                                            AccountOperation::Delete { .. } => {
-                                                AccountTokenOperation::Delete
-                                            }
-                                        },
-                                        email,
-                                        None,
-                                    )
-                                    .await)
-                            })
-                            .abortable(),
-                    };
-                }
+                })
+            {
+                let accounts = accounts.clone();
+                tasks.state = ProfileState::EmailAccountToken {
+                    op: op.clone(),
+                    task: io
+                        .rt
+                        .spawn(async move {
+                            Ok(accounts
+                                .account_email_token(
+                                    match op {
+                                        AccountOperation::LogoutAll { .. } => {
+                                            AccountTokenOperation::LogoutAll
+                                        }
+                                        AccountOperation::LinkCredential { .. } => {
+                                            AccountTokenOperation::LinkCredential
+                                        }
+                                        AccountOperation::Delete { .. } => {
+                                            AccountTokenOperation::Delete
+                                        }
+                                    },
+                                    email,
+                                    None,
+                                )
+                                .await)
+                        })
+                        .abortable(),
+                };
             }
         });
     }

@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use base::hash::{fmt_hash, generate_hash_for, generate_hash_for_multi, Hash};
+use base::hash::{Hash, fmt_hash, generate_hash_for, generate_hash_for_multi};
 use base_fs::filesys::{FileSystem, ScopedDirFileSystem};
 use base_io::io::Io;
 use base_io_traits::fs_traits::{FileSystemInterface, FileSystemPath};

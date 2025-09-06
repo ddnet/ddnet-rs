@@ -12,7 +12,7 @@ use base_io_traits::fs_traits::{
 
 use crate::{read_result_from_host, upload_param};
 
-extern "C" {
+unsafe extern "C" {
     fn api_read_file();
     fn api_write_file();
     fn api_create_dir();

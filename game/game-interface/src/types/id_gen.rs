@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use serde::{Deserialize, Serialize};
 
 /// This represents the id of any kind of identifiable resource

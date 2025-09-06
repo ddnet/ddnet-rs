@@ -8,7 +8,7 @@ use graphics_types::{
     commands::{GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT},
     rendering::GlVertex,
 };
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use pool::mt_datatypes::PoolVec;
 use serde::{Deserialize, Serialize};
 

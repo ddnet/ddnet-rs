@@ -1,17 +1,19 @@
 [package]
 name = "editor-lib"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-editor = { path = "../../../game/editor" }
-config = { path = "../../../lib/config" }
-graphics = { path = "../../../lib/graphics" }
-sound = { path = "../../../lib/sound" }
-base-io = { path = "../../../lib/base-io" }
-rayon = "1.11.0"
-once_cell = "1.21.3"
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
+
+[dependencies]
+editor = { path = "../../../game/editor" }
+
+base-io = { path = "../../../lib/base-io" }
+config = { path = "../../../lib/config" }
+graphics = { path = "../../../lib/graphics" }
+sound = { path = "../../../lib/sound" }
+
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+once_cell = "1.21.3"
+rayon = "1.11.0"

@@ -1,4 +1,4 @@
-use egui::{vec2, Button, CornerRadius, FontId, Layout, Margin, Response, Stroke, TextEdit};
+use egui::{Button, CornerRadius, FontId, Layout, Margin, Response, Stroke, TextEdit, vec2};
 use egui_extras::{Size, StripBuilder};
 
 pub fn clearable_edit_field(
