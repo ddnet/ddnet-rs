@@ -9,15 +9,28 @@ community = { path = "../../game/community" }
 base = { path = "../../lib/base" }
 network = { path = "../../lib/network" }
 sql = { path = "../../lib/sql", default-features = false, features = ["mysql"] }
-game-database = { path = "../../lib/game-database", default-features = false, features = ["mysql"] }
-game-database-backend = { path = "../../lib/game-database-backend", default-features = false, features = ["mysql"] }
+game-database = { path = "../../lib/game-database", default-features = false, features = [
+  "mysql",
+] }
+game-database-backend = { path = "../../lib/game-database-backend", default-features = false, features = [
+  "mysql",
+] }
 
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "net", "time", "macros"] }
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "net",
+  "time",
+  "macros",
+] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 clap = { version = "4.5.47", features = ["derive"] }
 url = { version = "2.5.7", features = ["serde"] }
 async-trait = "0.1.89"
-reqwest = { version = "0.12.23", default-features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.12.23", default-features = false, features = [
+  "rustls-tls",
+] }
 serde_json = "1.0.143"
 x509-cert = { version = "0.2.5" }
 log = "0.4.28"

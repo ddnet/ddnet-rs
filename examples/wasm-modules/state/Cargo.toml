@@ -12,7 +12,11 @@ base = { path = "../../../lib/base" }
 config = { path = "../../../lib/config" }
 graphics-types = { path = "../../../lib/graphics-types" }
 pool = { path = "../../../lib/pool" }
-hiarc = { path = "../../../lib/hiarc", features = ["derive", "enable_hashlink", "enable_rustc_hash"] }
+hiarc = { path = "../../../lib/hiarc", features = [
+  "derive",
+  "enable_hashlink",
+  "enable_rustc_hash",
+] }
 api-wasm-macros = { path = "../../../lib/api-wasm-macros" }
 game-database = { path = "../../../lib/game-database" }
 command-parser = { path = "../../../lib/command-parser" }
@@ -35,7 +39,10 @@ bincode = { features = ["serde"], version = "2.0.1" }
 flate2 = "1.1.2"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 async-trait = "0.1.89"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 serde = "1.0.219"
 thiserror = "2.0.16"
 log = "0.4.28"

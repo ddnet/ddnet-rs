@@ -23,6 +23,9 @@ game-interface = { path = "../game-interface" }
 client-render-game = { path = "../client-render-game" }
 game-config = { path = "../game-config" }
 
-wasmer = { version = "6.1.0-rc.3", default-features = false, features = ["sys", "cranelift"] }
+wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
+  "sys",
+  "cranelift",
+] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 rayon = "1.11.0"

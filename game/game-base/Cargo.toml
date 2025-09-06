@@ -15,7 +15,10 @@ game-interface = { path = "../game-interface" }
 game-config = { path = "../game-config" }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 serde = { version = "1.0.219", features = ["derive"] }
 indexmap = "2.11.0"
 time = { version = "0.3.43", features = ["serde"] }

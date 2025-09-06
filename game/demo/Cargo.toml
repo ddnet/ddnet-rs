@@ -14,7 +14,10 @@ game-interface = { path = "../game-interface" }
 serde = { version = "1.0.219", features = ["derive"] }
 bincode = { features = ["serde"], version = "2.0.1" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
+zstd = { version = "0.13", default-features = false, features = [
+  "experimental",
+  "zdict_builder",
+] }
 itertools = "0.14.0"
 log = "0.4.28"
 

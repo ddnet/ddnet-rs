@@ -11,7 +11,14 @@ graphics-types = { path = "../../lib/graphics-types" }
 graphics = { path = "../../lib/graphics" }
 sound = { path = "../../lib/sound" }
 image-utils = { path = "../../lib/image-utils" }
-hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_rayon", "enable_rustc_hash", "enable_url", "enable_fixed", "enable_either"] }
+hiarc = { path = "../../lib/hiarc", features = [
+  "derive",
+  "enable_rayon",
+  "enable_rustc_hash",
+  "enable_url",
+  "enable_fixed",
+  "enable_either",
+] }
 math = { path = "../../lib/math" }
 
 assets-splitting = { path = "../assets-splitting" }
@@ -22,7 +29,10 @@ arrayvec = "0.7.6"
 fixed = "1.29.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 rayon = "1.11.0"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 num-traits = "0.2.19"
 url = "2.5.7"
 tokio = { version = "1.47.1", default-features = false, features = ["sync"] }

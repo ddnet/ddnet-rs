@@ -9,7 +9,13 @@ base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 math = { path = "../../lib/math" }
 pool = { path = "../../lib/pool", features = ["enable_hiarc"] }
-hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_hashlink", "enable_rustc_hash", "enable_ascii", "enable_chrono"] }
+hiarc = { path = "../../lib/hiarc", features = [
+  "derive",
+  "enable_hashlink",
+  "enable_rustc_hash",
+  "enable_ascii",
+  "enable_chrono",
+] }
 game-database = { path = "../../lib/game-database" }
 
 # non-local libs
@@ -18,7 +24,10 @@ ddnet-accounts-types = { version = "0.1.0" }
 serde = { version = "1.0.219", features = ["derive"] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 strum = { version = "0.27.2", features = ["derive"] }
 bitflags = { version = "2.9.4", features = ["serde"] }
 ascii = { version = "1.1.0", features = ["serde"] }

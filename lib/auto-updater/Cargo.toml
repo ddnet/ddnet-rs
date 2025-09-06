@@ -21,4 +21,3 @@ serde_json = "1.0.143"
 tokio = { version = "1.47.1", default-features = false, features = ["time"] }
 git-version = "0.3.9"
 either = "1.15.0"
-

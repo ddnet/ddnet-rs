@@ -4,10 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-hiarc = { path = "../hiarc", features = ["derive", "enable_anyhow", "enable_parking_lot", "enable_ascii"] }
+hiarc = { path = "../hiarc", features = [
+  "derive",
+  "enable_anyhow",
+  "enable_parking_lot",
+  "enable_ascii",
+] }
 pool = { path = "../pool", features = ["hiarc"] }
 
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 rustc-hash = "2.1.1"
 once_cell = "1.21.3"
 parking_lot = "0.12.4"

@@ -17,5 +17,11 @@ async-task = "4.7.1"
 futures-lite = "2.6.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "net", "sync", "fs", "time", "macros"] }
-
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "net",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }

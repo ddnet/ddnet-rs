@@ -9,7 +9,14 @@ image-utils = { path = "../../lib/image-utils" }
 
 assets-base = { path = "../../game/assets-base" }
 
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "net", "time", "macros"] }
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "net",
+  "time",
+  "macros",
+] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 axum = { version = "0.8.4" }
 

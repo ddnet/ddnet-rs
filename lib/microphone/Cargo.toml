@@ -14,7 +14,10 @@ crossbeam = { version = "0.8.4" }
 serde = { version = "1.0.219", features = ["derive"] }
 
 cpal = { version = "0.16.0", optional = true }
-deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "978576aa8400552a4ce9730838c635aa30db5e61", default-features = false, features = ["tract", "default-model-ll"], optional = true }
+deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "978576aa8400552a4ce9730838c635aa30db5e61", default-features = false, features = [
+  "tract",
+  "default-model-ll",
+], optional = true }
 # pinned for deep_filter dep
 ndarray = { version = "=0.15", optional = true }
 atomic_enum = { version = "0.3.0", optional = true }
@@ -26,5 +29,13 @@ rubato = { version = "0.16.2", optional = true }
 ignored = ["deep_filter", "audiopus_sys"]
 
 [features]
-cpal_opus = ["dep:cpal", "dep:deep_filter", "dep:ndarray", "dep:atomic_enum", "dep:audiopus_sys", "dep:opus", "dep:rubato"]
+cpal_opus = [
+  "dep:cpal",
+  "dep:deep_filter",
+  "dep:ndarray",
+  "dep:atomic_enum",
+  "dep:audiopus_sys",
+  "dep:opus",
+  "dep:rubato",
+]
 default = []

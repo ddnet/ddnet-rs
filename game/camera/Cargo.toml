@@ -10,4 +10,3 @@ graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
 
 map = { path = "../map" }
-

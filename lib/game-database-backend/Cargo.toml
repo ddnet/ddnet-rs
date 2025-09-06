@@ -22,10 +22,26 @@ parking_lot = "0.12.4"
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }
 
 [features]
-mysql = ["ddnet-account-sql/mysql", "sql/mysql", "game-database/mysql", "sqlx/mysql"]
-sqlite = ["ddnet-account-sql/sqlite", "sql/sqlite", "game-database/sqlite", "sqlx/sqlite"]
+mysql = [
+  "ddnet-account-sql/mysql",
+  "sql/mysql",
+  "game-database/mysql",
+  "sqlx/mysql",
+]
+sqlite = [
+  "ddnet-account-sql/sqlite",
+  "sql/sqlite",
+  "game-database/sqlite",
+  "sqlx/sqlite",
+]
 
 default = ["mysql", "sqlite"]

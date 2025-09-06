@@ -19,11 +19,22 @@ hiarc = { path = "../hiarc", features = ["derive", "enable_tokio"] }
 
 log = "0.4.28"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }
 rayon = "1.11.0"
 sendable = "0.6.1"
 
-ffmpeg-next = { version = "8.0.0", features = ["build", "build-license-gpl", "build-lib-x264", "static"], optional = true }
+ffmpeg-next = { version = "8.0.0", features = [
+  "build",
+  "build-license-gpl",
+  "build-lib-x264",
+  "static",
+], optional = true }
 
 [features]
 ffmpeg = ["ffmpeg-next"]

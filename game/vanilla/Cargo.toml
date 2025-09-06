@@ -14,7 +14,11 @@ math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 pool = { path = "../../lib/pool", features = ["enable_hiarc"] }
-hiarc = { path = "../../lib/hiarc", features = ["derive", "enable_hashlink", "enable_rustc_hash"] }
+hiarc = { path = "../../lib/hiarc", features = [
+  "derive",
+  "enable_hashlink",
+  "enable_rustc_hash",
+] }
 game-database = { path = "../../lib/game-database" }
 config = { path = "../../lib/config" }
 
@@ -25,7 +29,10 @@ num-traits = "0.2.19"
 num-derive = "0.4.2"
 bincode = { features = ["serde"], version = "2.0.1" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
 serde = { version = "1.0.219", features = ["derive"] }
 thiserror = "2.0.16"
 log = "0.4.28"
