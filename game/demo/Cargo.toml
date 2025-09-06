@@ -9,7 +9,6 @@ recorder = ["chrono", "tempfile", "base-io"]
 [dependencies]
 base = { path = "../../lib/base" }
 bin-patch = { path = "../../lib/bin-patch" }
-config = { path = "../../lib/config" }
 
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }

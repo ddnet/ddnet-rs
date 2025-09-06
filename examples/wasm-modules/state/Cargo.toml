@@ -6,6 +6,46 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib"]
 
+[package.metadata.cargo-machete]
+ignored = [
+  "api",
+  "api-macros",
+  "api-state",
+  "api-wasm-macros",
+  "anyhow",
+  "arrayvec",
+  "async-trait",
+  "base",
+  "base-io",
+  "bincode",
+  "bitflags",
+  "chrono",
+  "command-parser",
+  "config",
+  "ddnet-accounts-types",
+  "flate2",
+  "game-base",
+  "game-database",
+  "game-interface",
+  "graphics-types",
+  "hashlink",
+  "hiarc",
+  "legacy-map",
+  "log",
+  "map",
+  "math",
+  "num",
+  "num-derive",
+  "num-traits",
+  "pool",
+  "rayon",
+  "rustc-hash",
+  "serde",
+  "serde_json",
+  "thiserror",
+  "vanilla",
+]
+
 [dependencies]
 api = { path = "../../../lib/api" }
 api-macros = { path = "../../../lib/api-macros" }

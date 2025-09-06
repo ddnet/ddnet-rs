@@ -2955,7 +2955,6 @@ dependencies = [
  "bin-patch",
  "bincode",
  "chrono",
- "config",
  "game-base",
  "game-interface",
  "itertools 0.14.0",
