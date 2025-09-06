@@ -1,62 +1,61 @@
 [package]
 name = "graphics-backend"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
 base-fs = { path = "../base-fs" }
-base-io-traits = { path = "../base-io-traits" }
 base-io = { path = "../base-io" }
-config = { path = "../config" }
+base-io-traits = { path = "../base-io-traits" }
 cache = { path = "../cache" }
-hiarc = { path = "../hiarc", features = [
-    "enable_parking_lot",
-    "enable_spin",
-    "enable_either",
-    "enable_crossbeam",
-    "enable_hashlink",
-    "enable_ash",
-    "enable_arc_swap",
-    "enable_rustc_hash",
-    "enable_rayon"
-]}
-native = { path = "../native" }
+config = { path = "../config" }
 graphics = { path = "../graphics" }
-graphics-types = { path = "../graphics-types" }
-graphics-base-traits = { path = "../graphics-base-traits" }
 graphics-backend-traits = { path = "../graphics-backend-traits" }
-pool = { path = "../pool" }
+graphics-base-traits = { path = "../graphics-base-traits" }
+graphics-types = { path = "../graphics-types" }
+hiarc = { path = "../hiarc", features = [
+  "enable_parking_lot",
+  "enable_spin",
+  "enable_either",
+  "enable_crossbeam",
+  "enable_hashlink",
+  "enable_ash",
+  "enable_arc_swap",
+  "enable_rustc_hash",
+  "enable_rayon",
+] }
 math = { path = "../math" }
+native = { path = "../native" }
+pool = { path = "../pool" }
 
-libc = "0.2.175"
-ash-window = "0.13.0"
-naga = { version = "24.0.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
-naga_oil = "0.17.1"
-raw-window-handle = "0.6.2"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-rayon = "1.11.0"
+arc-swap = "1.7.1"
 ash = "0.38.0"
+ash-window = "0.13.0"
+atomic_enum = "0.3.0"
+bincode = { features = ["serde"], version = "2.0.1" }
+crossbeam = "0.8.4"
+either = "1.15.0"
+futures = "0.3.31"
+libc = "0.2.175"
+log = "0.4.28"
+naga = { version = "26.0.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
+naga_oil = "0.19.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-thiserror = "2.0.16"
-atomic_enum = "0.3.0"
 parking_lot = "0.12.4"
-serde_json = "1.0.143"
-serde = { version = "1.0.219", features = ["derive"] }
-arc-swap = "1.7.1"
-thread-priority = "1.2.0"
-bincode = { features = ["serde"], version = "2.0.1" }
-log = "0.4.27"
-either = "1.15.0"
+raw-window-handle = "0.6.2"
+rayon = "1.11.0"
 replace_with = "0.1.8"
-crossbeam = "0.8.4"
-futures = "0.3.31"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
 strum = { version = "0.27.2", features = ["derive"] }
+thiserror = "2.0.16"
+thread-priority = "3.0.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 ash-molten = { version = "0.20.0" }
 
 [dev-dependencies]
 base-http = { path = "../base-http" }
-

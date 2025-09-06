@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::anyhow;
 use base::{
-    hash::{fmt_hash, name_and_hash, Hash},
+    hash::{Hash, fmt_hash, name_and_hash},
     linked_hash_map_view::FxLinkedHashMap,
     network_string::{NetworkReducedAsciiString, NetworkString},
 };
@@ -26,7 +26,7 @@ use game_state_wasm::game::state_wasm_manager::{
 };
 use map::{
     file::MapFileReader,
-    map::{resources::MapResourceMetaData, Map},
+    map::{Map, resources::MapResourceMetaData},
 };
 use network::network::connection::NetworkConnectionId;
 use pool::{datatypes::PoolFxLinkedHashMap, pool::Pool};

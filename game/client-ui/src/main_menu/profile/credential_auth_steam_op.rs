@@ -22,7 +22,7 @@ pub fn render(
 ) {
     if let ProfileState::SteamCredentialAuthTokenObtained { op, token } = &tasks.state {
         let op = op.clone();
-        let token = token.clone();
+        let token = token.clone().trim().into();
         back_bar(
             ui,
             match &op {

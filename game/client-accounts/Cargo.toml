@@ -1,7 +1,7 @@
 [package]
 name = "client-accounts"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base-io = { path = "../../lib/base-io" }
@@ -10,11 +10,11 @@ steam = { path = "../../lib/steam" }
 client-ui = { path = "../client-ui" }
 http-accounts = { path = "../http-accounts" }
 
-ddnet-accounts-shared = { version = "0.2.0" }
-ddnet-account-client-http-fs = { version = "0.3.0" }
-async-trait = "0.1.89"
-url = { version = "2.5.6", features = ["serde"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-email_address = { version = "0.2.9", features = ["serde"] }
+async-trait = "0.1.89"
 chrono = { version = "0.4.41" }
+ddnet-account-client-http-fs = { version = "0.3.0" }
+ddnet-accounts-shared = { version = "0.2.0" }
+email_address = { version = "0.2.9", features = ["serde"] }
 serde_json = "1.0.143"
+url = { version = "2.5.7", features = ["serde"] }

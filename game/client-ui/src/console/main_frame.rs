@@ -1,6 +1,6 @@
 use client_types::console::entries_to_parser;
 use command_parser::parser;
-use egui::{epaint::Shadow, Color32, Frame, Pos2, Rect, Stroke, Style, UiBuilder, Vec2};
+use egui::{Color32, Frame, Pos2, Rect, Stroke, Style, UiBuilder, Vec2, epaint::Shadow};
 use egui_extras::{Size, StripBuilder};
 
 use ui_base::{
@@ -52,7 +52,7 @@ pub fn render(
 
             ui.style_mut().spacing.item_spacing.y = 0.0;
             let mut has_text_selection = false;
-            ui.allocate_new_ui(
+            ui.scope_builder(
                 UiBuilder::new().max_rect(Rect::from_min_size(
                     Pos2::new(0.0, 0.0),
                     Vec2::new(width, height),

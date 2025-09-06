@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use game_interface::types::render::character::{PlayerCameraMode, PlayerIngameMode};
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 #[derive(Debug, Hiarc, Clone)]
 pub struct ActiveClientInfo {

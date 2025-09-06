@@ -1,4 +1,4 @@
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 #[derive(Debug, Hiarc)]
 pub enum EditorNotification {

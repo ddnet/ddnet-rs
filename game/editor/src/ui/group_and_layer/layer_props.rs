@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use base::hash::fmt_hash;
-use egui::{Button, Checkbox, Color32, ComboBox, DragValue, InnerResponse};
+use egui::{Button, Checkbox, Color32, ComboBox, DragValue, InnerResponse, Popup};
 use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
     map::groups::layers::{
@@ -1627,8 +1627,9 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 None
             }
         });
+
         if intersected.is_some_and(|(outside, clicked)| outside && clicked && pointer_was_outside)
-            && !ui.memory(|i| i.any_popup_open())
+            && !Popup::is_any_open(ui.ctx())
         {
             map.unselect_all(true, true);
         }

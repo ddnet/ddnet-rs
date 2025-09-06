@@ -1,13 +1,13 @@
 [package]
 name = "client-notifications"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
+graphics = { path = "../../lib/graphics" }
 ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
-graphics = { path = "../../lib/graphics" }
 
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui-notify = "0.19.0"
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui-notify = "0.20.0"

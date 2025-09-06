@@ -1,12 +1,12 @@
 [package]
 name = "sound"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
-math = { path = "../math" }
 hiarc = { path = "../hiarc", features = ["derive"] }
+math = { path = "../math" }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 serde = { version = "1.0.219", features = ["derive"] }

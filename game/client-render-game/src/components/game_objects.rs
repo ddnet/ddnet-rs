@@ -41,9 +41,8 @@ use graphics::{
 };
 use graphics_types::rendering::{ColorRgba, State};
 use math::math::{
-    angle, distance, length, normalize_pre_length,
+    PI_F64, angle, distance, length, normalize_pre_length,
     vector::{ubvec4, vec2, vec4},
-    PI_F64,
 };
 use num_traits::FromPrimitive;
 

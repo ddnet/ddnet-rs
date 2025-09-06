@@ -11,8 +11,8 @@ use client_replay::replay::Replay;
 use client_types::console::ConsoleEntry;
 use command_parser::parser::ParserCache;
 use demo::{
-    recorder::{DemoRecorder, DemoRecorderCreateProps},
     DemoEvent,
+    recorder::{DemoRecorder, DemoRecorderCreateProps},
 };
 use game_base::{
     game_types::time_until_tick,
@@ -29,7 +29,7 @@ use game_interface::{
         character_info::NetworkCharacterInfo,
         game::{GameTickType, NonZeroGameTickType},
         id_types::PlayerId,
-        input::{cursor::CharacterInputCursor, CharacterInputInfo},
+        input::{CharacterInputInfo, cursor::CharacterInputCursor},
         render::character::PlayerCameraMode,
         snapshot::SnapshotClientInfo,
     },
@@ -57,9 +57,9 @@ use crate::{
 };
 
 use super::{
+    DisconnectAutoCleanup, Game,
     data::GameData,
     types::{GameBase, GameConnect, GameMsgPipeline, GameNetwork},
-    DisconnectAutoCleanup, Game,
 };
 
 pub struct ActiveGame {

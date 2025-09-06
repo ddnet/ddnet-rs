@@ -3,10 +3,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use ddnet_accounts_types::account_id::AccountId;
 use game_database::{
+    StatementArgs, StatementResult,
     statement::{Statement, StatementBuilder},
     traits::{DbInterface, DbKind},
     types::UnixUtcTimestamp,
-    StatementArgs, StatementResult,
 };
 
 #[derive(Debug, StatementArgs)]

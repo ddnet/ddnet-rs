@@ -23,8 +23,16 @@ jobs:
     - run: |
         rustup toolchain install stable --profile minimal
         rustup component add rustfmt
+        cargo install taplo-cli
+        cargo install cargo-machete
 
     - name: Check format
       run: |
         shopt -s globstar
-        rustfmt --edition=2021 --check **/**.rs
+        rustfmt --edition=2024 --check **/**.rs
+        taplo fmt --check **/**.toml
+
+    - name: Check unused deps
+      run: |
+        shopt -s globstar
+        cargo machete

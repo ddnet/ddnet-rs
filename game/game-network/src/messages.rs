@@ -23,8 +23,8 @@ use game_interface::{
         render::{character::TeeEye, game::game_match::MatchSide},
     },
     votes::{
-        MapVote, MapVoteKey, MiscVote, MiscVoteKey, VoteIdentifierType, VoteState, Voted,
-        MAX_CATEGORY_NAME_LEN,
+        MAX_CATEGORY_NAME_LEN, MapVote, MapVoteKey, MiscVote, MiscVoteKey, VoteIdentifierType,
+        VoteState, Voted,
     },
 };
 use pool::mt_datatypes::PoolCow;

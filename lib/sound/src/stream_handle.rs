@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 use crate::{
     scene_object_shared::SceneObjectInner, stream::StreamDecoder, stream_object::StreamObject,

@@ -7,7 +7,7 @@ use base::hash::fmt_hash;
 use client_ui::main_menu::spatial_chat::{
     self, EntitiesEvent, MicrophoneDevices, MicrophoneHosts, SpatialChatEntity,
 };
-use crossbeam::channel::{bounded, Sender, TrySendError};
+use crossbeam::channel::{Sender, TrySendError, bounded};
 use game_config::config::{ConfigGame, ConfigSpatialChatPerPlayerOptions};
 use game_interface::types::{
     id_types::{CharacterId, PlayerId},
@@ -17,11 +17,11 @@ use game_interface::types::{
 use game_network::messages::{ClientToServerMessage, MsgSvSpatialChatOfEntitity};
 use math::math::vector::vec2;
 use microphone::{
+    AnalyzeStream, MicrophoneManager, SoundStream,
     stream::MicrophoneStream,
     stream_sample::StreamSample,
     traits::Microphone,
     types::{MicrophoneNoiseFilterSettings, SoundStreamsettings},
-    AnalyzeStream, MicrophoneManager, SoundStream,
 };
 use network::network::quinn_network::QuinnNetwork;
 use pool::datatypes::PoolFxLinkedHashMap;

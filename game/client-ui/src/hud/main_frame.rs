@@ -13,8 +13,8 @@ use game_interface::types::{
     render::{
         character::TeeEye,
         game::{
-            game_match::{MatchSide, MatchStandings},
             GameRenderInfo, MatchRoundGameOverWinner, MatchRoundTimeType,
+            game_match::{MatchSide, MatchStandings},
         },
     },
 };
@@ -162,7 +162,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                     rect.set_width(100.0);
                     rect.set_height(60.0);
                     ui.style_mut().spacing.item_spacing.y = 0.0;
-                    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+                    ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
                         Frame::default()
                             .corner_radius(rounding)
                             .fill(color_a(Color32::BLACK, 50))
@@ -295,7 +295,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                             if let Side::Bottom(rect) = side {
                                 // no spacing for points
                                 ui.style_mut().spacing.item_spacing = Default::default();
-                                ui.allocate_new_ui(
+                                ui.scope_builder(
                                     UiBuilder::default().max_rect(
                                         rect.translate(egui::vec2(
                                             0.0,
@@ -520,7 +520,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         });
 
     if let Some((balance_msg, color)) = balance_msg {
-        ui.allocate_new_ui(
+        ui.scope_builder(
             UiBuilder::default().max_rect(
                 res.map(|r| {
                     ui.ctx()

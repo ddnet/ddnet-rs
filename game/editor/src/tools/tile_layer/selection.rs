@@ -8,7 +8,7 @@ use math::math::vector::{ubvec4, vec2};
 use crate::{
     map::{EditorMap, EditorMapInterface},
     tools::utils::render_rect,
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{UiCanvasSize, ui_pos_to_world_pos},
 };
 
 use super::shared::TILE_VISUAL_SIZE;
@@ -70,7 +70,7 @@ impl TileSelection {
 
                 let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                let vec2 {
+                let &vec2 {
                     x: mut x0,
                     y: mut y0,
                 } = world;

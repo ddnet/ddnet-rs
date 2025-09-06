@@ -7,7 +7,7 @@ use std::{
 use anyhow::anyhow;
 use base::{hash::decode_hash, network_string::NetworkString};
 use base_io_traits::fs_traits::FileSystemInterface;
-use game_interface::votes::{MapVote, MapVoteKey, MAX_CATEGORY_NAME_LEN};
+use game_interface::votes::{MAX_CATEGORY_NAME_LEN, MapVote, MapVoteKey};
 use serde::{Deserialize, Serialize};
 
 /// How the json file for map votes is built.

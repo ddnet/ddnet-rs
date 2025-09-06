@@ -2,7 +2,7 @@
 
 use std::{collections::VecDeque, net::SocketAddr};
 
-use hiarc::{hiarc_safer_arc_mutex, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_arc_mutex};
 
 #[derive(Debug, Clone, Hiarc)]
 pub enum ConnectModes {

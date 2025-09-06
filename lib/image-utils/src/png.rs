@@ -58,7 +58,12 @@ where
     decoder.set_transformations(png::Transformations::normalize_to_color8());
     let mut reader = decoder.read_info()?;
 
-    let real_img_size = reader.output_buffer_size();
+    let real_img_size = reader.output_buffer_size().ok_or_else(|| {
+        std::io::Error::new(
+            io::ErrorKind::OutOfMemory,
+            "memory frame too big for this computer.",
+        )
+    })?;
     let color_type = reader.output_color_type().0;
 
     let info = reader.info();
@@ -185,7 +190,7 @@ pub fn save_png_image_ex(
     encoder.set_color(Rgba);
     encoder.set_depth(png::BitDepth::Eight);
     if compresion_best {
-        encoder.set_compression(png::Compression::Best);
+        encoder.set_compression(png::Compression::High);
     }
     let mut writer = encoder.write_header()?;
 

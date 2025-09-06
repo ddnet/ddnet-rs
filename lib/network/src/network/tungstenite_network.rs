@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     future::Future,
     net::SocketAddr,
-    pin::{pin, Pin},
+    pin::{Pin, pin},
     sync::Arc,
     time::Duration,
 };
@@ -15,7 +15,7 @@ use tokio::{
     sync::Mutex,
     task::JoinHandle,
 };
-use tokio_tungstenite::{tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite::Message};
 
 use super::{
     connection::ConnectionStats,
@@ -36,9 +36,9 @@ use super::{
 use pollster::FutureExt as _;
 
 use futures_util::{
+    StreamExt,
     sink::SinkExt,
     stream::{SplitSink, SplitStream},
-    StreamExt,
 };
 
 type ConnectionTypeClient = (

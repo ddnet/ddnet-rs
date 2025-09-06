@@ -1,13 +1,15 @@
 [package]
 name = "api-editor"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 editor = { path = "../editor" }
-api-wasm-macros = { path = "../../lib/api-wasm-macros" }
+
 api = { path = "../../lib/api" }
-graphics-types = { path = "../../lib/graphics-types" }
+api-wasm-macros = { path = "../../lib/api-wasm-macros" }
 config = { path = "../../lib/config" }
+graphics-types = { path = "../../lib/graphics-types" }
+
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 once_cell = "1.21.3"
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }

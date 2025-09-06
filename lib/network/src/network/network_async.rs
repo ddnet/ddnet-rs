@@ -269,26 +269,26 @@ where
             let connection = connections.get_connection_impl_clone_by_id(&con_id).await;
             let mut in_order = channel_packets.lock().await;
             let packet_to_send = in_order.pop_front();
-            if let Some(con_clone) = connection {
-                if let Some(packet) = packet_to_send {
-                    let write_packet = NetworkConnections::<C, TY>::prepare_write_packet(
-                        &con_id,
-                        &packet,
-                        &pool,
-                        &packet_plugins,
-                    )
-                    .await;
-                    if let Ok(write_packet) = write_packet {
-                        con_clone
-                            .push_ordered_reliable_packet_in_order(write_packet, channel)
-                            .await;
-                        drop(in_order);
-                        match con_clone.send_one_ordered_reliable(channel).await {
-                            Ok(_) => {}
-                            Err(err) => {
-                                if is_debug {
-                                    log::debug!("error: send ordered packet failed: {err}");
-                                }
+            if let Some(con_clone) = connection
+                && let Some(packet) = packet_to_send
+            {
+                let write_packet = NetworkConnections::<C, TY>::prepare_write_packet(
+                    &con_id,
+                    &packet,
+                    &pool,
+                    &packet_plugins,
+                )
+                .await;
+                if let Ok(write_packet) = write_packet {
+                    con_clone
+                        .push_ordered_reliable_packet_in_order(write_packet, channel)
+                        .await;
+                    drop(in_order);
+                    match con_clone.send_one_ordered_reliable(channel).await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            if is_debug {
+                                log::debug!("error: send ordered packet failed: {err}");
                             }
                         }
                     }
@@ -394,12 +394,9 @@ where
                                 // try unordered reliable
                                 if let Err(err) =
                                     con_clone.send_unordered_reliable(write_packet).await
+                                    && self.is_debug
                                 {
-                                    if self.is_debug {
-                                        log::debug!(
-                                            "error: send auto unordered packet failed: {err}"
-                                        );
-                                    }
+                                    log::debug!("error: send auto unordered packet failed: {err}");
                                 }
                             }
                         }

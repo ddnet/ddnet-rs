@@ -2,11 +2,11 @@
 #![deny(clippy::all)]
 
 use std::{
-    num::{NonZeroI64, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize},
+    num::{NonZeroI64, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize},
     rc::Rc,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicUsize},
         Arc,
+        atomic::{AtomicBool, AtomicU64, AtomicUsize},
     },
 };
 

@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use api::read_param_from_host;
 use api::GRAPHICS;
 use api::GRAPHICS_BACKEND;
 use api::SOUND;
+use api::read_param_from_host;
 use api_wasm_macros::guest_func_call_from_host_auto_dummy;
 use api_wasm_macros::{guest_func_call_from_host_auto, impl_guest_functions_render_game};
 use client_render_game::render_game::RenderGameCreateOptions;
@@ -18,7 +18,7 @@ use api::upload_return_val;
 use game_interface::chat_commands::ChatCommands;
 use graphics_types::types::WindowProps;
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// returns an instance of the render module
     fn mod_render_game_new(
         map_file: Vec<u8>,
@@ -38,7 +38,7 @@ static API_RENDER_GAME: once_cell::unsync::Lazy<ApiRenderGame> =
     });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn render_game_new() {
     let map_file: Vec<u8> = read_param_from_host(0);
     let config: ConfigDebug = read_param_from_host(1);

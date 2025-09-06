@@ -17,11 +17,11 @@ use crate::{
         shared::{align_pos, in_radius, rotate},
         utils::render_rect,
     },
-    utils::{ui_pos_to_world_pos, ui_pos_to_world_pos_and_world_height, UiCanvasSize},
+    utils::{UiCanvasSize, ui_pos_to_world_pos, ui_pos_to_world_pos_and_world_height},
 };
 
 use super::shared::{
-    render_quad_points, QuadPointerDownPoint, QuadSelectionQuads, QUAD_POINT_RADIUS_FACTOR,
+    QUAD_POINT_RADIUS_FACTOR, QuadPointerDownPoint, QuadSelectionQuads, render_quad_points,
 };
 
 #[derive(Debug, Hiarc)]
@@ -112,7 +112,7 @@ impl QuadSelection {
         // check if selection phase ended
         if let QuadPointerDownState::Selection(pointer_down) = &self.pointer_down_state {
             // find current layer
-            let vec2 {
+            let &vec2 {
                 x: mut x0,
                 y: mut y0,
             } = pointer_down;
@@ -403,39 +403,39 @@ impl QuadSelection {
         };
         let is_primary_allowed_down = !latest_modifiers.ctrl && latest_pointer.primary_down();
         // if pointer was already down
-        if let QuadPointerDownState::Selection(pointer_down) = &self.pointer_down_state {
-            if is_primary_allowed_down {
-                let pos = current_pointer_pos;
-                let pos = ui_pos_to_world_pos(
-                    canvas_handle,
-                    ui_canvas,
-                    map.groups.user.zoom,
-                    vec2::new(pos.x, pos.y),
-                    map.groups.user.pos.x,
-                    map.groups.user.pos.y,
-                    offset.x,
-                    offset.y,
-                    parallax.x,
-                    parallax.y,
-                    map.groups.user.parallax_aware_zoom,
-                );
-                let pos = egui::pos2(pos.x, pos.y);
+        if let QuadPointerDownState::Selection(pointer_down) = &self.pointer_down_state
+            && is_primary_allowed_down
+        {
+            let pos = current_pointer_pos;
+            let pos = ui_pos_to_world_pos(
+                canvas_handle,
+                ui_canvas,
+                map.groups.user.zoom,
+                vec2::new(pos.x, pos.y),
+                map.groups.user.pos.x,
+                map.groups.user.pos.y,
+                offset.x,
+                offset.y,
+                parallax.x,
+                parallax.y,
+                map.groups.user.parallax_aware_zoom,
+            );
+            let pos = egui::pos2(pos.x, pos.y);
 
-                let down_pos = pointer_down;
-                let down_pos = egui::pos2(down_pos.x, down_pos.y);
+            let down_pos = pointer_down;
+            let down_pos = egui::pos2(down_pos.x, down_pos.y);
 
-                let rect = egui::Rect::from_min_max(pos, down_pos);
+            let rect = egui::Rect::from_min_max(pos, down_pos);
 
-                render_rect(
-                    canvas_handle,
-                    stream_handle,
-                    map,
-                    rect,
-                    ubvec4::new(255, 0, 0, 255),
-                    &parallax,
-                    &offset,
-                );
-            }
+            render_rect(
+                canvas_handle,
+                stream_handle,
+                map,
+                rect,
+                ubvec4::new(255, 0, 0, 255),
+                &parallax,
+                &offset,
+            );
         }
     }
     fn render_brush(

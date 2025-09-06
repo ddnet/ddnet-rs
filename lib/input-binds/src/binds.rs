@@ -229,3 +229,254 @@ impl<T: Debug + Clone + Hash + PartialEq + Eq> Binds<T> {
         self.cur_keys_pressed_is_order.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    enum Act {
+        SingleT,
+        ComboCtrlT,
+        SingleA,
+        SingleA2,
+        ComboAB,
+        FireM1,
+        HookM2,
+    }
+
+    fn key(code: KeyCode) -> BindKey {
+        BindKey::Key(PhysicalKey::Code(code))
+    }
+
+    #[test]
+    fn ctrl_plus_key_differs_from_key_and_transitions_cleanly() {
+        let mut binds = Binds::<Act>::default();
+
+        // Register both a single-key and a chord for the same base key.
+        binds.register_bind(
+            &[key(KeyCode::ControlLeft), key(KeyCode::KeyT)],
+            Act::ComboCtrlT,
+        );
+        binds.register_bind(&[key(KeyCode::KeyT)], Act::SingleT);
+
+        // Press only T -> SingleT becomes active.
+        binds.handle_key_down(&key(KeyCode::KeyT));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::SingleT));
+        assert!(r.cur_actions.contains(&Act::SingleT));
+        assert!(!r.cur_actions.contains(&Act::ComboCtrlT));
+        assert!(r.unpress_actions.is_empty());
+        assert!(r.click_actions.is_empty());
+
+        // Press Ctrl while T is held -> Combo replaces Single in current actions.
+        // No spurious unpress of SingleT should be generated on key down.
+        binds.handle_key_down(&key(KeyCode::ControlLeft));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::ComboCtrlT));
+        assert!(!r.press_actions.contains(&Act::SingleT));
+        assert!(r.unpress_actions.is_empty());
+        assert!(r.click_actions.is_empty());
+        assert!(r.cur_actions.contains(&Act::ComboCtrlT));
+        assert!(!r.cur_actions.contains(&Act::SingleT));
+
+        // Release Ctrl while T stays pressed -> Combo unpresses, Single becomes current again.
+        binds.handle_key_up(&key(KeyCode::ControlLeft));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::ComboCtrlT));
+        assert!(r.click_actions.contains(&Act::ComboCtrlT));
+        assert!(!r.unpress_actions.contains(&Act::SingleT));
+        assert!(r.cur_actions.contains(&Act::SingleT));
+
+        // Release T -> Single unpresses.
+        binds.handle_key_up(&key(KeyCode::KeyT));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::SingleT));
+        assert!(r.click_actions.contains(&Act::SingleT));
+        assert!(r.cur_actions.is_empty());
+    }
+
+    #[test]
+    fn chord_activation_order_is_irrelevant_and_no_false_unpress() {
+        let mut binds = Binds::<Act>::default();
+
+        // AB chord plus a single A.
+        binds.register_bind(&[key(KeyCode::KeyA)], Act::SingleA);
+        binds.register_bind(&[key(KeyCode::KeyA), key(KeyCode::KeyB)], Act::ComboAB);
+
+        // Press A -> SingleA active.
+        binds.handle_key_down(&key(KeyCode::KeyA));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::SingleA));
+        assert!(r.cur_actions.contains(&Act::SingleA));
+
+        // Press B -> ComboAB active, but no unpress for SingleA on key down.
+        binds.handle_key_down(&key(KeyCode::KeyB));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::ComboAB));
+        assert!(r.unpress_actions.is_empty());
+        assert!(r.cur_actions.contains(&Act::ComboAB));
+        assert!(!r.cur_actions.contains(&Act::SingleA));
+
+        // Release B while A remains pressed -> only ComboAB unpresses; SingleA becomes active again.
+        binds.handle_key_up(&key(KeyCode::KeyB));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::ComboAB));
+        assert!(!r.unpress_actions.contains(&Act::SingleA));
+        assert!(r.cur_actions.contains(&Act::SingleA));
+
+        // Release A -> SingleA unpresses.
+        binds.handle_key_up(&key(KeyCode::KeyA));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::SingleA));
+        assert!(r.cur_actions.is_empty());
+
+        // Now press in the reverse order: B first (no action), then A -> ComboAB should press.
+        let mut binds = Binds::<Act>::default();
+        binds.register_bind(&[key(KeyCode::KeyA)], Act::SingleA);
+        binds.register_bind(&[key(KeyCode::KeyA), key(KeyCode::KeyB)], Act::ComboAB);
+
+        binds.handle_key_down(&key(KeyCode::KeyB));
+        let r = binds.process();
+        assert!(r.press_actions.is_empty());
+        assert!(r.cur_actions.is_empty());
+
+        binds.handle_key_down(&key(KeyCode::KeyA));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::ComboAB));
+        assert!(r.cur_actions.contains(&Act::ComboAB));
+        assert!(!r.cur_actions.contains(&Act::SingleA));
+
+        // Releasing A should unpress ComboAB; no SingleA unpress since it wasn't active.
+        binds.handle_key_up(&key(KeyCode::KeyA));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::ComboAB));
+        assert!(!r.unpress_actions.contains(&Act::SingleA));
+        assert!(r.cur_actions.is_empty());
+
+        // Releasing B afterwards produces no extra events.
+        binds.handle_key_up(&key(KeyCode::KeyB));
+        let r = binds.process();
+        assert!(r.press_actions.is_empty());
+        assert!(r.unpress_actions.is_empty());
+        assert!(r.click_actions.is_empty());
+        assert!(r.cur_actions.is_empty());
+    }
+
+    fn mouse(button: MouseButton) -> BindKey {
+        BindKey::Mouse(button)
+    }
+
+    #[test]
+    fn mouse_both_pressed_and_released_same_tick() {
+        let mut binds = Binds::<Act>::default();
+
+        // Bind independent actions to M1 (Left) and M2 (Right).
+        binds.register_bind(&[mouse(MouseButton::Left)], Act::FireM1);
+        binds.register_bind(&[mouse(MouseButton::Right)], Act::HookM2);
+
+        // Press both before processing -> both should appear in press_actions and cur_actions.
+        binds.handle_key_down(&mouse(MouseButton::Left));
+        binds.handle_key_down(&mouse(MouseButton::Right));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::FireM1));
+        assert!(r.press_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.contains(&Act::FireM1));
+        assert!(r.cur_actions.contains(&Act::HookM2));
+        assert!(r.unpress_actions.is_empty());
+
+        // Release both before processing -> both should unpress and click; cur_actions empty.
+        binds.handle_key_up(&mouse(MouseButton::Left));
+        binds.handle_key_up(&mouse(MouseButton::Right));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::FireM1));
+        assert!(r.unpress_actions.contains(&Act::HookM2));
+        assert!(r.click_actions.contains(&Act::FireM1));
+        assert!(r.click_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.is_empty());
+    }
+
+    #[test]
+    fn mouse_varied_order_no_stuck_state() {
+        // Scenario 1: Right then Left, release Left then Right
+        let mut binds = Binds::<Act>::default();
+        binds.register_bind(&[mouse(MouseButton::Left)], Act::FireM1);
+        binds.register_bind(&[mouse(MouseButton::Right)], Act::HookM2);
+
+        binds.handle_key_down(&mouse(MouseButton::Right));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.contains(&Act::HookM2));
+        assert!(!r.cur_actions.contains(&Act::FireM1));
+
+        binds.handle_key_down(&mouse(MouseButton::Left));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::FireM1));
+        assert!(r.cur_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.contains(&Act::FireM1));
+
+        // Release Left -> only Fire unpresses, Hook remains.
+        binds.handle_key_up(&mouse(MouseButton::Left));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::FireM1));
+        assert!(!r.unpress_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.contains(&Act::HookM2));
+        assert!(!r.cur_actions.contains(&Act::FireM1));
+
+        // Release Right -> Hook unpresses, nothing remains.
+        binds.handle_key_up(&mouse(MouseButton::Right));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.is_empty());
+
+        // Scenario 2: Press both, process once, release both with an intermediate process.
+        let mut binds = Binds::<Act>::default();
+        binds.register_bind(&[mouse(MouseButton::Left)], Act::FireM1);
+        binds.register_bind(&[mouse(MouseButton::Right)], Act::HookM2);
+
+        binds.handle_key_down(&mouse(MouseButton::Left));
+        binds.handle_key_down(&mouse(MouseButton::Right));
+        let r = binds.process();
+        assert!(r.cur_actions.contains(&Act::FireM1));
+        assert!(r.cur_actions.contains(&Act::HookM2));
+
+        // Release Left and process -> Fire unpresses; Hook still active.
+        binds.handle_key_up(&mouse(MouseButton::Left));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::FireM1));
+        assert!(r.cur_actions.contains(&Act::HookM2));
+
+        // Release Right and process -> Hook unpresses; nothing left.
+        binds.handle_key_up(&mouse(MouseButton::Right));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::HookM2));
+        assert!(r.cur_actions.is_empty());
+    }
+
+    #[test]
+    fn multiple_actions_on_same_bind_are_all_reported() {
+        let mut binds = Binds::<Act>::default();
+
+        // Bind two distinct actions to the same single key.
+        binds.register_bind(&[key(KeyCode::KeyA)], Act::SingleA);
+        binds.register_bind(&[key(KeyCode::KeyA)], Act::SingleA2);
+
+        // Press A -> both actions should press and be current.
+        binds.handle_key_down(&key(KeyCode::KeyA));
+        let r = binds.process();
+        assert!(r.press_actions.contains(&Act::SingleA));
+        assert!(r.press_actions.contains(&Act::SingleA2));
+        assert!(r.cur_actions.contains(&Act::SingleA));
+        assert!(r.cur_actions.contains(&Act::SingleA2));
+        assert!(r.unpress_actions.is_empty());
+
+        // Release A -> both actions should unpress and click.
+        binds.handle_key_up(&key(KeyCode::KeyA));
+        let r = binds.process();
+        assert!(r.unpress_actions.contains(&Act::SingleA));
+        assert!(r.unpress_actions.contains(&Act::SingleA2));
+        assert!(r.click_actions.contains(&Act::SingleA));
+        assert!(r.click_actions.contains(&Act::SingleA2));
+        assert!(r.cur_actions.is_empty());
+    }
+}

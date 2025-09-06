@@ -5,7 +5,7 @@ pub use api_render_game::*;
 use client_render_game::render_game::{RenderGame, RenderGameCreateOptions, RenderGameInterface};
 use config::config::ConfigDebug;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn mod_render_game_new(
     map_file: Vec<u8>,
     config: &ConfigDebug,

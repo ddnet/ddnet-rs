@@ -1,4 +1,4 @@
-use egui::{scroll_area::ScrollBarVisibility, Color32, Frame, Key, Layout, ScrollArea, TextEdit};
+use egui::{Color32, Frame, Key, Layout, ScrollArea, TextEdit, scroll_area::ScrollBarVisibility};
 use egui_extras::{Size, StripBuilder};
 use ui_base::types::{UiRenderPipe, UiState};
 

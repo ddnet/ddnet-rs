@@ -1,10 +1,12 @@
 [package]
 name = "egui-timeline"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 math = { path = "../../lib/math" }
+
 map = { path = "../map" }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.31.1" }
+
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui_extras = { version = "0.32.2" }

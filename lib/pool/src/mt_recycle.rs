@@ -30,11 +30,11 @@ impl<T: Recyclable + Send + Debug> Debug for Recycle<T> {
 impl<T: Recyclable + Send> Drop for Recycle<T> {
     fn drop(&mut self) {
         let mut repl = unsafe { ManuallyDrop::take(&mut self.item) };
-        if let Some(pool) = &self.pool {
-            if repl.should_put_to_pool() {
-                repl.reset();
-                pool.push(repl);
-            }
+        if let Some(pool) = &self.pool
+            && repl.should_put_to_pool()
+        {
+            repl.reset();
+            pool.push(repl);
         }
     }
 }

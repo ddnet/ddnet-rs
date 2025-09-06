@@ -4,13 +4,13 @@ use std::{
     net::{IpAddr, SocketAddr},
     num::NonZeroUsize,
     path::PathBuf,
-    sync::{atomic::AtomicBool, Arc, Weak},
+    sync::{Arc, Weak, atomic::AtomicBool},
     time::Duration,
 };
 
 use anyhow::anyhow;
 use base::{
-    hash::{fmt_hash, generate_hash_for, Hash},
+    hash::{Hash, fmt_hash, generate_hash_for},
     linked_hash_map_view::{FxLinkedHashMap, FxLinkedHashSet},
     network_string::{NetworkReducedAsciiString, NetworkString},
     system::{System, SystemTimeInterface},
@@ -76,8 +76,8 @@ use crate::{
     network_plugins::{accounts_only::AccountsOnly, cert_ban::CertBans},
     rcon::{Rcon, ServerRconCommand},
     server_game::{
-        ClientAuth, ServerExtraVoteInfo, ServerGame, ServerVote, RESERVED_DDNET_NAMES,
-        RESERVED_VANILLA_NAMES,
+        ClientAuth, RESERVED_DDNET_NAMES, RESERVED_VANILLA_NAMES, ServerExtraVoteInfo, ServerGame,
+        ServerVote,
     },
 };
 
@@ -122,8 +122,8 @@ use game_interface::{
     },
     vote_commands::{VoteCommand, VoteCommandResultEvent},
     votes::{
-        MapVote, MapVoteDetails, MapVoteKey, MiscVote, MiscVoteKey, VoteIdentifierType, VoteState,
-        VoteType, Voted, MAX_CATEGORY_NAME_LEN,
+        MAX_CATEGORY_NAME_LEN, MapVote, MapVoteDetails, MapVoteKey, MiscVote, MiscVoteKey,
+        VoteIdentifierType, VoteState, VoteType, Voted,
     },
 };
 
@@ -1295,49 +1295,124 @@ impl Server {
         player_msg: ClientToServerPlayerMessage,
     ) {
         let client = self.clients.clients.get_mut(con_id);
-        if let Some(player) = client {
-            if player.players.contains_key(player_id) {
-                match player_msg {
-                    ClientToServerPlayerMessage::Custom(_) => {
-                        // ignore
+        if let Some(player) = client
+            && player.players.contains_key(player_id)
+        {
+            match player_msg {
+                ClientToServerPlayerMessage::Custom(_) => {
+                    // ignore
+                }
+                ClientToServerPlayerMessage::RemLocalPlayer => {
+                    if player.players.len() > 1 && player.players.remove(player_id).is_some() {
+                        self.game_server
+                            .player_drop(player_id, PlayerDropReason::Disconnect);
                     }
-                    ClientToServerPlayerMessage::RemLocalPlayer => {
-                        if player.players.len() > 1 && player.players.remove(player_id).is_some() {
-                            self.game_server
-                                .player_drop(player_id, PlayerDropReason::Disconnect);
-                        }
+                }
+                ClientToServerPlayerMessage::Chat(msg) => {
+                    fn prepare_msg(msg: &str) -> String {
+                        msg.trim_matches(char::is_whitespace)
+                            .replace(|c: char| c.is_control(), "")
                     }
-                    ClientToServerPlayerMessage::Chat(msg) => {
-                        fn prepare_msg(msg: &str) -> String {
-                            msg.trim_matches(char::is_whitespace)
-                                .replace(|c: char| c.is_control(), "")
-                        }
-                        let mut handle_msg = |msg: &str, channel: NetChatMsgPlayerChannel| {
-                            if !prepare_msg(msg).is_empty() {
-                                if self
-                                    .game_server
-                                    .game
-                                    .info
-                                    .chat_commands
-                                    .prefixes
-                                    .contains(&msg.chars().next().unwrap())
-                                {
-                                    self.game_server.game.client_command(
-                                        player_id,
-                                        ClientCommand::Chat(ClientChatCommand {
-                                            raw: msg
-                                                .chars()
-                                                .skip(1)
-                                                .collect::<String>()
-                                                .as_str()
-                                                .try_into()
-                                                .unwrap(),
-                                        }),
+                    let mut handle_msg = |msg: &str, channel: NetChatMsgPlayerChannel| {
+                        if !prepare_msg(msg).is_empty() {
+                            if self
+                                .game_server
+                                .game
+                                .info
+                                .chat_commands
+                                .prefixes
+                                .contains(&msg.chars().next().unwrap())
+                            {
+                                self.game_server.game.client_command(
+                                    player_id,
+                                    ClientCommand::Chat(ClientChatCommand {
+                                        raw: msg
+                                            .chars()
+                                            .skip(1)
+                                            .collect::<String>()
+                                            .as_str()
+                                            .try_into()
+                                            .unwrap(),
+                                    }),
+                                );
+                            } else if let Some(own_char_info) =
+                                self.game_server.cached_character_infos.get(player_id)
+                            {
+                                let msg = NetChatMsg {
+                                    sender: ChatPlayerInfo {
+                                        id: *player_id,
+                                        name: own_char_info.info.name.clone(),
+                                        skin: own_char_info.info.skin.clone(),
+                                        skin_info: own_char_info.info.skin_info,
+                                    },
+                                    msg: msg.to_string(),
+                                    channel: channel.clone(),
+                                };
+
+                                if let Some(recorder) = &mut self.demo_recorder {
+                                    recorder.add_event(
+                                        self.game_server.cur_monotonic_tick,
+                                        demo::DemoEvent::Chat(Box::new(msg.clone())),
                                     );
-                                } else if let Some(own_char_info) =
-                                    self.game_server.cached_character_infos.get(player_id)
-                                {
-                                    let msg = NetChatMsg {
+                                }
+
+                                let net_channel = NetworkInOrderChannel::Custom(3841); // This number reads as "chat".
+                                let pkt = ServerToClientMessage::Chat(MsgSvChatMsg { msg });
+                                if matches!(channel, NetChatMsgPlayerChannel::Global) {
+                                    self.broadcast_in_order(pkt, net_channel);
+                                } else {
+                                    let side = if own_char_info.stage_id.is_none() {
+                                        Some(None)
+                                    } else {
+                                        own_char_info.side.map(Some)
+                                    };
+                                    let stage_id = own_char_info.stage_id;
+
+                                    // Send the msg to all players in own stage, and if a side is given only to those
+                                    let send_ids: HashSet<_> = self
+                                        .game_server
+                                        .cached_character_infos
+                                        .iter()
+                                        .filter_map(|(player_id, char_info)| {
+                                            if char_info.stage_id == stage_id
+                                                && side.is_none_or(|side| char_info.side == side)
+                                                && let Some(client) =
+                                                    self.game_server.players.get(player_id)
+                                            {
+                                                return Some(client.network_id);
+                                            }
+                                            None
+                                        })
+                                        .collect();
+                                    for net_id in send_ids {
+                                        self.network.send_in_order_to(&pkt, &net_id, net_channel);
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    match msg {
+                        MsgClChatMsg::Global { msg } => {
+                            handle_msg(&msg, NetChatMsgPlayerChannel::Global);
+                        }
+                        MsgClChatMsg::GameTeam { msg } => {
+                            handle_msg(&msg, NetChatMsgPlayerChannel::GameTeam);
+                        }
+                        MsgClChatMsg::Whisper { receiver_id, msg } => {
+                            if !prepare_msg(&msg).is_empty()
+                                && let (
+                                    Some(own_char_info),
+                                    Some(recv_char_info),
+                                    Some(recv_client),
+                                ) = (
+                                    self.game_server.cached_character_infos.get(player_id),
+                                    self.game_server.cached_character_infos.get(&receiver_id),
+                                    self.game_server.players.get(&receiver_id),
+                                )
+                            {
+                                let net_channel = NetworkInOrderChannel::Custom(3841); // This number reads as "chat".
+                                let pkt = ServerToClientMessage::Chat(MsgSvChatMsg {
+                                    msg: NetChatMsg {
                                         sender: ChatPlayerInfo {
                                             id: *player_id,
                                             name: own_char_info.info.name.clone(),
@@ -1345,382 +1420,292 @@ impl Server {
                                             skin_info: own_char_info.info.skin_info,
                                         },
                                         msg: msg.to_string(),
-                                        channel: channel.clone(),
-                                    };
+                                        channel: NetChatMsgPlayerChannel::Whisper(ChatPlayerInfo {
+                                            id: receiver_id,
+                                            name: recv_char_info.info.name.clone(),
+                                            skin: recv_char_info.info.skin.clone(),
+                                            skin_info: recv_char_info.info.skin_info,
+                                        }),
+                                    },
+                                });
 
-                                    if let Some(recorder) = &mut self.demo_recorder {
-                                        recorder.add_event(
-                                            self.game_server.cur_monotonic_tick,
-                                            demo::DemoEvent::Chat(Box::new(msg.clone())),
-                                        );
-                                    }
-
-                                    let net_channel = NetworkInOrderChannel::Custom(3841); // This number reads as "chat".
-                                    let pkt = ServerToClientMessage::Chat(MsgSvChatMsg { msg });
-                                    if matches!(channel, NetChatMsgPlayerChannel::Global) {
-                                        self.broadcast_in_order(pkt, net_channel);
-                                    } else {
-                                        let side = if own_char_info.stage_id.is_none() {
-                                            Some(None)
-                                        } else {
-                                            own_char_info.side.map(Some)
-                                        };
-                                        let stage_id = own_char_info.stage_id;
-
-                                        // Send the msg to all players in own stage, and if a side is given only to those
-                                        let send_ids: HashSet<_> = self
-                                            .game_server
-                                            .cached_character_infos
-                                            .iter()
-                                            .filter_map(|(player_id, char_info)| {
-                                                if char_info.stage_id == stage_id
-                                                    && side
-                                                        .is_none_or(|side| char_info.side == side)
-                                                {
-                                                    if let Some(client) =
-                                                        self.game_server.players.get(player_id)
-                                                    {
-                                                        return Some(client.network_id);
-                                                    }
-                                                }
-                                                None
-                                            })
-                                            .collect();
-                                        for net_id in send_ids {
-                                            self.network.send_in_order_to(
-                                                &pkt,
-                                                &net_id,
-                                                net_channel,
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        };
-                        match msg {
-                            MsgClChatMsg::Global { msg } => {
-                                handle_msg(&msg, NetChatMsgPlayerChannel::Global);
-                            }
-                            MsgClChatMsg::GameTeam { msg } => {
-                                handle_msg(&msg, NetChatMsgPlayerChannel::GameTeam);
-                            }
-                            MsgClChatMsg::Whisper { receiver_id, msg } => {
-                                if !prepare_msg(&msg).is_empty() {
-                                    if let (
-                                        Some(own_char_info),
-                                        Some(recv_char_info),
-                                        Some(recv_client),
-                                    ) = (
-                                        self.game_server.cached_character_infos.get(player_id),
-                                        self.game_server.cached_character_infos.get(&receiver_id),
-                                        self.game_server.players.get(&receiver_id),
-                                    ) {
-                                        let net_channel = NetworkInOrderChannel::Custom(3841); // This number reads as "chat".
-                                        let pkt = ServerToClientMessage::Chat(MsgSvChatMsg {
-                                            msg: NetChatMsg {
-                                                sender: ChatPlayerInfo {
-                                                    id: *player_id,
-                                                    name: own_char_info.info.name.clone(),
-                                                    skin: own_char_info.info.skin.clone(),
-                                                    skin_info: own_char_info.info.skin_info,
-                                                },
-                                                msg: msg.to_string(),
-                                                channel: NetChatMsgPlayerChannel::Whisper(
-                                                    ChatPlayerInfo {
-                                                        id: receiver_id,
-                                                        name: recv_char_info.info.name.clone(),
-                                                        skin: recv_char_info.info.skin.clone(),
-                                                        skin_info: recv_char_info.info.skin_info,
-                                                    },
-                                                ),
-                                            },
-                                        });
-
-                                        self.network.send_in_order_to(
-                                            &pkt,
-                                            &recv_client.network_id,
-                                            net_channel,
-                                        );
-                                        // and also send it back to the sender
-                                        self.network.send_in_order_to(&pkt, con_id, net_channel);
-                                    }
-                                }
+                                self.network.send_in_order_to(
+                                    &pkt,
+                                    &recv_client.network_id,
+                                    net_channel,
+                                );
+                                // and also send it back to the sender
+                                self.network.send_in_order_to(&pkt, con_id, net_channel);
                             }
                         }
                     }
-                    ClientToServerPlayerMessage::Kill => {
-                        self.game_server
-                            .game
-                            .client_command(player_id, ClientCommand::Kill);
-                    }
-                    ClientToServerPlayerMessage::JoinSpectator => {
-                        self.game_server
-                            .game
-                            .client_command(player_id, ClientCommand::JoinSpectator);
-                    }
-                    ClientToServerPlayerMessage::StartVote(vote) => {
-                        // if no current vote exist, try the vote
-                        let is_ingame = self
-                            .game_server
-                            .cached_character_infos
-                            .get(player_id)
-                            .is_some_and(|c| c.stage_id.is_some());
-                        let player = self.clients.clients.get(con_id).expect("logic error");
-                        let res = if is_ingame && self.game_server.cur_vote.is_none() {
-                            let vote = match vote {
-                                VoteIdentifierType::Map(key) => self
-                                    .map_votes
-                                    .categories
-                                    .get(&key.category)
-                                    .and_then(|maps| maps.get(&key.map))
-                                    .map(|vote| {
-                                        Either::Left((
-                                            VoteType::Map {
-                                                map: vote.clone(),
-                                                key,
-                                            },
-                                            ServerExtraVoteInfo::None,
-                                            None,
-                                        ))
-                                    })
-                                    .unwrap_or_else(|| {
-                                        Either::Right(MsgSvStartVoteResult::MapVoteDoesNotExist)
-                                    }),
-                                VoteIdentifierType::RandomUnfinishedMap(key) => {
-                                    if self.map_votes.has_unfinished_map_votes {
-                                        Either::Left((
-                                            VoteType::RandomUnfinishedMap { key },
-                                            ServerExtraVoteInfo::None,
-                                            None,
-                                        ))
-                                    } else {
-                                        Either::Right(
-                                            MsgSvStartVoteResult::RandomUnfinishedMapUnsupported,
-                                        )
-                                    }
-                                }
-                                VoteIdentifierType::Misc(key) => self
-                                    .misc_votes
-                                    .get(&key.category)
-                                    .and_then(|votes| votes.get(&key.vote_key))
-                                    .map(|vote| {
-                                        Either::Left((
-                                            VoteType::Misc {
-                                                key,
-                                                vote: vote.clone(),
-                                            },
-                                            ServerExtraVoteInfo::None,
-                                            None,
-                                        ))
-                                    })
-                                    .unwrap_or_else(|| {
-                                        Either::Right(MsgSvStartVoteResult::MiscVoteDoesNotExist)
-                                    }),
-                                VoteIdentifierType::VoteSpecPlayer(ref key)
-                                | VoteIdentifierType::VoteKickPlayer(ref key) => {
-                                    let kicked =
-                                        matches!(vote, VoteIdentifierType::VoteKickPlayer { .. });
-                                    let is_same_player = *player_id == key.voted_player_id;
-                                    let enough_players_to_vote =
-                                        self.clients.allowed_to_vote_count() > 2;
-                                    let is_same_stage = self
-                                        .game_server
-                                        .cached_character_infos
-                                        .get(player_id)
-                                        .zip(
-                                            self.game_server
-                                                .cached_character_infos
-                                                .get(&key.voted_player_id),
-                                        )
-                                        .is_some_and(|(c1, c2)| c1.stage_id == c2.stage_id);
-                                    if !is_same_player && enough_players_to_vote && is_same_stage {
-                                        if let Some((kick_con_id, voted_player, character_info)) =
-                                            self.game_server
-                                                .players
-                                                .get(&key.voted_player_id)
-                                                .and_then(|p| {
-                                                    self.clients
-                                                        .clients
-                                                        .get(&p.network_id)
-                                                        .zip(
-                                                            self.game_server
-                                                                .cached_character_infos
-                                                                .get(&key.voted_player_id),
-                                                        )
-                                                        .map(|(c, pc)| (p.network_id, c, pc))
-                                                })
-                                        {
-                                            // if the player exists and no current vote exists, start the vote
-                                            let can_be_kicked = !matches!(
-                                                voted_player.auth.level,
-                                                AuthLevel::Admin | AuthLevel::Moderator
-                                            );
-                                            let is_same_client = kick_con_id == *con_id;
-                                            let is_same_network = voted_player.ip == player.ip;
-                                            if can_be_kicked && !is_same_client && !is_same_network
-                                            {
-                                                self.game_server
-                                                    .game
-                                                    .voted_player(Some(key.voted_player_id));
-                                                Either::Left((
-                                                    if kicked {
-                                                        VoteType::VoteKickPlayer {
-                                                            key: key.clone(),
-                                                            name: character_info.info.name.clone(),
-                                                            skin: character_info.info.skin.clone(),
-                                                            skin_info: character_info.skin_info,
-                                                        }
-                                                    } else {
-                                                        VoteType::VoteSpecPlayer {
-                                                            key: key.clone(),
-                                                            name: character_info.info.name.clone(),
-                                                            skin: character_info.info.skin.clone(),
-                                                            skin_info: character_info.skin_info,
-                                                        }
-                                                    },
-                                                    ServerExtraVoteInfo::Player {
-                                                        to_kick_player: kick_con_id,
-                                                        ip: voted_player.ip,
-                                                    },
-                                                    Some(voted_player.ip),
-                                                ))
-                                            } else if !can_be_kicked {
-                                                Either::Right(
-                                                    MsgSvStartVoteResult::CantVoteAdminOrModerator,
-                                                )
-                                            } else if is_same_client {
-                                                Either::Right(MsgSvStartVoteResult::CantSameClient)
-                                            } else if is_same_network {
-                                                Either::Right(MsgSvStartVoteResult::CantSameNetwork)
-                                            } else {
-                                                Either::Right(
-                                                    MsgSvStartVoteResult::CantVoteAdminOrModerator,
-                                                )
-                                            }
-                                        } else {
-                                            Either::Right(MsgSvStartVoteResult::PlayerDoesNotExist)
-                                        }
-                                    } else if is_same_player {
-                                        Either::Right(MsgSvStartVoteResult::CantVoteSelf)
-                                    } else if !is_same_stage {
-                                        Either::Right(MsgSvStartVoteResult::CantVoteFromOtherStage)
-                                    } else {
-                                        Either::Right(MsgSvStartVoteResult::TooFewPlayersToVote)
-                                    }
-                                }
-                            };
-                            match vote {
-                                Either::Left((vote, extra_vote_info, no_voter)) => {
-                                    self.game_server.cur_vote = Some(ServerVote {
-                                        state: VoteState {
-                                            vote,
-                                            // filled on the fly instead
-                                            remaining_time: Duration::ZERO,
-                                            // vote starter get a yes vote
-                                            yes_votes: 1,
-                                            no_votes: if no_voter.is_some() { 1 } else { 0 },
-                                            allowed_to_vote_count: self
-                                                .clients
-                                                .allowed_to_vote_count()
-                                                as u64,
+                }
+                ClientToServerPlayerMessage::Kill => {
+                    self.game_server
+                        .game
+                        .client_command(player_id, ClientCommand::Kill);
+                }
+                ClientToServerPlayerMessage::JoinSpectator => {
+                    self.game_server
+                        .game
+                        .client_command(player_id, ClientCommand::JoinSpectator);
+                }
+                ClientToServerPlayerMessage::StartVote(vote) => {
+                    // if no current vote exist, try the vote
+                    let is_ingame = self
+                        .game_server
+                        .cached_character_infos
+                        .get(player_id)
+                        .is_some_and(|c| c.stage_id.is_some());
+                    let player = self.clients.clients.get(con_id).expect("logic error");
+                    let res = if is_ingame && self.game_server.cur_vote.is_none() {
+                        let vote = match vote {
+                            VoteIdentifierType::Map(key) => self
+                                .map_votes
+                                .categories
+                                .get(&key.category)
+                                .and_then(|maps| maps.get(&key.map))
+                                .map(|vote| {
+                                    Either::Left((
+                                        VoteType::Map {
+                                            map: vote.clone(),
+                                            key,
                                         },
-                                        extra_vote_info,
-                                        started_at: self.sys.time_get(),
-                                        participating_ip: [(player.ip, Voted::Yes)]
-                                            .into_iter()
-                                            .chain(
-                                                no_voter
-                                                    .into_iter()
-                                                    .map(|con_id| (con_id, Voted::No)),
+                                        ServerExtraVoteInfo::None,
+                                        None,
+                                    ))
+                                })
+                                .unwrap_or_else(|| {
+                                    Either::Right(MsgSvStartVoteResult::MapVoteDoesNotExist)
+                                }),
+                            VoteIdentifierType::RandomUnfinishedMap(key) => {
+                                if self.map_votes.has_unfinished_map_votes {
+                                    Either::Left((
+                                        VoteType::RandomUnfinishedMap { key },
+                                        ServerExtraVoteInfo::None,
+                                        None,
+                                    ))
+                                } else {
+                                    Either::Right(
+                                        MsgSvStartVoteResult::RandomUnfinishedMapUnsupported,
+                                    )
+                                }
+                            }
+                            VoteIdentifierType::Misc(key) => self
+                                .misc_votes
+                                .get(&key.category)
+                                .and_then(|votes| votes.get(&key.vote_key))
+                                .map(|vote| {
+                                    Either::Left((
+                                        VoteType::Misc {
+                                            key,
+                                            vote: vote.clone(),
+                                        },
+                                        ServerExtraVoteInfo::None,
+                                        None,
+                                    ))
+                                })
+                                .unwrap_or_else(|| {
+                                    Either::Right(MsgSvStartVoteResult::MiscVoteDoesNotExist)
+                                }),
+                            VoteIdentifierType::VoteSpecPlayer(ref key)
+                            | VoteIdentifierType::VoteKickPlayer(ref key) => {
+                                let kicked =
+                                    matches!(vote, VoteIdentifierType::VoteKickPlayer { .. });
+                                let is_same_player = *player_id == key.voted_player_id;
+                                let enough_players_to_vote =
+                                    self.clients.allowed_to_vote_count() > 2;
+                                let is_same_stage = self
+                                    .game_server
+                                    .cached_character_infos
+                                    .get(player_id)
+                                    .zip(
+                                        self.game_server
+                                            .cached_character_infos
+                                            .get(&key.voted_player_id),
+                                    )
+                                    .is_some_and(|(c1, c2)| c1.stage_id == c2.stage_id);
+                                if !is_same_player && enough_players_to_vote && is_same_stage {
+                                    if let Some((kick_con_id, voted_player, character_info)) =
+                                        self.game_server.players.get(&key.voted_player_id).and_then(
+                                            |p| {
+                                                self.clients
+                                                    .clients
+                                                    .get(&p.network_id)
+                                                    .zip(
+                                                        self.game_server
+                                                            .cached_character_infos
+                                                            .get(&key.voted_player_id),
+                                                    )
+                                                    .map(|(c, pc)| (p.network_id, c, pc))
+                                            },
+                                        )
+                                    {
+                                        // if the player exists and no current vote exists, start the vote
+                                        let can_be_kicked = !matches!(
+                                            voted_player.auth.level,
+                                            AuthLevel::Admin | AuthLevel::Moderator
+                                        );
+                                        let is_same_client = kick_con_id == *con_id;
+                                        let is_same_network = voted_player.ip == player.ip;
+                                        if can_be_kicked && !is_same_client && !is_same_network {
+                                            self.game_server
+                                                .game
+                                                .voted_player(Some(key.voted_player_id));
+                                            Either::Left((
+                                                if kicked {
+                                                    VoteType::VoteKickPlayer {
+                                                        key: key.clone(),
+                                                        name: character_info.info.name.clone(),
+                                                        skin: character_info.info.skin.clone(),
+                                                        skin_info: character_info.skin_info,
+                                                    }
+                                                } else {
+                                                    VoteType::VoteSpecPlayer {
+                                                        key: key.clone(),
+                                                        name: character_info.info.name.clone(),
+                                                        skin: character_info.info.skin.clone(),
+                                                        skin_info: character_info.skin_info,
+                                                    }
+                                                },
+                                                ServerExtraVoteInfo::Player {
+                                                    to_kick_player: kick_con_id,
+                                                    ip: voted_player.ip,
+                                                },
+                                                Some(voted_player.ip),
+                                            ))
+                                        } else if !can_be_kicked {
+                                            Either::Right(
+                                                MsgSvStartVoteResult::CantVoteAdminOrModerator,
                                             )
-                                            .collect(),
-                                    });
-                                    let vote_state = self.game_server.cur_vote.as_ref().map(|v| {
-                                        let mut state = v.state.clone();
-                                        state.remaining_time = Duration::from_secs(25);
-                                        state
-                                    });
-                                    self.broadcast_in_order(
-                                        ServerToClientMessage::Vote(vote_state),
-                                        NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
-                                    );
-                                    MsgSvStartVoteResult::Success
+                                        } else if is_same_client {
+                                            Either::Right(MsgSvStartVoteResult::CantSameClient)
+                                        } else if is_same_network {
+                                            Either::Right(MsgSvStartVoteResult::CantSameNetwork)
+                                        } else {
+                                            Either::Right(
+                                                MsgSvStartVoteResult::CantVoteAdminOrModerator,
+                                            )
+                                        }
+                                    } else {
+                                        Either::Right(MsgSvStartVoteResult::PlayerDoesNotExist)
+                                    }
+                                } else if is_same_player {
+                                    Either::Right(MsgSvStartVoteResult::CantVoteSelf)
+                                } else if !is_same_stage {
+                                    Either::Right(MsgSvStartVoteResult::CantVoteFromOtherStage)
+                                } else {
+                                    Either::Right(MsgSvStartVoteResult::TooFewPlayersToVote)
                                 }
-                                Either::Right(res) => res,
                             }
-                        } else if is_ingame {
-                            MsgSvStartVoteResult::AnotherVoteAlreadyActive
-                        } else {
-                            MsgSvStartVoteResult::CantVoteAsSpectator
                         };
+                        match vote {
+                            Either::Left((vote, extra_vote_info, no_voter)) => {
+                                self.game_server.cur_vote = Some(ServerVote {
+                                    state: VoteState {
+                                        vote,
+                                        // filled on the fly instead
+                                        remaining_time: Duration::ZERO,
+                                        // vote starter get a yes vote
+                                        yes_votes: 1,
+                                        no_votes: if no_voter.is_some() { 1 } else { 0 },
+                                        allowed_to_vote_count: self.clients.allowed_to_vote_count()
+                                            as u64,
+                                    },
+                                    extra_vote_info,
+                                    started_at: self.sys.time_get(),
+                                    participating_ip: [(player.ip, Voted::Yes)]
+                                        .into_iter()
+                                        .chain(
+                                            no_voter.into_iter().map(|con_id| (con_id, Voted::No)),
+                                        )
+                                        .collect(),
+                                });
+                                let vote_state = self.game_server.cur_vote.as_ref().map(|v| {
+                                    let mut state = v.state.clone();
+                                    state.remaining_time = Duration::from_secs(25);
+                                    state
+                                });
+                                self.broadcast_in_order(
+                                    ServerToClientMessage::Vote(vote_state),
+                                    NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
+                                );
+                                MsgSvStartVoteResult::Success
+                            }
+                            Either::Right(res) => res,
+                        }
+                    } else if is_ingame {
+                        MsgSvStartVoteResult::AnotherVoteAlreadyActive
+                    } else {
+                        MsgSvStartVoteResult::CantVoteAsSpectator
+                    };
 
-                        self.network.send_in_order_to(
-                            &ServerToClientMessage::StartVoteRes(res),
-                            con_id,
-                            NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
+                    self.network.send_in_order_to(
+                        &ServerToClientMessage::StartVoteRes(res),
+                        con_id,
+                        NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
+                    );
+                }
+                ClientToServerPlayerMessage::Voted(voted) => {
+                    if let Some(vote) = &mut self.game_server.cur_vote {
+                        let prev_vote = vote.participating_ip.insert(player.ip, voted);
+                        match voted {
+                            Voted::Yes => vote.state.yes_votes += 1,
+                            Voted::No => vote.state.no_votes += 1,
+                        }
+                        if let Some(prev_vote) = prev_vote {
+                            match prev_vote {
+                                Voted::Yes => vote.state.yes_votes -= 1,
+                                Voted::No => vote.state.no_votes -= 1,
+                            }
+                        }
+                        let vote_state = vote.state.clone();
+                        let started_at = vote.started_at;
+                        self.send_vote(Some(vote_state), started_at);
+                    }
+                }
+                ClientToServerPlayerMessage::Emoticon(emoticon) => {
+                    self.game_server.set_player_emoticon(player_id, emoticon);
+                }
+                ClientToServerPlayerMessage::ChangeEyes { eye, duration } => {
+                    self.game_server.set_player_eye(player_id, eye, duration);
+                }
+                ClientToServerPlayerMessage::JoinStage(join_stage) => {
+                    self.game_server
+                        .game
+                        .client_command(player_id, ClientCommand::JoinStage(join_stage));
+                }
+                ClientToServerPlayerMessage::JoinVanillaSide(side) => {
+                    self.game_server
+                        .game
+                        .client_command(player_id, ClientCommand::JoinSide(side));
+                }
+                ClientToServerPlayerMessage::SwitchToCamera(mode) => {
+                    self.game_server
+                        .game
+                        .client_command(player_id, ClientCommand::SetCameraMode(mode));
+                }
+                ClientToServerPlayerMessage::UpdateCharacterInfo { info, version } => {
+                    self.game_server
+                        .game
+                        .try_overwrite_player_character_info(player_id, &info, version);
+                }
+                ClientToServerPlayerMessage::RconExec { ident_text, args } => {
+                    let auth_level = player.auth.level;
+                    if matches!(auth_level, AuthLevel::Moderator | AuthLevel::Admin) {
+                        let res = self.handle_rcon_commands(
+                            Some(player_id),
+                            auth_level,
+                            &format!("{} {}", ident_text.as_str(), args.as_str()),
+                            false,
                         );
-                    }
-                    ClientToServerPlayerMessage::Voted(voted) => {
-                        if let Some(vote) = &mut self.game_server.cur_vote {
-                            let prev_vote = vote.participating_ip.insert(player.ip, voted);
-                            match voted {
-                                Voted::Yes => vote.state.yes_votes += 1,
-                                Voted::No => vote.state.no_votes += 1,
-                            }
-                            if let Some(prev_vote) = prev_vote {
-                                match prev_vote {
-                                    Voted::Yes => vote.state.yes_votes -= 1,
-                                    Voted::No => vote.state.no_votes -= 1,
-                                }
-                            }
-                            let vote_state = vote.state.clone();
-                            let started_at = vote.started_at;
-                            self.send_vote(Some(vote_state), started_at);
-                        }
-                    }
-                    ClientToServerPlayerMessage::Emoticon(emoticon) => {
-                        self.game_server.set_player_emoticon(player_id, emoticon);
-                    }
-                    ClientToServerPlayerMessage::ChangeEyes { eye, duration } => {
-                        self.game_server.set_player_eye(player_id, eye, duration);
-                    }
-                    ClientToServerPlayerMessage::JoinStage(join_stage) => {
-                        self.game_server
-                            .game
-                            .client_command(player_id, ClientCommand::JoinStage(join_stage));
-                    }
-                    ClientToServerPlayerMessage::JoinVanillaSide(side) => {
-                        self.game_server
-                            .game
-                            .client_command(player_id, ClientCommand::JoinSide(side));
-                    }
-                    ClientToServerPlayerMessage::SwitchToCamera(mode) => {
-                        self.game_server
-                            .game
-                            .client_command(player_id, ClientCommand::SetCameraMode(mode));
-                    }
-                    ClientToServerPlayerMessage::UpdateCharacterInfo { info, version } => {
-                        self.game_server
-                            .game
-                            .try_overwrite_player_character_info(player_id, &info, version);
-                    }
-                    ClientToServerPlayerMessage::RconExec { ident_text, args } => {
-                        let auth_level = player.auth.level;
-                        if matches!(auth_level, AuthLevel::Moderator | AuthLevel::Admin) {
-                            let res = self.handle_rcon_commands(
-                                Some(player_id),
-                                auth_level,
-                                &format!("{} {}", ident_text.as_str(), args.as_str()),
-                                false,
-                            );
-                            self.network.send_in_order_to(
-                                &ServerToClientMessage::RconExecResult { results: res },
-                                con_id,
-                                NetworkInOrderChannel::Custom(
-                                    7302, // reads as "rcon"
-                                ),
-                            );
-                        }
+                        self.network.send_in_order_to(
+                            &ServerToClientMessage::RconExecResult { results: res },
+                            con_id,
+                            NetworkInOrderChannel::Custom(
+                                7302, // reads as "rcon"
+                            ),
+                        );
                     }
                 }
             }
@@ -2326,22 +2311,22 @@ impl Server {
                             self.send_rcon_commands(con_id);
                         }
 
-                        if let Some((accounts, db)) = self.accounts.as_ref().zip(self.db.as_ref()) {
-                            if let Some(pool) = db.pools.get(&accounts.kind) {
-                                let shared = accounts.shared.clone();
-                                let pool = pool.clone();
-                                self.db_requests.push(self.io.rt.spawn(async move {
-                                    let new_account_was_created =
-                                        ddnet_account_game_server::auto_login::auto_login(
-                                            shared, &pool, &user_id,
-                                        )
-                                        .await?;
-                                    Ok(GameServerDb::Account(GameServerDbAccount::AutoLogin {
-                                        user_id,
-                                        new_account_was_created,
-                                    }))
-                                }));
-                            }
+                        if let Some((accounts, db)) = self.accounts.as_ref().zip(self.db.as_ref())
+                            && let Some(pool) = db.pools.get(&accounts.kind)
+                        {
+                            let shared = accounts.shared.clone();
+                            let pool = pool.clone();
+                            self.db_requests.push(self.io.rt.spawn(async move {
+                                let new_account_was_created =
+                                    ddnet_account_game_server::auto_login::auto_login(
+                                        shared, &pool, &user_id,
+                                    )
+                                    .await?;
+                                Ok(GameServerDb::Account(GameServerDbAccount::AutoLogin {
+                                    user_id,
+                                    new_account_was_created,
+                                }))
+                            }));
                         }
 
                         self.network.send_unordered_to(
@@ -2436,7 +2421,9 @@ impl Server {
                             } else if !can_join_player_with_id {
                                 Err(AddLocalPlayerResponseError::PlayerIdAlreadyUsedByClient)
                             } else {
-                                panic!("Unhandled error variant during connecting another local player");
+                                panic!(
+                                    "Unhandled error variant during connecting another local player"
+                                );
                             }
                         } else {
                             Err(AddLocalPlayerResponseError::ClientWasNotReady)
@@ -2643,93 +2630,86 @@ impl Server {
                 }
             }
             ClientToServerMessage::AccountRequestInfo => {
-                if let Some(client) = self.clients.clients.get_mut(con_id) {
-                    if !std::mem::replace(&mut client.requested_account_details, true) {
-                        let user_id = Self::user_id(
-                            &self
-                                .account_server_certs_downloader
-                                .as_ref()
-                                .map(|c| c.public_keys())
-                                .unwrap_or_default(),
-                            &client.auth,
-                        );
-                        if let Some((account_info, account_id)) = self
-                            .accounts
+                if let Some(client) = self.clients.clients.get_mut(con_id)
+                    && !std::mem::replace(&mut client.requested_account_details, true)
+                {
+                    let user_id = Self::user_id(
+                        &self
+                            .account_server_certs_downloader
                             .as_ref()
-                            .map(|a| &a.info)
-                            .zip(user_id.account_id)
-                        {
-                            let account_info = account_info.clone();
-                            let con_id = *con_id;
-                            self.db_requests.push(self.io.rt.spawn(async move {
-                                let details_res = account_info.fetch(account_id).await;
-                                Ok(GameServerDb::Account(GameServerDbAccount::Info {
-                                    con_id,
-                                    account_details: details_res
-                                        .map_err(|err| NetworkString::new_lossy(err.to_string()))
-                                        .and_then(|res| {
-                                            res.name
-                                                .as_str()
-                                                .try_into()
-                                                .map(|name| account_info::AccountInfo {
-                                                    name,
-                                                    creation_date: res.create_time,
-                                                })
-                                                .map_err(|err| {
-                                                    NetworkString::new_lossy(err.to_string())
-                                                })
-                                        }),
-                                }))
-                            }));
-                        } else {
-                            self.network.send_unordered_to(
-                                &ServerToClientMessage::AccountDetails(Err(
-                                    if self.accounts.is_some() {
-                                        "user has no account".try_into().unwrap()
-                                    } else {
-                                        "accounts are not enabled on this server"
-                                            .try_into()
-                                            .unwrap()
-                                    },
-                                )),
+                            .map(|c| c.public_keys())
+                            .unwrap_or_default(),
+                        &client.auth,
+                    );
+                    if let Some((account_info, account_id)) = self
+                        .accounts
+                        .as_ref()
+                        .map(|a| &a.info)
+                        .zip(user_id.account_id)
+                    {
+                        let account_info = account_info.clone();
+                        let con_id = *con_id;
+                        self.db_requests.push(self.io.rt.spawn(async move {
+                            let details_res = account_info.fetch(account_id).await;
+                            Ok(GameServerDb::Account(GameServerDbAccount::Info {
                                 con_id,
-                            );
-                        }
+                                account_details: details_res
+                                    .map_err(|err| NetworkString::new_lossy(err.to_string()))
+                                    .and_then(|res| {
+                                        res.name
+                                            .as_str()
+                                            .try_into()
+                                            .map(|name| account_info::AccountInfo {
+                                                name,
+                                                creation_date: res.create_time,
+                                            })
+                                            .map_err(|err| {
+                                                NetworkString::new_lossy(err.to_string())
+                                            })
+                                    }),
+                            }))
+                        }));
+                    } else {
+                        self.network.send_unordered_to(
+                            &ServerToClientMessage::AccountDetails(Err(
+                                if self.accounts.is_some() {
+                                    "user has no account".try_into().unwrap()
+                                } else {
+                                    "accounts are not enabled on this server"
+                                        .try_into()
+                                        .unwrap()
+                                },
+                            )),
+                            con_id,
+                        );
                     }
                 }
             }
             ClientToServerMessage::SpatialChat { opus_frames, id } => {
-                if let Some(spatial_chat) = &mut self.game_server.spatial_world {
-                    if let Some((player_id, auth)) = self
+                if let Some(spatial_chat) = &mut self.game_server.spatial_world
+                    && let Some((player_id, auth)) = self
                         .clients
                         .clients
                         .get_mut(con_id)
                         .and_then(|c| c.players.front().map(|(id, _)| (id, &c.auth)))
-                    {
-                        let account_server_public_keys = self
-                            .account_server_certs_downloader
-                            .as_ref()
-                            .map(|c| c.public_keys())
-                            .unwrap_or_default();
-                        let player_unique_id = Self::user_id_to_player_unique_id(&Self::user_id(
-                            &account_server_public_keys,
-                            auth,
-                        ));
-                        spatial_chat.chat_sound(
-                            *con_id,
-                            *player_id,
-                            player_unique_id,
-                            id,
-                            opus_frames,
-                        );
-                    }
+                {
+                    let account_server_public_keys = self
+                        .account_server_certs_downloader
+                        .as_ref()
+                        .map(|c| c.public_keys())
+                        .unwrap_or_default();
+                    let player_unique_id = Self::user_id_to_player_unique_id(&Self::user_id(
+                        &account_server_public_keys,
+                        auth,
+                    ));
+                    spatial_chat.chat_sound(*con_id, *player_id, player_unique_id, id, opus_frames);
                 }
             }
             ClientToServerMessage::SpatialChatDeactivated => {
-                if let Some(spatial_chat) = &mut self.game_server.spatial_world {
-                    if self.clients.clients.contains_key(con_id) {
-                        spatial_chat.on_client_drop(con_id);
-                    }
+                if let Some(spatial_chat) = &mut self.game_server.spatial_world
+                    && self.clients.clients.contains_key(con_id)
+                {
+                    spatial_chat.on_client_drop(con_id);
                 }
             }
         }
@@ -3292,12 +3272,11 @@ impl Server {
                 {
                     let mut inps = self.game_server.inps_pool.new();
                     for (player_id, inp) in inputs.drain() {
-                        if let Some(player) = self.game_server.players.get_mut(&player_id) {
-                            if let Some(diff) =
+                        if let Some(player) = self.game_server.players.get_mut(&player_id)
+                            && let Some(diff) =
                                 player.inp.try_overwrite(&inp.inp, inp.version(), false)
-                            {
-                                inps.insert(player_id, CharacterInputInfo { inp: inp.inp, diff });
-                            }
+                        {
+                            inps.insert(player_id, CharacterInputInfo { inp: inp.inp, diff });
                         }
                     }
                     self.game_server.game.set_player_inputs(inps);

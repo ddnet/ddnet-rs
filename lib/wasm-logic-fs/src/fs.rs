@@ -7,8 +7,8 @@ use std::{
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::{FileSystemEntryTy, HashMap};
 use sendable::SendOption;
-use wasm_runtime_types::{read_param, write_result, RawBytesEnv};
-use wasmer::{imports, AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store};
+use wasm_runtime_types::{RawBytesEnv, read_param, write_result};
+use wasmer::{AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store, imports};
 
 type DirTasks = HashMap<u64, IoRuntimeTask<HashMap<PathBuf, Vec<u8>>>>;
 

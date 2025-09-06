@@ -1,7 +1,7 @@
 [package]
 name = "base-io"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base-io-traits = { path = "../base-io-traits" }
@@ -10,12 +10,18 @@ hiarc = { path = "../hiarc", features = ["enable_anyhow", "enable_tokio"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 urlencoding = "2.1.3"
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "net",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { version = "1.47.1", features = ["sync", "macros"] }
-async-executor = "1.13.2"
+async-executor = "1.13.3"
 async-task = "4.7.1"
 futures-lite = "2.6.1"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "net", "sync", "fs", "time", "macros"] }
-
+tokio = { version = "1.47.1", features = ["sync", "macros"] }

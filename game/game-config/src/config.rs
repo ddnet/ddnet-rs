@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use config::config::ConfigPath;
+use config::{ConfigInterface, config_default};
 use config::{config::ConfigEngine, types::ConfRgb};
-use config::{config_default, ConfigInterface};
 use game_interface::interface::MAX_MAP_NAME_LEN;
 use game_interface::{
     client_commands::MAX_TEAM_NAME_LEN,
     types::character_info::{
-        NetworkLaserInfo, NetworkSkinInfo, MAX_ASSET_NAME_LEN, MAX_CHARACTER_CLAN_LEN,
-        MAX_CHARACTER_NAME_LEN, MAX_FLAG_NAME_LEN, MAX_LANG_NAME_LEN,
+        MAX_ASSET_NAME_LEN, MAX_CHARACTER_CLAN_LEN, MAX_CHARACTER_NAME_LEN, MAX_FLAG_NAME_LEN,
+        MAX_LANG_NAME_LEN, NetworkLaserInfo, NetworkSkinInfo,
     },
 };
 use serde::de::DeserializeOwned;

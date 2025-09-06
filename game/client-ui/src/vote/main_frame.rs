@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use client_containers::container::ContainerKey;
 use egui::{
-    pos2, vec2, Align2, Color32, CornerRadius, FontId, Frame, Grid, Rect, RichText, Shadow, Stroke,
-    UiBuilder,
+    Align2, Color32, CornerRadius, FontId, Frame, Grid, Rect, RichText, Shadow, Stroke, UiBuilder,
+    pos2, vec2,
 };
 use game_interface::{types::render::character::TeeEye, votes::Voted};
 use math::math::vector::vec2;
@@ -35,7 +35,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     rect.set_top(y_offset);
     rect.set_width(max_width);
 
-    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+    ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
         let vote_rect = ui.available_rect_before_wrap();
         let style = ui.style();
         Frame::group(style)

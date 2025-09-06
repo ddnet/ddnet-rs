@@ -1,17 +1,17 @@
 [package]
 name = "client-types"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
+command-parser = { path = "../../lib/command-parser" }
 config = { path = "../../lib/config" }
 hiarc = { path = "../../lib/hiarc" }
+
 game-base = { path = "../game-base" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 
-command-parser = { path = "../../lib/command-parser" }
-
-serde = { version = "1.0.219", features = ["derive"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+serde = { version = "1.0.219", features = ["derive"] }

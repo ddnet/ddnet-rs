@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse_macro_input, Item};
+use quote::{ToTokens, format_ident, quote};
+use syn::{Item, parse_macro_input};
 
 #[proc_macro_derive(StatementArgs)]
 pub fn statement_args(tokens: TokenStream) -> TokenStream {

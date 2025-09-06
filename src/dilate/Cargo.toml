@@ -1,12 +1,18 @@
 [package]
 name = "dilate"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 image-utils = { path = "../../lib/image-utils" }
 
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "time", "macros"] }
-clap = { version = "4.5.45", features = ["derive"] }
-rayon = "1.11.0"
+clap = { version = "4.5.47", features = ["derive"] }
 oxipng = { version = "9.1", features = ["parallel"], default-features = false }
+rayon = "1.11.0"
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }

@@ -14,7 +14,7 @@ use thiserror::Error;
 
 use crate::escape::{escape, unescape};
 
-use super::tokenizer::{tokenize, HumanReadableToken, Token};
+use super::tokenizer::{HumanReadableToken, Token, tokenize};
 
 /// Which argument type the command expects next
 #[derive(Debug, Hiarc, Clone, PartialEq, Serialize, Deserialize)]
@@ -244,10 +244,10 @@ impl TokenStack {
         }
     }
     pub fn can_pop(&mut self) {
-        if let Some(tokens) = self.tokens.last_mut() {
-            if tokens.tokens.is_empty() {
-                self.tokens.pop();
-            }
+        if let Some(tokens) = self.tokens.last_mut()
+            && tokens.tokens.is_empty()
+        {
+            self.tokens.pop();
         }
     }
     pub fn token_cur_stack_left_count(&self) -> usize {
@@ -1015,7 +1015,7 @@ pub fn parse<const S: usize>(
 
 #[cfg(test)]
 mod test {
-    use crate::parser::{parse, CommandParseResult, CommandType, ParserCache, Syn};
+    use crate::parser::{CommandParseResult, CommandType, ParserCache, Syn, parse};
 
     use super::{CommandArg, CommandArgType};
 

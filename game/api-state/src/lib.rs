@@ -46,7 +46,7 @@ use game_interface::{
     },
 };
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// returns an instance of the game state and some static information
     fn mod_state_new(
         map: Vec<u8>,
@@ -78,7 +78,7 @@ impl ApiState {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn game_state_new() {
     let map: Vec<u8> = read_param_from_host(0);
     let map_name: NetworkReducedAsciiString<MAX_MAP_NAME_LEN> = read_param_from_host(1);
@@ -87,7 +87,7 @@ pub fn game_state_new() {
     upload_return_val(API_STATE.with(|g| res.map(|_| g.info.borrow().clone().unwrap())));
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn game_state_drop() {
     API_STATE.with(|g| *g.state.borrow_mut() = None);
 }

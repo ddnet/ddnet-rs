@@ -2,10 +2,10 @@ use std::{collections::HashMap, rc::Rc};
 
 use base::network_string::NetworkString;
 use client_types::console::{ConsoleEntry, ConsoleEntryCmd};
-use command_parser::parser::{format_args, CommandArg, CommandArgType};
+use command_parser::parser::{CommandArg, CommandArgType, format_args};
 use egui::Color32;
 use game_interface::rcon_entries::RconEntry;
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use ui_base::ui::UiCreator;
 
 use super::console::ConsoleRender;

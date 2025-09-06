@@ -1,4 +1,4 @@
-use egui::{epaint::Shadow, Color32, Stroke};
+use egui::{Color32, Stroke, epaint::Shadow};
 
 pub fn entry_frame(ui: &mut egui::Ui, f: impl FnOnce(&mut egui::Ui)) {
     let color_frame = Color32::from_rgba_unmultiplied(0, 0, 0, 15);

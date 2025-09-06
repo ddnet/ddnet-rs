@@ -42,13 +42,13 @@ use graphics::handles::{
     },
 };
 use hiarc::HiarcTrait;
-use hiarc::{hi_closure, Hiarc};
+use hiarc::{Hiarc, hi_closure};
 use map::{
     map::{
         animations::{AnimBase, AnimPoint},
         groups::{
-            layers::design::{Quad, Sound, SoundShape},
             MapGroupAttr, MapGroupAttrClipping,
+            layers::design::{Quad, Sound, SoundShape},
         },
     },
     skeleton::{
@@ -61,9 +61,8 @@ use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
 
 use math::math::{
-    mix,
+    PI, mix,
     vector::{fvec3, nffixed, nfvec4, ubvec4, uffixed, vec2},
-    PI,
 };
 
 use graphics_types::rendering::{BlendType, ColorRgba, State};
@@ -285,60 +284,60 @@ impl RenderMap {
                 },
             );
         } else {
-            if let Some(shader_storage) = shader_storage {
-                if draw_layer {
-                    // indices buffers we want to draw
-                    let mut draws = self.tile_layer_render_info_pool.new();
+            if let Some(shader_storage) = shader_storage
+                && draw_layer
+            {
+                // indices buffers we want to draw
+                let mut draws = self.tile_layer_render_info_pool.new();
 
-                    let reserve: usize = (y1 - y0).unsigned_abs() as usize + 1;
-                    draws.reserve(reserve);
+                let reserve: usize = (y1 - y0).unsigned_abs() as usize + 1;
+                draws.reserve(reserve);
 
-                    for y in y0..y1 {
-                        if x0 > x1 {
-                            continue;
-                        }
-                        let xr = x1 - 1;
+                for y in y0..y1 {
+                    if x0 > x1 {
+                        continue;
+                    }
+                    let xr = x1 - 1;
 
-                        if visuals.tiles_of_layer[(y * width + xr) as usize].quad_offset()
-                            < visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset()
-                        {
-                            panic!("Tile count wrong.");
-                        }
-
-                        let num_quads = (visuals.tiles_of_layer[(y * width + xr) as usize]
-                            .quad_offset()
-                            - visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset())
-                            + (if visuals.tiles_of_layer[(y * width + xr) as usize].drawable() {
-                                1
-                            } else {
-                                0
-                            });
-
-                        if num_quads > 0 {
-                            draws.push(TileLayerDrawInfo {
-                                quad_offset: visuals.tiles_of_layer[(y * width + x0) as usize]
-                                    .quad_offset(),
-                                quad_count: num_quads,
-                                pos_y: y as f32,
-                            });
-                        }
+                    if visuals.tiles_of_layer[(y * width + xr) as usize].quad_offset()
+                        < visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset()
+                    {
+                        panic!("Tile count wrong.");
                     }
 
-                    color.r *= channels.r().to_num::<f32>();
-                    color.g *= channels.g().to_num::<f32>();
-                    color.b *= channels.b().to_num::<f32>();
-                    color.a *= channels.a().to_num::<f32>();
+                    let num_quads = (visuals.tiles_of_layer[(y * width + xr) as usize]
+                        .quad_offset()
+                        - visuals.tiles_of_layer[(y * width + x0) as usize].quad_offset())
+                        + (if visuals.tiles_of_layer[(y * width + xr) as usize].drawable() {
+                            1
+                        } else {
+                            0
+                        });
 
-                    let draw_count = draws.len();
-                    if draw_count != 0 {
-                        self.map_graphics.render_tile_layer(
-                            state,
-                            texture.clone(),
-                            shader_storage,
-                            &color,
-                            draws,
-                        );
+                    if num_quads > 0 {
+                        draws.push(TileLayerDrawInfo {
+                            quad_offset: visuals.tiles_of_layer[(y * width + x0) as usize]
+                                .quad_offset(),
+                            quad_count: num_quads,
+                            pos_y: y as f32,
+                        });
                     }
+                }
+
+                color.r *= channels.r().to_num::<f32>();
+                color.g *= channels.g().to_num::<f32>();
+                color.b *= channels.b().to_num::<f32>();
+                color.a *= channels.a().to_num::<f32>();
+
+                let draw_count = draws.len();
+                if draw_count != 0 {
+                    self.map_graphics.render_tile_layer(
+                        state,
+                        texture.clone(),
+                        shader_storage,
+                        &color,
+                        draws,
+                    );
                 }
             }
 
@@ -1466,12 +1465,11 @@ impl RenderMap {
         }
 
         for render_layer in render_layers.filter(|render_layer| {
-            if let MapRenderLayer::Tile(_) = render_layer {
-                if matches!(layer_ty, RenderLayerType::Background)
-                    && !pipe.config.background_show_tile_layers
-                {
-                    return false;
-                }
+            if let MapRenderLayer::Tile(_) = render_layer
+                && matches!(layer_ty, RenderLayerType::Background)
+                && !pipe.config.background_show_tile_layers
+            {
+                return false;
             }
             true
         }) {

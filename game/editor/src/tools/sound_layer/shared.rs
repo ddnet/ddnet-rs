@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::{
     map::{EditorLayer, EditorLayerUnionRef, EditorMap, EditorMapInterface},
     tools::shared::in_radius,
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{UiCanvasSize, ui_pos_to_world_pos},
 };
 
 #[derive(Debug, Hiarc, Clone, Copy)]

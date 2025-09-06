@@ -1,14 +1,14 @@
 [package]
 name = "render-game"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-config = { path = "../../../lib/config" }
-api = { path = "../../../lib/api" }
-
-api-render-game = { path = "../../../game/api-render-game" }
-client-render-game = { path = "../../../game/client-render-game" }
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
+
+[dependencies]
+api = { path = "../../../lib/api" }
+config = { path = "../../../lib/config" }
+
+api-render-game = { path = "../../../game/api-render-game" }
+client-render-game = { path = "../../../game/client-render-game" }

@@ -3,7 +3,7 @@ use math::math::{
     dot,
     vector::{dvec2, ffixed, vec2_base},
 };
-use serde::{de, ser, Serialize};
+use serde::{Serialize, de, ser};
 
 /// An offset to a camera caused by a dynamic camera, which some guarantees:
 /// - the length of offset (x, y) is in range [-10.0 - 10.0]

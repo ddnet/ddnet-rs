@@ -1,14 +1,15 @@
 [package]
 name = "graphics"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-math = { path = "../math" }
 graphics-backend-traits = { path = "../graphics-backend-traits" }
-graphics-types = { path = "../graphics-types" }
 graphics-base-traits = { path = "../graphics-base-traits" }
-image-utils = { path = "../image-utils" }
-pool = { path = "../pool", features = ["enable_hiarc"] }
+graphics-types = { path = "../graphics-types" }
 hiarc = { path = "../hiarc", features = ["derive"] }
+image-utils = { path = "../image-utils" }
+math = { path = "../math" }
+pool = { path = "../pool", features = ["enable_hiarc"] }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }

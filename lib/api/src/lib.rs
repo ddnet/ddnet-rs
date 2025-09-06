@@ -13,7 +13,7 @@ use anyhow::anyhow;
 use base_fs::filesys::FileSystem;
 use base_http::http::HttpClient;
 use base_io::{
-    io::{create_runtime, Io},
+    io::{Io, create_runtime},
     runtime::IoRuntime,
 };
 use database::GameDbBackend;
@@ -25,13 +25,13 @@ use graphics_base_traits::traits::{
 };
 use graphics_types::{
     commands::{
-        StreamDataMax, GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
-        GRAPHICS_UNIFORM_INSTANCE_COUNT,
+        GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        GRAPHICS_UNIFORM_INSTANCE_COUNT, StreamDataMax,
     },
     types::WindowProps,
 };
 use pool::mt_datatypes::PoolVec;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use sound::sound_backend::SoundBackend;
 
 pub mod base_fs;
@@ -40,7 +40,7 @@ pub mod database;
 pub mod graphics;
 pub mod sound;
 
-extern "C" {
+unsafe extern "C" {
     fn host_println();
 }
 
@@ -119,7 +119,7 @@ pub static RUNTIME_THREAD_POOL: once_cell::sync::Lazy<Arc<rayon::ThreadPool>> =
     });
 
 // for system
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn sys_print(log_str: &str) {
     println(log_str);
 }
@@ -145,7 +145,7 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn api_setup() {
     std::panic::set_hook(Box::new(|panic_info| {
         let panic_text = format!("wasm module {}", panic_info);
@@ -159,73 +159,73 @@ pub fn api_setup() {
 thread_local! {
 static RES: RefCell<Vec<u8>> = Default::default();
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut RESULT_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut RESULT_SIZE: i32 = 0;
 
 static mut PARAMS: once_cell::unsync::Lazy<[Vec<u8>; 10]> =
     once_cell::unsync::Lazy::new(Default::default);
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM0_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM0_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM0_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM1_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM1_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM1_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM2_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM2_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM2_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM3_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM3_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM3_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM4_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM4_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM4_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM5_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM5_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM5_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM6_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM6_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM6_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM7_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM7_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM7_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM8_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM8_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM8_ALLOC_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM9_PTR: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM9_SIZE: i32 = 0;
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static mut PARAM9_ALLOC_SIZE: i32 = 0;
 
 unsafe fn param_ptrs(index: usize) -> (*mut i32, *mut i32, *mut i32) {
@@ -394,7 +394,7 @@ pub fn read_result_from_host<F: DeserializeOwned>() -> F {
     read_result_from_host_checked().unwrap()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn prepare_param(index: u32, expected_size: u32) {
     unsafe {
         let cur_size = PARAMS[index as usize].len();
@@ -403,7 +403,7 @@ pub fn prepare_param(index: u32, expected_size: u32) {
     set_param_params(index as usize, expected_size as usize);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn prepare_result(expected_size: u32) {
     RES.with(|g| {
         let mut g = g.borrow_mut();

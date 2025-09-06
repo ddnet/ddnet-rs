@@ -322,7 +322,7 @@ pub trait GameStateInterface: GameStateCreate {
     fn all_stages(&self, ratio: f64) -> PoolFxLinkedHashMap<StageId, StageRenderInfo>;
     /// Collect information about the local character of a player
     fn collect_character_local_render_info(&self, player_id: &PlayerId)
-        -> LocalCharacterRenderInfo;
+    -> LocalCharacterRenderInfo;
 
     /// Contains information about all known characters. Even if not visible.
     /// This even includes spectators or server side dummies etc.

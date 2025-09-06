@@ -1,25 +1,48 @@
 [package]
 name = "graphics-mod"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[package.metadata.cargo-machete]
+ignored = [
+  "api",
+  "api-macros",
+  "api-state",
+  "anyhow",
+  "arrayvec",
+  "base",
+  "bitflags",
+  "graphics",
+  "graphics-backend-traits",
+  "graphics-base-traits",
+  "graphics-types",
+  "hiarc",
+  "image-utils",
+  "math",
+  "num-derive",
+  "num-traits",
+  "pool",
+  "rayon",
+]
 
 [dependencies]
 api = { path = "../../../lib/api" }
 api-macros = { path = "../../../lib/api-macros" }
-api-state = { path = "../../../game/api-state" }
-graphics = { path = "../../../lib/graphics" }
-
 base = { path = "../../../lib/base" }
-math = { path = "../../../lib/math" }
+graphics = { path = "../../../lib/graphics" }
 graphics-backend-traits = { path = "../../../lib/graphics-backend-traits" }
-graphics-types = { path = "../../../lib/graphics-types" }
 graphics-base-traits = { path = "../../../lib/graphics-base-traits" }
-image-utils = { path = "../../../lib/image-utils" }
-pool = { path = "../../../lib/pool", features = ["enable_hiarc"] }
+graphics-types = { path = "../../../lib/graphics-types" }
 hiarc = { path = "../../../lib/hiarc", features = ["derive"] }
+image-utils = { path = "../../../lib/image-utils" }
+math = { path = "../../../lib/math" }
+pool = { path = "../../../lib/pool", features = ["enable_hiarc"] }
+
+api-state = { path = "../../../game/api-state" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+arrayvec = "0.7.6"
+bitflags = { version = "2.9.4", features = ["serde"] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 rayon = "1.11.0"
-bitflags = { version = "2.9.2", features = ["serde"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-arrayvec = "0.7.6"

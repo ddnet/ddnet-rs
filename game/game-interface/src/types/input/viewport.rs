@@ -1,6 +1,6 @@
 use hiarc::Hiarc;
 use math::math::vector::{dvec2, uffixed};
-use serde::{de, ser, Serialize};
+use serde::{Serialize, de, ser};
 
 /// the character cursor has few guarantees:
 /// - width and height are in range [1.0 - u16::MAX * 2.0]

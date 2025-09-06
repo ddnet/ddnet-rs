@@ -26,8 +26,8 @@ pub mod tests {
         borrow::Cow,
         num::NonZeroUsize,
         sync::{
-            atomic::{AtomicBool, AtomicUsize},
             Arc,
+            atomic::{AtomicBool, AtomicUsize},
         },
         thread::JoinHandle,
         time::Duration,
@@ -1226,30 +1226,46 @@ pub mod tests {
         .map(|s| s.parse().unwrap())
         .collect();
 
-        assert!(ip_range
-            .get_lpm(&"172.16.32.1/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_some());
-        assert!(ip_range
-            .get_lpm(&"172.17.32.1/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_none());
-        assert!(ip_range
-            .get_lpm(&"192.168.1.1/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_some());
-        assert!(ip_range
-            .get_lpm(&"192.168.2.1/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_none());
-        assert!(ip_range
-            .get_lpm(&"10.5.5.5/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_some());
-        assert!(ip_range
-            .get_lpm(&"11.5.5.5/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_none());
-        assert!(ip_range
-            .get_lpm(&"5.5.5.5/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_some());
-        assert!(ip_range
-            .get_lpm(&"5.5.5.6/32".parse::<ipnet::Ipv4Net>().unwrap())
-            .is_none());
+        assert!(
+            ip_range
+                .get_lpm(&"172.16.32.1/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"172.17.32.1/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_none()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"192.168.1.1/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"192.168.2.1/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_none()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"10.5.5.5/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"11.5.5.5/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_none()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"5.5.5.5/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"5.5.5.6/32".parse::<ipnet::Ipv4Net>().unwrap())
+                .is_none()
+        );
 
         // ipv6
         let ip_range: prefix_trie::PrefixSet<ipnet::Ipv6Net> = [
@@ -1263,45 +1279,61 @@ pub mod tests {
         .map(|s| s.parse().unwrap())
         .collect();
 
-        assert!(ip_range
-            .get_lpm(&"2000:FF::/128".parse::<ipnet::Ipv6Net>().unwrap())
-            .is_some());
-        assert!(ip_range
-            .get_lpm(&"2001:FF::/128".parse::<ipnet::Ipv6Net>().unwrap())
-            .is_none());
-        assert!(ip_range
-            .get_lpm(&"3000:FF00:FF00::/128".parse::<ipnet::Ipv6Net>().unwrap())
-            .is_some());
-        assert!(ip_range
-            .get_lpm(&"3000:FF01:FF00::/128".parse::<ipnet::Ipv6Net>().unwrap())
-            .is_none());
-        assert!(ip_range
-            .get_lpm(
-                &"A000:B000:C000:D000:1::/128"
-                    .parse::<ipnet::Ipv6Net>()
-                    .unwrap()
-            )
-            .is_some());
-        assert!(ip_range
-            .get_lpm(
-                &"A000:B000:C000:D001::/128"
-                    .parse::<ipnet::Ipv6Net>()
-                    .unwrap()
-            )
-            .is_none());
-        assert!(ip_range
-            .get_lpm(
-                &"F000:E000:D000:C000:B000:A000:9000:8000/128"
-                    .parse::<ipnet::Ipv6Net>()
-                    .unwrap()
-            )
-            .is_some());
-        assert!(ip_range
-            .get_lpm(
-                &"F000:E000:D000:C000:B000:A000:9000:8001/128"
-                    .parse::<ipnet::Ipv6Net>()
-                    .unwrap()
-            )
-            .is_none());
+        assert!(
+            ip_range
+                .get_lpm(&"2000:FF::/128".parse::<ipnet::Ipv6Net>().unwrap())
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"2001:FF::/128".parse::<ipnet::Ipv6Net>().unwrap())
+                .is_none()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"3000:FF00:FF00::/128".parse::<ipnet::Ipv6Net>().unwrap())
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(&"3000:FF01:FF00::/128".parse::<ipnet::Ipv6Net>().unwrap())
+                .is_none()
+        );
+        assert!(
+            ip_range
+                .get_lpm(
+                    &"A000:B000:C000:D000:1::/128"
+                        .parse::<ipnet::Ipv6Net>()
+                        .unwrap()
+                )
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(
+                    &"A000:B000:C000:D001::/128"
+                        .parse::<ipnet::Ipv6Net>()
+                        .unwrap()
+                )
+                .is_none()
+        );
+        assert!(
+            ip_range
+                .get_lpm(
+                    &"F000:E000:D000:C000:B000:A000:9000:8000/128"
+                        .parse::<ipnet::Ipv6Net>()
+                        .unwrap()
+                )
+                .is_some()
+        );
+        assert!(
+            ip_range
+                .get_lpm(
+                    &"F000:E000:D000:C000:B000:A000:9000:8001/128"
+                        .parse::<ipnet::Ipv6Net>()
+                        .unwrap()
+                )
+                .is_none()
+        );
     }
 }

@@ -1,16 +1,15 @@
 use std::{cell::RefCell, sync::Arc};
 
 use arrayvec::ArrayVec;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 pub use wasm_runtime_types::MemoryLimit;
 use wasm_runtime_types::{
-    read_global, read_global_location, read_param, write_global, InstanceData, RawBytesEnv,
+    InstanceData, RawBytesEnv, read_global, read_global_location, read_param, write_global,
 };
 use wasmer::{
-    imports,
-    sys::{Cranelift, CraneliftOptLevel, EngineBuilder, Features},
     AsStoreMut, AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module,
-    Store, TypedFunction,
+    Store, TypedFunction, imports,
+    sys::{Cranelift, CraneliftOptLevel, EngineBuilder, Features},
 };
 
 /// Creates a WASM instance, automatically uses and fills the cache.

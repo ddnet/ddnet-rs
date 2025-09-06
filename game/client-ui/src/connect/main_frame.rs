@@ -1,4 +1,4 @@
-use egui::{vec2, Align2, Color32, FontId, Frame, RichText, ScrollArea, Vec2, Window};
+use egui::{Align2, Color32, FontId, Frame, RichText, ScrollArea, Vec2, Window, vec2};
 
 use game_base::connecting_log::ConnectModes;
 use ui_base::{

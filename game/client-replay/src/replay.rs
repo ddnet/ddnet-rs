@@ -1,14 +1,14 @@
 use std::{
     collections::BTreeMap,
-    sync::{mpsc::sync_channel, Arc},
+    sync::{Arc, mpsc::sync_channel},
 };
 
 use anyhow::anyhow;
 use base_io::io::Io;
 use client_demo::DemoViewer;
 use demo::{
-    recorder::{DemoRecorder, DemoRecorderCreateProps, DemoRecorderCreatePropsBase},
     DemoEvent, DemoEvents, DemoSnapshot,
+    recorder::{DemoRecorder, DemoRecorderCreateProps, DemoRecorderCreatePropsBase},
 };
 use egui::FontDefinitions;
 use game_interface::types::game::NonZeroGameTickType;

@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     future::Future,
     rc::Rc,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use anyhow::anyhow;
@@ -135,7 +135,9 @@ impl<S> IoRuntimeTask<S> {
         if let TaskState::WaitAndDrop | TaskState::CancelAndDrop = self.task_state {
             self.task_state = TaskState::CancelAndDrop;
         } else {
-            panic!("the cancelable call has no effect on this task, because it was not part of the task queue. Use the join handle directly.");
+            panic!(
+                "the cancelable call has no effect on this task, because it was not part of the task queue. Use the join handle directly."
+            );
         }
         self
     }

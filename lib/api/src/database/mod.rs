@@ -12,7 +12,7 @@ use game_database::{
     types::DbType,
 };
 
-extern "C" {
+unsafe extern "C" {
     fn api_db_kinds();
     fn api_db_setup();
     fn api_db_prepare_statement();

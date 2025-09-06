@@ -1,17 +1,17 @@
 [package]
 name = "sql"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-game-database = { path = "../game-database", default-features = false }
-
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "chrono"] }
-ddnet-account-sql = { version = "0.3.0", default-features = false }
+edition = "2024"
 
 [features]
 mysql = ["ddnet-account-sql/mysql", "game-database/mysql", "sqlx/mysql"]
 sqlite = ["ddnet-account-sql/sqlite", "game-database/sqlite", "sqlx/sqlite"]
 
 default = ["mysql", "sqlite"]
+
+[dependencies]
+game-database = { path = "../game-database", default-features = false }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+ddnet-account-sql = { version = "0.3.0", default-features = false }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "chrono"] }

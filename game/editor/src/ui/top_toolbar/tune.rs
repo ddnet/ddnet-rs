@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use egui::{
-    scroll_area::ScrollBarVisibility, text::LayoutJob, Align, Color32, DragValue, FontId, Frame,
-    Layout, ScrollArea, TextEdit, TextFormat,
+    Align, Color32, DragValue, FontId, Frame, Layout, ScrollArea, TextEdit, TextFormat,
+    scroll_area::ScrollBarVisibility, text::LayoutJob,
 };
 use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
@@ -392,11 +392,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 ui.horizontal(|ui| {
                     let bg_color =
                         if let Some(in_use) = map.groups.physics.user.active_tune_zone_in_use {
-                            if in_use {
-                                Color32::GREEN
-                            } else {
-                                Color32::RED
-                            }
+                            if in_use { Color32::GREEN } else { Color32::RED }
                         } else {
                             Color32::GRAY
                         };

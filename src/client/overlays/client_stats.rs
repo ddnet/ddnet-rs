@@ -1,11 +1,11 @@
 use std::{
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
     time::Duration,
 };
 
 use egui::{Color32, FontId};
 use egui_extras::StripBuilder;
-use fixed::{types::extra::U16, FixedI64};
+use fixed::{FixedI64, types::extra::U16};
 
 use graphics::{
     graphics::graphics::Graphics,

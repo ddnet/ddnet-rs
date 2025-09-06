@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_quote, Expr, FnArg, Item, Pat, ReturnType, Stmt, Type};
+use quote::{ToTokens, quote};
+use syn::{Expr, FnArg, Item, Pat, ReturnType, Stmt, Type, parse_quote};
 
 pub fn guest_func_call_from_host_auto_impl(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     let behind_option = attr.to_string() == "option";

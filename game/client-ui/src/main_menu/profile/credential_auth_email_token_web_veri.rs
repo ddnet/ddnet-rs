@@ -54,41 +54,41 @@ pub fn render(
                     ui.end_row();
                 });
 
-            if ui.button("\u{f2f6} Request code by email").clicked() {
-                if let (Some(email), veri_token) = (
+            if ui.button("\u{f2f6} Request code by email").clicked()
+                && let (Some(email), veri_token) = (
                     path.query
                         .get("email")
                         .and_then(|email| email_address::EmailAddress::from_str(email).ok()),
                     path.query.get("veri-token"),
-                ) {
-                    let accounts = accounts.clone();
-                    let veri_token = veri_token.cloned();
-                    tasks.state = ProfileState::EmailCredentialAuthToken {
-                        op: op.clone(),
-                        task: io
-                            .rt
-                            .spawn(async move {
-                                Ok(accounts
-                                    .credential_auth_email_token(
-                                        match op {
-                                            CredentialAuthOperation::Login => {
-                                                CredentialAuthTokenOperation::Login
-                                            }
-                                            CredentialAuthOperation::LinkCredential { .. } => {
-                                                CredentialAuthTokenOperation::LinkCredential
-                                            }
-                                            CredentialAuthOperation::UnlinkCredential {
-                                                ..
-                                            } => CredentialAuthTokenOperation::UnlinkCredential,
-                                        },
-                                        email,
-                                        veri_token,
-                                    )
-                                    .await)
-                            })
-                            .abortable(),
-                    };
-                }
+                )
+            {
+                let accounts = accounts.clone();
+                let veri_token = veri_token.cloned();
+                tasks.state = ProfileState::EmailCredentialAuthToken {
+                    op: op.clone(),
+                    task: io
+                        .rt
+                        .spawn(async move {
+                            Ok(accounts
+                                .credential_auth_email_token(
+                                    match op {
+                                        CredentialAuthOperation::Login => {
+                                            CredentialAuthTokenOperation::Login
+                                        }
+                                        CredentialAuthOperation::LinkCredential { .. } => {
+                                            CredentialAuthTokenOperation::LinkCredential
+                                        }
+                                        CredentialAuthOperation::UnlinkCredential { .. } => {
+                                            CredentialAuthTokenOperation::UnlinkCredential
+                                        }
+                                    },
+                                    email,
+                                    veri_token,
+                                )
+                                .await)
+                        })
+                        .abortable(),
+                };
             }
         });
     }

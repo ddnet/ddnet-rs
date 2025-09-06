@@ -20,13 +20,13 @@ use game_interface::types::{
 use graphics::graphics::graphics::Graphics;
 use hashlink::LinkedHashMap;
 use map::map::groups::{
+    MapGroupPhysics, MapGroupPhysicsAttr,
     layers::{
         physics::{MapLayerPhysics, MapLayerTilePhysicsBase},
         tiles::{Tile, TileFlags},
     },
-    MapGroupPhysics, MapGroupPhysicsAttr,
 };
-use math::math::{vector::vec2, Rng};
+use math::math::{Rng, vector::vec2};
 use pool::{datatypes::PoolFxLinkedHashMap, rc::PoolRc};
 use ui_base::ui::UiCreator;
 use vanilla::collision::collision::Collision;

@@ -1,4 +1,4 @@
-use egui::{epaint::RectShape, Color32, CornerRadius, Layout, RichText};
+use egui::{Color32, CornerRadius, Layout, RichText, epaint::RectShape};
 
 use ui_base::utils::add_horizontal_margins;
 

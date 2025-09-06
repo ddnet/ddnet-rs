@@ -2,7 +2,7 @@ use std::{cell::Cell, collections::VecDeque};
 
 use anyhow::anyhow;
 use base::benchmark::Benchmark;
-use native_display::{get_native_display_backend, NativeDisplayBackend};
+use native_display::{NativeDisplayBackend, get_native_display_backend};
 use raw_window_handle::HasDisplayHandle;
 use winit::{
     application::ApplicationHandler,
@@ -14,12 +14,12 @@ use winit::{
 };
 
 use crate::native::app::{
-    ApplicationHandlerType, NativeEventLoop, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH,
+    ApplicationHandlerType, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, NativeEventLoop,
 };
 
 use super::{
-    app::NativeApp, FromNativeImpl, FromNativeLoadingImpl, NativeCreateOptions, NativeImpl,
-    NativeWindowMonitorDetails, NativeWindowOptions, WindowMode,
+    FromNativeImpl, FromNativeLoadingImpl, NativeCreateOptions, NativeImpl,
+    NativeWindowMonitorDetails, NativeWindowOptions, WindowMode, app::NativeApp,
 };
 
 #[derive(Debug)]
@@ -89,13 +89,13 @@ impl WindowMouse {
                     },
                     window,
                 );
-                if !is_locked {
-                    if let Err(err) = window.set_cursor_position(PhysicalPosition::new(
+                if !is_locked
+                    && let Err(err) = window.set_cursor_position(PhysicalPosition::new(
                         self.last_mouse_cursor_pos.0,
                         self.last_mouse_cursor_pos.1,
-                    )) {
-                        log::info!("Failed to set cursor position: {err}");
-                    }
+                    ))
+                {
+                    log::info!("Failed to set cursor position: {err}");
                 }
             }
 
@@ -633,235 +633,225 @@ impl WinitWrapper {
                     user: native_user,
                     window,
                 } = self
-                {
-                    if !native_user
+                    && !native_user
                         .as_mut()
                         .raw_window_event(&window.window, &event)
-                    {
-                        match event {
-                            winit::event::WindowEvent::Resized(new_size) => {
-                                native_user.resized(window, new_size.width, new_size.height);
-                                native_user.window_options_changed(window.window_options());
-                            }
-                            winit::event::WindowEvent::Moved(_) => {
-                                native_user.window_options_changed(window.window_options());
-                            }
-                            winit::event::WindowEvent::CloseRequested => {
-                                event_loop.exit();
-                            }
-                            winit::event::WindowEvent::Destroyed => {} // TODO: important for android
-                            winit::event::WindowEvent::DroppedFile(path) => {
-                                native_user.file_dropped(path);
-                                native_user.file_hovered(None);
-                            }
-                            winit::event::WindowEvent::HoveredFile(path) => {
-                                native_user.file_hovered(Some(path));
-                            }
-                            winit::event::WindowEvent::HoveredFileCancelled => {
-                                native_user.file_hovered(None);
-                            }
-                            winit::event::WindowEvent::Focused(has_focus) => {
-                                if !has_focus {
-                                    window.mouse.mouse_grab_internal(
+                {
+                    match event {
+                        winit::event::WindowEvent::Resized(new_size) => {
+                            native_user.resized(window, new_size.width, new_size.height);
+                            native_user.window_options_changed(window.window_options());
+                        }
+                        winit::event::WindowEvent::Moved(_) => {
+                            native_user.window_options_changed(window.window_options());
+                        }
+                        winit::event::WindowEvent::CloseRequested => {
+                            event_loop.exit();
+                        }
+                        winit::event::WindowEvent::Destroyed => {} // TODO: important for android
+                        winit::event::WindowEvent::DroppedFile(path) => {
+                            native_user.file_dropped(path);
+                            native_user.file_hovered(None);
+                        }
+                        winit::event::WindowEvent::HoveredFile(path) => {
+                            native_user.file_hovered(Some(path));
+                        }
+                        winit::event::WindowEvent::HoveredFileCancelled => {
+                            native_user.file_hovered(None);
+                        }
+                        winit::event::WindowEvent::Focused(has_focus) => {
+                            if !has_focus {
+                                window.mouse.mouse_grab_internal(
+                                    GrabMode {
+                                        mode: CursorGrabMode::None,
+                                        fallback: None,
+                                    },
+                                    &window.window,
+                                );
+                            } else {
+                                window.mouse.mouse_grab_internal(
+                                    if window.mouse.cur_relative_cursor {
+                                        GrabMode {
+                                            mode: CursorGrabMode::Locked,
+                                            fallback: Some(CursorGrabMode::Confined),
+                                        }
+                                    } else if window.mouse.user_requested_is_confined {
+                                        GrabMode {
+                                            mode: CursorGrabMode::Confined,
+                                            fallback: Some(CursorGrabMode::None),
+                                        }
+                                    } else {
                                         GrabMode {
                                             mode: CursorGrabMode::None,
                                             fallback: None,
-                                        },
-                                        &window.window,
-                                    );
-                                } else {
-                                    window.mouse.mouse_grab_internal(
-                                        if window.mouse.cur_relative_cursor {
-                                            GrabMode {
-                                                mode: CursorGrabMode::Locked,
-                                                fallback: Some(CursorGrabMode::Confined),
-                                            }
-                                        } else if window.mouse.user_requested_is_confined {
-                                            GrabMode {
-                                                mode: CursorGrabMode::Confined,
-                                                fallback: Some(CursorGrabMode::None),
-                                            }
-                                        } else {
-                                            GrabMode {
-                                                mode: CursorGrabMode::None,
-                                                fallback: None,
-                                            }
-                                        },
-                                        &window.window,
-                                    );
-                                }
-                                native_user.window_options_changed(window.window_options());
-                                native_user.focus_changed(has_focus);
-                            } // TODO: also important for android
-                            winit::event::WindowEvent::KeyboardInput {
-                                device_id,
-                                event,
-                                is_synthetic: _,
-                            } => {
-                                if !event.repeat {
-                                    match event.state {
-                                        winit::event::ElementState::Pressed => {
-                                            native_user.as_mut().key_down(
-                                                &window.window,
-                                                &device_id,
-                                                event.physical_key,
-                                            )
                                         }
-                                        winit::event::ElementState::Released => native_user
-                                            .as_mut()
-                                            .key_up(&window.window, &device_id, event.physical_key),
-                                    }
+                                    },
+                                    &window.window,
+                                );
+                            }
+                            native_user.window_options_changed(window.window_options());
+                            native_user.focus_changed(has_focus);
+                        } // TODO: also important for android
+                        winit::event::WindowEvent::KeyboardInput {
+                            device_id,
+                            event,
+                            is_synthetic: _,
+                        } => {
+                            if !event.repeat {
+                                match event.state {
+                                    winit::event::ElementState::Pressed => native_user
+                                        .as_mut()
+                                        .key_down(&window.window, &device_id, event.physical_key),
+                                    winit::event::ElementState::Released => native_user
+                                        .as_mut()
+                                        .key_up(&window.window, &device_id, event.physical_key),
                                 }
                             }
-                            winit::event::WindowEvent::ModifiersChanged(_) => {}
-                            winit::event::WindowEvent::Ime(_) => {}
-                            winit::event::WindowEvent::CursorMoved {
-                                device_id,
-                                position,
-                            } => {
-                                window.mouse.cursor_main_pos = (position.x, position.y);
-                                native_user.as_mut().mouse_move(
-                                    &window.window,
-                                    &device_id,
-                                    position.x,
-                                    position.y,
-                                    0.0,
-                                    0.0,
-                                )
-                            }
-                            winit::event::WindowEvent::CursorEntered { device_id: _ } => {}
-                            winit::event::WindowEvent::CursorLeft { device_id: _ } => {}
-                            winit::event::WindowEvent::MouseWheel {
-                                device_id,
-                                delta,
-                                phase: _,
-                                ..
-                            } => native_user.as_mut().scroll(
+                        }
+                        winit::event::WindowEvent::ModifiersChanged(_) => {}
+                        winit::event::WindowEvent::Ime(_) => {}
+                        winit::event::WindowEvent::CursorMoved {
+                            device_id,
+                            position,
+                        } => {
+                            window.mouse.cursor_main_pos = (position.x, position.y);
+                            native_user.as_mut().mouse_move(
+                                &window.window,
+                                &device_id,
+                                position.x,
+                                position.y,
+                                0.0,
+                                0.0,
+                            )
+                        }
+                        winit::event::WindowEvent::CursorEntered { device_id: _ } => {}
+                        winit::event::WindowEvent::CursorLeft { device_id: _ } => {}
+                        winit::event::WindowEvent::MouseWheel {
+                            device_id,
+                            delta,
+                            phase: _,
+                            ..
+                        } => native_user.as_mut().scroll(
+                            &window.window,
+                            &device_id,
+                            window.mouse.cursor_main_pos.0,
+                            window.mouse.cursor_main_pos.1,
+                            &delta,
+                        ),
+                        winit::event::WindowEvent::MouseInput {
+                            device_id,
+                            state,
+                            button,
+                        } => match state {
+                            winit::event::ElementState::Pressed => native_user.as_mut().mouse_down(
                                 &window.window,
                                 &device_id,
                                 window.mouse.cursor_main_pos.0,
                                 window.mouse.cursor_main_pos.1,
-                                &delta,
+                                &button,
                             ),
-                            winit::event::WindowEvent::MouseInput {
-                                device_id,
-                                state,
-                                button,
-                            } => match state {
-                                winit::event::ElementState::Pressed => {
-                                    native_user.as_mut().mouse_down(
-                                        &window.window,
-                                        &device_id,
-                                        window.mouse.cursor_main_pos.0,
-                                        window.mouse.cursor_main_pos.1,
-                                        &button,
-                                    )
-                                }
-                                winit::event::ElementState::Released => {
-                                    native_user.as_mut().mouse_up(
-                                        &window.window,
-                                        &device_id,
-                                        window.mouse.cursor_main_pos.0,
-                                        window.mouse.cursor_main_pos.1,
-                                        &button,
-                                    )
-                                }
-                            },
-                            winit::event::WindowEvent::TouchpadPressure {
-                                device_id: _,
-                                pressure: _,
-                                stage: _,
-                            } => {}
-                            winit::event::WindowEvent::AxisMotion {
-                                device_id: _,
-                                axis: _,
-                                value: _,
-                            } => {}
-                            winit::event::WindowEvent::Touch(touch) => {
-                                native_user.as_mut().mouse_down(
-                                    &window.window,
-                                    &touch.device_id,
-                                    touch.location.x,
-                                    touch.location.y,
-                                    &winit::event::MouseButton::Left,
-                                );
-                                native_user.as_mut().mouse_up(
-                                    &window.window,
-                                    &touch.device_id,
-                                    touch.location.x,
-                                    touch.location.y,
-                                    &winit::event::MouseButton::Left,
-                                );
-                            }
-                            winit::event::WindowEvent::ScaleFactorChanged {
-                                scale_factor: _,
-                                inner_size_writer: _,
-                            } => {
-                                // TODO
-                                let inner_size = window.borrow_window().inner_size().clamp(
-                                    PhysicalSize {
-                                        width: MIN_WINDOW_WIDTH,
-                                        height: MIN_WINDOW_HEIGHT,
-                                    },
-                                    PhysicalSize {
-                                        width: u32::MAX,
-                                        height: u32::MAX,
-                                    },
-                                );
-                                native_user.resized(window, inner_size.width, inner_size.height);
-                                native_user.window_options_changed(window.window_options());
-                            }
-                            winit::event::WindowEvent::ThemeChanged(_) => {
-                                // not really interesting
-                            }
-                            winit::event::WindowEvent::Occluded(_) => {}
-                            winit::event::WindowEvent::ActivationTokenDone {
-                                serial: _,
-                                token: _,
-                            } => {
-                                // no idea what this is
-                            }
-                            winit::event::WindowEvent::RedrawRequested => {
-                                native_user.run(window);
+                            winit::event::ElementState::Released => native_user.as_mut().mouse_up(
+                                &window.window,
+                                &device_id,
+                                window.mouse.cursor_main_pos.0,
+                                window.mouse.cursor_main_pos.1,
+                                &button,
+                            ),
+                        },
+                        winit::event::WindowEvent::TouchpadPressure {
+                            device_id: _,
+                            pressure: _,
+                            stage: _,
+                        } => {}
+                        winit::event::WindowEvent::AxisMotion {
+                            device_id: _,
+                            axis: _,
+                            value: _,
+                        } => {}
+                        winit::event::WindowEvent::Touch(touch) => {
+                            native_user.as_mut().mouse_down(
+                                &window.window,
+                                &touch.device_id,
+                                touch.location.x,
+                                touch.location.y,
+                                &winit::event::MouseButton::Left,
+                            );
+                            native_user.as_mut().mouse_up(
+                                &window.window,
+                                &touch.device_id,
+                                touch.location.x,
+                                touch.location.y,
+                                &winit::event::MouseButton::Left,
+                            );
+                        }
+                        winit::event::WindowEvent::ScaleFactorChanged {
+                            scale_factor: _,
+                            inner_size_writer: _,
+                        } => {
+                            // TODO
+                            let inner_size = window.borrow_window().inner_size().clamp(
+                                PhysicalSize {
+                                    width: MIN_WINDOW_WIDTH,
+                                    height: MIN_WINDOW_HEIGHT,
+                                },
+                                PhysicalSize {
+                                    width: u32::MAX,
+                                    height: u32::MAX,
+                                },
+                            );
+                            native_user.resized(window, inner_size.width, inner_size.height);
+                            native_user.window_options_changed(window.window_options());
+                        }
+                        winit::event::WindowEvent::ThemeChanged(_) => {
+                            // not really interesting
+                        }
+                        winit::event::WindowEvent::Occluded(_) => {}
+                        winit::event::WindowEvent::ActivationTokenDone {
+                            serial: _,
+                            token: _,
+                        } => {
+                            // no idea what this is
+                        }
+                        winit::event::WindowEvent::RedrawRequested => {
+                            native_user.run(window);
 
-                                if !window.suspended {
-                                    window.window.request_redraw();
-                                }
+                            if !window.suspended {
+                                window.window.request_redraw();
+                            }
 
-                                // check internal events
-                                if let Some(ev) = window.mouse.internal_events.pop_front() {
-                                    match ev {
-                                        InternalEvent::MouseGrabWrong(mode) => {
-                                            match window
-                                                .mouse
-                                                .mouse_grab_apply_internal(mode, &window.window)
-                                            {
-                                                GrabModeResultInternal::Applied
-                                                | GrabModeResultInternal::NotSupported => {
-                                                    // ignore -> drop event
-                                                }
-                                                GrabModeResultInternal::ShouldQueue(mode) => {
-                                                    window.mouse.internal_events.push_front(
-                                                        InternalEvent::MouseGrabWrong(mode),
-                                                    );
-                                                }
+                            // check internal events
+                            if let Some(ev) = window.mouse.internal_events.pop_front() {
+                                match ev {
+                                    InternalEvent::MouseGrabWrong(mode) => {
+                                        match window
+                                            .mouse
+                                            .mouse_grab_apply_internal(mode, &window.window)
+                                        {
+                                            GrabModeResultInternal::Applied
+                                            | GrabModeResultInternal::NotSupported => {
+                                                // ignore -> drop event
+                                            }
+                                            GrabModeResultInternal::ShouldQueue(mode) => {
+                                                window.mouse.internal_events.push_front(
+                                                    InternalEvent::MouseGrabWrong(mode),
+                                                );
                                             }
                                         }
                                     }
                                 }
                             }
-                            winit::event::WindowEvent::PinchGesture { .. } => {
-                                todo!("should be implemented for macos support")
-                            }
-                            winit::event::WindowEvent::PanGesture { .. } => {
-                                todo!("should be implemented for macos support")
-                            }
-                            winit::event::WindowEvent::DoubleTapGesture { .. } => {
-                                todo!("should be implemented for macos support")
-                            }
-                            winit::event::WindowEvent::RotationGesture { .. } => {
-                                todo!("should be implemented for macos support")
-                            }
+                        }
+                        winit::event::WindowEvent::PinchGesture { .. } => {
+                            todo!("should be implemented for macos support")
+                        }
+                        winit::event::WindowEvent::PanGesture { .. } => {
+                            todo!("should be implemented for macos support")
+                        }
+                        winit::event::WindowEvent::DoubleTapGesture { .. } => {
+                            todo!("should be implemented for macos support")
+                        }
+                        winit::event::WindowEvent::RotationGesture { .. } => {
+                            todo!("should be implemented for macos support")
                         }
                     }
                 }
@@ -929,10 +919,10 @@ impl WinitWrapper {
                 event_loop: &winit::event_loop::ActiveEventLoop,
                 _cause: winit::event::StartCause,
             ) {
-                if let Self::Some { window, .. } = self {
-                    if window.destroy.get() {
-                        event_loop.exit();
-                    }
+                if let Self::Some { window, .. } = self
+                    && window.destroy.get()
+                {
+                    event_loop.exit();
                 }
             }
         }

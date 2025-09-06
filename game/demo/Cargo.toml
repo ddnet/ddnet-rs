@@ -1,28 +1,30 @@
 [package]
 name = "demo"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[features]
+recorder = ["chrono", "tempfile", "base-io"]
 
 [dependencies]
 base = { path = "../../lib/base" }
-config = { path = "../../lib/config" }
 bin-patch = { path = "../../lib/bin-patch" }
 
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }
 
-serde = { version = "1.0.219", features = ["derive"] }
-bincode = { features = ["serde"], version = "2.0.1" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
+bincode = { features = ["serde"], version = "2.0.1" }
 itertools = "0.14.0"
-log = "0.4.27"
+log = "0.4.28"
+serde = { version = "1.0.219", features = ["derive"] }
+zstd = { version = "0.13", default-features = false, features = [
+  "experimental",
+  "zdict_builder",
+] }
 
 # feature related
 base-io = { path = "../../lib/base-io", optional = true }
 
-tempfile = { version = "3.21.0", optional = true }
 chrono = { version = "0.4.41", features = ["serde"], optional = true }
-
-[features]
-recorder = ["chrono", "tempfile", "base-io"]
+tempfile = { version = "3.21.0", optional = true }

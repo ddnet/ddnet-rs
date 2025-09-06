@@ -6,9 +6,9 @@ use std::{net::SocketAddr, num::NonZeroU32, sync::Arc};
 
 use anyhow::anyhow;
 use assets_base::AssetsIndex;
-use axum::{extract::DefaultBodyLimit, Json, Router};
+use axum::{Json, Router, extract::DefaultBodyLimit};
 use base::hash::{fmt_hash, generate_hash_for};
-use clap::{command, Parser};
+use clap::{Parser, command};
 use delete::asset_delete;
 use image_utils::png::PngValidatorOptions;
 use index_dir::IndexDir;
@@ -73,7 +73,9 @@ async fn main() -> anyhow::Result<()> {
     let upload_password = std::env::var("ASSETS_UPLOAD_PASSWORD").ok().map(Arc::new);
 
     if upload_password.is_none() {
-        log::warn!("No upload password given, uploading will be disabled. (ASSETS_UPLOAD_PASSWORD env var)");
+        log::warn!(
+            "No upload password given, uploading will be disabled. (ASSETS_UPLOAD_PASSWORD env var)"
+        );
     }
 
     let write_lock = Arc::new(Mutex::new(()));

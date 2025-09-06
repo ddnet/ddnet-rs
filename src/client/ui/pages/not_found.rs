@@ -1,4 +1,4 @@
-use egui::{epaint::Shadow, Stroke};
+use egui::{Stroke, epaint::Shadow};
 use game_config::config::Config;
 use ui_generic::traits::UiPageInterface;
 use ui_wasm_manager::UiWasmManagerErrorPageErr;

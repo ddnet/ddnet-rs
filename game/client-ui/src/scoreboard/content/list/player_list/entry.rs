@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 
 use base::{duration_ext::DurationToRaceStr, linked_hash_map_view::FxLinkedHashMap};
-use egui::{layers::ShapeIdx, Color32, Layout, Rect, RichText, Shape};
+use egui::{Color32, Layout, Rect, RichText, Shape, layers::ShapeIdx};
 use egui_extras::{Size, StripBuilder};
 
 use game_interface::types::{

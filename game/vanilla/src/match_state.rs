@@ -6,8 +6,8 @@ pub mod match_state {
             game::{GameTickCooldown, GameTickType},
             id_types::CharacterId,
             render::game::{
-                game_match::MatchSide, MatchRoundGameOverWinBy, MatchRoundGameOverWinner,
-                MatchRoundGameOverWinnerCharacter, MatchRoundTimeType,
+                MatchRoundGameOverWinBy, MatchRoundGameOverWinner,
+                MatchRoundGameOverWinnerCharacter, MatchRoundTimeType, game_match::MatchSide,
             },
         },
     };

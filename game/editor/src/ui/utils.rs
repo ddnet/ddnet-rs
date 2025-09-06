@@ -1,4 +1,4 @@
-use egui::{text::LayoutJob, Color32, FontId, RichText, TextFormat};
+use egui::{Color32, FontId, RichText, TextFormat, text::LayoutJob};
 use map::skeleton::groups::layers::design::MapLayerSkeleton;
 
 use crate::map::{EditorGroup, EditorLayer, EditorPhysicsLayer, EditorResources};

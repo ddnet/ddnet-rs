@@ -57,38 +57,38 @@ pub fn render<'a>(
             let next_id = players.peek().and_then(|(id, _)| id.copied());
             if let Some(stage_id) = cur_id {
                 let font_size = TABLE_CONTENT_FONT_SIZES[font_size_index];
-                if cur_id != next_id {
-                    if let Some(stage) = cur_id.and_then(|id| stages.get(&id)) {
-                        strip.cell(|ui| {
-                            ui.style_mut().wrap_mode = None;
-                            let rect = ui.available_rect_before_wrap();
-                            frame_rect
-                                .entry(stage_id)
-                                .or_insert_with_keep_order(|| FrameRect {
-                                    rects: Default::default(),
-                                    shape_id: ui.painter().add(Shape::Noop),
-                                })
-                                .rects
-                                .push(rect);
-                            ui.with_layout(Layout::left_to_right(egui::Align::Center), |ui| {
-                                let team_size_str = if stage.max_size > 0 {
-                                    format!(" - {}/{}", stage.characters.len(), stage.max_size)
-                                } else {
-                                    String::new()
-                                };
+                if cur_id != next_id
+                    && let Some(stage) = cur_id.and_then(|id| stages.get(&id))
+                {
+                    strip.cell(|ui| {
+                        ui.style_mut().wrap_mode = None;
+                        let rect = ui.available_rect_before_wrap();
+                        frame_rect
+                            .entry(stage_id)
+                            .or_insert_with_keep_order(|| FrameRect {
+                                rects: Default::default(),
+                                shape_id: ui.painter().add(Shape::Noop),
+                            })
+                            .rects
+                            .push(rect);
+                        ui.with_layout(Layout::left_to_right(egui::Align::Center), |ui| {
+                            let team_size_str = if stage.max_size > 0 {
+                                format!(" - {}/{}", stage.characters.len(), stage.max_size)
+                            } else {
+                                String::new()
+                            };
 
-                                ui.label(
-                                    RichText::new(format!(
-                                        "Team: {}{}",
-                                        stage.name.as_str(),
-                                        team_size_str
-                                    ))
-                                    .size(font_size)
-                                    .color(Color32::WHITE),
-                                );
-                            });
+                            ui.label(
+                                RichText::new(format!(
+                                    "Team: {}{}",
+                                    stage.name.as_str(),
+                                    team_size_str
+                                ))
+                                .size(font_size)
+                                .color(Color32::WHITE),
+                            );
                         });
-                    }
+                    });
                 }
             }
         }

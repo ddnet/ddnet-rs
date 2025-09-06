@@ -3,7 +3,7 @@ use std::{
     path::Path,
 };
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 /// Decompresses a compressed file into an uncompressed file. Returns the bytes read
 /// ### Prefer this method over using compression algorithms yourself, because it has side effects

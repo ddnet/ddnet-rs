@@ -3,11 +3,11 @@ use std::{rc::Rc, time::Duration};
 use base::benchmark::Benchmark;
 use client_containers::{
     container::ContainerKey,
-    utils::{load_containers, RenderGameContainers},
+    utils::{RenderGameContainers, load_containers},
 };
 use client_render_base::render::{tee::RenderTee, toolkit::ToolkitRender};
 use client_ui::thumbnail_container::{
-    load_thumbnail_container, ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH,
+    DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
 };
 use game_interface::types::character_info::NetworkSkinInfo;
 use graphics::graphics::graphics::Graphics;
@@ -20,7 +20,7 @@ use ui_base::{
 
 use super::{
     actionfeed::test_actionfeed,
-    base::{get_base, Options},
+    base::{Options, get_base},
     chat::test_chat,
     emote_wheel::test_emote_wheel,
     hud::test_hud,

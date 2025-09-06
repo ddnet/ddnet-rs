@@ -104,7 +104,7 @@ fn main() {
 
 #[allow(dead_code)]
 #[cfg(target_os = "android")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn android_main(app: NativeApp) {
     if std::env::var("RUST_LOG").is_err() {
         unsafe { std::env::set_var("RUST_LOG", "info,symphonia=warn,df::tract=error") };

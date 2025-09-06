@@ -5,7 +5,7 @@ use std::{
     ops::Deref,
     path::Path,
     rc::Rc,
-    sync::{atomic::AtomicU64, mpsc, Arc, Mutex},
+    sync::{Arc, Mutex, atomic::AtomicU64, mpsc},
     thread::ThreadId,
 };
 
@@ -19,7 +19,7 @@ use graphics_backend_traits::{
     },
     traits::GraphicsBackendInterface,
 };
-use hiarc::{hiarc_safer_arc_mutex, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_arc_mutex};
 use pool::mt_datatypes::PoolUnclearedVec;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use sound::backend_types::SoundBackendInterface;
@@ -27,7 +27,7 @@ use sound::frame_fetcher_plugin::{
     self, BackendAudioFrame, FetchSoundManagerError, FetchSoundManagerIndex, OffairSoundManagerId,
 };
 use sound_backend::sound_backend::SoundBackend;
-pub use tokio::sync::oneshot::{channel, Receiver, Sender};
+pub use tokio::sync::oneshot::{Receiver, Sender, channel};
 
 use crate::{
     ffmpeg::{

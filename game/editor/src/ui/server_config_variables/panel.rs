@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use egui::{
-    text::LayoutJob, Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat,
-    UiBuilder,
+    Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat, UiBuilder,
+    text::LayoutJob,
 };
 use map::map::command_value::CommandValue;
 use ui_base::{
@@ -31,7 +31,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
             .frame(Frame::side_top_panel(ui.style()).inner_margin(Margin::same(15)));
 
         Some(panel.show_inside(ui, |ui| {
-            ui.allocate_new_ui(
+            ui.scope_builder(
                 UiBuilder::new().max_rect(ui.available_rect_before_wrap()),
                 |ui| {
                     ui.horizontal(|ui| {

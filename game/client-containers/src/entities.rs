@@ -14,7 +14,7 @@ use sound::{sound_handle::SoundObjectHandle, sound_mt::SoundMultiThreaded};
 use crate::container::{ContainerLoadedItem, ContainerLoadedItemDir};
 
 use super::container::{
-    load_file_part_and_convert_3d_and_upload, Container, ContainerItemLoadData, ContainerLoad,
+    Container, ContainerItemLoadData, ContainerLoad, load_file_part_and_convert_3d_and_upload,
 };
 
 #[derive(Debug, Hiarc, Clone)]

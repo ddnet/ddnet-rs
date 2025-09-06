@@ -32,7 +32,7 @@ use graphics::{
     streaming::quad_scope_begin,
 };
 use graphics_types::rendering::State;
-use math::math::{vector::vec2, PI};
+use math::math::{PI, vector::vec2};
 use ui_base::ui::UiCreator;
 use vanilla::weapons::definitions::weapon_def::{get_weapon_sprite_scale, get_weapon_visual_scale};
 

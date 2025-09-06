@@ -8,8 +8,8 @@ use base_io::runtime::IoRuntimeTask;
 use graphics::handles::texture::texture::TextureContainer;
 use graphics_types::types::GraphicsBackendMemory;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use serde_with::DefaultOnError;
+use serde_with::serde_as;
 use url::Url;
 
 #[serde_as]

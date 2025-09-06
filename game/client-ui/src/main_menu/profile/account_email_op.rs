@@ -65,54 +65,53 @@ pub fn render(
                         },
                     ))
                     .clicked()
-                {
-                    if let Some((_, token)) = path
+                    && let Some((_, token)) = path
                         .query
                         .get("email")
                         .and_then(|email| email_address::EmailAddress::from_str(email).ok())
                         .zip(path.query.get("token").cloned())
-                    {
-                        path.query.remove("token");
-                        path.query.remove("email");
-                        path.query.remove("veri-token");
-                        let accounts = accounts.clone();
-                        match op {
-                            AccountOperation::LogoutAll { profile_name } => {
-                                tasks.state = ProfileState::EmailLogoutAll(
-                                    io.rt
-                                        .spawn(async move {
-                                            accounts.logout_all(token, &profile_name).await
-                                        })
-                                        .abortable(),
-                                );
-                            }
-                            AccountOperation::LinkCredential {
-                                credential_auth_token,
-                                profile_name,
-                            } => {
-                                tasks.state = ProfileState::EmailLinkCredential(
-                                    io.rt
-                                        .spawn(async move {
-                                            accounts
-                                                .link_credential(
-                                                    token,
-                                                    credential_auth_token,
-                                                    &profile_name,
-                                                )
-                                                .await
-                                        })
-                                        .abortable(),
-                                );
-                            }
-                            AccountOperation::Delete { profile_name } => {
-                                tasks.state = ProfileState::EmailDelete(
-                                    io.rt
-                                        .spawn(async move {
-                                            accounts.delete(token, &profile_name).await
-                                        })
-                                        .abortable(),
-                                );
-                            }
+                {
+                    let token = token.trim().into();
+                    path.query.remove("token");
+                    path.query.remove("email");
+                    path.query.remove("veri-token");
+                    let accounts = accounts.clone();
+                    match op {
+                        AccountOperation::LogoutAll { profile_name } => {
+                            tasks.state = ProfileState::EmailLogoutAll(
+                                io.rt
+                                    .spawn(async move {
+                                        accounts.logout_all(token, &profile_name).await
+                                    })
+                                    .abortable(),
+                            );
+                        }
+                        AccountOperation::LinkCredential {
+                            credential_auth_token,
+                            profile_name,
+                        } => {
+                            tasks.state = ProfileState::EmailLinkCredential(
+                                io.rt
+                                    .spawn(async move {
+                                        accounts
+                                            .link_credential(
+                                                token,
+                                                credential_auth_token,
+                                                &profile_name,
+                                            )
+                                            .await
+                                    })
+                                    .abortable(),
+                            );
+                        }
+                        AccountOperation::Delete { profile_name } => {
+                            tasks.state = ProfileState::EmailDelete(
+                                io.rt
+                                    .spawn(
+                                        async move { accounts.delete(token, &profile_name).await },
+                                    )
+                                    .abortable(),
+                            );
                         }
                     }
                 }

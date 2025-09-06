@@ -1,5 +1,5 @@
 pub mod config {
-    use config::{config_default, ConfigInterface};
+    use config::{ConfigInterface, config_default};
     use hiarc::Hiarc;
     use serde::{Deserialize, Serialize};
 

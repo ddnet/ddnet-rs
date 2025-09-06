@@ -1,6 +1,6 @@
 use hiarc::Hiarc;
 use pool::traits::Recyclable;
-use serde::{de, Serialize};
+use serde::{Serialize, de};
 use std::{fmt::Display, ops::Deref};
 
 use thiserror::Error;

@@ -24,7 +24,7 @@ pub mod snapshot {
             weapons::WeaponType,
         },
     };
-    use hiarc::{hi_closure, Hiarc};
+    use hiarc::{Hiarc, hi_closure};
     use math::math::vector::{ubvec4, vec2};
     use rustc_hash::FxHashSet;
 

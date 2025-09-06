@@ -6,11 +6,10 @@ use fixed::traits::{FromFixed, ToFixed};
 use hiarc::Hiarc;
 use is_sorted::IsSorted;
 use math::math::{
-    mix,
+    PI, mix,
     vector::{ffixed, fvec3, lffixed, nffixed, nfvec4, vec1_base, vec2_base},
-    PI,
 };
-use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::DeserializeOwned};
 use serde_with::serde_as;
 
 #[derive(Debug, Hiarc, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]

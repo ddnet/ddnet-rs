@@ -1,39 +1,51 @@
 [package]
 name = "map"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[features]
+rust_zstd = [
+  "dep:ruzstd",
+] # enables a pure rust zstd decoder, which is much slower, but allows tests with miri
 
 [dependencies]
 assets-base = { path = "../assets-base" }
 
-math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
-hiarc = { path = "../../lib/hiarc", features = ["enable_time", "enable_hashlink", "enable_rustc_hash"] }
+hiarc = { path = "../../lib/hiarc", features = [
+  "enable_time",
+  "enable_hashlink",
+  "enable_rustc_hash",
+] }
 image-utils = { path = "../../lib/image-utils" }
+math = { path = "../../lib/math" }
 
-rayon = "1.11.0"
-bincode = { features = ["serde"], version = "2.0.1" }
-zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+bincode = { features = ["serde"], version = "2.0.1" }
+bitflags = { version = "2.9.4", features = ["serde"] }
+fixed = "1.29.0"
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
+is_sorted = "0.1.1"
+rayon = "1.11.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
 serde_with = "3.14.0"
-time = { version = "0.3.41", features = ["serde"] }
-is_sorted = "0.1.1"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = ["serde", "serde_impl"] }
-bitflags = { version = "2.9.2", features = ["serde"] }
-fixed = "1.29.0"
+time = { version = "0.3.43", features = ["serde"] }
+zstd = { version = "0.13", default-features = false, features = [
+  "experimental",
+  "zdict_builder",
+] }
 
 ruzstd = { version = "0.8.1", optional = true }
-
-[features]
-rust_zstd = ["dep:ruzstd"] # enables a pure rust zstd decoder, which is much slower, but allows tests with miri
 
 [dev-dependencies]
 base-fs = { path = "../../lib/base-fs" }
 base-io = { path = "../../lib/base-io" }
-difference = "2.0"
-lz4_flex = { version = "0.11" }
 brotli = "8.0.2"
+difference = "2.0"
 #rust-lzma = "0.6.0"
 flate2 = "1.1.2"
+lz4_flex = { version = "0.11" }

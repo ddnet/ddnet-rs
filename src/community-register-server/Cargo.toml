@@ -1,14 +1,21 @@
 [package]
 name = "community-register-server"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 community = { path = "../../game/community" }
 
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "fs", "net", "time", "macros"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 axum = "0.8.4"
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.47", features = ["derive"] }
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "net",
+  "time",
+  "macros",
+] }
 
 tower-http = { version = "0.6.6", features = ["fs", "trace"] }

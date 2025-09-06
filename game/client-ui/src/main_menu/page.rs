@@ -5,7 +5,7 @@ use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::{fs_traits::FileSystemEntryTy, http_traits::HttpClientInterface};
 use client_containers::{
     container::{Container, ContainerMaxItems},
-    utils::{load_containers, RenderGameContainers},
+    utils::{RenderGameContainers, load_containers},
 };
 use client_render_base::{
     map::{map_buffered::TileLayerVisuals, map_pipeline::MapGraphics},
@@ -14,8 +14,8 @@ use client_render_base::{
 use client_types::console::ConsoleEntry;
 use command_parser::parser::ParserCache;
 use demo::{
-    utils::{decomp, deser, deser_ex},
     DemoHeader, DemoHeaderExt,
+    utils::{decomp, deser, deser_ex},
 };
 use game_base::{
     assets_url::HTTP_RESOURCE_URL,
@@ -52,7 +52,7 @@ use crate::{
     ingame_menu::{client_info::ClientInfo, raw_input_info::RawInputInfo},
     main_menu::user_data::MainMenuInterface,
     thumbnail_container::{
-        load_thumbnail_container, ThumbnailContainer, DEFAULT_THUMBNAIL_CONTAINER_PATH,
+        DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
     },
 };
 
@@ -67,7 +67,7 @@ use super::{
     player_settings_ntfy::PlayerSettingsSync,
     profiles_interface::ProfilesInterface,
     spatial_chat::SpatialChat,
-    theme_container::{ThemeContainer, THEME_CONTAINER_PATH},
+    theme_container::{THEME_CONTAINER_PATH, ThemeContainer},
     user_data::{ProfileTasks, RenderOptions, UserData},
 };
 
@@ -588,58 +588,58 @@ impl MainMenuUi {
     }
 
     pub fn check_tasks(&mut self, cur_time: &Duration) {
-        if let Some(server_task) = &self.menu_io.cur_servers_task {
-            if server_task.is_finished() {
-                match self.menu_io.cur_servers_task.take().unwrap().get() {
-                    Ok(servers_raw) => {
-                        self.browser_data.set_servers(servers_raw, *cur_time);
-                    }
-                    Err(err) => {
-                        log::error!("failed to download master server list: {err}");
-                    }
+        if let Some(server_task) = &self.menu_io.cur_servers_task
+            && server_task.is_finished()
+        {
+            match self.menu_io.cur_servers_task.take().unwrap().get() {
+                Ok(servers_raw) => {
+                    self.browser_data.set_servers(servers_raw, *cur_time);
+                }
+                Err(err) => {
+                    log::error!("failed to download master server list: {err}");
                 }
             }
         }
-        if let Some(server_task) = &self.menu_io.cur_ddnet_info_task {
-            if server_task.is_finished() {
-                match self
-                    .menu_io
-                    .cur_ddnet_info_task
-                    .take()
-                    .unwrap()
-                    .get()
-                    .and_then(|s| serde_json::from_str(&s).map_err(|err| anyhow!(err)))
-                {
-                    Ok(ddnet_info) => {
-                        self.ddnet_info = ddnet_info;
-                    }
-                    Err(err) => {
-                        log::error!("failed to download ddnet info: {err}");
-                    }
+        if let Some(server_task) = &self.menu_io.cur_ddnet_info_task
+            && server_task.is_finished()
+        {
+            match self
+                .menu_io
+                .cur_ddnet_info_task
+                .take()
+                .unwrap()
+                .get()
+                .and_then(|s| serde_json::from_str(&s).map_err(|err| anyhow!(err)))
+            {
+                Ok(ddnet_info) => {
+                    self.ddnet_info = ddnet_info;
+                }
+                Err(err) => {
+                    log::error!("failed to download ddnet info: {err}");
                 }
             }
         }
-        if let Some(task) = &self.menu_io.cur_demos_task {
-            if task.is_finished() {
-                match self.menu_io.cur_demos_task.take().unwrap().get() {
-                    Ok(demos) => {
-                        self.demos = demos;
-                    }
-                    Err(err) => {
-                        log::error!("failed to get demo list: {err}");
-                    }
+        if let Some(task) = &self.menu_io.cur_demos_task
+            && task.is_finished()
+        {
+            match self.menu_io.cur_demos_task.take().unwrap().get() {
+                Ok(demos) => {
+                    self.demos = demos;
+                }
+                Err(err) => {
+                    log::error!("failed to get demo list: {err}");
                 }
             }
         }
-        if let Some(task) = &self.menu_io.cur_demo_info_task {
-            if task.is_finished() {
-                match self.menu_io.cur_demo_info_task.take().unwrap().get() {
-                    Ok((header, header_ext)) => {
-                        self.demo_info = Some((header, header_ext));
-                    }
-                    Err(err) => {
-                        log::error!("failed to get demo info: {err}");
-                    }
+        if let Some(task) = &self.menu_io.cur_demo_info_task
+            && task.is_finished()
+        {
+            match self.menu_io.cur_demo_info_task.take().unwrap().get() {
+                Ok((header, header_ext)) => {
+                    self.demo_info = Some((header, header_ext));
+                }
+                Err(err) => {
+                    log::error!("failed to get demo info: {err}");
                 }
             }
         }

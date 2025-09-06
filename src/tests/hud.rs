@@ -15,8 +15,8 @@ use game_interface::types::{
             TeeEye,
         },
         game::{
-            game_match::{LeadingCharacter, MatchStandings},
             GameRenderInfo, MatchRoundTimeType,
+            game_match::{LeadingCharacter, MatchStandings},
         },
     },
     weapons::{EnumCount, WeaponType},

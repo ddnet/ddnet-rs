@@ -1,27 +1,27 @@
 [package]
 name = "client-console"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 binds = { path = "../binds" }
-client-ui = { path = "../client-ui" }
-client-types = { path = "../client-types" }
-game-config = { path = "../game-config" }
-client-render-base = { path = "../client-render-base" }
-game-interface = { path = "../game-interface" }
 client-containers = { path = "../client-containers" }
+client-render-base = { path = "../client-render-base" }
+client-types = { path = "../client-types" }
+client-ui = { path = "../client-ui" }
+game-config = { path = "../game-config" }
+game-interface = { path = "../game-interface" }
 
 base = { path = "../../lib/base" }
+command-parser = { path = "../../lib/command-parser" }
 config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
 ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
-command-parser = { path = "../../lib/command-parser" }
 
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+log = "0.4.28"

@@ -2,10 +2,10 @@ use std::str::FromStr;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    parse_macro_input, parse_quote, Attribute, FnArg, GenericParam, ImplItem, Item, Meta, Pat,
-    Type, Visibility, WhereClause,
+    Attribute, FnArg, GenericParam, ImplItem, Item, Meta, Pat, Type, Visibility, WhereClause,
+    parse_macro_input, parse_quote,
 };
 
 pub(crate) fn hiarc_safer_wrapper(
@@ -53,8 +53,8 @@ pub(crate) fn hiarc_safer_wrapper(
                             where_token: Default::default(),
                             predicates: Default::default(),
                         });
-                i.generics.params.iter_mut().for_each(|gen| {
-                    if let GenericParam::Type(ty) = gen {
+                i.generics.params.iter_mut().for_each(|g| {
+                    if let GenericParam::Type(ty) = g {
                         let ident = &ty.ident;
                         generic_idents.push(ident.to_token_stream());
                         generic_idents_and_bound.push(parse_quote!(
@@ -326,21 +326,20 @@ pub(crate) fn hiarc_safer_wrapper(
                 })
                 .collect();
             attrs.iter_mut().for_each(|attr| {
-                if let Meta::List(l) = &mut attr.meta {
-                    if *l.path.get_ident().unwrap() == "derive"
-                        && l.tokens.to_string().contains("Hiarc")
-                    {
-                        // TODO: refactor this trash
-                        let filtered = l.tokens.to_string().replace(" ", "");
-                        let filtered = filtered.to_string().replace("hiarc::Hiarc,", "");
-                        let filtered = filtered.replace(",hiarc::Hiarc", "");
-                        let filtered = filtered.replace("hiarc::Hiarc", "");
-                        let filtered = filtered.replace("Hiarc,", "");
-                        let filtered = filtered.replace(",Hiarc", "");
-                        let filtered = filtered.replace("Hiarc", "");
+                if let Meta::List(l) = &mut attr.meta
+                    && *l.path.get_ident().unwrap() == "derive"
+                    && l.tokens.to_string().contains("Hiarc")
+                {
+                    // TODO: refactor this trash
+                    let filtered = l.tokens.to_string().replace(" ", "");
+                    let filtered = filtered.to_string().replace("hiarc::Hiarc,", "");
+                    let filtered = filtered.replace(",hiarc::Hiarc", "");
+                    let filtered = filtered.replace("hiarc::Hiarc", "");
+                    let filtered = filtered.replace("Hiarc,", "");
+                    let filtered = filtered.replace(",Hiarc", "");
+                    let filtered = filtered.replace("Hiarc", "");
 
-                        l.tokens = TokenStream::from_str(&filtered).unwrap().into();
-                    }
+                    l.tokens = TokenStream::from_str(&filtered).unwrap().into();
                 }
             });
             s.ident = format_ident!("{}Impl", s.ident);
@@ -351,18 +350,18 @@ pub(crate) fn hiarc_safer_wrapper(
                 .generics
                 .params
                 .iter()
-                .map(|gen| {
-                    if let GenericParam::Const(gen) = gen {
+                .map(|g| {
+                    if let GenericParam::Const(g) = g {
                         (
-                            (gen.to_token_stream(), gen.to_token_stream()),
-                            gen.ident.to_token_stream(),
+                            (g.to_token_stream(), g.to_token_stream()),
+                            g.ident.to_token_stream(),
                         )
-                    } else if let GenericParam::Type(gen) = gen {
-                        let mut bound_gen = gen.clone();
+                    } else if let GenericParam::Type(g) = g {
+                        let mut bound_gen = g.clone();
                         bound_gen.bounds.push(parse_quote!(hiarc::HiarcTrait));
                         (
-                            (gen.to_token_stream(), bound_gen.to_token_stream()),
-                            gen.ident.to_token_stream(),
+                            (g.to_token_stream(), bound_gen.to_token_stream()),
+                            g.ident.to_token_stream(),
                         )
                     } else {
                         panic!("generics that are not const or typed are currently not supported.");

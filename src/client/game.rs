@@ -5,7 +5,7 @@ pub mod types;
 use std::{
     borrow::Cow,
     net::SocketAddr,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 
@@ -257,7 +257,7 @@ impl Game {
                             return Self::Err(anyhow!(
                                 "Server certificate could not be found \
                                 in the server list or anywhere else."
-                            ))
+                            ));
                         }
                     }
                 },
@@ -961,38 +961,37 @@ impl Game {
                         diff_id,
                         ..
                     } = &msg
+                        && is_waiting
                     {
-                        if is_waiting {
-                            game.connect
-                                .log
-                                .log("Got first snapshot, client fully connected.");
-                            // set the first ping based on the intial packets,
-                            // later prefer the network stats
-                            let last_game_tick = pipe.sys.time_get()
-                                - *overhead_time
-                                - game.game_data.prediction_timer.pred_max_smoothing(
-                                    Duration::from_nanos(
-                                        (Duration::from_secs(1).as_nanos()
-                                            / game.map.game.game_tick_speed().get() as u128)
-                                            as u64,
-                                    ),
-                                );
-                            game.game_data.last_game_tick = last_game_tick;
+                        game.connect
+                            .log
+                            .log("Got first snapshot, client fully connected.");
+                        // set the first ping based on the intial packets,
+                        // later prefer the network stats
+                        let last_game_tick = pipe.sys.time_get()
+                            - *overhead_time
+                            - game.game_data.prediction_timer.pred_max_smoothing(
+                                Duration::from_nanos(
+                                    (Duration::from_secs(1).as_nanos()
+                                        / game.map.game.game_tick_speed().get() as u128)
+                                        as u64,
+                                ),
+                            );
+                        game.game_data.last_game_tick = last_game_tick;
 
-                            // set initial predicted game monotonic tick based on this first snapshot
-                            game.map.game.predicted_game_monotonic_tick = diff_id
-                                .and_then(|diff_id| {
-                                    game.game_data
-                                        .snap_storage
-                                        .get(&diff_id)
-                                        .map(|old| *game_monotonic_tick_diff + old.monotonic_tick)
-                                })
-                                .unwrap_or(*game_monotonic_tick_diff);
+                        // set initial predicted game monotonic tick based on this first snapshot
+                        game.map.game.predicted_game_monotonic_tick = diff_id
+                            .and_then(|diff_id| {
+                                game.game_data
+                                    .snap_storage
+                                    .get(&diff_id)
+                                    .map(|old| *game_monotonic_tick_diff + old.monotonic_tick)
+                            })
+                            .unwrap_or(*game_monotonic_tick_diff);
 
-                            is_waiting = false;
-                            pipe.ui.is_ui_open = false;
-                            pipe.config.ui.path.route("ingame");
-                        }
+                        is_waiting = false;
+                        pipe.ui.is_ui_open = false;
+                        pipe.config.ui.path.route("ingame");
                     }
                     game.on_msg(&timestamp, msg, pipe);
 

@@ -1,6 +1,6 @@
 use config::{
     config::ConfigEngine,
-    parsing::{parse_conf_values_as_str_list, AddFeedback},
+    parsing::{AddFeedback, parse_conf_values_as_str_list},
     traits::{ConfigFromStrOperation, ConfigInterface, ConfigValue},
     types::ConfRgb,
 };

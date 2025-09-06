@@ -74,7 +74,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         }
                         // list countries and mod types
                         let left_top = ui.available_rect_before_wrap().left_top();
-                        ui.allocate_new_ui(
+                        ui.scope_builder(
                             UiBuilder::new().max_rect(Rect::from_min_max(
                                 left_top,
                                 left_top + egui::vec2(150.0, 150.0),

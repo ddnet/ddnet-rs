@@ -4,8 +4,8 @@ use anyhow::anyhow;
 use base::hash::Hash;
 use ed25519_dalek::pkcs8::EncodePrivateKey;
 use quinn::{
-    crypto::rustls::{QuicClientConfig, QuicServerConfig},
     AckFrequencyConfig, ClientConfig, Endpoint, IdleTimeout, ServerConfig, TransportConfig, VarInt,
+    crypto::rustls::{QuicClientConfig, QuicServerConfig},
 };
 use rustls::{crypto::CryptoProvider, pki_types::PrivateKeyDer};
 use std::{net::SocketAddr, sync::Arc, time::Duration};
