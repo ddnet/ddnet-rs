@@ -3,36 +3,36 @@ name = "client-demo"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-av-encoder = { path = "../../lib/av-encoder" }
-base-io = { path = "../../lib/base-io" }
-base = { path = "../../lib/base" }
-math = { path = "../../lib/math" }
-config = { path = "../../lib/config" }
-graphics = { path = "../../lib/graphics" }
-graphics-types = { path = "../../lib/graphics-types" }
-graphics-backend = { path = "../../lib/graphics-backend" }
-pool = { path = "../../lib/pool" }
-ui-base = { path = "../../lib/ui-base" }
-ui-generic = { path = "../../lib/ui-generic" }
-sound = { path = "../../lib/sound" }
-sound-backend = { path = "../../lib/sound-backend" }
-bin-patch = { path = "../../lib/bin-patch" }
-
-demo = { path = "../demo", features = ["recorder"] }
-client-map = { path = "../client-map" }
-client-ui = { path = "../client-ui" }
-game-base = { path = "../game-base" }
-game-interface = { path = "../game-interface" }
-client-render-game = { path = "../client-render-game" }
-client-render-base = { path = "../client-render-base" }
-game-config = { path = "../game-config" }
-
-serde = { version = "1.0.219", features = ["derive"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-rayon = "1.11.0"
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
-log = "0.4.28"
-
 [features]
 ffmpeg = ["av-encoder/ffmpeg"]
+
+[dependencies]
+av-encoder = { path = "../../lib/av-encoder" }
+base = { path = "../../lib/base" }
+base-io = { path = "../../lib/base-io" }
+bin-patch = { path = "../../lib/bin-patch" }
+config = { path = "../../lib/config" }
+graphics = { path = "../../lib/graphics" }
+graphics-backend = { path = "../../lib/graphics-backend" }
+graphics-types = { path = "../../lib/graphics-types" }
+math = { path = "../../lib/math" }
+pool = { path = "../../lib/pool" }
+sound = { path = "../../lib/sound" }
+sound-backend = { path = "../../lib/sound-backend" }
+ui-base = { path = "../../lib/ui-base" }
+ui-generic = { path = "../../lib/ui-generic" }
+
+client-map = { path = "../client-map" }
+client-render-base = { path = "../client-render-base" }
+client-render-game = { path = "../client-render-game" }
+client-ui = { path = "../client-ui" }
+demo = { path = "../demo", features = ["recorder"] }
+game-base = { path = "../game-base" }
+game-config = { path = "../game-config" }
+game-interface = { path = "../game-interface" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+log = "0.4.28"
+rayon = "1.11.0"
+serde = { version = "1.0.219", features = ["derive"] }

@@ -3,13 +3,15 @@ name = "connecting"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 api-ui = { path = "../../../lib/api-ui" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
+
 api-ui-game = { path = "../../../game/api-ui-game" }
 client-ui = { path = "../../../game/client-ui" }
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 
-[lib]
-crate-type = ["cdylib"]
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }

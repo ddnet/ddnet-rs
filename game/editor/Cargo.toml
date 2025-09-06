@@ -5,45 +5,61 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
-math = { path = "../../lib/math" }
-config = { path = "../../lib/config" }
-network = { path = "../../lib/network" }
-ui-base = { path = "../../lib/ui-base" }
-ui-generic = { path = "../../lib/ui-generic" }
 base-io = { path = "../../lib/base-io" }
 base-io-traits = { path = "../../lib/base-io-traits" }
-image-utils = { path = "../../lib/image-utils" }
+config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
+image-utils = { path = "../../lib/image-utils" }
+math = { path = "../../lib/math" }
+network = { path = "../../lib/network" }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
+ui-base = { path = "../../lib/ui-base" }
+ui-generic = { path = "../../lib/ui-generic" }
 
-egui-timeline = { path = "../egui-timeline" }
-map = { path = "../map" }
+camera = { path = "../camera" }
 client-containers = { path = "../client-containers" }
-client-ui = { path = "../client-ui" }
-client-render-base = { path = "../client-render-base" }
 client-notifications = { path = "../client-notifications" }
+client-render-base = { path = "../client-render-base" }
+client-ui = { path = "../client-ui" }
+editor-auto-mapper-wasm = { path = "../editor-auto-mapper-wasm" }
+editor-interface = { path = "../editor-interface" }
+egui-timeline = { path = "../egui-timeline" }
+game-base = { path = "../game-base" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
-game-base = { path = "../game-base" }
 legacy-map = { path = "../legacy-map" }
-editor-interface = { path = "../editor-interface" }
-editor-auto-mapper-wasm = { path = "../editor-auto-mapper-wasm" }
-camera = { path = "../camera" }
+map = { path = "../map" }
 
 map-convert-lib = { path = "../map-convert-lib" }
 
 egui = { version = "0.32.2", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.32.2" }
 egui-file-dialog = { version = "0.11.0", default-features = false }
 egui_commonmark = "0.21.1"
+egui_extras = { version = "0.32.2" }
 
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 async-trait = "0.1.89"
 bincode = { version = "2.0.1", features = ["serde"] }
+ed25519-dalek = { version = "2.2.0", features = ["serde"] }
+enum_dispatch = "0.3.13"
+fixed = "1.29.0"
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
+log = "0.4.28"
+rand = { version = "0.9.2", features = ["thread_rng"] }
+rayon = "1.11.0"
+rustc-hash = "2.1.1"
+scan_fmt = "0.2.6"
 serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
 serde_with = "3.14.0"
+tempfile = { version = "3.21.0" }
+time = { version = "0.3.43", features = ["serde"] }
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
   "sync",
@@ -51,23 +67,7 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-rayon = "1.11.0"
-rand = { version = "0.9.2", features = ["thread_rng"] }
-time = { version = "0.3.43", features = ["serde"] }
-serde_json = "1.0.143"
-ed25519-dalek = { version = "2.2.0", features = ["serde"] }
 x509-cert = { version = "0.2.5" }
-log = "0.4.28"
-enum_dispatch = "0.3.13"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
-  "serde",
-  "serde_impl",
-] }
-fixed = "1.29.0"
-scan_fmt = "0.2.6"
-rustc-hash = "2.1.1"
-tempfile = { version = "3.21.0" }
 
 [dev-dependencies]
 base-fs = { path = "../../lib/base-fs" }

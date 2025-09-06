@@ -5,8 +5,9 @@ edition = "2024"
 
 [dependencies]
 graphics-types = { path = "../graphics-types" }
-pool = { path = "../pool" }
 hiarc = { path = "../hiarc", features = ["derive"] }
+pool = { path = "../pool" }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-serde = { version = "1.0.219", features = ["derive"] }
 bincode = { features = ["serde"], version = "2.0.1" }
+serde = { version = "1.0.219", features = ["derive"] }

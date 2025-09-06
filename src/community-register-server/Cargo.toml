@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 community = { path = "../../game/community" }
 
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+axum = "0.8.4"
+clap = { version = "4.5.47", features = ["derive"] }
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
   "sync",
@@ -14,8 +17,5 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-axum = "0.8.4"
-clap = { version = "4.5.47", features = ["derive"] }
 
 tower-http = { version = "0.6.6", features = ["fs", "trace"] }

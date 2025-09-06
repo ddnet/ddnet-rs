@@ -5,16 +5,17 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
-sound = { path = "../sound" }
-wasm-runtime-types = { path = "../wasm-runtime-types" }
 hiarc = { path = "../hiarc", features = [
   "derive",
   "enable_hashlink",
   "enable_rustc_hash",
 ] }
+sound = { path = "../sound" }
+wasm-runtime-types = { path = "../wasm-runtime-types" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+sendable = "0.6.1"
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
   "sys",
   "cranelift",
 ] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-sendable = "0.6.1"

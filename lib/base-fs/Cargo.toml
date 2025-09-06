@@ -3,12 +3,29 @@ name = "base-fs"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+bundled_data_dir = ["include_dir"]
+
 [dependencies]
 base-io-traits = { path = "../base-io-traits" }
 hiarc = { path = "../hiarc", features = ["derive"] }
 
 # v5.0.1+ brings a MPL 2.0 dependency, i don't really like this lib anyway
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+async-trait = "0.1.89"
+chrono = { version = "0.4.41", features = ["serde"] }
 directories = { version = "=5.0.0" }
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
+log = "0.4.28"
+notify = { version = "8.2.0", default-features = false, features = [
+  "macos_kqueue",
+] }
+path-clean = "1.0.1"
+path-slash = "0.2.1"
+tempfile = { version = "3.21.0" }
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
   "sync",
@@ -16,28 +33,11 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
-notify = { version = "8.2.0", default-features = false, features = [
-  "macos_kqueue",
-] }
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
-  "serde",
-  "serde_impl",
-] }
-async-trait = "0.1.89"
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-path-slash = "0.2.1"
-path-clean = "1.0.1"
 virtual-fs = { version = "0.601.0-rc.3", default-features = false, features = [
   "host-fs",
 ] }
-log = "0.4.28"
-chrono = { version = "0.4.41", features = ["serde"] }
-tempfile = { version = "3.21.0" }
 
 include_dir = { version = "0.7.4", optional = true }
 
 [dev-dependencies]
 base-io = { path = "../base-io" }
-
-[features]
-bundled_data_dir = ["include_dir"]

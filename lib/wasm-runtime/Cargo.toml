@@ -5,11 +5,12 @@ edition = "2024"
 
 [dependencies]
 wasm-runtime-types = { path = "../wasm-runtime-types" }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+arrayvec = "0.7.6"
+bincode = { version = "2.0.1", features = ["serde"] }
+serde = "1.0.219"
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
   "sys",
   "cranelift",
 ] }
-bincode = { version = "2.0.1", features = ["serde"] }
-arrayvec = "0.7.6"
-serde = "1.0.219"

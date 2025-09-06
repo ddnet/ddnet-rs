@@ -3,19 +3,19 @@ name = "config"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-math = { path = "../math" }
-config-macro = { path = "../config-macro" }
-hiarc = { path = "../hiarc", features = ["derive"] }
-command-parser = { path = "../command-parser" }
-
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.143"
-num-derive = "0.4.2"
-num-traits = "0.2.19"
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-atomic_enum = "0.3.0"
-thiserror = "2.0.16"
-
 [package.metadata.cargo-machete]
 ignored = ["num-traits"]
+
+[dependencies]
+command-parser = { path = "../command-parser" }
+config-macro = { path = "../config-macro" }
+hiarc = { path = "../hiarc", features = ["derive"] }
+math = { path = "../math" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+atomic_enum = "0.3.0"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+thiserror = "2.0.16"

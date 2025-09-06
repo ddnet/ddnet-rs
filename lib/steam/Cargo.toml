@@ -3,12 +3,16 @@ name = "steam"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+runtime = ["steamworks"]
+
 [dependencies]
 base = { path = "../base" }
 
 steamworks = { version = "0.12.2", optional = true }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+async-trait = "0.1.89"
 log = "0.4.28"
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
@@ -17,7 +21,3 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
-async-trait = "0.1.89"
-
-[features]
-runtime = ["steamworks"]

@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+api = { path = "../../lib/api" }
+api-wasm-macros = { path = "../../lib/api-wasm-macros" }
+config = { path = "../../lib/config" }
+graphics-types = { path = "../../lib/graphics-types" }
+
 client-render-game = { path = "../client-render-game" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
-api-wasm-macros = { path = "../../lib/api-wasm-macros" }
-api = { path = "../../lib/api" }
-graphics-types = { path = "../../lib/graphics-types" }
-config = { path = "../../lib/config" }
 
 once_cell = "1.21.3"

@@ -7,21 +7,21 @@ edition = "2024"
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 config = { path = "../../lib/config" }
+game-database = { path = "../../lib/game-database" }
 graphics = { path = "../../lib/graphics" }
 graphics-backend = { path = "../../lib/graphics-backend" }
-game-database = { path = "../../lib/game-database" }
-sound = { path = "../../lib/sound" }
 pool = { path = "../../lib/pool" }
+sound = { path = "../../lib/sound" }
 
-game-base = { path = "../game-base" }
-game-interface = { path = "../game-interface" }
-map = { path = "../map" }
 client-render-base = { path = "../client-render-base" }
 client-render-game = { path = "../client-render-game" }
-render-game-wasm = { path = "../render-game-wasm" }
+game-base = { path = "../game-base" }
+game-interface = { path = "../game-interface" }
 game-state-wasm = { path = "../game-state-wasm" }
+map = { path = "../map" }
+render-game-wasm = { path = "../render-game-wasm" }
 
-rayon = "1.11.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-wasmparser = "0.238.1"
 log = "0.4.28"
+rayon = "1.11.0"
+wasmparser = "0.238.1"

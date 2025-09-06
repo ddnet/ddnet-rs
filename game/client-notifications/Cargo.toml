@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
+graphics = { path = "../../lib/graphics" }
 ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
-graphics = { path = "../../lib/graphics" }
 
 egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 egui-notify = "0.20.0"

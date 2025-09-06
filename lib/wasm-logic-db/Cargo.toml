@@ -5,11 +5,11 @@ edition = "2024"
 
 [dependencies]
 base-io = { path = "../base-io" }
-wasm-runtime-types = { path = "../wasm-runtime-types" }
 game-database = { path = "../game-database" }
+wasm-runtime-types = { path = "../wasm-runtime-types" }
 
+sendable = "0.6.1"
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
   "sys",
   "cranelift",
 ] }
-sendable = "0.6.1"

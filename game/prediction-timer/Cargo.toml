@@ -7,5 +7,5 @@ edition = "2024"
 math = { path = "../../lib/math" }
 
 [dev-dependencies]
-textplots = "0.8.7"
 rgb = "0.8.52"
+textplots = "0.8.7"

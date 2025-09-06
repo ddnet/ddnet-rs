@@ -4,42 +4,42 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-legacy-map = { path = "../legacy-map" }
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }
+legacy-map = { path = "../legacy-map" }
 map = { path = "../map" }
 
-command-parser = { path = "../../lib/command-parser" }
-math = { path = "../../lib/math" }
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
-pool = { path = "../../lib/pool", features = ["enable_hiarc"] }
+command-parser = { path = "../../lib/command-parser" }
+config = { path = "../../lib/config" }
+game-database = { path = "../../lib/game-database" }
 hiarc = { path = "../../lib/hiarc", features = [
   "derive",
   "enable_hashlink",
   "enable_rustc_hash",
 ] }
-game-database = { path = "../../lib/game-database" }
-config = { path = "../../lib/config" }
+math = { path = "../../lib/math" }
+pool = { path = "../../lib/pool", features = ["enable_hiarc"] }
 
 ddnet-accounts-types = { version = "0.1.0" }
 
-num = "0.4.3"
-num-traits = "0.2.19"
-num-derive = "0.4.2"
-bincode = { features = ["serde"], version = "2.0.1" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+bincode = { features = ["serde"], version = "2.0.1" }
+bitflags = { version = "2.9.4", features = ["serde"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
   "serde",
   "serde_impl",
 ] }
-serde = { version = "1.0.219", features = ["derive"] }
-thiserror = "2.0.16"
 log = "0.4.28"
-chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
-serde_json = "1.0.143"
+num = "0.4.3"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
 rustc-hash = "2.1.1"
-bitflags = { version = "2.9.4", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+thiserror = "2.0.16"
 
 [dev-dependencies]
 map = { path = "../map", features = ["rust_zstd"] }

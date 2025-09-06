@@ -3,33 +3,6 @@ name = "game-database-backend"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-sql = { path = "../../lib/sql", default-features = false }
-game-database = { path = "../../lib/game-database", default-features = false }
-
-ddnet-account-sql = { version = "0.3.0", default-features = false }
-
-# when updating to the next major version check if
-# https://github.com/launchbadge/sqlx/issues/3387 is fixed
-# and remove the workaround in the code
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "chrono"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-async-trait = "0.1.89"
-parking_lot = "0.12.4"
-
-
-[dev-dependencies]
-base = { path = "../../lib/base" }
-base-io = { path = "../../lib/base-io" }
-
-tokio = { version = "1.47.1", features = [
-  "rt-multi-thread",
-  "sync",
-  "fs",
-  "time",
-  "macros",
-] }
-
 [features]
 mysql = [
   "ddnet-account-sql/mysql",
@@ -45,3 +18,29 @@ sqlite = [
 ]
 
 default = ["mysql", "sqlite"]
+
+[dependencies]
+game-database = { path = "../../lib/game-database", default-features = false }
+sql = { path = "../../lib/sql", default-features = false }
+
+ddnet-account-sql = { version = "0.3.0", default-features = false }
+
+# when updating to the next major version check if
+# https://github.com/launchbadge/sqlx/issues/3387 is fixed
+# and remove the workaround in the code
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+async-trait = "0.1.89"
+parking_lot = "0.12.4"
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "chrono"] }
+
+[dev-dependencies]
+base = { path = "../../lib/base" }
+base-io = { path = "../../lib/base-io" }
+
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }

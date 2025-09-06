@@ -3,14 +3,15 @@ name = "graphics-types"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-math = { path = "../math" }
-pool = { path = "../pool", features = ["enable_hiarc"] }
-hiarc = { path = "../hiarc", features = ["enable_hashlink"] }
-num-traits = "0.2.19"
-bitflags = { version = "2.9.4", features = ["serde"] }
-serde = "1.0.219"
-strum = { version = "0.27.2", features = ["derive"] }
-
 [package.metadata.cargo-machete]
 ignored = ["num-traits"]
+
+[dependencies]
+hiarc = { path = "../hiarc", features = ["enable_hashlink"] }
+math = { path = "../math" }
+pool = { path = "../pool", features = ["enable_hiarc"] }
+
+bitflags = { version = "2.9.4", features = ["serde"] }
+num-traits = "0.2.19"
+serde = "1.0.219"
+strum = { version = "0.27.2", features = ["derive"] }

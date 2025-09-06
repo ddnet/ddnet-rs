@@ -11,8 +11,9 @@ pool = { path = "../../lib/pool" }
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }
 
-bincode = { features = ["serde"], version = "2.0.1" }
 async-trait = "0.1.89"
+bincode = { features = ["serde"], version = "2.0.1" }
+log = "0.4.28"
 serde = "1.0.219"
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
@@ -20,4 +21,3 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
-log = "0.4.28"

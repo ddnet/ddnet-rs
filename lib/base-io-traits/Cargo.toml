@@ -9,7 +9,7 @@ base = { path = "../base" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 async-trait = "0.1.89"
 bytes = "1.10.1"
-url = "2.5.7"
-thiserror = "2.0.16"
-serde = { version = "1.0.219", features = ["derive"] }
 rustc-hash = "2.1.1"
+serde = { version = "1.0.219", features = ["derive"] }
+thiserror = "2.0.16"
+url = "2.5.7"

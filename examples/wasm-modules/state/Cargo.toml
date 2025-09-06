@@ -3,53 +3,53 @@ name = "state"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 api = { path = "../../../lib/api" }
 api-macros = { path = "../../../lib/api-macros" }
-base-io = { path = "../../../lib/base-io" }
-math = { path = "../../../lib/math" }
+api-wasm-macros = { path = "../../../lib/api-wasm-macros" }
 base = { path = "../../../lib/base" }
+base-io = { path = "../../../lib/base-io" }
+command-parser = { path = "../../../lib/command-parser" }
 config = { path = "../../../lib/config" }
+game-database = { path = "../../../lib/game-database" }
 graphics-types = { path = "../../../lib/graphics-types" }
-pool = { path = "../../../lib/pool" }
 hiarc = { path = "../../../lib/hiarc", features = [
   "derive",
   "enable_hashlink",
   "enable_rustc_hash",
 ] }
-api-wasm-macros = { path = "../../../lib/api-wasm-macros" }
-game-database = { path = "../../../lib/game-database" }
-command-parser = { path = "../../../lib/command-parser" }
+math = { path = "../../../lib/math" }
+pool = { path = "../../../lib/pool" }
 
 api-state = { path = "../../../game/api-state" }
 game-base = { path = "../../../game/game-base" }
-legacy-map = { path = "../../../game/legacy-map" }
-vanilla = { path = "../../../game/vanilla" }
 game-interface = { path = "../../../game/game-interface" }
+legacy-map = { path = "../../../game/legacy-map" }
 map = { path = "../../../game/map" }
+vanilla = { path = "../../../game/vanilla" }
 
 ddnet-accounts-types = { version = "0.1.0" }
 
-rayon = "1.11.0"
-arrayvec = { version = "0.7.6", features = ["serde"] }
-num = "0.4.3"
-num-derive = "0.4.2"
-num-traits = "0.2.19"
-bincode = { features = ["serde"], version = "2.0.1" }
-flate2 = "1.1.2"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+arrayvec = { version = "0.7.6", features = ["serde"] }
 async-trait = "0.1.89"
+bincode = { features = ["serde"], version = "2.0.1" }
+bitflags = { version = "2.9.4", features = ["serde"] }
+chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
+flate2 = "1.1.2"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
   "serde",
   "serde_impl",
 ] }
-serde = "1.0.219"
-thiserror = "2.0.16"
 log = "0.4.28"
-chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
-serde_json = "1.0.143"
+num = "0.4.3"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
+rayon = "1.11.0"
 rustc-hash = "2.1.1"
-bitflags = { version = "2.9.4", features = ["serde"] }
-
-[lib]
-crate-type = ["cdylib"]
+serde = "1.0.219"
+serde_json = "1.0.143"
+thiserror = "2.0.16"

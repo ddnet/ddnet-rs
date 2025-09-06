@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
-math = { path = "../math" }
+config = { path = "../config" }
 hiarc = { path = "../hiarc", features = [
   "derive",
   "enable_kira",
@@ -13,9 +13,10 @@ hiarc = { path = "../hiarc", features = [
   "enable_rustc_hash",
   "enable_mint",
 ] }
+math = { path = "../math" }
 sound = { path = "../sound" }
-config = { path = "../config" }
-kira = "0.9.6"
-mint = "0.5.9"
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+kira = "0.9.6"
 log = "0.4.28"
+mint = "0.5.9"

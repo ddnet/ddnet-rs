@@ -5,11 +5,12 @@ edition = "2024"
 
 [dependencies]
 base-io = { path = "../base-io" }
-math = { path = "../math" }
 graphics = { path = "../graphics" }
 graphics-types = { path = "../graphics-types" }
 hiarc = { path = "../hiarc", features = ["enable_egui"] }
+math = { path = "../math" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
 egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 egui_extras = { version = "0.32.2" }
 serde = { version = "1.0.219", features = ["derive"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }

@@ -7,15 +7,23 @@ edition = "2024"
 community = { path = "../../game/community" }
 
 base = { path = "../../lib/base" }
-network = { path = "../../lib/network" }
-sql = { path = "../../lib/sql", default-features = false, features = ["mysql"] }
 game-database = { path = "../../lib/game-database", default-features = false, features = [
   "mysql",
 ] }
 game-database-backend = { path = "../../lib/game-database-backend", default-features = false, features = [
   "mysql",
 ] }
+network = { path = "../../lib/network" }
+sql = { path = "../../lib/sql", default-features = false, features = ["mysql"] }
 
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+async-trait = "0.1.89"
+clap = { version = "4.5.47", features = ["derive"] }
+log = "0.4.28"
+reqwest = { version = "0.12.23", default-features = false, features = [
+  "rustls-tls",
+] }
+serde_json = "1.0.143"
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
   "sync",
@@ -24,19 +32,11 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-clap = { version = "4.5.47", features = ["derive"] }
 url = { version = "2.5.7", features = ["serde"] }
-async-trait = "0.1.89"
-reqwest = { version = "0.12.23", default-features = false, features = [
-  "rustls-tls",
-] }
-serde_json = "1.0.143"
 x509-cert = { version = "0.2.5" }
-log = "0.4.28"
 
 ddnet-account-client-http-fs = { version = "0.3.0" }
 ddnet-account-client-reqwest = "0.3.0"
+ddnet-account-game-server = { version = "0.3.0" }
 ddnet-accounts-shared = { version = "0.2.0" }
 ddnet-accounts-types = { version = "0.1.0" }
-ddnet-account-game-server = { version = "0.3.0" }

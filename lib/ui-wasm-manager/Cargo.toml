@@ -4,25 +4,26 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-base-io-traits = { path = "../base-io-traits" }
 base-io = { path = "../base-io" }
-config = { path = "../config" }
+base-io-traits = { path = "../base-io-traits" }
 cache = { path = "../cache" }
-wasm-runtime = { path = "../wasm-runtime" }
-wasm-logic-fs = { path = "../wasm-logic-fs" }
-wasm-logic-http = { path = "../wasm-logic-http" }
-wasm-logic-graphics = { path = "../wasm-logic-graphics" }
-wasm-logic-sound = { path = "../wasm-logic-sound" }
+config = { path = "../config" }
 graphics = { path = "../graphics" }
 graphics-backend = { path = "../graphics-backend" }
+hiarc = { path = "../hiarc", features = ["derive"] }
 sound = { path = "../sound" }
 ui-base = { path = "../ui-base" }
 ui-generic = { path = "../ui-generic" }
-hiarc = { path = "../hiarc", features = ["derive"] }
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+wasm-logic-fs = { path = "../wasm-logic-fs" }
+wasm-logic-graphics = { path = "../wasm-logic-graphics" }
+wasm-logic-http = { path = "../wasm-logic-http" }
+wasm-logic-sound = { path = "../wasm-logic-sound" }
+wasm-runtime = { path = "../wasm-runtime" }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+serde = "1.0.219"
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
   "sys",
   "cranelift",
 ] }
-serde = "1.0.219"

@@ -3,58 +3,58 @@ name = "network"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+enable_brotli = ["brotli"]
+
 [dependencies]
 base = { path = "../base" }
 pool = { path = "../pool" }
 
-quinn = { git = "https://github.com/Jupeyy/quinn", rev = "8a5fc90badd30f35025a8beac08037605665ee21", default-features = false, features = [
-  "runtime-tokio",
-  "rustls",
-  "ring",
-] }
-rustls = { version = "0.23", default-features = false, features = ["ring"] }
-rcgen = { version = "0.14.3" }
-x509-cert = { version = "0.2.5" }
-spki = { version = "0.7.3", features = ["fingerprint"] }
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+async-trait = "0.1.89"
+bincode = { features = ["serde"], version = "2.0.1" }
+bytes = "1.10.1"
+chrono = { version = "0.4.41", features = ["serde"] }
 ed25519-dalek = { version = "2.2.0", features = [
   "serde",
   "rand_core",
   "pkcs8",
   "pem",
 ] }
+futures-util = "0.3.31"
+ipnet = "2.11.0"
+log = "0.4.28"
+pollster = "0.4.0"
+prefix-trie = "0.8.1"
+quinn = { git = "https://github.com/Jupeyy/quinn", rev = "8a5fc90badd30f35025a8beac08037605665ee21", default-features = false, features = [
+  "runtime-tokio",
+  "rustls",
+  "ring",
+] }
 rand = { version = "0.8.5", features = ["getrandom"], default-features = false }
+rcgen = { version = "0.14.3" }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+spki = { version = "0.7.3", features = ["fingerprint"] }
+thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = [
   "rt-multi-thread",
   "sync",
   "time",
   "macros",
 ] }
-bincode = { features = ["serde"], version = "2.0.1" }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-async-trait = "0.1.89"
-bytes = "1.10.1"
 tokio-tungstenite = { version = "0.27.0", features = [
   "tokio-rustls",
   "rustls-tls-webpki-roots",
 ] }
-pollster = "0.4.0"
-futures-util = "0.3.31"
-ipnet = "2.11.0"
-serde = { version = "1.0.219", features = ["derive"] }
+x509-cert = { version = "0.2.5" }
 zstd = { version = "0.13", default-features = false, features = [
   "experimental",
   "zdict_builder",
 ] }
-log = "0.4.28"
-thiserror = "2.0.16"
-chrono = { version = "0.4.41", features = ["serde"] }
-serde_json = "1.0.143"
-prefix-trie = "0.8.1"
 
-num-traits = "0.2.19"
 num-derive = "0.4.2"
+num-traits = "0.2.19"
 
 brotli = { version = "8.0.2", optional = true }
-
-[features]
-enable_brotli = ["brotli"]

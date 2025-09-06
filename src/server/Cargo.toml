@@ -3,18 +3,18 @@ name = "server"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-network = { path = "../../lib/network" }
-base = { path = "../../lib/base" }
-base-fs = { path = "../../lib/base-fs", default-features = false }
-
-game-server = { path = "../../game/game-server", default-features = false }
-game-base = { path = "../../game/game-base" }
-env_logger = "0.11.8"
-
 # The dep is unused here, but used in a feature
 [package.metadata.cargo-machete]
 ignored = ["base-fs"]
 
 [features]
 bundled_data_dir = ["base-fs/bundled_data_dir"]
+
+[dependencies]
+base = { path = "../../lib/base" }
+base-fs = { path = "../../lib/base-fs", default-features = false }
+network = { path = "../../lib/network" }
+
+env_logger = "0.11.8"
+game-base = { path = "../../game/game-base" }
+game-server = { path = "../../game/game-server", default-features = false }

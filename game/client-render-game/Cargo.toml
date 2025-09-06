@@ -6,28 +6,28 @@ edition = "2024"
 [dependencies]
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
-ui-base = { path = "../../lib/ui-base" }
-math = { path = "../../lib/math" }
 config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
+math = { path = "../../lib/math" }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
+ui-base = { path = "../../lib/ui-base" }
 
+camera = { path = "../camera" }
 client-containers = { path = "../client-containers" }
-client-render-base = { path = "../client-render-base" }
 client-render = { path = "../client-render" }
+client-render-base = { path = "../client-render-base" }
 client-types = { path = "../client-types" }
 client-ui = { path = "../client-ui" }
-game-config = { path = "../game-config" }
 game-base = { path = "../game-base" }
-vanilla = { path = "../vanilla" }
+game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 map = { path = "../map" }
-camera = { path = "../camera" }
+vanilla = { path = "../vanilla" }
 
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 num-traits = "0.2.19"
 rayon = "1.11.0"
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 url = { version = "2.5.7", features = ["serde"] }

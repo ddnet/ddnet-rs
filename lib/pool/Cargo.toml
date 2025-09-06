@@ -3,21 +3,21 @@ name = "pool"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+enable_hiarc = ["hiarc"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hiarc = { path = "../hiarc", features = [
-  "enable_parking_lot",
-  "derive",
-], optional = true }
+bincode = { version = "2.0.1", features = ["serde"] }
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
   "serde",
   "serde_impl",
 ] }
-bincode = { version = "2.0.1", features = ["serde"] }
-serde = { version = "1.0.219", features = ["derive", "rc"] }
+hiarc = { path = "../hiarc", features = [
+  "enable_parking_lot",
+  "derive",
+], optional = true }
 parking_lot = "0.12.4"
 rustc-hash = "2.1.1"
-
-[features]
-enable_hiarc = ["hiarc"]
+serde = { version = "1.0.219", features = ["derive", "rc"] }

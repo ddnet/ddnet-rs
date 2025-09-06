@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
-base-io = { path = "../base-io" }
 base-fs = { path = "../base-fs" }
+base-io = { path = "../base-io" }
 base-io-traits = { path = "../base-io-traits" }
 hiarc = { path = "../hiarc", features = ["enable_tokio"] }
 

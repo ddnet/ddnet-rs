@@ -5,12 +5,10 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../../lib/base" }
-base-io-traits = { path = "../../lib/base-io-traits" }
 base-io = { path = "../../lib/base-io" }
-graphics-types = { path = "../../lib/graphics-types" }
+base-io-traits = { path = "../../lib/base-io-traits" }
 graphics = { path = "../../lib/graphics" }
-sound = { path = "../../lib/sound" }
-image-utils = { path = "../../lib/image-utils" }
+graphics-types = { path = "../../lib/graphics-types" }
 hiarc = { path = "../../lib/hiarc", features = [
   "derive",
   "enable_rayon",
@@ -19,24 +17,26 @@ hiarc = { path = "../../lib/hiarc", features = [
   "enable_fixed",
   "enable_either",
 ] }
+image-utils = { path = "../../lib/image-utils" }
 math = { path = "../../lib/math" }
+sound = { path = "../../lib/sound" }
 
+assets-base = { path = "../assets-base" }
 assets-splitting = { path = "../assets-splitting" }
 game-interface = { path = "../game-interface" }
-assets-base = { path = "../assets-base" }
 
-arrayvec = "0.7.6"
-fixed = "1.29.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-rayon = "1.11.0"
+arrayvec = "0.7.6"
+either = "1.15.0"
+fixed = "1.29.0"
 hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
   "serde",
   "serde_impl",
 ] }
-num-traits = "0.2.19"
-url = "2.5.7"
-tokio = { version = "1.47.1", default-features = false, features = ["sync"] }
-serde_json = "1.0.143"
 log = "0.4.28"
-either = "1.15.0"
+num-traits = "0.2.19"
+rayon = "1.11.0"
 rustc-hash = "2.1.1"
+serde_json = "1.0.143"
+tokio = { version = "1.47.1", default-features = false, features = ["sync"] }
+url = "2.5.7"

@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-game-interface = { path = "../game-interface" }
 client-types = { path = "../client-types" }
+game-interface = { path = "../game-interface" }
 
+command-parser = { path = "../../lib/command-parser" }
 hiarc = { path = "../../lib/hiarc" }
 input-binds = { path = "../../lib/input-binds" }
-command-parser = { path = "../../lib/command-parser" }
 
-serde_json = "1.0.143"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 log = "0.4.28"
+serde_json = "1.0.143"

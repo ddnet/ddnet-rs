@@ -1,286 +1,9 @@
-[workspace]
-members = [
-  "lib/av-encoder",
-  "lib/cache",
-  "lib/wasm-runtime",
-  "lib/wasm-runtime-types",
-  "lib/wasm-logic-db",
-  "lib/wasm-logic-fs",
-  "lib/wasm-logic-http",
-  "lib/wasm-logic-graphics",
-  "lib/ui-wasm-manager",
-  "lib/native",
-  "lib/network",
-  "lib/base",
-  "lib/base-fs",
-  "lib/base-http",
-  "lib/base-io-traits",
-  "lib/base-io",
-  "lib/config",
-  "lib/config-fs",
-  "lib/config-macro",
-  "lib/hiarc",
-  "lib/hiarc-macro",
-  "lib/graphics",
-  "lib/graphics-backend",
-  "lib/graphics-backend-traits",
-  "lib/graphics-types",
-  "lib/graphics-base-traits",
-  "lib/api",
-  "lib/api-wasm-macros",
-  "lib/api-macros",
-  "lib/api-ui",
-  "lib/image-utils",
-  "lib/pool",
-  "lib/sound",
-  "lib/sql",
-  "lib/ui-base",
-  "lib/ui-generic",
-  "examples/wasm-modules/actionfeed",
-  "examples/wasm-modules/ui",
-  "examples/wasm-modules/state",
-  "examples/wasm-modules/render-game",
-  "examples/wasm-modules/scoreboard",
-  "examples/wasm-modules/chat",
-  "examples/wasm-modules/emote_wheel",
-  "examples/wasm-modules/prediction_timer_ui",
-  "examples/wasm-modules/vote",
-  "examples/wasm-modules/hud",
-  "examples/wasm-modules/demo_player",
-  "examples/wasm-modules/console",
-  "examples/wasm-modules/connecting",
-  "examples/wasm-modules/motd",
-  "examples/wasm-modules/graphics-mod",
-  "examples/wasm-modules/mainmenu",
-  "examples/wasm-modules/ingame_menu",
-  "src/server",
-  "src/emoticon-convert",
-  "src/game-convert",
-  "src/hud-convert",
-  "src/skin-convert",
-  "src/part-convert",
-  "src/master-server",
-  "game/assets-splitting",
-  "game/client-map",
-  "game/client-render-base",
-  "game/client-render",
-  "game/client-types",
-  "game/client-containers",
-  "game/client-ui",
-  "game/game-server",
-  "lib/game-database",
-  "game/game-base",
-  "game/vanilla",
-  "game/game-network",
-  "game/render-game-wasm",
-  "game/api-state",
-  "game/api-ui-game",
-  "game/master-server-types",
-  "game/game-config",
-  "game/game-config-fs",
-  "game/client-render-game",
-  "game/client-console",
-  "game/api-render-game",
-  "game/demo",
-  "game/client-demo",
-  "game/editor",
-  "src/map-convert",
-  "game/map-convert-lib",
-  "lib/sound-backend",
-  "lib/wasm-logic-sound",
-  "game/api-editor",
-  "examples/wasm-modules/editor_wasm",
-  "examples/lib-modules/editor-lib",
-  "game/egui-timeline",
-  "game/game-interface",
-  "game/map",
-  "lib/bin-patch",
-  "game/binds",
-  "game/client-accounts",
-  "lib/game-database-backend",
-  "lib/game-database-macros",
-  "game/http-accounts",
-  "lib/command-parser",
-  "src/dilate",
-  "game/prediction-timer",
-  "lib/microphone",
-  "lib/steam",
-  "game/game-state-wasm",
-  "lib/native-display",
-  "src/assets-server",
-  "game/assets-base",
-  "src/community-server",
-  "src/community-register-server",
-  "game/community",
-  "lib/input-binds",
-  "game/ghost",
-  "game/client-ghost",
-  "game/client-replay",
-  "game/editor-wasm",
-  "game/client-notifications",
-  "src/editor-server",
-  "src/extra-convert",
-  "game/editor-interface",
-  "game/editor-auto-mapper-wasm",
-  "game/api-auto-mapper",
-  "examples/wasm-modules/auto-mapper",
-  "game/legacy-proxy",
-  "game/camera",
-  "game/legacy-map",
-  "lib/auto-updater",
-]
-
 [package]
 name = "ddnet-rs"
 description = "DDraceNetwork, a free cooperative platformer game"
 version = "0.1.0"
 edition = "2024"
 publish = false
-
-# :/ https://github.com/rust-mobile/xbuild/issues/161
-[lib]
-crate-type = ["cdylib"]
-path = "src/lib.rs"
-
-[[bin]]
-name = "ddnet-rs"
-path = "src/lib.rs"
-
-[dependencies]
-ui-wasm-manager = { path = "lib/ui-wasm-manager" }
-native = { path = "lib/native" }
-input-binds = { path = "lib/input-binds" }
-network = { path = "lib/network" }
-math = { path = "lib/math" }
-base = { path = "lib/base" }
-base-fs = { path = "lib/base-fs" }
-base-http = { path = "lib/base-http" }
-base-io = { path = "lib/base-io" }
-config = { path = "lib/config" }
-config-fs = { path = "lib/config-fs" }
-graphics = { path = "lib/graphics" }
-graphics-backend = { path = "lib/graphics-backend" }
-graphics-types = { path = "lib/graphics-types" }
-image-utils = { path = "lib/image-utils" }
-sound = { path = "lib/sound" }
-sound-backend = { path = "lib/sound-backend" }
-microphone = { path = "lib/microphone" }
-ui-base = { path = "lib/ui-base" }
-ui-generic = { path = "lib/ui-generic" }
-pool = { path = "lib/pool" }
-bin-patch = { path = "lib/bin-patch" }
-steam = { path = "lib/steam" }
-command-parser = { path = "lib/command-parser" }
-
-auto-updater = { path = "lib/auto-updater", optional = true }
-
-game-config = { path = "game/game-config" }
-game-config-fs = { path = "game/game-config-fs" }
-client-accounts = { path = "game/client-accounts" }
-client-render-base = { path = "game/client-render-base" }
-client-render-game = { path = "game/client-render-game" }
-client-console = { path = "game/client-console" }
-client-map = { path = "game/client-map" }
-client-types = { path = "game/client-types" }
-client-containers = { path = "game/client-containers" }
-client-ui = { path = "game/client-ui", features = ["binds"] }
-demo = { path = "game/demo", features = ["recorder"] }
-client-demo = { path = "game/client-demo" }
-client-replay = { path = "game/client-replay" }
-ghost = { path = "game/ghost" }
-client-ghost = { path = "game/client-ghost" }
-client-notifications = { path = "game/client-notifications" }
-game-server = { path = "game/game-server", default-features = false }
-game-base = { path = "game/game-base" }
-game-interface = { path = "game/game-interface" }
-game-network = { path = "game/game-network" }
-binds = { path = "game/binds" }
-prediction-timer = { path = "game/prediction-timer" }
-editor-wasm = { path = "game/editor-wasm", default-features = false }
-game-state-wasm = { path = "game/game-state-wasm" }
-editor = { path = "game/editor", default-features = false }
-legacy-proxy = { path = "game/legacy-proxy" }
-camera = { path = "game/camera" }
-
-egui-winit = { version = "0.32.2", default-features = false, features = [
-  "x11",
-  "arboard",
-  "links",
-] }
-tokio = { version = "1.47.1", features = [
-  "rt-multi-thread",
-  "sync",
-  "fs",
-  "time",
-  "macros",
-] }
-num = "0.4.3"
-arrayvec = "0.7.6"
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
-rayon = "1.11.0"
-bincode = { version = "2.0.1", features = ["serde"] }
-bytes = "1.10.1"
-egui_extras = { version = "0.32.2" }
-emath = "0.32.2"
-fixed = "1.29.0"
-serde = "1.0.219"
-serde-value = "0.7.0"
-serde_json = "1.0.143"
-hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
-  "serde",
-  "serde_impl",
-] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-parking_lot = "0.12.4"
-thread-priority = "3.0.0"
-hiarc = { path = "lib/hiarc", features = ["derive"] }
-trybuild = "1.0"
-env_logger = "0.11.8"
-rand = { version = "0.9.2", features = ["std_rng"], default-features = false }
-url = "2.5.7"
-log = "0.4.28"
-x509-cert = { version = "0.2.5" }
-crossbeam = "0.8.4"
-chrono = { version = "0.4.41", features = ["serde"] }
-
-alloc-track = { version = "0.3.1", optional = true }
-stats_alloc = { version = "0.1.10", optional = true }
-
-# Better patches are always welcome
-#[target.'cfg(target_os = "windows")'.patch.crates-io]
-[patch.crates-io]
-ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branch = "pr_mingw_workaround" }
-
-[target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.15.1"
-ndk = { version = "0.9.0", default-features = false }
-
-[target.'cfg(not(target_os = "android"))'.dependencies]
-native-dialog = "0.9.0"
-
-[dev-dependencies]
-graphics-base-traits = { path = "lib/graphics-base-traits" }
-graphics-backend-traits = { path = "lib/graphics-backend-traits" }
-client-render-game = { path = "game/client-render-game" }
-client-render = { path = "game/client-render" }
-vanilla = { path = "game/vanilla" }
-map = { path = "game/map" }
-
-# super slow in debug
-[profile.dev.package.blake3]
-opt-level = 3
-[profile.dev.package.tract-core]
-opt-level = 3
-
-[features]
-bundled_data_dir = ["base-fs/bundled_data_dir"]
-enable_steam = ["steam/runtime"]
-microphone = ["microphone/cpal_opus"]
-ffmpeg = ["client-demo/ffmpeg"]
-
-alloc_track = ["dep:alloc-track"]
-alloc_stats = ["dep:stats_alloc"]
-auto_updater = ["dep:auto-updater"]
 
 #[profile.release]
 #lto = true
@@ -298,3 +21,280 @@ Help each other play through custom maps, compete against the best in internatio
 The official servers are around the world.
 All ranks made on official servers are available worldwide and you can collect points!
 """
+[workspace]
+members = [
+  "examples/lib-modules/editor-lib",
+  "examples/wasm-modules/actionfeed",
+  "examples/wasm-modules/auto-mapper",
+  "examples/wasm-modules/chat",
+  "examples/wasm-modules/connecting",
+  "examples/wasm-modules/console",
+  "examples/wasm-modules/demo_player",
+  "examples/wasm-modules/editor_wasm",
+  "examples/wasm-modules/emote_wheel",
+  "examples/wasm-modules/graphics-mod",
+  "examples/wasm-modules/hud",
+  "examples/wasm-modules/ingame_menu",
+  "examples/wasm-modules/mainmenu",
+  "examples/wasm-modules/motd",
+  "examples/wasm-modules/prediction_timer_ui",
+  "examples/wasm-modules/render-game",
+  "examples/wasm-modules/scoreboard",
+  "examples/wasm-modules/state",
+  "examples/wasm-modules/ui",
+  "examples/wasm-modules/vote",
+  "game/api-auto-mapper",
+  "game/api-editor",
+  "game/api-render-game",
+  "game/api-state",
+  "game/api-ui-game",
+  "game/assets-base",
+  "game/assets-splitting",
+  "game/binds",
+  "game/camera",
+  "game/client-accounts",
+  "game/client-console",
+  "game/client-containers",
+  "game/client-demo",
+  "game/client-ghost",
+  "game/client-map",
+  "game/client-notifications",
+  "game/client-render",
+  "game/client-render-base",
+  "game/client-render-game",
+  "game/client-replay",
+  "game/client-types",
+  "game/client-ui",
+  "game/community",
+  "game/demo",
+  "game/editor",
+  "game/editor-auto-mapper-wasm",
+  "game/editor-interface",
+  "game/editor-wasm",
+  "game/egui-timeline",
+  "game/game-base",
+  "game/game-config",
+  "game/game-config-fs",
+  "game/game-interface",
+  "game/game-network",
+  "game/game-server",
+  "game/game-state-wasm",
+  "game/ghost",
+  "game/http-accounts",
+  "game/legacy-map",
+  "game/legacy-proxy",
+  "game/map",
+  "game/map-convert-lib",
+  "game/master-server-types",
+  "game/prediction-timer",
+  "game/render-game-wasm",
+  "game/vanilla",
+  "lib/api",
+  "lib/api-macros",
+  "lib/api-ui",
+  "lib/api-wasm-macros",
+  "lib/auto-updater",
+  "lib/av-encoder",
+  "lib/base",
+  "lib/base-fs",
+  "lib/base-http",
+  "lib/base-io",
+  "lib/base-io-traits",
+  "lib/bin-patch",
+  "lib/cache",
+  "lib/command-parser",
+  "lib/config",
+  "lib/config-fs",
+  "lib/config-macro",
+  "lib/game-database",
+  "lib/game-database-backend",
+  "lib/game-database-macros",
+  "lib/graphics",
+  "lib/graphics-backend",
+  "lib/graphics-backend-traits",
+  "lib/graphics-base-traits",
+  "lib/graphics-types",
+  "lib/hiarc",
+  "lib/hiarc-macro",
+  "lib/image-utils",
+  "lib/input-binds",
+  "lib/microphone",
+  "lib/native",
+  "lib/native-display",
+  "lib/network",
+  "lib/pool",
+  "lib/sound",
+  "lib/sound-backend",
+  "lib/sql",
+  "lib/steam",
+  "lib/ui-base",
+  "lib/ui-generic",
+  "lib/ui-wasm-manager",
+  "lib/wasm-logic-db",
+  "lib/wasm-logic-fs",
+  "lib/wasm-logic-graphics",
+  "lib/wasm-logic-http",
+  "lib/wasm-logic-sound",
+  "lib/wasm-runtime",
+  "lib/wasm-runtime-types",
+  "src/assets-server",
+  "src/community-register-server",
+  "src/community-server",
+  "src/dilate",
+  "src/editor-server",
+  "src/emoticon-convert",
+  "src/extra-convert",
+  "src/game-convert",
+  "src/hud-convert",
+  "src/map-convert",
+  "src/master-server",
+  "src/part-convert",
+  "src/server",
+  "src/skin-convert",
+]
+
+# :/ https://github.com/rust-mobile/xbuild/issues/161
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "ddnet-rs"
+path = "src/lib.rs"
+
+[features]
+bundled_data_dir = ["base-fs/bundled_data_dir"]
+enable_steam = ["steam/runtime"]
+microphone = ["microphone/cpal_opus"]
+ffmpeg = ["client-demo/ffmpeg"]
+
+alloc_track = ["dep:alloc-track"]
+alloc_stats = ["dep:stats_alloc"]
+auto_updater = ["dep:auto-updater"]
+
+[dependencies]
+base = { path = "lib/base" }
+base-fs = { path = "lib/base-fs" }
+base-http = { path = "lib/base-http" }
+base-io = { path = "lib/base-io" }
+bin-patch = { path = "lib/bin-patch" }
+command-parser = { path = "lib/command-parser" }
+config = { path = "lib/config" }
+config-fs = { path = "lib/config-fs" }
+graphics = { path = "lib/graphics" }
+graphics-backend = { path = "lib/graphics-backend" }
+graphics-types = { path = "lib/graphics-types" }
+image-utils = { path = "lib/image-utils" }
+input-binds = { path = "lib/input-binds" }
+math = { path = "lib/math" }
+microphone = { path = "lib/microphone" }
+native = { path = "lib/native" }
+network = { path = "lib/network" }
+pool = { path = "lib/pool" }
+sound = { path = "lib/sound" }
+sound-backend = { path = "lib/sound-backend" }
+steam = { path = "lib/steam" }
+ui-base = { path = "lib/ui-base" }
+ui-generic = { path = "lib/ui-generic" }
+ui-wasm-manager = { path = "lib/ui-wasm-manager" }
+
+auto-updater = { path = "lib/auto-updater", optional = true }
+
+binds = { path = "game/binds" }
+camera = { path = "game/camera" }
+client-accounts = { path = "game/client-accounts" }
+client-console = { path = "game/client-console" }
+client-containers = { path = "game/client-containers" }
+client-demo = { path = "game/client-demo" }
+client-ghost = { path = "game/client-ghost" }
+client-map = { path = "game/client-map" }
+client-notifications = { path = "game/client-notifications" }
+client-render-base = { path = "game/client-render-base" }
+client-render-game = { path = "game/client-render-game" }
+client-replay = { path = "game/client-replay" }
+client-types = { path = "game/client-types" }
+client-ui = { path = "game/client-ui", features = ["binds"] }
+demo = { path = "game/demo", features = ["recorder"] }
+editor = { path = "game/editor", default-features = false }
+editor-wasm = { path = "game/editor-wasm", default-features = false }
+game-base = { path = "game/game-base" }
+game-config = { path = "game/game-config" }
+game-config-fs = { path = "game/game-config-fs" }
+game-interface = { path = "game/game-interface" }
+game-network = { path = "game/game-network" }
+game-server = { path = "game/game-server", default-features = false }
+game-state-wasm = { path = "game/game-state-wasm" }
+ghost = { path = "game/ghost" }
+legacy-proxy = { path = "game/legacy-proxy" }
+prediction-timer = { path = "game/prediction-timer" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+arrayvec = "0.7.6"
+bincode = { version = "2.0.1", features = ["serde"] }
+bytes = "1.10.1"
+chrono = { version = "0.4.41", features = ["serde"] }
+crossbeam = "0.8.4"
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui-winit = { version = "0.32.2", default-features = false, features = [
+  "x11",
+  "arboard",
+  "links",
+] }
+egui_extras = { version = "0.32.2" }
+emath = "0.32.2"
+env_logger = "0.11.8"
+fixed = "1.29.0"
+hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", features = [
+  "serde",
+  "serde_impl",
+] }
+hiarc = { path = "lib/hiarc", features = ["derive"] }
+log = "0.4.28"
+num = "0.4.3"
+parking_lot = "0.12.4"
+rand = { version = "0.9.2", features = ["std_rng"], default-features = false }
+rayon = "1.11.0"
+serde = "1.0.219"
+serde-value = "0.7.0"
+serde_json = "1.0.143"
+thread-priority = "3.0.0"
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "sync",
+  "fs",
+  "time",
+  "macros",
+] }
+trybuild = "1.0"
+url = "2.5.7"
+x509-cert = { version = "0.2.5" }
+
+alloc-track = { version = "0.3.1", optional = true }
+stats_alloc = { version = "0.1.10", optional = true }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+native-dialog = "0.9.0"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15.1"
+ndk = { version = "0.9.0", default-features = false }
+
+[dev-dependencies]
+client-render = { path = "game/client-render" }
+client-render-game = { path = "game/client-render-game" }
+map = { path = "game/map" }
+vanilla = { path = "game/vanilla" }
+
+graphics-backend-traits = { path = "lib/graphics-backend-traits" }
+graphics-base-traits = { path = "lib/graphics-base-traits" }
+
+# Better patches are always welcome
+#[target.'cfg(target_os = "windows")'.patch.crates-io]
+[patch.crates-io]
+ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branch = "pr_mingw_workaround" }
+
+# super slow in debug
+[profile.dev.package.blake3]
+opt-level = 3
+[profile.dev.package.tract-core]
+opt-level = 3

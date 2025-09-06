@@ -4,28 +4,28 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-config = { path = "../../lib/config" }
 base = { path = "../../lib/base" }
-base-io = { path = "../../lib/base-io" }
 base-fs = { path = "../../lib/base-fs" }
 base-http = { path = "../../lib/base-http" }
-network = { path = "../../lib/network" }
+base-io = { path = "../../lib/base-io" }
+config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 graphics-backend = { path = "../../lib/graphics-backend" }
-graphics-types = { path = "../../lib/graphics-types" }
 graphics-base-traits = { path = "../../lib/graphics-base-traits" }
+graphics-types = { path = "../../lib/graphics-types" }
+network = { path = "../../lib/network" }
 sound = { path = "../../lib/sound" }
 sound-backend = { path = "../../lib/sound-backend" }
 
 editor = { path = "../../game/editor" }
 
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+chrono = { version = "0.4.41" }
 clap = { version = "4.5.47", features = ["derive"] }
-rayon = "1.11.0"
+ed25519-dalek = { version = "2.2.0", features = ["serde"] }
 env_logger = "0.11.8"
 log = "0.4.28"
-serde_json = "1.0.143"
+rayon = "1.11.0"
 serde = { version = "1.0.219", features = ["derive"] }
-chrono = { version = "0.4.41" }
+serde_json = "1.0.143"
 x509-cert = { version = "0.2.5" }
-ed25519-dalek = { version = "2.2.0", features = ["serde"] }
-anyhow = { version = "1.0.99", features = ["backtrace"] }

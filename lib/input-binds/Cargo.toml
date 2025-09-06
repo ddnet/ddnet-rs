@@ -5,8 +5,9 @@ edition = "2024"
 
 [dependencies]
 base = { path = "../base" }
-pool = { path = "../pool" }
 hiarc = { path = "../hiarc", features = ["enable_winit"] }
+pool = { path = "../pool" }
+
 serde = { version = "1.0.219", features = ["derive"] }
 winit = { version = "0.30.12", features = ["serde", "android-native-activity"] }
 

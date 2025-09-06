@@ -4,21 +4,21 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 base-io-traits = { path = "../../lib/base-io-traits" }
-base = { path = "../../lib/base" }
 config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 graphics-backend = { path = "../../lib/graphics-backend" }
 pool = { path = "../../lib/pool" }
-ui-base = { path = "../../lib/ui-base" }
 sound = { path = "../../lib/sound" }
 sound-backend = { path = "../../lib/sound-backend" }
+ui-base = { path = "../../lib/ui-base" }
 
 client-demo = { path = "../client-demo", default-features = false }
-game-config = { path = "../game-config" }
 client-render-game = { path = "../client-render-game" }
+game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
-rayon = "1.11.0"
 
 log = "0.4.28"
+rayon = "1.11.0"

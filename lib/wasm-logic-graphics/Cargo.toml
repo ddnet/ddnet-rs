@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-graphics-types = { path = "../graphics-types" }
 graphics = { path = "../graphics" }
 graphics-backend = { path = "../graphics-backend" }
 graphics-backend-traits = { path = "../graphics-backend-traits" }
+graphics-types = { path = "../graphics-types" }
 hiarc = { path = "../hiarc", features = ["derive"] }
 wasm-runtime-types = { path = "../wasm-runtime-types" }
 
+sendable = "0.6.1"
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
   "sys",
   "cranelift",
 ] }
-sendable = "0.6.1"
