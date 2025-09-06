@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::ops::Range;
 use std::path::Path;
 
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::{io::Read, path::PathBuf};
 use tar::Header;
 

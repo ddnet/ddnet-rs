@@ -15,7 +15,7 @@ use crate::{
     main_menu::{
         profiles_interface::{LinkedCredential, ProfilesInterface},
         settings::player::tee::main_frame::{eye_to_render_eye, render_skin},
-        user_data::{ProfileSkin, ProfileState, UserData, PROFILE_SKIN_PREVIEW},
+        user_data::{PROFILE_SKIN_PREVIEW, ProfileSkin, ProfileState, UserData},
     },
     utils::render_tee_for_ui,
 };

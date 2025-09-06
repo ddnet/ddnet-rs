@@ -14,7 +14,7 @@ use game_interface::{
 use graphics::graphics::graphics::Graphics;
 
 use base::{
-    hash::{fmt_hash, generate_hash_for, Hash},
+    hash::{Hash, fmt_hash, generate_hash_for},
     network_string::NetworkReducedAsciiString,
     system::System,
 };
@@ -28,7 +28,7 @@ use map::{
 };
 use rayon::ThreadPool;
 pub use render_game_wasm::render::render_wasm_manager::RenderGameWasmManager;
-use render_game_wasm::render::render_wasm_manager::{RenderGameMod, RENDER_MODS_PATH};
+use render_game_wasm::render::render_wasm_manager::{RENDER_MODS_PATH, RenderGameMod};
 
 use game_base::{connecting_log::ConnectingLog, network::messages::GameModification};
 use sound::sound::SoundManager;
@@ -468,24 +468,22 @@ impl GameUnpredicted {
         use pool::mt_datatypes::PoolCow;
         let mut changed_state = false;
         let first_snap = last_snaps.range(0..=first_tick).next_back();
-        if let Some((id, snapshot)) = first_snap {
-            if self.prev.is_none_or(|tick| tick != *id) {
-                self.state
-                    .build_from_snapshot_for_prev(&PoolCow::from_without_pool(
-                        snapshot.clone().into(),
-                    ));
-                self.prev = Some(*id);
-                changed_state = true;
-            }
+        if let Some((id, snapshot)) = first_snap
+            && self.prev.is_none_or(|tick| tick != *id)
+        {
+            self.state
+                .build_from_snapshot_for_prev(&PoolCow::from_without_pool(snapshot.clone().into()));
+            self.prev = Some(*id);
+            changed_state = true;
         }
-        if let Some((id, snapshot)) = last_snaps.range(first_tick + 1..).next().or(first_snap) {
-            if self.cur.is_none_or(|tick| tick != *id) {
-                let _ = self
-                    .state
-                    .build_from_snapshot(&PoolCow::from_without_pool(snapshot.clone().into()));
-                self.cur = Some(*id);
-                changed_state = true;
-            }
+        if let Some((id, snapshot)) = last_snaps.range(first_tick + 1..).next().or(first_snap)
+            && self.cur.is_none_or(|tick| tick != *id)
+        {
+            let _ = self
+                .state
+                .build_from_snapshot(&PoolCow::from_without_pool(snapshot.clone().into()));
+            self.cur = Some(*id);
+            changed_state = true;
         }
         if changed_state {
             self.state.clear_events();

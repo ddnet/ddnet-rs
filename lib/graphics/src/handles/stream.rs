@@ -10,8 +10,8 @@ pub mod stream {
         rendering::{GlVertex, RenderMode, State},
         types::DrawModes,
     };
-    use hiarc::{hi_closure, Hiarc};
     use hiarc::{HiFnMut, HiFnMutBase, HiFnOnce};
+    use hiarc::{Hiarc, hi_closure};
 
     use crate::handles::{
         backend::backend::GraphicsBackendHandle,

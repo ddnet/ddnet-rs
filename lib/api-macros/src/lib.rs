@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use proc_macro::{TokenStream, TokenTree};
-use quote::{format_ident, ToTokens};
-use syn::{parse::Parse, parse_macro_input, ImplItem, Item, TraitItem};
+use quote::{ToTokens, format_ident};
+use syn::{ImplItem, Item, TraitItem, parse::Parse, parse_macro_input};
 /*
 fn rewrite_exact_mod_name(tokens: &mut String, mod_name: &str, new_mod_name: &str) {
     let regex =
@@ -148,11 +148,11 @@ fn impl_mod(base_tokens: TokenStream, mod_tokens: TokenStream) -> TokenStream {
                     Item::Enum(mod_enum) => {
                         let content = &mut base_input.content.as_mut().unwrap().1;
                         for item_base in content.iter_mut() {
-                            if let Item::Enum(base_enum) = item_base {
-                                if mod_enum.ident == base_enum.ident {
-                                    *base_enum = mod_enum;
-                                    continue 'next_item;
-                                }
+                            if let Item::Enum(base_enum) = item_base
+                                && mod_enum.ident == base_enum.ident
+                            {
+                                *base_enum = mod_enum;
+                                continue 'next_item;
                             }
                         }
                         content.push(Item::Enum(mod_enum));
@@ -166,11 +166,11 @@ fn impl_mod(base_tokens: TokenStream, mod_tokens: TokenStream) -> TokenStream {
                     Item::Struct(mod_struct) => {
                         let content = &mut base_input.content.as_mut().unwrap().1;
                         for item_base in content.iter_mut() {
-                            if let Item::Struct(base_struct) = item_base {
-                                if mod_struct.ident == base_struct.ident {
-                                    *base_struct = mod_struct;
-                                    continue 'next_item;
-                                }
+                            if let Item::Struct(base_struct) = item_base
+                                && mod_struct.ident == base_struct.ident
+                            {
+                                *base_struct = mod_struct;
+                                continue 'next_item;
                             }
                         }
                         content.push(Item::Struct(mod_struct));

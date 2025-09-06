@@ -1,7 +1,7 @@
 use std::{
     io::Write,
     path::{Path, PathBuf},
-    sync::{atomic::AtomicBool, mpsc::channel, Arc, Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock, atomic::AtomicBool, mpsc::channel},
     thread::JoinHandle,
     time::Duration,
 };
@@ -14,9 +14,9 @@ use base_io_traits::fs_traits::{
 use directories::ProjectDirs;
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
-use notify::{event::RenameMode, recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, event::RenameMode, recommended_watcher};
 use path_slash::PathBufExt;
-use virtual_fs::{host_fs, mem_fs, AsyncReadExt, DirEntry, OpenOptionsConfig};
+use virtual_fs::{AsyncReadExt, DirEntry, OpenOptionsConfig, host_fs, mem_fs};
 
 #[derive(Debug)]
 struct FileSystemWatcherPath {
@@ -48,105 +48,109 @@ impl FileSystemWatcherPath {
 
         let watch_thread = std::thread::Builder::new()
             .name("file-watcher".to_string())
-            .spawn(move || loop {
-                match rx.recv() {
-                    Ok(res) => {
-                        if let Ok(ev) = res {
-                            let mut handle_ev = match ev.kind {
-                                notify::EventKind::Any => false,
-                                notify::EventKind::Other => false,
-                                notify::EventKind::Access(ev) => match ev {
-                                    notify::event::AccessKind::Any => false,
-                                    notify::event::AccessKind::Read => false,
-                                    notify::event::AccessKind::Open(_) => false,
-                                    notify::event::AccessKind::Close(ev) => match ev {
-                                        notify::event::AccessMode::Any => false,
-                                        notify::event::AccessMode::Execute => false,
-                                        notify::event::AccessMode::Read => false,
-                                        notify::event::AccessMode::Write => true,
-                                        notify::event::AccessMode::Other => false,
+            .spawn(move || {
+                loop {
+                    match rx.recv() {
+                        Ok(res) => {
+                            if let Ok(ev) = res {
+                                let mut handle_ev = match ev.kind {
+                                    notify::EventKind::Any => false,
+                                    notify::EventKind::Other => false,
+                                    notify::EventKind::Access(ev) => match ev {
+                                        notify::event::AccessKind::Any => false,
+                                        notify::event::AccessKind::Read => false,
+                                        notify::event::AccessKind::Open(_) => false,
+                                        notify::event::AccessKind::Close(ev) => match ev {
+                                            notify::event::AccessMode::Any => false,
+                                            notify::event::AccessMode::Execute => false,
+                                            notify::event::AccessMode::Read => false,
+                                            notify::event::AccessMode::Write => true,
+                                            notify::event::AccessMode::Other => false,
+                                        },
+                                        notify::event::AccessKind::Other => false,
                                     },
-                                    notify::event::AccessKind::Other => false,
-                                },
-                                notify::EventKind::Create(ev) => match ev {
-                                    notify::event::CreateKind::Any => false,
-                                    notify::event::CreateKind::Other => false,
-                                    notify::event::CreateKind::File => true,
-                                    notify::event::CreateKind::Folder => true,
-                                },
-                                notify::EventKind::Modify(ev) => {
-                                    match ev {
-                                        notify::event::ModifyKind::Any
-                                        | notify::event::ModifyKind::Data(_)
-                                        | notify::event::ModifyKind::Metadata(_)
-                                        | notify::event::ModifyKind::Other
-                                        | notify::event::ModifyKind::Name(
-                                            RenameMode::Any | RenameMode::Other,
-                                        ) => {
-                                            // only listen for modify events in a pure directory mode
-                                            file_thread.is_none()
+                                    notify::EventKind::Create(ev) => match ev {
+                                        notify::event::CreateKind::Any => false,
+                                        notify::event::CreateKind::Other => false,
+                                        notify::event::CreateKind::File => true,
+                                        notify::event::CreateKind::Folder => true,
+                                    },
+                                    notify::EventKind::Modify(ev) => {
+                                        match ev {
+                                            notify::event::ModifyKind::Any
+                                            | notify::event::ModifyKind::Data(_)
+                                            | notify::event::ModifyKind::Metadata(_)
+                                            | notify::event::ModifyKind::Other
+                                            | notify::event::ModifyKind::Name(
+                                                RenameMode::Any | RenameMode::Other,
+                                            ) => {
+                                                // only listen for modify events in a pure directory mode
+                                                file_thread.is_none()
+                                            }
+                                            notify::event::ModifyKind::Name(
+                                                RenameMode::Both
+                                                | RenameMode::To
+                                                | RenameMode::From,
+                                            ) => true,
                                         }
-                                        notify::event::ModifyKind::Name(
-                                            RenameMode::Both | RenameMode::To | RenameMode::From,
-                                        ) => true,
+                                    }
+                                    notify::EventKind::Remove(ev) => match ev {
+                                        notify::event::RemoveKind::Any => false,
+                                        notify::event::RemoveKind::Other => false,
+                                        notify::event::RemoveKind::File => true,
+                                        notify::event::RemoveKind::Folder => true,
+                                    },
+                                };
+                                if let Some(file) = &file_thread {
+                                    // check if the file exists
+                                    if !ev.paths.iter().any(|path| file.eq(path)) {
+                                        handle_ev = false;
                                     }
                                 }
-                                notify::EventKind::Remove(ev) => match ev {
-                                    notify::event::RemoveKind::Any => false,
-                                    notify::event::RemoveKind::Other => false,
-                                    notify::event::RemoveKind::File => true,
-                                    notify::event::RemoveKind::Folder => true,
-                                },
-                            };
-                            if let Some(file) = &file_thread {
-                                // check if the file exists
-                                if !ev.paths.iter().any(|path| file.eq(path)) {
-                                    handle_ev = false;
-                                }
-                            }
-                            if handle_ev {
-                                // if the file exist, make sure the file is not modified for at least 1 second
-                                if let Some(file_thread) = &file_thread {
-                                    let mut last_modified = None;
+                                if handle_ev {
+                                    // if the file exist, make sure the file is not modified for at least 1 second
+                                    if let Some(file_thread) = &file_thread {
+                                        let mut last_modified = None;
 
-                                    while let Ok(file) = std::fs::File::open(file_thread) {
-                                        if let Some(modified) = file
-                                            .metadata()
-                                            .ok()
-                                            .and_then(|metadata| metadata.modified().ok())
-                                        {
-                                            if let Some(file_last_modified) = last_modified {
-                                                if modified == file_last_modified {
-                                                    break;
+                                        while let Ok(file) = std::fs::File::open(file_thread) {
+                                            if let Some(modified) = file
+                                                .metadata()
+                                                .ok()
+                                                .and_then(|metadata| metadata.modified().ok())
+                                            {
+                                                if let Some(file_last_modified) = last_modified {
+                                                    if modified == file_last_modified {
+                                                        break;
+                                                    } else {
+                                                        // else try again
+                                                        last_modified = Some(modified);
+                                                    }
                                                 } else {
-                                                    // else try again
                                                     last_modified = Some(modified);
                                                 }
                                             } else {
-                                                last_modified = Some(modified);
+                                                break;
                                             }
-                                        } else {
-                                            break;
+                                            drop(file);
+                                            std::thread::sleep(Duration::from_secs(1));
                                         }
-                                        drop(file);
-                                        std::thread::sleep(Duration::from_secs(1));
                                     }
-                                }
 
-                                watchers_of_path_thread
-                                    .read()
-                                    .as_ref()
-                                    .unwrap()
-                                    .values()
-                                    .for_each(|watcher_bool| {
-                                        watcher_bool
-                                            .store(true, std::sync::atomic::Ordering::Relaxed)
-                                    });
+                                    watchers_of_path_thread
+                                        .read()
+                                        .as_ref()
+                                        .unwrap()
+                                        .values()
+                                        .for_each(|watcher_bool| {
+                                            watcher_bool
+                                                .store(true, std::sync::atomic::Ordering::Relaxed)
+                                        });
+                                }
                             }
                         }
-                    }
-                    Err(_) => {
-                        return;
+                        Err(_) => {
+                            return;
+                        }
                     }
                 }
             })

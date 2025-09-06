@@ -2,8 +2,8 @@ use std::net::IpAddr;
 use std::{str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
-use base::hash::generate_hash_for;
 use base::hash::Hash;
+use base::hash::generate_hash_for;
 use base_io_traits::http_traits::HttpError;
 use base_io_traits::http_traits::{HttpClientInterface, HttpHeaderValue};
 use bytes::Bytes;

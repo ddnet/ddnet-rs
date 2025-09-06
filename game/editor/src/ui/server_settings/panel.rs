@@ -1,6 +1,6 @@
 use egui::{
-    text::LayoutJob, Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat,
-    UiBuilder,
+    Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat, UiBuilder,
+    text::LayoutJob,
 };
 use egui_extras::{Size, StripBuilder};
 use map::map::command_value::CommandValue;

@@ -2,8 +2,8 @@ use std::{collections::HashMap, rc::Rc};
 
 use anyhow::anyhow;
 use egui::{
-    epaint::{self, Primitive},
     FullOutput, ImageData, TextureId,
+    epaint::{self, Primitive},
 };
 
 use crate::{

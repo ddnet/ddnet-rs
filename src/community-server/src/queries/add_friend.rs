@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use ddnet_accounts_types::account_id::AccountId;
 use game_database::{
+    StatementArgs,
     statement::{Statement, StatementBuilder},
     traits::{DbInterface, DbKind, DbKindExtra},
-    StatementArgs,
 };
 
 #[derive(Debug, StatementArgs)]

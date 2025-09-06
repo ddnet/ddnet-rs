@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use egui::{vec2, Align2, Frame, ScrollArea, Vec2, Window};
+use egui::{Align2, Frame, ScrollArea, Vec2, Window, vec2};
 
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;

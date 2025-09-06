@@ -1,6 +1,6 @@
-use ed25519_dalek::{pkcs8::EncodePrivateKey, SigningKey};
+use ed25519_dalek::{SigningKey, pkcs8::EncodePrivateKey};
 use rcgen::{CertificateParams, KeyPair, PKCS_ED25519};
-use spki::der::{pem::LineEnding, Decode};
+use spki::der::{Decode, pem::LineEnding};
 
 pub fn create_certifified_keys() -> (x509_cert::Certificate, SigningKey) {
     let mut rng = rand::rngs::OsRng;

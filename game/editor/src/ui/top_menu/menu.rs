@@ -152,13 +152,12 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         {
                             pipe.user_data.auto_mapper.active = !pipe.user_data.auto_mapper.active;
                         }
-                        if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab() {
-                            if ui
+                        if let Some(tab) = &mut pipe.user_data.editor_tabs.active_tab()
+                            && ui
                                 .add(Button::new("Auto-Saver").selected(tab.auto_saver.active))
                                 .clicked()
-                            {
-                                tab.auto_saver.active = !tab.auto_saver.active;
-                            }
+                        {
+                            tab.auto_saver.active = !tab.auto_saver.active;
                         }
                     });
 

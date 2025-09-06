@@ -27,4 +27,4 @@ jobs:
     - name: Check format
       run: |
         shopt -s globstar
-        rustfmt --edition=2021 --check **/**.rs
+        rustfmt --edition=2024 --check **/**.rs

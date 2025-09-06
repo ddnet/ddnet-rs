@@ -34,11 +34,7 @@ pub fn align_pos(map: &EditorMap, modifiers: &Modifiers, mut pos: vec2) -> Optio
         fn round_mod(v: f32, rhs: f32) -> f32 {
             let r = v.rem_euclid(rhs);
 
-            if r <= rhs / 2.0 {
-                -r
-            } else {
-                rhs - r
-            }
+            if r <= rhs / 2.0 { -r } else { rhs - r }
         }
         pos.x += round_mod(pos.x, grid_size);
         pos.y += round_mod(pos.y, grid_size);

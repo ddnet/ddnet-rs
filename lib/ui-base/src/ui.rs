@@ -2,7 +2,7 @@ use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
     rc::Rc,
-    sync::{atomic::AtomicBool, Arc, RwLock},
+    sync::{Arc, RwLock, atomic::AtomicBool},
     time::Duration,
 };
 
@@ -298,17 +298,9 @@ impl UiContainer {
             }
             | egui::Event::Zoom(extra_zoom_level) => {
                 let incr_val = if *extra_zoom_level > 0.0 {
-                    if zoom_level < 1.5 {
-                        0.25
-                    } else {
-                        0.5
-                    }
+                    if zoom_level < 1.5 { 0.25 } else { 0.5 }
                 } else if *extra_zoom_level < 0.0 {
-                    if zoom_level > 1.5 {
-                        -0.5
-                    } else {
-                        -0.25
-                    }
+                    if zoom_level > 1.5 { -0.5 } else { -0.25 }
                 } else {
                     0.0
                 };

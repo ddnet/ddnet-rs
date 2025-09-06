@@ -8,10 +8,10 @@ use base::{
     network_string::NetworkString,
 };
 use binds::binds::{
-    bind_to_str, gen_local_player_action_hash_map, gen_local_player_action_hash_map_rev,
-    syn_to_bind, BindAction, BindActionsCharacter, BindActionsLocalPlayer,
+    BindAction, BindActionsCharacter, BindActionsLocalPlayer, bind_to_str,
+    gen_local_player_action_hash_map, gen_local_player_action_hash_map_rev, syn_to_bind,
 };
-use client_types::console::{entries_to_parser, ConsoleEntry};
+use client_types::console::{ConsoleEntry, entries_to_parser};
 use command_parser::parser::{self, Command, CommandType, ParserCache, Syn};
 use game_base::{
     network::{
@@ -26,12 +26,12 @@ use game_interface::{
     types::{
         game::GameTickType,
         id_types::{CharacterId, PlayerId},
-        input::{cursor::CharacterInputCursor, CharacterInputInfo, CharacterInputMethodFlags},
+        input::{CharacterInputInfo, CharacterInputMethodFlags, cursor::CharacterInputCursor},
         render::character::CharacterInfo,
         snapshot::SnapshotLocalPlayers,
         weapons::WeaponType,
     },
-    votes::{MapVote, MapVoteKey, MiscVote, MiscVoteKey, VoteState, Voted, MAX_CATEGORY_NAME_LEN},
+    votes::{MAX_CATEGORY_NAME_LEN, MapVote, MapVoteKey, MiscVote, MiscVoteKey, VoteState, Voted},
 };
 use input_binds::binds::{BindKey, Binds, MouseExtra};
 use math::math::vector::{dvec2, luffixed};
@@ -47,8 +47,8 @@ use prediction_timer::prediction_timing::PredictionTimer;
 use crate::{
     client::input::input_handling::DeviceToLocalPlayerIndex,
     localplayer::{
-        dummy_control::{DummyControlState, DummyHammerState},
         ClientPlayer, ClientPlayerInputPerTick, LocalPlayers,
+        dummy_control::{DummyControlState, DummyHammerState},
     },
 };
 
@@ -115,7 +115,7 @@ impl LocalPlayerGameData {
     pub fn inactive_local_players(&self) -> impl Iterator<Item = (&PlayerId, &ClientPlayer)> {
         self.expected_local_players
             .iter()
-            .filter(|(&id, _)| id != self.active_local_player_id)
+            .filter(|&(&id, _)| id != self.active_local_player_id)
             .filter_map(|(_, p)| match p {
                 ClientConnectedPlayer::Connecting { .. } => None,
                 ClientConnectedPlayer::Connected { player_id, .. } => {
@@ -128,7 +128,7 @@ impl LocalPlayerGameData {
         let local_players = &mut self.local_players;
         self.expected_local_players
             .iter()
-            .filter(|(&id, _)| id != self.active_local_player_id)
+            .filter(|&(&id, _)| id != self.active_local_player_id)
             .filter_map(|(_, p)| match p {
                 ClientConnectedPlayer::Connecting { .. } => None,
                 ClientConnectedPlayer::Connected { player_id, .. } => Some(player_id),
@@ -672,7 +672,7 @@ impl GameData {
 
         // handle the active player first
         let active_player = self.local.active_local_player_mut();
-        let active_player_id = active_player.as_ref().map(|(&id, _)| id);
+        let active_player_id = active_player.as_ref().map(|&(&id, _)| id);
         if let Some((id, local_player)) = active_player {
             if self.dummy_control.dummy_copy_moves {
                 copied_input = Some((
@@ -692,28 +692,27 @@ impl GameData {
         let local_players = &mut self.local.local_players;
         for (local_player_id, local_player) in local_players
             .iter_mut()
-            .filter(|(&id, _)| Some(id) != active_player_id)
+            .filter(|&(&id, _)| Some(id) != active_player_id)
         {
-            if let DummyHammerState::Active { last_hammer } = &self.dummy_control.dummy_hammer {
-                if last_hammer
+            if let DummyHammerState::Active { last_hammer } = &self.dummy_control.dummy_hammer
+                && last_hammer
                     .is_none_or(|time| cur_time.saturating_sub(time) > Duration::from_millis(500))
-                {
-                    let cursor = CharacterInputCursor::from_vec2(&local_player.cursor_pos_dummy);
-                    local_player.cursor_pos = local_player.cursor_pos_dummy;
-                    local_player.input.inp.cursor.set(cursor);
-                    local_player.input.inp.consumable.fire.add(1, cursor);
-                    local_player
-                        .input
-                        .inp
-                        .consumable
-                        .set_weapon_req(Some(WeaponType::Hammer));
-                    local_player
-                        .input
-                        .inp
-                        .state
-                        .input_method_flags
-                        .set(CharacterInputMethodFlags::DUMMY);
-                }
+            {
+                let cursor = CharacterInputCursor::from_vec2(&local_player.cursor_pos_dummy);
+                local_player.cursor_pos = local_player.cursor_pos_dummy;
+                local_player.input.inp.cursor.set(cursor);
+                local_player.input.inp.consumable.fire.add(1, cursor);
+                local_player
+                    .input
+                    .inp
+                    .consumable
+                    .set_weapon_req(Some(WeaponType::Hammer));
+                local_player
+                    .input
+                    .inp
+                    .state
+                    .input_method_flags
+                    .set(CharacterInputMethodFlags::DUMMY);
             }
             if let Some((consumable, state, cursor, viewport)) = &copied_input {
                 let mut inp = local_player.input.inp;
@@ -749,12 +748,11 @@ impl GameData {
                 local_player.is_dummy || local_player.is_dummies_owner,
             );
         }
-        if let DummyHammerState::Active { last_hammer } = &mut self.dummy_control.dummy_hammer {
-            if last_hammer
+        if let DummyHammerState::Active { last_hammer } = &mut self.dummy_control.dummy_hammer
+            && last_hammer
                 .is_none_or(|time| cur_time.saturating_sub(time) > Duration::from_millis(500))
-            {
-                *last_hammer = Some(cur_time);
-            }
+        {
+            *last_hammer = Some(cur_time);
         }
     }
 

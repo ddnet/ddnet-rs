@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 
 use binds::binds::{
+    BindAction, BindActionsCharacter, BindActionsLocalPlayer, BindKey, KeyCode, PhysicalKey,
     bind_keys_to_str, bind_to_str, gen_local_player_action_hash_map,
-    gen_local_player_action_hash_map_rev, str_list_to_binds_lossy, BindAction,
-    BindActionsCharacter, BindActionsLocalPlayer, BindKey, KeyCode, PhysicalKey,
+    gen_local_player_action_hash_map_rev, str_list_to_binds_lossy,
 };
 use egui::{Button, Color32, DragValue, Grid, Layout, ScrollArea};
 use egui_extras::{Size, StripBuilder};

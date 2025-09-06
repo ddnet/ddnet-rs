@@ -7,7 +7,7 @@ use base::{
 use game_interface::{
     interface::{GameStateServerOptions, MAX_MAP_NAME_LEN},
     types::{
-        character_info::{NetworkCharacterInfo, MAX_ASSET_NAME_LEN},
+        character_info::{MAX_ASSET_NAME_LEN, NetworkCharacterInfo},
         game::GameTickType,
         id_types::PlayerId,
     },

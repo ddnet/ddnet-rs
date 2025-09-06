@@ -22,7 +22,7 @@ mod test {
 
     use crate::{
         file::MapFileReader,
-        map::{groups::MapGroup, Map},
+        map::{Map, groups::MapGroup},
     };
 
     fn compression_tests_for_map(map_name: &str) {
@@ -185,22 +185,22 @@ mod test {
             benchmark.bench("zstd decompress");
 
             println!(
-            "uncompressed: {}, deflate: {} - {}, gz: {} - {}, zlib: {} - {}, lz4: {}, brotli: {} - {} - {} - {}, zstd: {} - {}",
-            groups_encoded.len(),
-            len_deflate_default,
-            len_deflate_best,
-            len_gz_default,
-            len_gz_best,
-            len_zlib_default,
-            len_zlib_best,
-            len_lz4,
-            len_brotli_best,
-            len_brotli_8,
-            len_brotli_6,
-            len_brotli_3,
-            len_zstd_default,
-            len_zstd_best,
-        );
+                "uncompressed: {}, deflate: {} - {}, gz: {} - {}, zlib: {} - {}, lz4: {}, brotli: {} - {} - {} - {}, zstd: {} - {}",
+                groups_encoded.len(),
+                len_deflate_default,
+                len_deflate_best,
+                len_gz_default,
+                len_gz_best,
+                len_zlib_default,
+                len_zlib_best,
+                len_lz4,
+                len_brotli_best,
+                len_brotli_8,
+                len_brotli_6,
+                len_brotli_3,
+                len_zstd_default,
+                len_zstd_best,
+            );
         }
         compression_of_group(groups_encoded, &benchmark);
     }

@@ -727,13 +727,13 @@ fn handle_points_changed(pipe: &mut UiRenderPipe<UserDataWithTab>) {
         prefix: &str,
         gen_action: &dyn Fn(usize, &AnimBase<AP>) -> EditorAction,
     ) {
-        if let Some((index, anim, props)) = anim {
-            if !props.selected_point_channels.is_empty() || !props.selected_points.is_empty() {
-                client.execute(
-                    gen_action(*index, anim),
-                    Some(&format!("{prefix}-anim-repl-anim-{index}")),
-                );
-            }
+        if let Some((index, anim, props)) = anim
+            && (!props.selected_point_channels.is_empty() || !props.selected_points.is_empty())
+        {
+            client.execute(
+                gen_action(*index, anim),
+                Some(&format!("{prefix}-anim-repl-anim-{index}")),
+            );
         }
     }
     check_anim(
@@ -795,48 +795,47 @@ fn handle_point_delete(
         if let Some((index, anim, props)) = (group_name == expected_group_name)
             .then_some(anim.as_mut())
             .flatten()
+            && point_index < anim.points.len()
         {
-            if point_index < anim.points.len() {
-                anim.points.remove(point_index);
-                client.execute(
-                    gen_action(*index, anim),
-                    Some(&format!("{group_name}-anim-repl-anim-{index}")),
-                );
+            anim.points.remove(point_index);
+            client.execute(
+                gen_action(*index, anim),
+                Some(&format!("{group_name}-anim-repl-anim-{index}")),
+            );
 
-                fn new_point(p: usize, point_index: usize) -> Option<usize> {
-                    match p.cmp(&point_index) {
-                        std::cmp::Ordering::Less => Some(p),
-                        std::cmp::Ordering::Equal => None,
-                        std::cmp::Ordering::Greater => p.checked_sub(1),
-                    }
+            fn new_point(p: usize, point_index: usize) -> Option<usize> {
+                match p.cmp(&point_index) {
+                    std::cmp::Ordering::Less => Some(p),
+                    std::cmp::Ordering::Equal => None,
+                    std::cmp::Ordering::Greater => p.checked_sub(1),
                 }
-                props.hovered_point = props.hovered_point.and_then(|p| new_point(p, point_index));
-                props.hovered_point_channels = props
-                    .hovered_point_channels
-                    .drain()
-                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
-                    .collect();
-                props.hovered_point_channel_beziers = props
-                    .hovered_point_channel_beziers
-                    .drain()
-                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
-                    .collect();
-                props.selected_points = props
-                    .selected_points
-                    .drain()
-                    .filter_map(|p| new_point(p, point_index))
-                    .collect();
-                props.selected_point_channels = props
-                    .selected_point_channels
-                    .drain()
-                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
-                    .collect();
-                props.selected_point_channel_beziers = props
-                    .selected_point_channel_beziers
-                    .drain()
-                    .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
-                    .collect();
             }
+            props.hovered_point = props.hovered_point.and_then(|p| new_point(p, point_index));
+            props.hovered_point_channels = props
+                .hovered_point_channels
+                .drain()
+                .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                .collect();
+            props.hovered_point_channel_beziers = props
+                .hovered_point_channel_beziers
+                .drain()
+                .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                .collect();
+            props.selected_points = props
+                .selected_points
+                .drain()
+                .filter_map(|p| new_point(p, point_index))
+                .collect();
+            props.selected_point_channels = props
+                .selected_point_channels
+                .drain()
+                .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                .collect();
+            props.selected_point_channel_beziers = props
+                .selected_point_channel_beziers
+                .drain()
+                .filter_map(|(p, rest)| new_point(p, point_index).map(|p| (p, rest)))
+                .collect();
         }
     }
     delete_point_anim(

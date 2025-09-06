@@ -30,7 +30,7 @@ static API_EDITOR: once_cell::unsync::Lazy<ApiEditor> =
     once_cell::unsync::Lazy::new(|| ApiEditor { state: Default::default() });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn editor_new(sound: &SoundManager, graphics: &Graphics, io: &Io, font_data: &FontDefinitions) {
     let thread_pool = Arc::new(
         rayon::ThreadPoolBuilder::new()
@@ -48,22 +48,22 @@ pub fn editor_new(sound: &SoundManager, graphics: &Graphics, io: &Io, font_data:
     API_EDITOR.with(|g| g.create(sound, graphics, io, &thread_pool, font_data));
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn editor_render(input: egui::RawInput, config: &ConfigEngine) -> EditorResult {
     API_EDITOR.with(|g| g.state.borrow_mut().as_mut().unwrap().render(input, config))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn editor_file_dropped(file: PathBuf) {
     API_EDITOR.with(|g| g.state.borrow_mut().as_mut().unwrap().file_dropped(file))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn editor_file_hovered(file: Option<PathBuf>) {
     API_EDITOR.with(|g| g.state.borrow_mut().as_mut().unwrap().file_hovered(file))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn editor_destroy() {
     API_EDITOR.with(|g| *g.state.borrow_mut() = None);
 }

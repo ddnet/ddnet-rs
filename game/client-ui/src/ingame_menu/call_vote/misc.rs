@@ -8,7 +8,7 @@ use game_interface::votes::{MiscVote, MiscVoteCategoryKey, MiscVoteKey};
 use ui_base::{
     components::{
         clearable_edit_field::clearable_edit_field,
-        menu_top_button::{menu_top_button, MenuTopButtonProps},
+        menu_top_button::{MenuTopButtonProps, menu_top_button},
     },
     style::{bg_frame_color, topbar_buttons},
     types::UiRenderPipe,
@@ -83,11 +83,11 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
     categories.sort();
     let mut vote_category = misc_votes.remove(&category);
 
-    if vote_category.is_none() {
-        if let Some((name, votes)) = categories.first().and_then(|c| misc_votes.remove_entry(c)) {
-            category = name;
-            vote_category = Some(votes);
-        }
+    if vote_category.is_none()
+        && let Some((name, votes)) = categories.first().and_then(|c| misc_votes.remove_entry(c))
+    {
+        category = name;
+        vote_category = Some(votes);
     }
 
     let mut misc_infos: Vec<(_, _)> = vote_category
@@ -216,15 +216,15 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                     strip.cell(|ui| {
                         ui.style_mut().wrap_mode = None;
                         ui.horizontal(|ui| {
-                            if ui.button("Vote").clicked() {
-                                if let Some((vote_key, _)) = misc_infos.get(index) {
-                                    pipe.user_data.browser_menu.events.push(UiEvent::VoteMisc(
-                                        MiscVoteCategoryKey {
-                                            category: category.as_str().try_into().unwrap(),
-                                            vote_key: vote_key.clone(),
-                                        },
-                                    ));
-                                }
+                            if ui.button("Vote").clicked()
+                                && let Some((vote_key, _)) = misc_infos.get(index)
+                            {
+                                pipe.user_data.browser_menu.events.push(UiEvent::VoteMisc(
+                                    MiscVoteCategoryKey {
+                                        category: category.as_str().try_into().unwrap(),
+                                        vote_key: vote_key.clone(),
+                                    },
+                                ));
                             }
                         });
                     });

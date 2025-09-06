@@ -25,11 +25,10 @@ use graphics_types::{
     rendering::{ColorRgba, State},
 };
 use hashlink::LinkedHashMap;
-use hiarc::{hi_closure, Hiarc};
+use hiarc::{Hiarc, hi_closure};
 use math::math::{
-    mix,
+    Rng, mix,
     vector::{ubvec4, vec2},
-    Rng,
 };
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;

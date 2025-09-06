@@ -12,19 +12,19 @@ use graphics::{
         texture::texture::{TextureContainer, TextureContainer2dArray},
     },
 };
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use legacy_map::mapdef_06::{DdraceTileNum, TILE_SWITCHTIMEDOPEN};
 use map::{
     map::{
+        Map,
         groups::{
+            MapGroup,
             layers::{
                 design::{MapLayer, MapLayerQuadsAttrs, Quad},
                 physics::MapLayerPhysics,
                 tiles::{MapTileLayerPhysicsTilesRef, TileBase, TileFlags},
             },
-            MapGroup,
         },
-        Map,
     },
     skeleton::groups::layers::{
         design::{MapLayerQuadSkeleton, MapLayerTileSkeleton},
@@ -65,9 +65,9 @@ use crate::map::{
 
 use self::{
     graphic_border_tile::{
-        add_border_tile, GraphicBorderTile, GraphicsBorderTilePos, GraphicsBorderTileTex,
+        GraphicBorderTile, GraphicsBorderTilePos, GraphicsBorderTileTex, add_border_tile,
     },
-    graphic_tile::{add_tile, GraphicTile},
+    graphic_tile::{GraphicTile, add_tile},
 };
 
 use super::map_with_visual::{

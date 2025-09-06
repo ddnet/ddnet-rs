@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use egui::{pos2, text::LayoutJob, Color32, FontId, Rect, TextFormat, UiBuilder};
+use egui::{Color32, FontId, Rect, TextFormat, UiBuilder, pos2, text::LayoutJob};
 use graphics::{
     graphics::graphics::Graphics,
     handles::{

@@ -2,14 +2,14 @@ use client_types::console::ConsoleEntry;
 use command_parser::parser::CommandsTyped;
 use config::traits::ConfigInterface;
 use egui::{
-    epaint::Shadow, scroll_area::ScrollBarVisibility, text::LayoutJob, Color32, FontId, Frame,
-    Margin, ScrollArea, TextFormat, UiBuilder,
+    Color32, FontId, Frame, Margin, ScrollArea, TextFormat, UiBuilder, epaint::Shadow,
+    scroll_area::ScrollBarVisibility, text::LayoutJob,
 };
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::{
     user_data::UserData,
-    utils::{find_matches, MatchedType},
+    utils::{MatchedType, find_matches},
 };
 
 pub fn render(

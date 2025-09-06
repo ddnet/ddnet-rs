@@ -10,7 +10,7 @@ pub use api::{DB, IO_RUNTIME};
 pub use api_auto_mapper::*;
 use math::math::Rng;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn mod_auto_mapper_new() -> Result<Box<dyn AutoMapperInterface>, String> {
     Ok(Box::new(AutoMapperGrassMain::default()))
 }

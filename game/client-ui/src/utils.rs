@@ -16,7 +16,7 @@ use client_render_base::{
     render::{
         animation::AnimState,
         default_anim::{base_anim, idle_anim},
-        tee::{offset_to_mid, RenderTee, TeeRenderHands, TeeRenderInfo, TeeRenderSkinColor},
+        tee::{RenderTee, TeeRenderHands, TeeRenderInfo, TeeRenderSkinColor, offset_to_mid},
         toolkit::ToolkitRender,
     },
 };

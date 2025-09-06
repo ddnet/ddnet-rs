@@ -1,7 +1,7 @@
 use std::{
     sync::{
-        mpsc::{channel, Sender},
         Arc,
+        mpsc::{Sender, channel},
     },
     time::Duration,
 };
@@ -30,17 +30,19 @@ impl SteamSt {
         let (client_sender, client_recv) = channel();
         let client_thread = std::thread::Builder::new()
             .name("steam-loop".to_string())
-            .spawn(move || loop {
-                let g = steam_mutex_thread.blocking_lock();
-                steam.run_callbacks();
-                drop(g);
-                if client_recv
-                    .recv_timeout(Duration::from_millis(150))
-                    .is_err_and(|err| {
-                        matches!(err, std::sync::mpsc::RecvTimeoutError::Disconnected)
-                    })
-                {
-                    break;
+            .spawn(move || {
+                loop {
+                    let g = steam_mutex_thread.blocking_lock();
+                    steam.run_callbacks();
+                    drop(g);
+                    if client_recv
+                        .recv_timeout(Duration::from_millis(150))
+                        .is_err_and(|err| {
+                            matches!(err, std::sync::mpsc::RecvTimeoutError::Disconnected)
+                        })
+                    {
+                        break;
+                    }
                 }
             })
             .unwrap();

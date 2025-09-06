@@ -10,13 +10,13 @@ use graphics_backend_traits::{
     },
     traits::GraphicsBackendInterface,
 };
-use hiarc::{hiarc_safer_arc_mutex, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_arc_mutex};
 use matroska::muxer::MkvMuxer;
 use rav1e::{
-    prelude::{FrameType, SpeedSettings},
     Config, Context, EncoderConfig, EncoderStatus,
+    prelude::{FrameType, SpeedSettings},
 };
-pub use tokio::sync::oneshot::{channel, Receiver, Sender};
+pub use tokio::sync::oneshot::{Receiver, Sender, channel};
 
 #[hiarc_safer_arc_mutex]
 #[derive(Hiarc)]

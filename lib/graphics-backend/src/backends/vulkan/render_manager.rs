@@ -248,10 +248,10 @@ impl<'a> RenderManager<'a> {
             &mut color_mask_index,
         );
 
-        if let StencilMode::StencilNotPassed { clear_stencil } = state.stencil_mode {
-            if clear_stencil {
-                self.clear_stencil();
-            }
+        if let StencilMode::StencilNotPassed { clear_stencil } = state.stencil_mode
+            && clear_stencil
+        {
+            self.clear_stencil();
         }
 
         let sub_render_pass = self.render.sub_render_pass(self.render_pass_type);

@@ -1,5 +1,5 @@
 use egui::{
-    text::LayoutJob, Button, Color32, CornerRadius, FontId, Grid, Modal, Stroke, WidgetText,
+    Button, Color32, CornerRadius, FontId, Grid, Modal, Stroke, WidgetText, text::LayoutJob,
 };
 use ui_base::types::{UiRenderPipe, UiState};
 

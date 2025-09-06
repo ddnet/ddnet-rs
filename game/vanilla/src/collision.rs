@@ -1,18 +1,18 @@
 pub mod collision {
     use anyhow::anyhow;
     use bitflags::bitflags;
-    use config::{traits::ConfigInterface, ConfigInterface};
+    use config::{ConfigInterface, traits::ConfigInterface};
     use hiarc::Hiarc;
     use legacy_map::mapdef_06::DdraceTileNum;
     use map::map::groups::{
+        MapGroupPhysics,
         layers::{
             physics::MapLayerPhysics,
             tiles::{
-                rotation_180, rotation_270, SpeedupTile, SwitchTile, TeleTile, TileBase, TuneTile,
-                ROTATION_0, ROTATION_90,
+                ROTATION_0, ROTATION_90, SpeedupTile, SwitchTile, TeleTile, TileBase, TuneTile,
+                rotation_180, rotation_270,
             },
         },
-        MapGroupPhysics,
     };
     use serde::{Deserialize, Serialize};
 
@@ -577,11 +577,7 @@ pub mod collision {
             let x = pos0.x - pos1.x;
             let y = pos0.y - pos1.y;
             if x.abs() > y.abs() {
-                if x < 0.0 {
-                    (-32, 0)
-                } else {
-                    (32, 0)
-                }
+                if x < 0.0 { (-32, 0) } else { (32, 0) }
             } else if y < 0.0 {
                 (0, -32)
             } else {

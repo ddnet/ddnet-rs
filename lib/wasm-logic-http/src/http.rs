@@ -10,8 +10,8 @@ use base_io_traits::http_traits::HttpError;
 use bytes::Bytes;
 use sendable::SendOption;
 use url::Url;
-use wasm_runtime_types::{read_param, write_result, RawBytesEnv};
-use wasmer::{imports, AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store};
+use wasm_runtime_types::{RawBytesEnv, read_param, write_result};
+use wasmer::{AsStoreRef, Function, FunctionEnv, FunctionEnvMut, Imports, Store, imports};
 
 type PostTasks = HashMap<u64, IoRuntimeTask<Result<Vec<u8>, HttpError>>>;
 

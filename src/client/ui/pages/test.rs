@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use egui::{
-    epaint, lerp, pos2, vec2, widgets::color_picker::show_color, Align2, Color32, FontId, Frame,
-    Image, Mesh, Pos2, Rect, Response, Rgba, RichText, ScrollArea, Sense, Shape, Stroke,
-    TextureHandle, TextureOptions, Ui, Vec2,
+    Align2, Color32, FontId, Frame, Image, Mesh, Pos2, Rect, Response, Rgba, RichText, ScrollArea,
+    Sense, Shape, Stroke, TextureHandle, TextureOptions, Ui, Vec2, epaint, lerp, pos2, vec2,
+    widgets::color_picker::show_color,
 };
 use game_config::config::Config;
 use ui_generic::traits::UiPageInterface;

@@ -19,7 +19,7 @@ use crate::upload_param;
 
 use super::graphics_mt::GraphicsBackendMultiThreaded;
 
-extern "C" {
+unsafe extern "C" {
     fn run_cmds();
 }
 

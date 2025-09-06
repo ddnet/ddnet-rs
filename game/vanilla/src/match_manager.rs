@@ -3,7 +3,7 @@ pub mod match_manager {
     use std::time::Duration;
 
     use game_interface::types::{game::GameTickType, render::game::game_match::MatchSide};
-    use hiarc::{hi_closure, Hiarc};
+    use hiarc::{Hiarc, hi_closure};
 
     use crate::{
         config::config::ConfigGameType,

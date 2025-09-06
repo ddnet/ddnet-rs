@@ -3,9 +3,9 @@ use std::{path::Path, ptr};
 use ffmpeg_next::{
     codec, encoder,
     ffi::{
-        av_buffer_ref, av_buffer_unref, av_hwdevice_ctx_create, av_hwframe_ctx_alloc,
-        av_hwframe_ctx_init, av_hwframe_get_buffer, av_hwframe_transfer_data, AVBufferRef,
-        AVHWDeviceType, AVHWFramesContext,
+        AVBufferRef, AVHWDeviceType, AVHWFramesContext, av_buffer_ref, av_buffer_unref,
+        av_hwdevice_ctx_create, av_hwframe_ctx_alloc, av_hwframe_ctx_init, av_hwframe_get_buffer,
+        av_hwframe_transfer_data,
     },
     format::{self, Pixel},
     util,

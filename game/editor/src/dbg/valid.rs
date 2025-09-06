@@ -4,6 +4,7 @@ use map::map::{
     animations::AnimBase,
     command_value::CommandValue,
     groups::{
+        MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
         layers::{
             design::{
                 MapLayerQuad, MapLayerQuadsAttrs, MapLayerSound, MapLayerSoundAttrs, MapLayerTile,
@@ -15,7 +16,6 @@ use map::map::{
             },
             tiles::{MapTileLayerAttr, MapTileLayerPhysicsTiles, TileFlags},
         },
-        MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
     },
     metadata::Metadata,
     resources::{MapResourceMetaData, MapResourceRef},

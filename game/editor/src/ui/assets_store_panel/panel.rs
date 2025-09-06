@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
-use base::hash::{generate_hash_for, Hash};
+use base::hash::{Hash, generate_hash_for};
 use client_containers::container::ContainerItemIndexType;
 use client_ui::{main_menu::settings::list::list, utils::render_texture_for_ui};
 use egui::{Button, Rect, UiBuilder};

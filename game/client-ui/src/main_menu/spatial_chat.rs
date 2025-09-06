@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use game_interface::types::{id_types::PlayerId, player_info::PlayerUniqueId};
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Hiarc, Default, Clone, Serialize, Deserialize)]

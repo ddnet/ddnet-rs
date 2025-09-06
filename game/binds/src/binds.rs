@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ops::Range};
 
 use anyhow::anyhow;
-use client_types::console::{entries_to_parser, ConsoleEntry};
+use client_types::console::{ConsoleEntry, entries_to_parser};
 use command_parser::parser::{self, Command, CommandType, ParserCache, Syn};
 use game_interface::types::weapons::WeaponType;
 use hiarc::Hiarc;
@@ -484,48 +484,56 @@ mod test {
     use input_binds::binds::{BindKey, KeyCode, MouseButton, MouseExtra, PhysicalKey};
 
     use crate::binds::{
-        bind_to_str, gen_local_player_action_hash_map, gen_local_player_action_hash_map_rev,
-        syn_to_bind, BindAction, BindActionsCharacter, BindActionsLocalPlayer,
+        BindAction, BindActionsCharacter, BindActionsLocalPlayer, bind_to_str,
+        gen_local_player_action_hash_map, gen_local_player_action_hash_map_rev, syn_to_bind,
     };
 
     #[test]
     fn bind_json_abuses() {
         let map = gen_local_player_action_hash_map_rev();
-        assert!(bind_to_str(
-            &[BindKey::Key(PhysicalKey::Code(KeyCode::KeyT))],
-            vec![BindAction::LocalPlayer(
-                BindActionsLocalPlayer::ActivateChatInput
-            )],
-            &map
-        )
-        .contains("bind t "));
-        assert!(bind_to_str(
-            &[
-                BindKey::Key(PhysicalKey::Code(KeyCode::ControlLeft)),
-                BindKey::Key(PhysicalKey::Code(KeyCode::KeyT))
-            ],
-            vec![BindAction::LocalPlayer(
-                BindActionsLocalPlayer::ActivateChatInput
-            )],
-            &map
-        )
-        .contains("bind control_left+t "));
-        assert!(bind_to_str(
-            &[BindKey::Mouse(MouseButton::Left)],
-            vec![BindAction::LocalPlayer(BindActionsLocalPlayer::Character(
-                BindActionsCharacter::Fire
-            ))],
-            &map
-        )
-        .contains("bind left "));
-        assert!(bind_to_str(
-            &[BindKey::Extra(MouseExtra::WheelDown)],
-            vec![BindAction::LocalPlayer(BindActionsLocalPlayer::Character(
-                BindActionsCharacter::PrevWeapon
-            ))],
-            &map
-        )
-        .contains("bind wheel_down "));
+        assert!(
+            bind_to_str(
+                &[BindKey::Key(PhysicalKey::Code(KeyCode::KeyT))],
+                vec![BindAction::LocalPlayer(
+                    BindActionsLocalPlayer::ActivateChatInput
+                )],
+                &map
+            )
+            .contains("bind t ")
+        );
+        assert!(
+            bind_to_str(
+                &[
+                    BindKey::Key(PhysicalKey::Code(KeyCode::ControlLeft)),
+                    BindKey::Key(PhysicalKey::Code(KeyCode::KeyT))
+                ],
+                vec![BindAction::LocalPlayer(
+                    BindActionsLocalPlayer::ActivateChatInput
+                )],
+                &map
+            )
+            .contains("bind control_left+t ")
+        );
+        assert!(
+            bind_to_str(
+                &[BindKey::Mouse(MouseButton::Left)],
+                vec![BindAction::LocalPlayer(BindActionsLocalPlayer::Character(
+                    BindActionsCharacter::Fire
+                ))],
+                &map
+            )
+            .contains("bind left ")
+        );
+        assert!(
+            bind_to_str(
+                &[BindKey::Extra(MouseExtra::WheelDown)],
+                vec![BindAction::LocalPlayer(BindActionsLocalPlayer::Character(
+                    BindActionsCharacter::PrevWeapon
+                ))],
+                &map
+            )
+            .contains("bind wheel_down ")
+        );
 
         let map = gen_local_player_action_hash_map();
         let res = syn_to_bind(

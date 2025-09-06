@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use ddnet_account_sql::any::AnyPool;
 use game_database::traits::DbKind;
 use sqlx::{
+    Any, FromRow,
     any::{AnyArguments, AnyRow},
     query::QueryAs,
-    Any, FromRow,
 };
 
 #[derive(Debug, Clone)]

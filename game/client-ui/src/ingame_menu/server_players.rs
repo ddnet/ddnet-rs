@@ -2,7 +2,7 @@ pub mod main_frame;
 
 use base::linked_hash_map_view::FxLinkedHashMap;
 use game_interface::types::{character_info::NetworkCharacterInfo, id_types::PlayerId};
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
 #[hiarc_safer_rc_refcell]
 #[derive(Debug, Hiarc, Default)]

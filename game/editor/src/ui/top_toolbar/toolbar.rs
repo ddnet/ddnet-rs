@@ -168,7 +168,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                     .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
                         EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::RotMinus90),
                     )));
-                if ui
+                if (ui
                     .add(btn)
                     .on_hover_ui(|ui| {
                         let mut cache = egui_commonmark::CommonMarkCache::default();
@@ -189,39 +189,38 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         );
                     })
                     .clicked()
-                    || by_hotkey
+                    || by_hotkey)
+                    && let Some(brush) = &mut tools.tiles.brush.brush
                 {
-                    if let Some(brush) = &mut tools.tiles.brush.brush {
-                        // use 3 times 90° here, bcs the 90° logic also "fixes" the cursor
-                        // x,y mirror does not
-                        rotate_tiles_plus_90(
-                            pipe.user_data.tp,
-                            pipe.user_data.graphics_mt,
-                            pipe.user_data.shader_storage_handle,
-                            pipe.user_data.buffer_object_handle,
-                            pipe.user_data.backend_handle,
-                            brush,
-                            false,
-                        );
-                        rotate_tiles_plus_90(
-                            pipe.user_data.tp,
-                            pipe.user_data.graphics_mt,
-                            pipe.user_data.shader_storage_handle,
-                            pipe.user_data.buffer_object_handle,
-                            pipe.user_data.backend_handle,
-                            brush,
-                            false,
-                        );
-                        rotate_tiles_plus_90(
-                            pipe.user_data.tp,
-                            pipe.user_data.graphics_mt,
-                            pipe.user_data.shader_storage_handle,
-                            pipe.user_data.buffer_object_handle,
-                            pipe.user_data.backend_handle,
-                            brush,
-                            true,
-                        );
-                    }
+                    // use 3 times 90° here, bcs the 90° logic also "fixes" the cursor
+                    // x,y mirror does not
+                    rotate_tiles_plus_90(
+                        pipe.user_data.tp,
+                        pipe.user_data.graphics_mt,
+                        pipe.user_data.shader_storage_handle,
+                        pipe.user_data.buffer_object_handle,
+                        pipe.user_data.backend_handle,
+                        brush,
+                        false,
+                    );
+                    rotate_tiles_plus_90(
+                        pipe.user_data.tp,
+                        pipe.user_data.graphics_mt,
+                        pipe.user_data.shader_storage_handle,
+                        pipe.user_data.buffer_object_handle,
+                        pipe.user_data.backend_handle,
+                        brush,
+                        false,
+                    );
+                    rotate_tiles_plus_90(
+                        pipe.user_data.tp,
+                        pipe.user_data.graphics_mt,
+                        pipe.user_data.shader_storage_handle,
+                        pipe.user_data.buffer_object_handle,
+                        pipe.user_data.backend_handle,
+                        brush,
+                        true,
+                    );
                 }
                 // rotate +90°
                 let btn = Button::new("\u{f2f9}");
@@ -231,7 +230,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                     .remove(&EditorHotkeyEvent::Tools(EditorHotkeyEventTools::Tile(
                         EditorHotkeyEventTileTool::Brush(EditorHotkeyEventTileBrush::RotPlus90),
                     )));
-                if ui
+                if (ui
                     .add(btn)
                     .on_hover_ui(|ui| {
                         let mut cache = egui_commonmark::CommonMarkCache::default();
@@ -252,19 +251,18 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         );
                     })
                     .clicked()
-                    || by_hotkey
+                    || by_hotkey)
+                    && let Some(brush) = &mut tools.tiles.brush.brush
                 {
-                    if let Some(brush) = &mut tools.tiles.brush.brush {
-                        rotate_tiles_plus_90(
-                            pipe.user_data.tp,
-                            pipe.user_data.graphics_mt,
-                            pipe.user_data.shader_storage_handle,
-                            pipe.user_data.buffer_object_handle,
-                            pipe.user_data.backend_handle,
-                            brush,
-                            true,
-                        );
-                    }
+                    rotate_tiles_plus_90(
+                        pipe.user_data.tp,
+                        pipe.user_data.graphics_mt,
+                        pipe.user_data.shader_storage_handle,
+                        pipe.user_data.buffer_object_handle,
+                        pipe.user_data.backend_handle,
+                        brush,
+                        true,
+                    );
                 }
                 // rotate tiles (only by flags) +90°
                 let btn = Button::new("\u{e4f6}");
@@ -276,7 +274,7 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                             EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
                         ),
                     )));
-                if ui
+                if (ui
                     .add(btn)
                     .on_hover_ui(|ui| {
                         let mut cache = egui_commonmark::CommonMarkCache::default();
@@ -297,19 +295,18 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                         );
                     })
                     .clicked()
-                    || by_hotkey
+                    || by_hotkey)
+                    && let Some(brush) = &mut tools.tiles.brush.brush
                 {
-                    if let Some(brush) = &mut tools.tiles.brush.brush {
-                        rotate_tile_flags_plus_90(
-                            pipe.user_data.tp,
-                            pipe.user_data.graphics_mt,
-                            pipe.user_data.shader_storage_handle,
-                            pipe.user_data.buffer_object_handle,
-                            pipe.user_data.backend_handle,
-                            brush,
-                            true,
-                        );
-                    }
+                    rotate_tile_flags_plus_90(
+                        pipe.user_data.tp,
+                        pipe.user_data.graphics_mt,
+                        pipe.user_data.shader_storage_handle,
+                        pipe.user_data.buffer_object_handle,
+                        pipe.user_data.backend_handle,
+                        brush,
+                        true,
+                    );
                 }
             }
             ActiveToolTiles::Selection => {
@@ -324,15 +321,15 @@ fn render_toolbar_tiles(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithT
                                     EditorHotkeyEventTileBrush::RotIndividualTilePlus90,
                                 ),
                             )));
-                    if ui.add(btn).clicked() || by_hotkey {
-                        if let Some(range) = &tools.tiles.selection.range {
-                            rotate_layer_tiles_plus_90(
-                                pipe.user_data.tp,
-                                layer,
-                                range,
-                                &mut pipe.user_data.editor_tab.client,
-                            );
-                        }
+                    if (ui.add(btn).clicked() || by_hotkey)
+                        && let Some(range) = &tools.tiles.selection.range
+                    {
+                        rotate_layer_tiles_plus_90(
+                            pipe.user_data.tp,
+                            layer,
+                            range,
+                            &mut pipe.user_data.editor_tab.client,
+                        );
                     }
                 }
             }

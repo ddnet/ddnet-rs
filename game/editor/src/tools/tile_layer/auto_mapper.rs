@@ -7,13 +7,13 @@ use std::{
 };
 
 use anyhow::anyhow;
-use base::hash::{fmt_hash, generate_hash_for, name_and_hash, Hash};
+use base::hash::{Hash, fmt_hash, generate_hash_for, name_and_hash};
 use base_io::{io::IoFileSys, runtime::IoRuntimeTask};
 use editor_auto_mapper_wasm::manager::{AutoMapperWasmManager, WasmModule};
 use editor_interface::auto_mapper::{
     AutoMapperInputModes, AutoMapperInterface, AutoMapperModes, AutoMapperOutputModes,
 };
-use egui::{vec2, Rect};
+use egui::{Rect, vec2};
 use egui_file_dialog::FileDialog;
 use graphics::{
     graphics::graphics::Graphics,
@@ -29,7 +29,7 @@ use map::{
     map::groups::layers::tiles::{MapTileLayerAttr, Tile, TileFlags},
     types::NonZeroU16MinusOne,
 };
-use math::math::{vector::ivec2, Rng};
+use math::math::{Rng, vector::ivec2};
 use serde::{Deserialize, Serialize};
 
 use crate::{

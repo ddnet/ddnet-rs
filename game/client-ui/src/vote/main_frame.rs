@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use client_containers::container::ContainerKey;
 use egui::{
-    pos2, vec2, Align2, Color32, CornerRadius, FontId, Frame, Grid, Rect, RichText, Shadow, Stroke,
-    UiBuilder,
+    Align2, Color32, CornerRadius, FontId, Frame, Grid, Rect, RichText, Shadow, Stroke, UiBuilder,
+    pos2, vec2,
 };
 use game_interface::{types::render::character::TeeEye, votes::Voted};
 use math::math::vector::vec2;

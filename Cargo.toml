@@ -117,7 +117,7 @@ members = [
 name = "ddnet-rs"
 description = "DDraceNetwork, a free cooperative platformer game"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 publish = false
 
 # :/ https://github.com/rust-mobile/xbuild/issues/161

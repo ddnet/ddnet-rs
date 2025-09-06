@@ -2,7 +2,7 @@ use std::{
     net::SocketAddr,
     ops::Deref,
     rc::Rc,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 

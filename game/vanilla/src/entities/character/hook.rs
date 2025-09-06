@@ -1,6 +1,6 @@
 pub mod character_hook {
     use game_interface::types::id_types::CharacterId;
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use math::math::{round_to_int, vector::vec2};
     use num_derive::FromPrimitive;
     use rustc_hash::{FxHashMap, FxHashSet};

@@ -2,7 +2,7 @@ pub mod character_pos {
     use std::{collections::hash_map::Entry, num::NonZeroU16, ops::Deref};
 
     use game_interface::types::id_types::CharacterId;
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use math::math::{
         round_to_int,
         vector::{usvec2, vec2},

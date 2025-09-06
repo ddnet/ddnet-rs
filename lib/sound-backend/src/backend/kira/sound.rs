@@ -8,17 +8,17 @@ use anyhow::anyhow;
 use base::linked_hash_map_view::FxLinkedHashMap;
 use hiarc::Hiarc;
 use kira::{
+    OutputDestination,
     clock::ClockTime,
     sound::{
-        static_sound::{StaticSoundData, StaticSoundHandle, StaticSoundSettings},
         PlaybackState,
+        static_sound::{StaticSoundData, StaticSoundHandle, StaticSoundSettings},
     },
     spatial::{
         emitter::{EmitterDistances, EmitterHandle, EmitterSettings},
         scene::SpatialSceneHandle,
     },
     tween::Easing,
-    OutputDestination,
 };
 use mint::Vector3;
 

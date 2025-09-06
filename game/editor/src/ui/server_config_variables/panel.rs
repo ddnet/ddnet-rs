@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use egui::{
-    text::LayoutJob, Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat,
-    UiBuilder,
+    Button, Color32, FontId, Frame, Layout, Margin, ScrollArea, TextFormat, UiBuilder,
+    text::LayoutJob,
 };
 use map::map::command_value::CommandValue;
 use ui_base::{

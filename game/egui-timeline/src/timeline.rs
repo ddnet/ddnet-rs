@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use egui::{
-    pos2, vec2, Align2, Color32, DragValue, FontId, Pos2, Rect, RichText, Sense, Shape, Stroke,
-    UiBuilder, Vec2,
+    Align2, Color32, DragValue, FontId, Pos2, Rect, RichText, Sense, Shape, Stroke, UiBuilder,
+    Vec2, pos2, vec2,
 };
 use egui_extras::{Size, StripBuilder};
 use map::map::animations::{AnimBezier, AnimBezierPoint};

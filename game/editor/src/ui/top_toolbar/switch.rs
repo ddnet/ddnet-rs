@@ -44,11 +44,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 ui.horizontal(|ui| {
                     let bg_color =
                         if let Some(in_use) = map.groups.physics.user.active_switch_in_use {
-                            if in_use {
-                                Color32::GREEN
-                            } else {
-                                Color32::RED
-                            }
+                            if in_use { Color32::GREEN } else { Color32::RED }
                         } else {
                             Color32::GRAY
                         };

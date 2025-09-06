@@ -1,7 +1,7 @@
 use egui::Frame;
 
 use ui_base::{
-    components::menu_top_button::{menu_top_button, MenuTopButtonProps},
+    components::menu_top_button::{MenuTopButtonProps, menu_top_button},
     style::{bg_frame_color, topbar_buttons},
     types::{UiRenderPipe, UiState},
     utils::add_horizontal_margins,

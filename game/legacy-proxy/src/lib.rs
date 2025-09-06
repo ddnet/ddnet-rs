@@ -4,7 +4,7 @@ mod socket;
 
 use anyhow::anyhow;
 use base::{
-    hash::{fmt_hash, generate_hash_for, Hash},
+    hash::{Hash, fmt_hash, generate_hash_for},
     join_thread::JoinThread,
     linked_hash_map_view::FxLinkedHashMap,
     network_string::{
@@ -35,7 +35,7 @@ use game_interface::{
     },
     interface::GameStateServerOptions,
     types::{
-        character_info::{NetworkCharacterInfo, NetworkSkinInfo, MAX_ASSET_NAME_LEN},
+        character_info::{MAX_ASSET_NAME_LEN, NetworkCharacterInfo, NetworkSkinInfo},
         emoticons::EmoticonType,
         fixed_zoom_level::FixedZoomLevel,
         flag::FlagType,
@@ -43,8 +43,9 @@ use game_interface::{
         id_gen::IdGenerator,
         id_types::{CharacterId, CtfFlagId, LaserId, PickupId, PlayerId, ProjectileId, StageId},
         input::{
-            cursor::CharacterInputCursor, CharacterInput, CharacterInputConsumableDiff,
-            CharacterInputFlags, CharacterInputMethodFlags, CharacterInputState, InputVarState,
+            CharacterInput, CharacterInputConsumableDiff, CharacterInputFlags,
+            CharacterInputMethodFlags, CharacterInputState, InputVarState,
+            cursor::CharacterInputCursor,
         },
         laser::LaserType,
         network_stats::PlayerNetworkStats,
@@ -60,8 +61,8 @@ use game_interface::{
         weapons::WeaponType,
     },
     votes::{
-        MapVote, MapVoteDetails, MapVoteKey, MiscVote, MiscVoteCategoryKey, MiscVoteKey,
-        VoteIdentifierType, VoteState, VoteType, Voted, MAX_CATEGORY_NAME_LEN,
+        MAX_CATEGORY_NAME_LEN, MapVote, MapVoteDetails, MapVoteKey, MiscVote, MiscVoteCategoryKey,
+        MiscVoteKey, VoteIdentifierType, VoteState, VoteType, Voted,
     },
 };
 use game_network::{
@@ -78,30 +79,29 @@ use game_server::{
 use hexdump::hexdump_iter;
 use legacy_map::datafile::ints_to_str;
 use libtw2_gamenet_ddnet::{
+    SnapObj,
     enums::{self, Emote, Team, VERSION},
     msg::{
-        self,
+        self, Connless, Game, System, SystemOrGame,
         connless::INFO_FLAG_PASSWORD,
         game::{self, SvTeamsState, SvTeamsStateLegacy},
-        system, Connless, Game, System, SystemOrGame,
+        system,
     },
     snap_obj::{
-        self, obj_size, Character, DdnetCharacter, DdnetPlayer, CHARACTERFLAG_WEAPON_GRENADE,
-        CHARACTERFLAG_WEAPON_GUN, CHARACTERFLAG_WEAPON_HAMMER, CHARACTERFLAG_WEAPON_LASER,
-        CHARACTERFLAG_WEAPON_SHOTGUN,
+        self, CHARACTERFLAG_WEAPON_GRENADE, CHARACTERFLAG_WEAPON_GUN, CHARACTERFLAG_WEAPON_HAMMER,
+        CHARACTERFLAG_WEAPON_LASER, CHARACTERFLAG_WEAPON_SHOTGUN, Character, DdnetCharacter,
+        DdnetPlayer, obj_size,
     },
-    SnapObj,
 };
 use libtw2_net::net::PeerId;
 use libtw2_packer::{IntUnpacker, Unpacker};
-use log::{debug, log_enabled, warn, Level};
+use log::{Level, debug, log_enabled, warn};
 use map::{file::MapFileReader, map::Map};
 use math::{
     colors::{legacy_color_to_rgba, rgba_to_legacy_color},
     math::{
-        normalize,
+        PI, Rng, normalize,
         vector::{dvec2, ubvec4, vec2},
-        Rng, PI,
     },
 };
 use network::network::{
@@ -138,7 +138,7 @@ use std::{
     net::SocketAddr,
     num::{NonZeroI64, NonZeroU16, NonZeroU64},
     pin::Pin,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 use tokio::sync::Notify;
@@ -1162,19 +1162,19 @@ impl Client {
                             interactions: Default::default(),
                             queued_emoticon: Default::default(),
                         });
-                    if let Some(ddnet_char) = ddnet_char {
-                        if ddnet_char.freeze_start.0 != 0 {
-                            let remaining = ddnet_char.freeze_end.0.saturating_sub(tick);
-                            reusable_core.debuffs.insert(
-                                CharacterDebuff::Freeze,
-                                BuffProps {
-                                    remaining_tick: (remaining.unsigned_abs() as u64).into(),
-                                    interact_tick: Default::default(),
-                                    interact_cursor_dir: Default::default(),
-                                    interact_val: 0.0,
-                                },
-                            );
-                        }
+                    if let Some(ddnet_char) = ddnet_char
+                        && ddnet_char.freeze_start.0 != 0
+                    {
+                        let remaining = ddnet_char.freeze_end.0.saturating_sub(tick);
+                        reusable_core.debuffs.insert(
+                            CharacterDebuff::Freeze,
+                            BuffProps {
+                                remaining_tick: (remaining.unsigned_abs() as u64).into(),
+                                interact_tick: Default::default(),
+                                interact_cursor_dir: Default::default(),
+                                interact_val: 0.0,
+                            },
+                        );
                     }
                     if let Some(collision) = collision {
                         let mut char_tick = character_core.tick;
@@ -2679,12 +2679,12 @@ impl Client {
                                 }
                                 base.local_players.insert(*id, dummy);
                             }
-                        } else if let SnapObj::Character(char) = item {
-                            if let Some(dummy) = base.local_players.get_mut(id) {
-                                dummy.character_snap = Some(*char);
-                                if let Some(ddnet_char) = ddnet_characters.get(id).copied() {
-                                    dummy.ddnet_character_snap = Some(ddnet_char);
-                                }
+                        } else if let SnapObj::Character(char) = item
+                            && let Some(dummy) = base.local_players.get_mut(id)
+                        {
+                            dummy.character_snap = Some(*char);
+                            if let Some(ddnet_char) = ddnet_characters.get(id).copied() {
+                                dummy.ddnet_character_snap = Some(ddnet_char);
                             }
                         }
                     }
@@ -2811,20 +2811,20 @@ impl Client {
 
                             // add dummy snaps if they were not found
                             for (id, dummy) in &base.local_players {
-                                if !character_snaps.contains(id) {
-                                    if let Some(char) = dummy.character_snap {
-                                        if let Some(ddnet_char) = dummy.ddnet_character_snap {
-                                            ddnet_characters.insert(*id, ddnet_char);
-                                        }
-                                        if let Some(ddnet_player) = dummy.ddnet_player_snap {
-                                            if !ddnet_players.contains_key(id) {
-                                                ddnet_players.insert(*id, ddnet_player);
-                                            }
-                                        }
-                                        base.char_legacy_to_new_id.insert(*id, dummy.player_id);
-                                        base.char_new_id_to_legacy.insert(dummy.player_id, *id);
-                                        items.insert(0, (SnapObj::Character(char), *id));
+                                if !character_snaps.contains(id)
+                                    && let Some(char) = dummy.character_snap
+                                {
+                                    if let Some(ddnet_char) = dummy.ddnet_character_snap {
+                                        ddnet_characters.insert(*id, ddnet_char);
                                     }
+                                    if let Some(ddnet_player) = dummy.ddnet_player_snap
+                                        && !ddnet_players.contains_key(id)
+                                    {
+                                        ddnet_players.insert(*id, ddnet_player);
+                                    }
+                                    base.char_legacy_to_new_id.insert(*id, dummy.player_id);
+                                    base.char_new_id_to_legacy.insert(dummy.player_id, *id);
+                                    items.insert(0, (SnapObj::Character(char), *id));
                                 }
                             }
                         }
@@ -4421,14 +4421,13 @@ impl Client {
                 }
                 if let ClientState::RequestedLegacyServerInfo { name, hash, .. } =
                     &mut player.data.state
+                    && let Some(server_info) = player.data.ready.received_server_info.take()
                 {
-                    if let Some(server_info) = player.data.ready.received_server_info.take() {
-                        self.base.server_info = ServerInfoTy::Full(server_info);
-                        player.data.state = ClientState::ReceivedLegacyServerInfo {
-                            name: std::mem::take(name),
-                            hash: *hash,
-                        };
-                    }
+                    self.base.server_info = ServerInfoTy::Full(server_info);
+                    player.data.state = ClientState::ReceivedLegacyServerInfo {
+                        name: std::mem::take(name),
+                        hash: *hash,
+                    };
                 }
                 if let ClientState::ReceivedLegacyServerInfo { name, hash } = &mut player.data.state
                 {
@@ -4637,35 +4636,35 @@ impl Client {
                 })
                 .get()
                 .unwrap();
-            if let Some((data, addr)) = pkt {
-                if index > 1 {
-                    let index = index - 2;
+            if let Some((data, addr)) = pkt
+                && index > 1
+            {
+                let index = index - 2;
 
-                    let other_active = if index > 0 {
-                        self.players
-                            .values()
-                            .take(index - 1)
-                            .any(|p| calc_is_active_connection(&p.data))
-                    } else {
-                        false
-                    };
+                let other_active = if index > 0 {
+                    self.players
+                        .values()
+                        .take(index - 1)
+                        .any(|p| calc_is_active_connection(&p.data))
+                } else {
+                    false
+                };
 
-                    let (player_id, player) = self.players.iter_mut().nth(index).unwrap();
-                    player.socket.run_recv((addr, data), &mut |socket, ev| {
-                        let is_active_connection =
-                            !other_active && calc_is_active_connection(&player.data);
-                        event_handler(
-                            socket,
-                            ev,
-                            &mut self.base,
-                            &mut self.collisions,
-                            *player_id,
-                            &mut player.data,
-                            is_active_connection,
-                            index == 0,
-                        )
-                    });
-                }
+                let (player_id, player) = self.players.iter_mut().nth(index).unwrap();
+                player.socket.run_recv((addr, data), &mut |socket, ev| {
+                    let is_active_connection =
+                        !other_active && calc_is_active_connection(&player.data);
+                    event_handler(
+                        socket,
+                        ev,
+                        &mut self.base,
+                        &mut self.collisions,
+                        *player_id,
+                        &mut player.data,
+                        is_active_connection,
+                        index == 0,
+                    )
+                });
             }
         } else {
             let notify = self.notifier_server.clone();
@@ -4698,24 +4697,24 @@ impl Client {
         }) {
             self.base.last_ping = Some(time_now);
 
-            if let Some(player) = self.players.values_mut().next() {
-                if matches!(player.data.state, ClientState::Ingame) {
-                    let pkt = system::PingEx {
-                        id: hex::encode(self.base.last_ping_uuid.to_ne_bytes())
-                            .parse()
-                            .unwrap(),
-                    };
-                    player.socket.sends(System::PingEx(pkt));
-                    player.socket.flush();
+            if let Some(player) = self.players.values_mut().next()
+                && matches!(player.data.state, ClientState::Ingame)
+            {
+                let pkt = system::PingEx {
+                    id: hex::encode(self.base.last_ping_uuid.to_ne_bytes())
+                        .parse()
+                        .unwrap(),
+                };
+                player.socket.sends(System::PingEx(pkt));
+                player.socket.flush();
 
-                    self.base
-                        .last_pings
-                        .insert(self.base.last_ping_uuid, time_now);
-                    while self.base.last_pings.len() > 50 {
-                        self.base.last_pings.pop_first();
-                    }
-                    self.base.last_ping_uuid += 1;
+                self.base
+                    .last_pings
+                    .insert(self.base.last_ping_uuid, time_now);
+                while self.base.last_pings.len() > 50 {
+                    self.base.last_pings.pop_first();
                 }
+                self.base.last_ping_uuid += 1;
             }
         }
 

@@ -13,8 +13,8 @@ use game_interface::types::{
     render::{
         character::TeeEye,
         game::{
-            game_match::{MatchSide, MatchStandings},
             GameRenderInfo, MatchRoundGameOverWinner, MatchRoundTimeType,
+            game_match::{MatchSide, MatchStandings},
         },
     },
 };

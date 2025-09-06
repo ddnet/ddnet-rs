@@ -27,7 +27,7 @@ pub mod character {
             emoticons::{EmoticonType, EnumCount},
             game::{GameTickCooldown, GameTickCooldownAndLastActionCounter, GameTickType},
             id_types::{CharacterId, StageId},
-            input::{cursor::CharacterInputCursor, CharacterInput, CharacterInputConsumableDiff},
+            input::{CharacterInput, CharacterInputConsumableDiff, cursor::CharacterInputCursor},
             network_stats::PlayerNetworkStats,
             render::{
                 character::{CharacterBuff, CharacterDebuff, TeeEye},
@@ -37,7 +37,7 @@ pub mod character {
             weapons::WeaponType,
         },
     };
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
     use legacy_map::mapdef_06::DdraceTileNum;
     use map::map::groups::layers::tiles::Tile;
     use pool::{datatypes::PoolFxLinkedHashMap, mt_pool::Pool as MtPool};
@@ -64,9 +64,8 @@ pub mod character {
     };
 
     use math::math::{
-        angle, distance_squared, length, lerp, mix, normalize,
+        PI, angle, distance_squared, length, lerp, mix, normalize,
         vector::{ivec2, vec2},
-        PI,
     };
     use pool::{mt_datatypes::PoolVec, pool::Pool, recycle::Recycle, traits::Recyclable};
     use serde::{Deserialize, Serialize};
@@ -931,7 +930,7 @@ pub mod character {
             from: DamageTypes,
             by: DamageBy,
         ) -> CharacterDamageResult {
-            let (killer_id, friendly_fire_ty) = match &from {
+            let (killer_id, friendly_fire_ty) = match from {
                 DamageTypes::Character(&from_id) => {
                     let friendly_fire_ty =
                         Self::friendly_fire_no_dmg(characters, self_char_id, &from_id, None);
@@ -942,7 +941,7 @@ pub mod character {
                     side,
                 } => {
                     let friendly_fire_ty =
-                        Self::friendly_fire_no_dmg(characters, self_char_id, &char_id, Some(*side));
+                        Self::friendly_fire_no_dmg(characters, self_char_id, &char_id, Some(side));
                     (char_id, friendly_fire_ty)
                 }
             };
@@ -972,11 +971,10 @@ pub mod character {
             );
             if let (CharacterDamageResult::Death, Some(killer)) =
                 (&res, characters.char_mut(&killer_id))
+                && let FriendlyFireTy::Dmg = friendly_fire_ty
             {
-                if let FriendlyFireTy::Dmg = friendly_fire_ty {
-                    killer.core.eye = TeeEye::Happy;
-                    killer.core.normal_eye_in = (TICKS_PER_SECOND / 2).into();
-                }
+                killer.core.eye = TeeEye::Happy;
+                killer.core.normal_eye_in = (TICKS_PER_SECOND / 2).into();
             }
             res
         }
@@ -1303,10 +1301,10 @@ pub mod character {
                 .unwrap();
 
             // Direct Weapon selection
-            if let Some(ref weapon) = weapon_req {
-                if self.reusable_core.weapons.contains_key(weapon) {
-                    next_weapon = *weapon;
-                }
+            if let Some(ref weapon) = weapon_req
+                && self.reusable_core.weapons.contains_key(weapon)
+            {
+                next_weapon = *weapon;
             }
 
             // check for insane values
@@ -1530,14 +1528,14 @@ pub mod character {
 
         fn post_ddrace_tick(&mut self) {
             let core = &mut self.core.core;
-            if core.has_endless {
-                if let CharacterPhasedState::Normal(state) = &mut self.phased {
-                    let (mut hook, hooked_char) = state.hook.get();
-                    if let Hook::Active { hook_tick, .. } = &mut hook {
-                        *hook_tick = 0;
-                    }
-                    state.hook.set(hook, hooked_char);
+            if core.has_endless
+                && let CharacterPhasedState::Normal(state) = &mut self.phased
+            {
+                let (mut hook, hooked_char) = state.hook.get();
+                if let Hook::Active { hook_tick, .. } = &mut hook {
+                    *hook_tick = 0;
                 }
+                state.hook.set(hook, hooked_char);
             }
 
             // following jump rules can be overridden by tiles, like Refill Jumps, Stopper and Wall Jump
@@ -1738,27 +1736,27 @@ pub mod character {
 
     impl CharactersGetter for ((CharacterId, &mut Character), (CharacterId, &mut Character)) {
         fn char_mut(&mut self, char_id: &CharacterId) -> Option<&mut Character> {
-            if self.0 .0 == *char_id {
-                Some(self.0 .1)
+            if self.0.0 == *char_id {
+                Some(self.0.1)
             } else {
-                Some(self.1 .1)
+                Some(self.1.1)
             }
         }
         fn side(&self, char_id: &CharacterId) -> Option<MatchSide> {
-            if self.0 .0 == *char_id {
-                &*self.0 .1
+            if self.0.0 == *char_id {
+                &*self.0.1
             } else {
-                &*self.1 .1
+                &*self.1.1
             }
             .core
             .side
         }
         fn does_friendly_fire(&self, char_id: &CharacterId) -> Option<bool> {
             Some(
-                if self.0 .0 == *char_id {
-                    &*self.0 .1
+                if self.0.0 == *char_id {
+                    &*self.0.1
                 } else {
-                    &*self.1 .1
+                    &*self.1.1
                 }
                 .game_options
                 .friendly_fire(),

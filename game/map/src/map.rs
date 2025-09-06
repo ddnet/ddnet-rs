@@ -13,13 +13,13 @@ use assets_base::{
     verify::{json::verify_json, ogg_vorbis::verify_ogg_vorbis, txt::verify_txt},
 };
 use base::{
-    hash::{generate_hash_for, name_and_hash, Hash},
+    hash::{Hash, generate_hash_for, name_and_hash},
     join_all,
 };
 use groups::layers::design::MapLayer;
 use hiarc::Hiarc;
-use image_utils::png::is_png_image_valid;
 pub use image_utils::png::PngValidatorOptions;
+use image_utils::png::is_png_image_valid;
 use serde::{Deserialize, Serialize};
 
 use crate::{

@@ -2,11 +2,11 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use api::read_param_from_host;
-use api::upload_return_val;
 use api::GRAPHICS;
 use api::GRAPHICS_BACKEND;
 use api::SOUND;
+use api::read_param_from_host;
+use api::upload_return_val;
 use api_wasm_macros::{guest_func_call_from_host_auto, impl_guest_functions_editor};
 
 // TODO: remove them
@@ -17,7 +17,7 @@ use editor::editor::EditorResult;
 use egui::FontDefinitions;
 use graphics_types::types::WindowProps;
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// returns an instance of the game state and the game tick speed
     fn mod_editor_new(font_data: &FontDefinitions) -> Box<dyn EditorInterface>;
 }
@@ -40,7 +40,7 @@ static API_EDITOR: once_cell::unsync::Lazy<ApiEditor> =
     });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn editor_new() {
     let window_props: WindowProps = read_param_from_host(0);
     let font_data: FontDefinitions = read_param_from_host(1);

@@ -7,7 +7,7 @@ pub mod buffer_object {
         },
         types::{GraphicsBackendMemory, GraphicsMemoryAllocationType},
     };
-    use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+    use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 
     use crate::handles::backend::backend::GraphicsBackendHandle;
 

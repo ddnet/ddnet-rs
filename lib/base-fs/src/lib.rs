@@ -67,55 +67,62 @@ mod test {
     fn read_file() {
         let (fs, rt) = create_fs();
 
-        assert!(rt
-            .block_on(fs.read_file("skins/default/body.png".as_ref()))
-            .is_ok());
+        assert!(
+            rt.block_on(fs.read_file("skins/default/body.png".as_ref()))
+                .is_ok()
+        );
     }
 
     #[test]
     fn read_file_weird() {
         let (fs, rt) = create_fs();
 
-        assert!(rt
-            .block_on(fs.read_file("skins/default/../../skins/default/body.png".as_ref()))
-            .is_ok());
+        assert!(
+            rt.block_on(fs.read_file("skins/default/../../skins/default/body.png".as_ref()))
+                .is_ok()
+        );
     }
 
     #[test]
     fn read_file_in() {
         let (fs, rt) = create_fs();
 
-        assert!(rt
-            .block_on(fs.read_file_in(
+        assert!(
+            rt.block_on(fs.read_file_in(
                 "skins/default/body.png".as_ref(),
                 FileSystemPath::OfType(FileSystemType::Read)
             ))
-            .is_ok());
+            .is_ok()
+        );
     }
 
     #[test]
     fn create_dir_write_file_file_exists() {
         let (fs, rt) = create_fs();
 
-        assert!(rt
-            .block_on(fs.create_dir("test/test2/test3".as_ref()))
-            .is_ok());
+        assert!(
+            rt.block_on(fs.create_dir("test/test2/test3".as_ref()))
+                .is_ok()
+        );
         // creating twice is ok
-        assert!(rt
-            .block_on(fs.create_dir("test/test2/test3".as_ref()))
-            .is_ok());
+        assert!(
+            rt.block_on(fs.create_dir("test/test2/test3".as_ref()))
+                .is_ok()
+        );
 
         let file_res = rt.block_on(fs.read_file("skins/default/body.png".as_ref()));
         assert!(file_res.is_ok());
         let file = file_res.unwrap();
 
-        assert!(rt
-            .block_on(fs.write_file("test/test2/test3/file.png".as_ref(), file.clone()))
-            .is_ok());
+        assert!(
+            rt.block_on(fs.write_file("test/test2/test3/file.png".as_ref(), file.clone()))
+                .is_ok()
+        );
         // writing twice is ok
-        assert!(rt
-            .block_on(fs.write_file("test/test2/test3/file.png".as_ref(), file))
-            .is_ok());
+        assert!(
+            rt.block_on(fs.write_file("test/test2/test3/file.png".as_ref(), file))
+                .is_ok()
+        );
 
         assert!(rt.block_on(fs.file_exists("test/test2/test3/file.png".as_ref())));
 
@@ -157,12 +164,13 @@ mod test {
             )
         });
 
-        assert!(io
-            .rt
-            .spawn::<(), _>(async {
-                panic!("test");
-            })
-            .get_catch()
-            .is_err());
+        assert!(
+            io.rt
+                .spawn::<(), _>(async {
+                    panic!("test");
+                })
+                .get_catch()
+                .is_err()
+        );
     }
 }

@@ -8,7 +8,7 @@ use graphics::{
 };
 
 use graphics_types::rendering::{ColorRgba, State};
-use hiarc::{hiarc_safer_rc_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use math::math::{
     angle,
     vector::{ubvec4, vec2},

@@ -67,58 +67,54 @@ pub fn render(
                         },
                     ))
                     .clicked()
-                {
-                    if let Some((email, token)) = path
+                    && let Some((email, token)) = path
                         .query
                         .get("email")
                         .and_then(|email| email_address::EmailAddress::from_str(email).ok())
                         .zip(path.query.get("token").cloned())
-                    {
-                        let token = token.trim().into();
-                        path.query.remove("token");
-                        path.query.remove("email");
-                        path.query.remove("veri-token");
-                        let accounts = accounts.clone();
-                        match op {
-                            CredentialAuthOperation::Login => {
-                                tasks.state = ProfileState::EmailLoggingIn(
-                                    io.rt
-                                        .spawn(
-                                            async move { accounts.login_email(email, token).await },
-                                        )
-                                        .abortable(),
+                {
+                    let token = token.trim().into();
+                    path.query.remove("token");
+                    path.query.remove("email");
+                    path.query.remove("veri-token");
+                    let accounts = accounts.clone();
+                    match op {
+                        CredentialAuthOperation::Login => {
+                            tasks.state = ProfileState::EmailLoggingIn(
+                                io.rt
+                                    .spawn(async move { accounts.login_email(email, token).await })
+                                    .abortable(),
+                            );
+                        }
+                        CredentialAuthOperation::LinkCredential {
+                            profile_name,
+                            account_credential,
+                        } => match account_credential {
+                            AccountCredential::Email => {
+                                tasks.state = ProfileState::EmailAccountTokenPrepare(
+                                    AccountOperation::LinkCredential {
+                                        profile_name,
+                                        credential_auth_token: token,
+                                    },
                                 );
                             }
-                            CredentialAuthOperation::LinkCredential {
-                                profile_name,
-                                account_credential,
-                            } => match account_credential {
-                                AccountCredential::Email => {
-                                    tasks.state = ProfileState::EmailAccountTokenPrepare(
-                                        AccountOperation::LinkCredential {
-                                            profile_name,
-                                            credential_auth_token: token,
-                                        },
-                                    );
-                                }
-                                AccountCredential::Steam => {
-                                    tasks.state = ProfileState::SteamAccountTokenPrepare(
-                                        AccountOperation::LinkCredential {
-                                            profile_name,
-                                            credential_auth_token: token,
-                                        },
-                                    );
-                                }
-                            },
-                            CredentialAuthOperation::UnlinkCredential { profile_name } => {
-                                tasks.state = ProfileState::EmailUnlinkCredential(
-                                    io.rt
-                                        .spawn(async move {
-                                            accounts.unlink_credential(token, &profile_name).await
-                                        })
-                                        .abortable(),
+                            AccountCredential::Steam => {
+                                tasks.state = ProfileState::SteamAccountTokenPrepare(
+                                    AccountOperation::LinkCredential {
+                                        profile_name,
+                                        credential_auth_token: token,
+                                    },
                                 );
                             }
+                        },
+                        CredentialAuthOperation::UnlinkCredential { profile_name } => {
+                            tasks.state = ProfileState::EmailUnlinkCredential(
+                                io.rt
+                                    .spawn(async move {
+                                        accounts.unlink_credential(token, &profile_name).await
+                                    })
+                                    .abortable(),
+                            );
                         }
                     }
                 }

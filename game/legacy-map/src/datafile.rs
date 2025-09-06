@@ -13,11 +13,11 @@ use base::{
     benchmark::Benchmark, hash::Hash, join_all, linked_hash_map_view::FxLinkedHashMap,
     reduced_ascii_str::ReducedAsciiString,
 };
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
+use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use hashlink::LinkedHashMap;
 use hiarc::Hiarc;
 use image_utils::{
-    png::{load_png_image_as_rgba, resize_rgba, save_png_image, PngValidatorOptions},
+    png::{PngValidatorOptions, load_png_image_as_rgba, resize_rgba, save_png_image},
     utils,
 };
 use itertools::{EitherOrBoth, Itertools};
@@ -32,7 +32,7 @@ use rayon::{
 
 use map::{
     map::{
-        self as mapnew,
+        self as mapnew, Map,
         animations::{
             AnimBezier, AnimBezierPoint, AnimBeziers, AnimPointColor, AnimPointCurveType,
             AnimPointPos, AnimPointSound, Animations, ColorAnimation, PosAnimation, SoundAnimation,
@@ -40,6 +40,7 @@ use map::{
         command_value::CommandValue,
         config::Config,
         groups::{
+            MapGroup, MapGroupAttr, MapGroupAttrClipping, MapGroupPhysicsAttr,
             layers::{
                 design::{
                     MapLayerQuadsAttrs, MapLayerSound, MapLayerSoundAttrs, Quad, Sound, SoundShape,
@@ -53,23 +54,21 @@ use map::{
                     TuneTile,
                 },
             },
-            MapGroup, MapGroupAttr, MapGroupAttrClipping, MapGroupPhysicsAttr,
         },
         metadata::Metadata,
         resources::{MapResourceMetaData, MapResourceRef, Resources},
-        Map,
     },
     types::NonZeroU16MinusOne,
 };
 
 use crate::mapdef_06::{
-    read_i32_le, read_u32_le, CEnvPoint, CEnvPointAndBezier, CEnvPointBezier, CMapItemEnvelope,
-    CMapItemEnvelopeVer, CMapItemGroup, CMapItemImage, CMapItemInfo, CMapItemInfoSettings,
-    CMapItemLayer, CMapItemLayerQuads, CMapItemLayerSounds, CMapItemLayerSoundsVer,
-    CMapItemLayerTilemap, CMapItemSound, CMapItemVersion, CQuad, CSoundShape, CSoundSource,
-    CSpeedupTile, CSwitchTile, CTeleTile, CTile, CTuneTile, CurveType, LayerFlag, MapImage,
-    MapInfo, MapItemTypes, MapLayer, MapLayerQuad, MapLayerTile, MapLayerTypes, MapSound,
-    MapTileLayerDetail, ReadFromSliceWriteToVec, SoundShapeTy, TilesLayerFlag,
+    CEnvPoint, CEnvPointAndBezier, CEnvPointBezier, CMapItemEnvelope, CMapItemEnvelopeVer,
+    CMapItemGroup, CMapItemImage, CMapItemInfo, CMapItemInfoSettings, CMapItemLayer,
+    CMapItemLayerQuads, CMapItemLayerSounds, CMapItemLayerSoundsVer, CMapItemLayerTilemap,
+    CMapItemSound, CMapItemVersion, CQuad, CSoundShape, CSoundSource, CSpeedupTile, CSwitchTile,
+    CTeleTile, CTile, CTuneTile, CurveType, LayerFlag, MapImage, MapInfo, MapItemTypes, MapLayer,
+    MapLayerQuad, MapLayerTile, MapLayerTypes, MapSound, MapTileLayerDetail,
+    ReadFromSliceWriteToVec, SoundShapeTy, TilesLayerFlag, read_i32_le, read_u32_le,
 };
 
 #[derive(Debug, Hiarc, Copy, Clone, Default)]
@@ -2373,7 +2372,7 @@ impl CDatafileWrapper {
                         }),
                     ),
                     MapLayer::Unknown(_) => {
-                        return Err(anyhow!("for now unknown layers are not supported"))
+                        return Err(anyhow!("for now unknown layers are not supported"));
                     }
                 } {
                     groups.last_mut().unwrap().layers.push(layer);

@@ -6,6 +6,7 @@ use map::map::{
     animations::{AnimBase, AnimPoint, AnimPointCurveType},
     command_value::CommandValue,
     groups::{
+        MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
         layers::{
             design::{
                 MapLayerQuad, MapLayerQuadsAttrs, MapLayerSound, MapLayerSoundAttrs, MapLayerTile,
@@ -17,7 +18,6 @@ use map::map::{
             },
             tiles::{MapTileLayerAttr, MapTileLayerPhysicsTiles},
         },
-        MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
     },
     metadata::Metadata,
     resources::{MapResourceMetaData, MapResourceRef},
@@ -44,9 +44,9 @@ use crate::{
         ActTilePhysicsLayerReplaceTiles, EditorAction,
     },
     dbg::valid::{
-        add_quad_layer_valid, add_sound_layer_valid, add_tile_layer_valid,
+        VALID_PNG, add_quad_layer_valid, add_sound_layer_valid, add_tile_layer_valid,
         change_layer_design_attr_valid, change_quad_attr_valid, change_sound_attr_valid,
-        sound_layer_add_sounds_valid, VALID_PNG,
+        sound_layer_add_sounds_valid,
     },
     map::EditorMap,
 };

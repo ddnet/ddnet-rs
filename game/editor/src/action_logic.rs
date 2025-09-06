@@ -17,6 +17,7 @@ use hashlink::lru_cache::Entry;
 use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     map::groups::{
+        MapGroup,
         layers::{
             design::{
                 MapLayer, MapLayerQuad, MapLayerQuadsAttrs, MapLayerSound, MapLayerSoundAttrs,
@@ -25,7 +26,6 @@ use map::{
             physics::{MapLayerPhysics, MapLayerTilePhysicsTuneZone},
             tiles::{MapTileLayerAttr, MapTileLayerPhysicsTiles},
         },
-        MapGroup,
     },
     skeleton::groups::layers::{
         design::MapLayerSkeleton,
@@ -2387,7 +2387,7 @@ pub fn do_action(
                 {
                     match layer {
                         MapLayerPhysicsSkeleton::Arbitrary(_) => {
-                            return Err(anyhow!("arbitrary physics layers are not supported"))
+                            return Err(anyhow!("arbitrary physics layers are not supported"));
                         }
                         MapLayerPhysicsSkeleton::Game(layer) => {
                             let MapTileLayerPhysicsTiles::Game(tiles) = new_tiles else {

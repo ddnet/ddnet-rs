@@ -1,6 +1,6 @@
 use client_types::console::entries_to_parser;
 use command_parser::parser;
-use egui::{epaint::Shadow, Color32, Frame, Pos2, Rect, Stroke, Style, UiBuilder, Vec2};
+use egui::{Color32, Frame, Pos2, Rect, Stroke, Style, UiBuilder, Vec2, epaint::Shadow};
 use egui_extras::{Size, StripBuilder};
 
 use ui_base::{

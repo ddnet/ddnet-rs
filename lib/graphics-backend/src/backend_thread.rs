@@ -1,7 +1,7 @@
 use std::sync::{
+    Arc,
     atomic::AtomicU64,
     mpsc::{Receiver, Sender, SyncSender},
-    Arc,
 };
 
 use anyhow::anyhow;
@@ -18,8 +18,8 @@ use graphics_base_traits::traits::{
 };
 use graphics_types::{
     commands::{
-        AllCommands, StreamDataMax, GRAPHICS_DEFAULT_UNIFORM_SIZE,
-        GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        AllCommands, GRAPHICS_DEFAULT_UNIFORM_SIZE, GRAPHICS_MAX_UNIFORM_RENDER_COUNT,
+        StreamDataMax,
     },
     rendering::GlVertex,
 };
@@ -33,11 +33,11 @@ use crate::{
         null::NullBackend,
         types::BackendWriteFiles,
         vulkan::{
+            Options,
             vulkan::{
                 VulkanBackend, VulkanBackendLoadedIo, VulkanBackendLoading, VulkanInUseStreamData,
                 VulkanMainThreadData, VulkanMainThreadInit,
             },
-            Options,
         },
     },
     cache::get_backend_cache,
@@ -319,7 +319,9 @@ impl BackendThread {
             cmds: mut cmds_cmd,
         } = self.recv_events.recv()?
         else {
-            return Err(anyhow!("frontend commands other than stream data is not supported yet, also there must be a stream data command every frame"));
+            return Err(anyhow!(
+                "frontend commands other than stream data is not supported yet, also there must be a stream data command every frame"
+            ));
         };
 
         std::mem::swap(cmds, &mut cmds_cmd);

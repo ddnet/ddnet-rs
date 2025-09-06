@@ -1,6 +1,7 @@
 use ffmpeg_next::{
+    ChannelLayout,
     format::{self, Pixel},
-    util, ChannelLayout,
+    util,
 };
 use sound::frame_fetcher_plugin::BackendAudioFrame;
 

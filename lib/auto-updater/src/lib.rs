@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use std::env::consts::{ARCH, OS};
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use tokio::sync::Mutex;
 use url::Url;
 
@@ -224,11 +224,7 @@ impl AutoUpdater {
         let asset_hash = lines
             .find_map(|line| {
                 let (name, hash) = line.split_once(|c| char::is_ascii_whitespace(&c))?;
-                if name == asset_name {
-                    Some(hash)
-                } else {
-                    None
-                }
+                if name == asset_name { Some(hash) } else { None }
             })
             .ok_or_else(|| anyhow!("No asset's hash found for: {asset_name}"))?;
         let asset_hash = decode_hash(asset_hash)

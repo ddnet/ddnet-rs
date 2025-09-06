@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use base_io::io::Io;
 use binds::binds::{
-    gen_local_player_action_hash_map, BindAction, BindActionsCharacter, BindActionsHotkey,
-    BindActionsLocalPlayer,
+    BindAction, BindActionsCharacter, BindActionsHotkey, BindActionsLocalPlayer,
+    gen_local_player_action_hash_map,
 };
 use camera::{Camera, CameraInterface};
 use client_types::console::ConsoleEntry;
@@ -186,10 +186,8 @@ impl InputHandling {
         mut platform_output: egui::PlatformOutput,
         apply_latest_known_cursor: bool,
     ) {
-        if apply_latest_known_cursor {
-            if let Some(cursor) = self.last_known_cursor {
-                platform_output.cursor_icon = cursor;
-            }
+        if apply_latest_known_cursor && let Some(cursor) = self.last_known_cursor {
+            platform_output.cursor_icon = cursor;
         }
         self.last_known_cursor = Some(platform_output.cursor_icon);
         native.relative_mouse(matches!(platform_output.cursor_icon, CursorIcon::None));

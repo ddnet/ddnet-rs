@@ -5,7 +5,7 @@ pub mod state {
     use std::time::Duration;
 
     use anyhow::anyhow;
-    use base::hash::{fmt_hash, Hash};
+    use base::hash::{Hash, fmt_hash};
     use base::linked_hash_map_view::FxLinkedHashMap;
     use base::network_string::{NetworkReducedAsciiString, NetworkString};
     use base_io::runtime::{IoRuntime, IoRuntimeTask};
@@ -30,8 +30,8 @@ pub mod state {
     use game_interface::settings::GameStateSettings;
     use game_interface::tick_result::TickResult;
     use game_interface::types::character_info::{
-        NetworkCharacterInfo, NetworkLaserInfo, NetworkSkinInfo, MAX_ASSET_NAME_LEN,
-        MAX_CHARACTER_NAME_LEN,
+        MAX_ASSET_NAME_LEN, MAX_CHARACTER_NAME_LEN, NetworkCharacterInfo, NetworkLaserInfo,
+        NetworkSkinInfo,
     };
     use game_interface::types::emoticons::EmoticonType;
     use game_interface::types::fixed_zoom_level::FixedZoomLevel;
@@ -45,10 +45,10 @@ pub mod state {
     };
     use game_interface::types::network_stats::PlayerNetworkStats;
     use game_interface::types::player_info::{PlayerClientInfo, PlayerDropReason, PlayerUniqueId};
+    use game_interface::types::render::game::GameRenderInfo;
     use game_interface::types::render::game::game_match::{
         FlagCarrierCharacter, LeadingCharacter, MatchSide, MatchStandings,
     };
-    use game_interface::types::render::game::GameRenderInfo;
     use game_interface::types::render::stage::StageRenderInfo;
     use game_interface::types::render::world::WorldRenderInfo;
     use game_interface::types::resource_key::NetworkResourceKey;
@@ -57,8 +57,8 @@ pub mod state {
     use game_interface::vote_commands::{VoteCommand, VoteCommandResult};
     use hiarc::hi_closure;
     use map::file::MapFileReader;
-    use map::map::config::ConfigVariables;
     use map::map::Map;
+    use map::map::config::ConfigVariables;
     use math::math::lerp;
     use math::math::vector::{ubvec4, vec2};
     use pool::datatypes::{PoolFxHashMap, PoolFxLinkedHashMap, PoolVec};
@@ -1577,16 +1577,15 @@ pub mod state {
         }
 
         fn check_stage_remove(&mut self, stage_id: StageId) {
-            if let Some(stage) = self.game.stages.get(&stage_id) {
-                if stage_id != self.stage_0_id
-                    && !stage
-                        .world
-                        .characters
-                        .values()
-                        .any(|c| c.is_player_character().is_some())
-                {
-                    self.game.stages.remove(&stage_id);
-                }
+            if let Some(stage) = self.game.stages.get(&stage_id)
+                && stage_id != self.stage_0_id
+                && !stage
+                    .world
+                    .characters
+                    .values()
+                    .any(|c| c.is_player_character().is_some())
+            {
+                self.game.stages.remove(&stage_id);
             }
         }
 
@@ -2641,11 +2640,11 @@ pub mod state {
                     if Self::is_sided_from_conf(self.game_options.game_ty()) {
                         if let Some(player) = self.game.players.player(player_id) {
                             let stage = self.game.stages.get_mut(&player.stage_id()).unwrap();
-                            if let Some(character) = stage.world.characters.get_mut(player_id) {
-                                if character.core.side != Some(side) {
-                                    character.despawn_to_respawn(true);
-                                    character.core.side = Some(side);
-                                }
+                            if let Some(character) = stage.world.characters.get_mut(player_id)
+                                && character.core.side != Some(side)
+                            {
+                                character.despawn_to_respawn(true);
+                                character.core.side = Some(side);
                             }
                         } else {
                             self.add_from_spectator(player_id, self.stage_0_id, Some(side));
@@ -2653,8 +2652,8 @@ pub mod state {
                     }
                 }
                 ClientCommand::JoinSpectator => {
-                    if let Some(player) = self.game.players.player(player_id) {
-                        if let Some(mut character) = self
+                    if let Some(player) = self.game.players.player(player_id)
+                        && let Some(mut character) = self
                             .game
                             .stages
                             .get_mut(&player.stage_id())
@@ -2662,11 +2661,10 @@ pub mod state {
                             .world
                             .characters
                             .remove(player_id)
-                        {
-                            character.despawn_to_join_spectators();
+                    {
+                        character.despawn_to_join_spectators();
 
-                            self.check_stage_remove(player.stage_id());
-                        }
+                        self.check_stage_remove(player.stage_id());
                     }
                 }
                 ClientCommand::SetCameraMode(mut mode) => {
@@ -2708,8 +2706,8 @@ pub mod state {
         fn vote_command(&mut self, cmd: VoteCommand) -> VoteCommandResult {
             match cmd {
                 VoteCommand::JoinSpectator(player_id) => {
-                    if let Some(player) = self.game.players.player(&player_id) {
-                        if let Some(mut character) = self
+                    if let Some(player) = self.game.players.player(&player_id)
+                        && let Some(mut character) = self
                             .game
                             .stages
                             .get_mut(&player.stage_id())
@@ -2717,11 +2715,10 @@ pub mod state {
                             .world
                             .characters
                             .remove(&player_id)
-                        {
-                            character.despawn_to_join_spectators();
+                    {
+                        character.despawn_to_join_spectators();
 
-                            self.check_stage_remove(player.stage_id());
-                        }
+                        self.check_stage_remove(player.stage_id());
                     }
                 }
                 VoteCommand::Misc(cmd) => {
@@ -2838,20 +2835,20 @@ pub mod state {
             self.game.players.pooled_clone_into(&mut players);
 
             for (id, character_info) in players.iter() {
-                if let Some(stage) = self.game.stages.get_mut(&character_info.stage_id()) {
-                    if let Some(character) = stage.world.characters.get_mut(id) {
-                        character.core.is_timeout = true;
-                        let key = (
-                            character.player_info.unique_identifier,
-                            character.player_info.id,
-                        );
-                        if !self.game.timeout_players.contains_key(&key) {
-                            self.game
-                                .timeout_players
-                                .insert(key, (*id, (TICKS_PER_SECOND * 120).into()));
-                        } else {
-                            self.player_drop(id, PlayerDropReason::Disconnect);
-                        }
+                if let Some(stage) = self.game.stages.get_mut(&character_info.stage_id())
+                    && let Some(character) = stage.world.characters.get_mut(id)
+                {
+                    character.core.is_timeout = true;
+                    let key = (
+                        character.player_info.unique_identifier,
+                        character.player_info.id,
+                    );
+                    if !self.game.timeout_players.contains_key(&key) {
+                        self.game
+                            .timeout_players
+                            .insert(key, (*id, (TICKS_PER_SECOND * 120).into()));
+                    } else {
+                        self.player_drop(id, PlayerDropReason::Disconnect);
                     }
                 }
             }

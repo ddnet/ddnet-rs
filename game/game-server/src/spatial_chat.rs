@@ -50,7 +50,7 @@ impl SpatialWorld {
             .collect::<HashSet<NetworkConnectionId>>();
         for client_id in all_clients {
             let mut entities: HashMap<PlayerId, MsgSvSpatialChatOfEntitity> = Default::default();
-            for (_, client) in self.clients.iter_mut().filter(|(&id, _)| id != client_id) {
+            for (_, client) in self.clients.iter_mut().filter(|&(&id, _)| id != client_id) {
                 entities.insert(
                     client.main_player_id,
                     MsgSvSpatialChatOfEntitity {

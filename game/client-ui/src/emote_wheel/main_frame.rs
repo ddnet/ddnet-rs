@@ -5,9 +5,8 @@ use game_interface::types::{
 };
 use geo::Contains;
 use math::math::{
-    length, normalize_pre_length,
+    PI, length, normalize_pre_length,
     vector::{dvec2, vec2},
-    PI,
 };
 use ui_base::types::{UiRenderPipe, UiState};
 

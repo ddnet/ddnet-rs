@@ -80,12 +80,14 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
                 };
                 info
             },
-            addresses: vec![sock_addr
-                .map(|mut addr| {
-                    addr.set_ip("127.0.0.1".parse().unwrap());
-                    addr
-                })
-                .unwrap_or(SocketAddr::V4("127.0.0.1:0".parse().unwrap()))],
+            addresses: vec![
+                sock_addr
+                    .map(|mut addr| {
+                        addr.set_ip("127.0.0.1".parse().unwrap());
+                        addr
+                    })
+                    .unwrap_or(SocketAddr::V4("127.0.0.1:0".parse().unwrap())),
+            ],
             location: "default".try_into().unwrap(),
             legacy_server: false,
         },

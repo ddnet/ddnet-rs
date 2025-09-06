@@ -56,7 +56,11 @@ macro_rules! join_all {
     }};
     ($e1:expr, $e2:expr, $e3:expr, $e4:expr, $e5:expr, $e6:expr, $e7:expr, $e8:expr, $e9:expr, $e10:expr, $e11:expr, $e12:expr, $e13:expr) => {{
         let ((a, b, c, d, e, f, g, h, i, j, k, l), m) = rayon::join(
-            || join_all!($e1, $e2, $e3, $e4, $e5, $e6, $e7, $e8, $e9, $e10, $e11, $e12),
+            || {
+                join_all!(
+                    $e1, $e2, $e3, $e4, $e5, $e6, $e7, $e8, $e9, $e10, $e11, $e12
+                )
+            },
             $e13,
         );
         (a, b, c, d, e, f, g, h, i, j, k, l, m)

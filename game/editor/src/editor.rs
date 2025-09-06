@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::anyhow;
 use base::{
-    hash::{fmt_hash, Hash},
+    hash::{Hash, fmt_hash},
     join_all,
     linked_hash_map_view::FxLinkedHashMap,
     system::{System, SystemTimeInterface},
@@ -17,7 +17,7 @@ use base::{
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemInterface;
 use camera::CameraInterface;
-use client_containers::entities::{EntitiesContainer, ENTITIES_CONTAINER_PATH};
+use client_containers::entities::{ENTITIES_CONTAINER_PATH, EntitiesContainer};
 use client_notifications::overlay::ClientNotifications;
 use client_render_base::map::{
     map::{ForcedTexture, RenderMap},
@@ -27,7 +27,7 @@ use client_render_base::map::{
 };
 use config::config::ConfigEngine;
 use ed25519_dalek::pkcs8::spki::der::Encode;
-use egui::{pos2, vec2, FontDefinitions, InputState, OutputCommand, Pos2, Rect};
+use egui::{FontDefinitions, InputState, OutputCommand, Pos2, Rect, pos2, vec2};
 use egui_file_dialog::FileDialog;
 use game_config::config::ConfigMap;
 use graphics::{
@@ -47,19 +47,19 @@ use image_utils::{png::load_png_image_as_rgba, utils::texture_2d_to_3d};
 use map::{
     file::MapFileReader,
     map::{
+        Map,
         animations::{AnimBase, AnimPoint, AnimPointCurveType},
         config::Config,
         groups::{
+            MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
             layers::{
                 design::{MapLayer, MapLayerQuad, MapLayerSound, MapLayerTile},
                 physics::{MapLayerPhysics, MapLayerTilePhysicsBase},
                 tiles::{MapTileLayerPhysicsTilesRef, TileBase},
             },
-            MapGroup, MapGroupAttr, MapGroupPhysicsAttr,
         },
         metadata::Metadata,
         resources::MapResourceMetaData,
-        Map,
     },
     skeleton::{
         animations::{AnimBaseSkeleton, AnimationsSkeleton},
@@ -81,7 +81,7 @@ use network::network::types::{
     NetworkServerCertModeResult,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use sound::{
     scene_handle::SoundSceneHandle, scene_object::SceneObject, sound::SoundManager,
     sound_mt::SoundMultiThreaded,
@@ -94,7 +94,7 @@ use crate::{
     event::EditorEventOverwriteMap,
     fs::{read_file_editor, write_file_editor},
     hotkeys::{BindsPerEvent, EditorBindsFile, EditorHotkeyEvent},
-    image_store_container::{load_image_store_container, ImageStoreContainer},
+    image_store_container::{ImageStoreContainer, load_image_store_container},
     map::{
         EditorActiveAnimationProps, EditorAnimationProps, EditorAnimations, EditorAnimationsProps,
         EditorArbitraryLayerProps, EditorColorAnimation, EditorCommonGroupOrLayerAttr,
@@ -118,7 +118,7 @@ use crate::{
     options::EditorOptions,
     physics_layers::PhysicsLayerOverlaysDdnet,
     server::EditorServer,
-    sound_store_container::{load_sound_store_container, SoundStoreContainer},
+    sound_store_container::{SoundStoreContainer, load_sound_store_container},
     tab::EditorTab,
     tile_overlays::TileLayerOverlaysDdnet,
     tools::{
@@ -138,7 +138,7 @@ use crate::{
         EditorMenuDialogMode, EditorModalDialogMode, EditorTabsRefMut, EditorUiEvent,
         EditorUiEventHostMap,
     },
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{UiCanvasSize, ui_pos_to_world_pos},
 };
 
 #[derive(Debug, PartialEq, Clone, Copy)]

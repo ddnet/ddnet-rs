@@ -1,4 +1,4 @@
-use map::map::groups::layers::tiles::{rotation_180, rotation_270, TileFlags, ROTATION_90};
+use map::map::groups::layers::tiles::{ROTATION_90, TileFlags, rotation_180, rotation_270};
 use math::math::vector::ubvec2;
 
 type GraphicsTileTex = ubvec2;

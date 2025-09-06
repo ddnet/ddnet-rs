@@ -86,27 +86,23 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>) {
             }
             ActiveToolTiles::Selection => {
                 let selection = &tools.tiles.selection;
-                if let Some(range) = selection.range.as_ref() {
-                    if let Some(pointer_pos) = &selection.pointer_down_state {
-                        let pos = pos(pointer_pos.ui) + egui::vec2(20.0, 20.0);
-                        // draw amount of tiles selected/drawn whatever
-                        let bg = ui.painter().add(Shape::Noop);
-                        let rect = ui.painter().text(
-                            pos,
-                            egui::Align2::LEFT_TOP,
-                            format!("{}x{}", range.w.get(), range.h.get()),
-                            FontId::monospace(24.0),
-                            Color32::WHITE,
-                        );
-                        ui.painter().set(
-                            bg,
-                            Shape::rect_filled(
-                                rect.expand(5.0),
-                                5.0,
-                                Color32::from_black_alpha(125),
-                            ),
-                        );
-                    }
+                if let Some(range) = selection.range.as_ref()
+                    && let Some(pointer_pos) = &selection.pointer_down_state
+                {
+                    let pos = pos(pointer_pos.ui) + egui::vec2(20.0, 20.0);
+                    // draw amount of tiles selected/drawn whatever
+                    let bg = ui.painter().add(Shape::Noop);
+                    let rect = ui.painter().text(
+                        pos,
+                        egui::Align2::LEFT_TOP,
+                        format!("{}x{}", range.w.get(), range.h.get()),
+                        FontId::monospace(24.0),
+                        Color32::WHITE,
+                    );
+                    ui.painter().set(
+                        bg,
+                        Shape::rect_filled(rect.expand(5.0), 5.0, Color32::from_black_alpha(125)),
+                    );
                 }
             }
         },

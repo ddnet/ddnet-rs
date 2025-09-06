@@ -7,7 +7,7 @@ use egui::{Button, Color32, Grid, Layout};
 use egui_extras::{Size, StripBuilder};
 use game_config::config::ConfigTeeEye;
 use game_interface::types::{
-    character_info::{NetworkSkinInfo, MAX_ASSET_NAME_LEN},
+    character_info::{MAX_ASSET_NAME_LEN, NetworkSkinInfo},
     render::character::TeeEye,
     resource_key::{NetworkResourceKey, ResourceKey},
 };

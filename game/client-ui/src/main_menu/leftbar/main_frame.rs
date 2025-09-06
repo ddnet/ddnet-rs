@@ -1,7 +1,7 @@
 use config::config::ConfigPath;
 use egui::{
-    scroll_area::ScrollBarVisibility, vec2, Color32, CornerRadius, FontId, Frame, Layout, Rect,
-    RichText, ScrollArea, Shape, Style, UiBuilder,
+    Color32, CornerRadius, FontId, Frame, Layout, Rect, RichText, ScrollArea, Shape, Style,
+    UiBuilder, scroll_area::ScrollBarVisibility, vec2,
 };
 use egui_extras::{Size, StripBuilder};
 use game_interface::types::{character_info::NetworkSkinInfo, render::character::TeeEye};
@@ -20,7 +20,7 @@ use crate::{
             MENU_COMMUNITY_PREFIX, MENU_EXPLORE_COMMUNITIES_NAME, MENU_FAVORITES_NAME,
             MENU_INTERNET_NAME, MENU_LAN_NAME, MENU_PROFILE_NAME, MENU_SETTINGS_NAME,
         },
-        user_data::{ProfileSkin, UserData, PROFILE_SKIN_PREVIEW},
+        user_data::{PROFILE_SKIN_PREVIEW, ProfileSkin, UserData},
     },
     utils::{render_tee_for_ui, render_texture_for_ui},
 };

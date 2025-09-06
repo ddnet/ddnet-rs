@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use axum::{extract::ConnectInfo, Json, Router};
+use axum::{Json, Router, extract::ConnectInfo};
 use clap::Parser;
 use community::{Info, Register};
 use tower_http::trace::TraceLayer;

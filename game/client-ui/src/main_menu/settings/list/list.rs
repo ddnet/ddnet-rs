@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use client_containers::container::ContainerItemIndexType;
-use egui::{epaint::RectShape, Layout, ScrollArea, Shape};
+use egui::{Layout, ScrollArea, Shape, epaint::RectShape};
 use egui_extras::{Size, StripBuilder};
 use fuzzy_matcher::FuzzyMatcher;
 use math::math::vector::vec2;

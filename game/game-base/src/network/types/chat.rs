@@ -1,6 +1,6 @@
 use base::network_string::NetworkString;
 use game_interface::types::{
-    character_info::{NetworkSkinInfo, MAX_ASSET_NAME_LEN, MAX_CHARACTER_NAME_LEN},
+    character_info::{MAX_ASSET_NAME_LEN, MAX_CHARACTER_NAME_LEN, NetworkSkinInfo},
     id_types::PlayerId,
     resource_key::NetworkResourceKey,
 };

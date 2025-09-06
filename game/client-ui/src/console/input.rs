@@ -1,20 +1,20 @@
 use std::ops::Range;
 
 use client_types::console::{
-    entries_to_parser, ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable,
+    ConsoleEntry, ConsoleEntryCmd, ConsoleEntryVariable, entries_to_parser,
 };
-use command_parser::parser::{parse, Command, CommandParseResult, CommandType, CommandsTyped, Syn};
+use command_parser::parser::{Command, CommandParseResult, CommandType, CommandsTyped, Syn, parse};
 use egui::{
+    Color32, FontId, Id, Layout, RichText, TextBuffer, TextFormat,
     text::{CCursor, LayoutJob},
     text_selection::CCursorRange,
-    Color32, FontId, Id, Layout, RichText, TextBuffer, TextFormat,
 };
 
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::{
     user_data::UserData,
-    utils::{find_matches, run_commands, MatchedType},
+    utils::{MatchedType, find_matches, run_commands},
 };
 
 /// console input

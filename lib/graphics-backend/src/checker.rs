@@ -19,7 +19,7 @@ use graphics_types::{
     },
     rendering::{GlVertex, StateTexture, StateTexture2dArray},
 };
-use hiarc::{hiarc_safer_refcell, Hiarc};
+use hiarc::{Hiarc, hiarc_safer_refcell};
 
 #[derive(Debug, Hiarc)]
 struct TextureContainer {}

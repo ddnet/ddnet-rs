@@ -9,7 +9,7 @@ use client_render_base::map::{
     },
     map_pipeline::{MapGraphics, TileLayerDrawInfo},
 };
-use egui::{pos2, Rect};
+use egui::{Rect, pos2};
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -19,13 +19,14 @@ use graphics::{
         shader_storage::shader_storage::GraphicsShaderStorageHandle,
         stream::stream::GraphicsStreamHandle, texture::texture::TextureContainer2dArray,
     },
-    utils::{render_blur, render_swapped_frame, DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS},
+    utils::{DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS, render_blur, render_swapped_frame},
 };
 use graphics_types::rendering::State;
 use hiarc::Hiarc;
 use legacy_map::mapdef_06::DdraceTileNum;
 use map::{
     map::groups::{
+        MapGroupAttr, MapGroupPhysicsAttr,
         layers::{
             physics::{MapLayerPhysics, MapLayerTilePhysicsBase},
             tiles::{
@@ -33,7 +34,6 @@ use map::{
                 SwitchTile, TeleTile, Tile, TileBase, TileFlags, TuneTile,
             },
         },
-        MapGroupAttr, MapGroupPhysicsAttr,
     },
     types::NonZeroU16MinusOne,
 };
@@ -59,10 +59,10 @@ use crate::{
         render_checkerboard_background, render_filled_rect, render_filled_rect_from_state,
         render_rect, render_rect_from_state,
     },
-    utils::{ui_pos_to_world_pos, UiCanvasSize},
+    utils::{UiCanvasSize, ui_pos_to_world_pos},
 };
 
-use super::shared::{get_animated_color, TILE_VISUAL_SIZE};
+use super::shared::{TILE_VISUAL_SIZE, get_animated_color};
 
 // 20 ui pixels
 const TILE_PICKER_VISUAL_SIZE: f32 = 30.0;
@@ -1106,8 +1106,8 @@ impl TileBrush {
                             EditorLayerUnionRef::Design { layer, .. } => {
                                 let EditorLayer::Tile(layer) = layer else {
                                     panic!(
-                                    "this cannot happen, it was previously checked if tile layer"
-                                )
+                                        "this cannot happen, it was previously checked if tile layer"
+                                    )
                                 };
                                 (
                                     MapTileLayerTiles::Design(
@@ -1210,7 +1210,7 @@ impl TileBrush {
 
                     let pointer_cur = vec2::new(current_pointer_pos.x, current_pointer_pos.y);
 
-                    let vec2 {
+                    let &vec2 {
                         x: mut x0,
                         y: mut y0,
                     } = world;
@@ -1341,8 +1341,8 @@ impl TileBrush {
                             EditorLayerUnionRef::Design { layer, .. } => {
                                 let EditorLayer::Tile(layer) = layer else {
                                     panic!(
-                                    "this cannot happen, it was previously checked if tile layer"
-                                )
+                                        "this cannot happen, it was previously checked if tile layer"
+                                    )
                                 };
                                 (
                                     MapTileLayerTiles::Design(Self::collect_tiles(

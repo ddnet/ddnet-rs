@@ -37,14 +37,14 @@ mod test {
         types::{
             character_info::NetworkCharacterInfo,
             id_types::PlayerId,
-            input::{cursor::CharacterInputCursor, CharacterInput, CharacterInputInfo},
+            input::{CharacterInput, CharacterInputInfo, cursor::CharacterInputCursor},
             network_stats::PlayerNetworkStats,
             player_info::{PlayerClientInfo, PlayerUniqueId},
         },
     };
     use math::math::{
-        vector::{dvec2, ivec2, vec2},
         Rng,
+        vector::{dvec2, ivec2, vec2},
     };
     use pool::pool::Pool;
 
