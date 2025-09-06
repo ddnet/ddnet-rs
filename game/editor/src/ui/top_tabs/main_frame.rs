@@ -51,7 +51,6 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         tab_display_name.into()
                     };
                     let style = ui.style_mut();
-                    style.visuals.selection.stroke = Stroke::NONE;
                     style.visuals.widgets.active.bg_stroke = Stroke::NONE;
                     style.visuals.widgets.hovered.bg_stroke = Stroke::NONE;
                     style.visuals.widgets.hovered.expansion = 0.0;
