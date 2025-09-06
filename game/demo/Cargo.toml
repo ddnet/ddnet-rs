@@ -16,7 +16,7 @@ bincode = { features = ["serde"], version = "2.0.1" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
 itertools = "0.14.0"
-log = "0.4.27"
+log = "0.4.28"
 
 # feature related
 base-io = { path = "../../lib/base-io", optional = true }

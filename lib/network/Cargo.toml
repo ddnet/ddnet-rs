@@ -25,7 +25,7 @@ futures-util = "0.3.31"
 ipnet = "2.11.0"
 serde = { version = "1.0.219", features = ["derive"] }
 zstd = { version = "0.13", default-features = false, features = ["experimental", "zdict_builder"] }
-log = "0.4.27"
+log = "0.4.28"
 thiserror = "2.0.16"
 chrono = { version = "0.4.41", features = ["serde"] }
 serde_json = "1.0.143"

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 base-io-traits = { path = "../../lib/base-io-traits" }
 async-trait = "0.1.89"
-url = { version = "2.5.6", features = ["serde"] }
+url = { version = "2.5.7", features = ["serde"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 
 ddnet-account-client = { version = "0.2.0" }

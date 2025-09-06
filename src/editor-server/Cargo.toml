@@ -19,10 +19,10 @@ sound-backend = { path = "../../lib/sound-backend" }
 
 editor = { path = "../../game/editor" }
 
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.47", features = ["derive"] }
 rayon = "1.11.0"
 env_logger = "0.11.8"
-log = "0.4.27"
+log = "0.4.28"
 serde_json = "1.0.143"
 serde = { version = "1.0.219", features = ["derive"] }
 chrono = { version = "0.4.41" }

@@ -20,6 +20,6 @@ hiarc = { path = "../../../lib/hiarc", features = ["derive"] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 rayon = "1.11.0"
-bitflags = { version = "2.9.2", features = ["serde"] }
+bitflags = { version = "2.9.4", features = ["serde"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 arrayvec = "0.7.6"

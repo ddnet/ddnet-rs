@@ -12,4 +12,4 @@ config = { path = "../config" }
 kira = "0.9.6"
 mint = "0.5.9"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+log = "0.4.28"

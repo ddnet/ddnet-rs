@@ -16,12 +16,12 @@ anyhow = { version = "1.0.99", default-features = false, optional = true }
 egui = { version = "0.31.1", default-features = false, optional = true }
 fixed = { version = "1.29.0", default-features = false, optional = true }
 rayon = { version = "1.11.0", default-features = false, optional = true }
-time = { version = "0.3.41", default-features = false, optional = true }
+time = { version = "0.3.43", default-features = false, optional = true }
 arc-swap = { version = "1.7.1", default-features = false, optional = true }
 kira = { version = "0.9.6", default-features = false, optional = true }
 mint = { version = "0.5.9", default-features = false, optional = true }
 tinyset = { version = "0.5.2", default-features = false, optional = true }
-url = { version = "2.5.6", default-features = false, optional = true }
+url = { version = "2.5.7", default-features = false, optional = true }
 either = { version = "1.15.0", default-features = false, optional = true }
 ascii = { version = "1.1.0", default-features = false, optional = true }
 rustc-hash = { version = "2.1.1", default-features = false, optional = true }

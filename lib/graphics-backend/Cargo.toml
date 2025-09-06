@@ -47,7 +47,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 arc-swap = "1.7.1"
 thread-priority = "1.2.0"
 bincode = { features = ["serde"], version = "2.0.1" }
-log = "0.4.27"
+log = "0.4.28"
 either = "1.15.0"
 replace_with = "0.1.8"
 crossbeam = "0.8.4"

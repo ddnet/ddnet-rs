@@ -11,8 +11,8 @@ base-fs = { path = "../../lib/base-fs" }
 map = { path = "../../game/map" }
 map-convert-lib = { path = "../../game/map-convert-lib" }
 
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.47", features = ["derive"] }
 rayon = "1.11.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+log = "0.4.28"
 env_logger = "0.11.8"

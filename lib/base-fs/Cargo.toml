@@ -17,7 +17,7 @@ anyhow = { version = "1.0.99", features = ["backtrace"] }
 path-slash = "0.2.1"
 path-clean = "1.0.1"
 virtual-fs = { version = "0.601.0-rc.3", default-features = false, features = ["host-fs"] }
-log = "0.4.27"
+log = "0.4.28"
 chrono = { version = "0.4.41", features = ["serde"] }
 tempfile = { version = "3.21.0" }
 

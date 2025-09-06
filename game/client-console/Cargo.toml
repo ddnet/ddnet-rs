@@ -24,4 +24,4 @@ command-parser = { path = "../../lib/command-parser" }
 
 egui = { version = "0.31.1", default-features = false, features = ["serde"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+log = "0.4.28"

@@ -13,4 +13,4 @@ command-parser = { path = "../../lib/command-parser" }
 
 serde_json = "1.0.143"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-log = "0.4.27"
+log = "0.4.28"
