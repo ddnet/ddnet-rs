@@ -27,7 +27,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         Vec2::new(allowed_width_no_spec, allowed_height_no_spec),
     );
 
-    let players_res = ui.allocate_new_ui(egui::UiBuilder::new().max_rect(no_spec_rect), |ui| {
+    let players_res = ui.scope_builder(egui::UiBuilder::new().max_rect(no_spec_rect), |ui| {
         super::content::main_frame::render_players(ui, pipe, ui_state, available_rect)
     });
 
@@ -47,7 +47,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         Vec2::new(allowed_width_spec, allowed_height_spec),
     );
 
-    ui.allocate_new_ui(egui::UiBuilder::new().max_rect(spec_rect), |ui| {
+    ui.scope_builder(egui::UiBuilder::new().max_rect(spec_rect), |ui| {
         super::content::main_frame::render_spectators(ui, pipe, ui_state, available_rect)
     });
 }

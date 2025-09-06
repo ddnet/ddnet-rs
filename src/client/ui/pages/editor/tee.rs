@@ -690,7 +690,7 @@ impl TeeEditor {
             let mut painter_rect = ui.available_rect_before_wrap();
             painter_rect.max.x = painter_rect.min.x + 120.0 * (KEY_RADIUS * 2.0); // assume 120 points per second
             painter_rect.max.y = painter_rect.min.y + 7.0 * (KEY_RADIUS * 2.0);
-            let _rect = ui.allocate_new_ui(UiBuilder::new().max_rect(painter_rect), |ui| {
+            let _rect = ui.scope_builder(UiBuilder::new().max_rect(painter_rect), |ui| {
                 let (response, painter) =
                     ui.allocate_painter(painter_rect.size(), egui::Sense::click());
                 Self::render_anim_key_frame_key_paint(&response, &painter, item, pipe, 20.0);
@@ -849,7 +849,7 @@ impl TeeEditor {
                     response.context_menu(|ui| {
                         if ui.button("Remove").clicked() {
                             items.remove(row_idx);
-                            ui.close_menu();
+                            ui.close_kind(egui::UiKind::Menu);
                         }
                     });
                 });
@@ -864,7 +864,7 @@ impl TeeEditor {
         let _response = response.context_menu(|ui| {
             if ui.button("New Item").clicked() {
                 items.push("New Item");
-                ui.close_menu();
+                ui.close_kind(egui::UiKind::Menu);
             }
         });
     }
@@ -918,7 +918,7 @@ impl UiPageInterface<Config> for TeeEditor {
                     ui.style_mut().wrap_mode = None;
                     ui.menu_button("Test", |ui| {
                         if ui.button("Close menu").clicked() {
-                            ui.close_menu();
+                            ui.close_kind(egui::UiKind::Menu);
                             pipe.user_data.engine.ui.path.route("");
                         };
                     });

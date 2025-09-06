@@ -8,7 +8,7 @@ api-ui = { path = "../../../lib/api-ui" }
 ui-base = { path = "../../../lib/ui-base" }
 ui-generic = { path = "../../../lib/ui-generic" }
 api-ui-game = { path = "../../../game/api-ui-game" }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 
 [lib]
 crate-type = ["cdylib"]

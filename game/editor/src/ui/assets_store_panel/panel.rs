@@ -102,7 +102,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                     |ui, _, name, pos, size| {
                         let key: ResourceKey = name.try_into().unwrap_or_default();
                         let is_fully_loaded = pipe.user_data.sound_images_container.is_loaded(&key);
-                        ui.allocate_new_ui(
+                        ui.scope_builder(
                             UiBuilder::new().max_rect(Rect::from_center_size(
                                 egui::pos2(pos.x, pos.y),
                                 (size, size).into(),

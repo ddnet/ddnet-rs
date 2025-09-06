@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-png = "0.17.16"
+png = "0.18.0"
 image = { version = "0.25.8", default-features = false }
 rayon = "1.11.0"

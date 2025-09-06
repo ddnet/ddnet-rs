@@ -35,7 +35,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
     rect.set_top(y_offset);
     rect.set_width(max_width);
 
-    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+    ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
         let vote_rect = ui.available_rect_before_wrap();
         let style = ui.style();
         Frame::group(style)

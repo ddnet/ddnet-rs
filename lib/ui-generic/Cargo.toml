@@ -8,4 +8,4 @@ ui-base = { path = "../ui-base" }
 graphics = { path = "../graphics" }
 math = { path = "../math" }
 
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }

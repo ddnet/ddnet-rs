@@ -103,30 +103,29 @@ fn render_ui_prepared(
                                 pixels,
                             )
                             .unwrap();
-                    }
-                    ImageData::Font(img_font) => {
-                        let mut pixels = Vec::<u8>::new();
-                        pixels.resize(img_font.width() * img_font.height() * 4, Default::default());
-                        img_font
-                            .srgba_pixels(None)
-                            .enumerate()
-                            .for_each(|(index, img_pixel)| {
-                                let texel = img_pixel.to_array();
-                                pixels.as_mut_slice()[index * 4] = texel[0];
-                                pixels.as_mut_slice()[(index * 4) + 1] = texel[1];
-                                pixels.as_mut_slice()[(index * 4) + 2] = texel[2];
-                                pixels.as_mut_slice()[(index * 4) + 3] = texel[3];
-                            });
-                        tex_index
-                            .update_texture(
-                                pos[0] as isize,
-                                pos[1] as isize,
-                                img_font.width(),
-                                img_font.height(),
-                                pixels,
-                            )
-                            .unwrap();
-                    }
+                    } /*ImageData::Font(img_font) => {
+                          let mut pixels = Vec::<u8>::new();
+                          pixels.resize(img_font.width() * img_font.height() * 4, Default::default());
+                          img_font
+                              .srgba_pixels(None)
+                              .enumerate()
+                              .for_each(|(index, img_pixel)| {
+                                  let texel = img_pixel.to_array();
+                                  pixels.as_mut_slice()[index * 4] = texel[0];
+                                  pixels.as_mut_slice()[(index * 4) + 1] = texel[1];
+                                  pixels.as_mut_slice()[(index * 4) + 2] = texel[2];
+                                  pixels.as_mut_slice()[(index * 4) + 3] = texel[3];
+                              });
+                          tex_index
+                              .update_texture(
+                                  pos[0] as isize,
+                                  pos[1] as isize,
+                                  img_font.width(),
+                                  img_font.height(),
+                                  pixels,
+                              )
+                              .unwrap();
+                      }*/
                 }
             }
             // create new texture
@@ -150,31 +149,30 @@ fn render_ui_prepared(
                             });
                         tex_index =
                             Some(texture_handle.load_texture_rgba_u8(pixels, "ui").unwrap());
-                    }
-                    ImageData::Font(img_font) => {
-                        let mut pixels_mem =
-                            backend_handle.mem_alloc(GraphicsMemoryAllocationType::TextureRgbaU8 {
-                                width: img_font.width().try_into().unwrap(),
-                                height: img_font.height().try_into().unwrap(),
-                                flags: TexFlags::TEXFLAG_NOMIPMAPS,
-                            });
-                        let pixels = pixels_mem.as_mut_slice();
-                        img_font
-                            .srgba_pixels(None)
-                            .enumerate()
-                            .for_each(|(index, img_pixel)| {
-                                let texel = img_pixel.to_array();
-                                pixels[index * 4] = texel[0];
-                                pixels[(index * 4) + 1] = texel[1];
-                                pixels[(index * 4) + 2] = texel[2];
-                                pixels[(index * 4) + 3] = texel[3];
-                            });
-                        tex_index = Some(
-                            texture_handle
-                                .load_texture_rgba_u8(pixels_mem, "ui")
-                                .unwrap(),
-                        );
-                    }
+                    } /*ImageData::Font(img_font) => {
+                          let mut pixels_mem =
+                              backend_handle.mem_alloc(GraphicsMemoryAllocationType::TextureRgbaU8 {
+                                  width: img_font.width().try_into().unwrap(),
+                                  height: img_font.height().try_into().unwrap(),
+                                  flags: TexFlags::TEXFLAG_NOMIPMAPS,
+                              });
+                          let pixels = pixels_mem.as_mut_slice();
+                          img_font
+                              .srgba_pixels(None)
+                              .enumerate()
+                              .for_each(|(index, img_pixel)| {
+                                  let texel = img_pixel.to_array();
+                                  pixels[index * 4] = texel[0];
+                                  pixels[(index * 4) + 1] = texel[1];
+                                  pixels[(index * 4) + 2] = texel[2];
+                                  pixels[(index * 4) + 3] = texel[3];
+                              });
+                          tex_index = Some(
+                              texture_handle
+                                  .load_texture_rgba_u8(pixels_mem, "ui")
+                                  .unwrap(),
+                          );
+                      }*/
                 }
                 if let Some(tex) = tex_index {
                     textures.insert(*texture_id, tex);

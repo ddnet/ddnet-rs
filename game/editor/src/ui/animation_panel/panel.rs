@@ -549,7 +549,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 SOUND_GROUP_NAME,
             );
 
-            ui.allocate_new_ui(
+            ui.scope_builder(
                 UiBuilder::new().max_rect(ui.available_rect_before_wrap()),
                 |ui| map.user.ui_values.timeline.show(ui, &mut groups),
             )

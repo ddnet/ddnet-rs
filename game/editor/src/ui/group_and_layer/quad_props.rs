@@ -1,4 +1,4 @@
-use egui::{Button, Color32, InnerResponse};
+use egui::{Button, Color32, InnerResponse, Popup};
 use map::map::groups::layers::design::Quad;
 use math::math::vector::{dvec2, ffixed, nffixed, nfvec4, vec2_base};
 use time::Duration;
@@ -699,7 +699,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                 }
             });
             if intersected.is_some_and(|(outside, clicked)| outside && clicked)
-                && !ui.memory(|i| i.any_popup_open())
+                && !Popup::is_any_open(ui.ctx())
             {
                 match &pipe.user_data.tools.active_tool {
                     ActiveTool::Quads(ActiveToolQuads::Brush) => {

@@ -16,12 +16,12 @@ pub fn init_steam(app_id: u32) -> anyhow::Result<(Arc<dyn SteamClient>, Box<dyn 
     if let Err(err) = &steam_res {
         log::warn!(target: "steam", "Failed to load steam client: {err:?}");
     }
-    let (client, steam) = steam_res?;
+    let client = steam_res?;
 
     let steam_mutex: Arc<Mutex<()>> = Default::default();
     Ok((
-        Arc::new(runtime::SteamMt::new(client, steam_mutex.clone())),
-        Box::new(runtime::SteamSt::new(steam, steam_mutex)),
+        Arc::new(runtime::SteamMt::new(client.clone(), steam_mutex.clone())),
+        Box::new(runtime::SteamSt::new(client, steam_mutex)),
     ))
 }
 

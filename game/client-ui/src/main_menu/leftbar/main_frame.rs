@@ -151,7 +151,7 @@ pub fn render(
                 rect.set_width(size - MARGIN * 2.0);
                 rect = rect.translate(vec2(MARGIN, MARGIN));
                 if ui
-                    .allocate_new_ui(UiBuilder::default().max_rect(rect), |ui| {
+                    .scope_builder(UiBuilder::default().max_rect(rect), |ui| {
                         let clip_rect = ui.clip_rect();
                         let rect = ui.available_rect_before_wrap();
                         let style = ui.style_mut();

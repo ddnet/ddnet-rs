@@ -18,7 +18,7 @@ use crate::{
 
 pub fn render_server_commands(ui: &mut egui::Ui, tab: &mut EditorTab) {
     let map = &mut tab.map;
-    ui.allocate_new_ui(
+    ui.scope_builder(
         UiBuilder::new().max_rect(ui.available_rect_before_wrap()),
         |ui| {
             ui.horizontal(|ui| {

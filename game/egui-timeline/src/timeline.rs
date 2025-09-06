@@ -915,7 +915,7 @@ impl Timeline {
         self.handle_input(ui, false);
 
         let inner_rect = self.inner_graph_rect(ui);
-        ui.allocate_new_ui(UiBuilder::new().max_rect(inner_rect), |ui| {
+        ui.scope_builder(UiBuilder::new().max_rect(inner_rect), |ui| {
             // render a blue line for where the current time is
             let x_off = inner_rect.min.x;
             let y_off = inner_rect.min.y;
@@ -985,7 +985,7 @@ impl Timeline {
             Color32::from_black_alpha(30),
         );
         let rect = ui.available_rect_before_wrap();
-        ui.allocate_new_ui(
+        ui.scope_builder(
             UiBuilder::new().max_rect(egui::Rect::from_min_size(
                 pos2(rect.min.x + self.point_radius, rect.min.y),
                 vec2(rect.width() - self.point_radius * 2.0, rect.height()),
@@ -1083,7 +1083,7 @@ impl Timeline {
 
         let inner_rect = self.inner_graph_rect(ui);
         let rect = ui.available_rect_before_wrap();
-        ui.allocate_new_ui(
+        ui.scope_builder(
             UiBuilder::new().max_rect(egui::Rect::from_min_size(
                 pos2(rect.min.x + self.point_radius, rect.min.y),
                 vec2(rect.width() - self.point_radius * 2.0, rect.height()),
@@ -1446,7 +1446,7 @@ impl Timeline {
 
                 // time dragger
                 let width = ui.available_width();
-                ui.allocate_new_ui(
+                ui.scope_builder(
                     UiBuilder::new()
                         .max_rect(egui::Rect::from_min_size(rect.min, vec2(width, 20.0))),
                     |ui| {

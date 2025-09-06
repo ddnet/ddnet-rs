@@ -23,5 +23,5 @@ game-state-wasm = { path = "../game-state-wasm" }
 
 rayon = "1.11.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-wasmparser = "0.230.0"
+wasmparser = "0.238.1"
 log = "0.4.28"

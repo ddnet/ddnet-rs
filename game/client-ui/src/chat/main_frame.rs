@@ -29,7 +29,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
 
     let render_rect = Rect::from_min_size(Pos2::new(x_offset, y_offset), Vec2::new(width, height));
 
-    ui.allocate_new_ui(UiBuilder::new().max_rect(render_rect), |ui| {
+    ui.scope_builder(UiBuilder::new().max_rect(render_rect), |ui| {
         ui.set_clip_rect(ui.available_rect_before_wrap());
         add_margins(ui, |ui| super::chat_list::render(ui, pipe, ui_state));
     });

@@ -9,7 +9,7 @@ use std::{
 use anyhow::anyhow;
 use async_trait::async_trait;
 use base::join_thread::JoinThread;
-use steamworks::{SingleClient, TicketForWebApiResponse};
+use steamworks::{Client, TicketForWebApiResponse};
 use tokio::sync::Mutex;
 
 use crate::traits::{SteamClient, SteamRaii};
@@ -25,7 +25,7 @@ pub struct SteamSt {
 }
 
 impl SteamSt {
-    pub fn new(steam: SingleClient, steam_mutex: Arc<Mutex<()>>) -> Self {
+    pub fn new(steam: Client, steam_mutex: Arc<Mutex<()>>) -> Self {
         let steam_mutex_thread = steam_mutex.clone();
         let (client_sender, client_recv) = channel();
         let client_thread = std::thread::Builder::new()

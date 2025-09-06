@@ -7,7 +7,7 @@ use command_parser::parser::{parse, Command, CommandParseResult, CommandType, Co
 use egui::{
     text::{CCursor, LayoutJob},
     text_selection::CCursorRange,
-    Color32, FontId, Id, Layout, RichText, TextFormat,
+    Color32, FontId, Id, Layout, RichText, TextBuffer, TextFormat,
 };
 
 use ui_base::types::{UiRenderPipe, UiState};
@@ -39,7 +39,8 @@ pub fn render(
             |ui| {
                 let inp_id = Id::new("console-input");
 
-                let mut layouter = |ui: &egui::Ui, string: &str, _wrap_width: f32| {
+                let mut layouter = |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width: f32| {
+                    let string = string.as_str();
                     let cmd = cmds.iter();
                     let mut layout_job = LayoutJob::default();
                     let mut last_range = 0;

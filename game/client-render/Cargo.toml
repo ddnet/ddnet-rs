@@ -18,5 +18,5 @@ client-render-base = { path = "../client-render-base" }
 client-types = { path = "../client-types" }
 client-containers = { path = "../client-containers" }
 
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }

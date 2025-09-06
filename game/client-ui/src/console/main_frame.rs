@@ -52,7 +52,7 @@ pub fn render(
 
             ui.style_mut().spacing.item_spacing.y = 0.0;
             let mut has_text_selection = false;
-            ui.allocate_new_ui(
+            ui.scope_builder(
                 UiBuilder::new().max_rect(Rect::from_min_size(
                     Pos2::new(0.0, 0.0),
                     Vec2::new(width, height),

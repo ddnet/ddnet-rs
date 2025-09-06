@@ -9,5 +9,5 @@ ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
 graphics = { path = "../../lib/graphics" }
 
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui-notify = "0.19.0"
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui-notify = "0.20.0"

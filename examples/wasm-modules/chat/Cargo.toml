@@ -18,7 +18,7 @@ client-types = { path = "../../../game/client-types" }
 client-containers = { path = "../../../game/client-containers" }
 game-interface = { path = "../../../game/game-interface" }
 game-base = { path = "../../../game/game-base" }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 
 [lib]
 crate-type = ["cdylib"]

@@ -32,7 +32,7 @@ pub fn render(
         rect.min.x += 5.0;
         rect.max.x -= 5.0;
         let shadow_color = ui.style().visuals.window_shadow.color;
-        ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+        ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             ui.vertical(|ui| {
                 let found_entries_is_empty = found_entries.is_empty();
 

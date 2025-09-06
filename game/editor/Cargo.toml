@@ -35,10 +35,10 @@ camera = { path = "../camera" }
 
 map-convert-lib = { path = "../map-convert-lib" }
 
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
-egui_extras = { version = "0.31.1" }
-egui-file-dialog = { version = "0.9.0", default-features = false }
-egui_commonmark = "0.20.0"
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui_extras = { version = "0.32.2" }
+egui-file-dialog = { version = "0.11.0", default-features = false }
+egui_commonmark = "0.21.1"
 
 async-trait = "0.1.89"
 bincode = { version = "2.0.1", features = ["serde"] }

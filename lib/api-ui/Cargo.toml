@@ -9,4 +9,4 @@ ui-base = { path = "../../lib/ui-base" }
 ui-generic = { path = "../../lib/ui-generic" }
 graphics-types = { path = "../../lib/graphics-types" }
 once_cell = "1.21.3"
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }

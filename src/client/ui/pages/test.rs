@@ -383,6 +383,7 @@ impl TextureManager {
             ctx.load_texture(
                 "color_test_gradient",
                 epaint::ColorImage {
+                    source_size: egui::vec2(width as f32, height as f32),
                     size: [width, height],
                     pixels,
                 },

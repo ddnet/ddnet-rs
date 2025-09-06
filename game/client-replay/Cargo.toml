@@ -12,4 +12,4 @@ game-interface = { path = "../game-interface" }
 
 rayon = "1.11.0"
 anyhow = { version = "1.0.99", features = ["backtrace"] }
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }

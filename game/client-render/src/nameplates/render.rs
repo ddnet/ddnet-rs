@@ -101,7 +101,7 @@ impl NameplateRender {
                     );
                     let x = (pos.x - x0) * width_scale;
                     let y = (pos.y - y0 - 70.0 / 64.0) * height_scale;
-                    ui.allocate_new_ui(
+                    ui.scope_builder(
                         UiBuilder::default().max_rect(Rect::from_min_max(
                             pos2(x - size.x / 2.0, y - font_size),
                             egui::pos2(x + size.x / 2.0, y),

@@ -22,5 +22,5 @@ editor = { path = "../editor", default-features = false }
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = ["sys", "cranelift"] }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 rayon = "1.11.0"
-egui = { version = "0.31.1", default-features = false, features = ["serde"] }
+egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 libloading = "0.8.8"
