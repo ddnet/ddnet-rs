@@ -1,5 +1,8 @@
 pub mod pickup {
-    use crate::reusable::{CloneWithCopyableElements, ReusableCore};
+    use crate::{
+        entities::character::character::WeaponsExt,
+        reusable::{CloneWithCopyableElements, ReusableCore},
+    };
     use base::linked_hash_map_view::FxLinkedHashMap;
     use game_interface::{
         events::{
@@ -191,7 +194,7 @@ pub mod pickup {
                         }
                         // else add the weapon
                         else {
-                            char.reusable_core.weapons.insert(
+                            char.reusable_core.weapons.insert_sorted(
                                 weapon,
                                 Weapon {
                                     cur_ammo: Some(10),
