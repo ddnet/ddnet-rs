@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use base::system::{System, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 use graphics::{
     graphics_mt::GraphicsMultiThreaded,
     handles::{
@@ -56,7 +56,7 @@ pub struct EditorClient {
     pub(crate) should_save: bool,
 
     last_keep_alive_id_and_time: (Option<u64>, Duration),
-    sys: System,
+    time: SteadyClock,
 
     mapper_name: String,
     color: [u8; 3],
@@ -64,7 +64,7 @@ pub struct EditorClient {
 
 impl EditorClient {
     pub fn new(
-        sys: &System,
+        time: &SteadyClock,
         server_addr: &str,
         server_info: NetworkClientCertCheckMode,
         notifications: EditorNotifications,
@@ -78,7 +78,7 @@ impl EditorClient {
 
         let res = Self {
             network: EditorNetwork::new_client(
-                sys,
+                time,
                 event_generator.clone(),
                 server_addr,
                 server_info,
@@ -99,8 +99,8 @@ impl EditorClient {
             mapper_name: mapper_name.unwrap_or_else(|| "mapper".to_string()),
             color: color.unwrap_or([255, 255, 255]),
 
-            last_keep_alive_id_and_time: (None, sys.time_get()),
-            sys: sys.clone(),
+            last_keep_alive_id_and_time: (None, time.now()),
+            time: time.clone(),
 
             should_save: !local_client,
         };
@@ -461,8 +461,8 @@ impl EditorClient {
 
     /// Whether the connection to the server is most likely dead
     pub fn is_likely_distconnected(&self) -> bool {
-        self.sys
-            .time_get()
+        self.time
+            .now()
             .saturating_sub(self.last_keep_alive_id_and_time.1)
             > Duration::from_secs(6)
     }

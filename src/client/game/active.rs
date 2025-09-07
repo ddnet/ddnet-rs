@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
-use base::{linked_hash_map_view::FxLinkedHashMap, system::SystemTimeInterface};
+use base::{linked_hash_map_view::FxLinkedHashMap, steady_clock::SteadyClock};
 use client_console::console::remote_console::RemoteConsole;
 use client_ghost::GhostViewer;
 use client_map::client_map::GameMap;
@@ -118,7 +118,7 @@ impl ActiveGame {
     pub fn send_input(
         &mut self,
         player_inputs: &FxLinkedHashMap<PlayerId, PoolVec<PlayerInputChainable>>,
-        sys: &dyn SystemTimeInterface,
+        time: &SteadyClock,
     ) {
         if !player_inputs.is_empty()
             || (!self.send_input_every_tick && !self.game_data.snap_acks.is_empty())
@@ -182,7 +182,7 @@ impl ActiveGame {
                 );
             }
 
-            let cur_time = sys.time_get();
+            let cur_time = time.now();
             // remove some old sent input timings
             while self
                 .game_data
@@ -872,12 +872,13 @@ impl ActiveGame {
             .player_settings_sync
             .did_player_info_change()
         {
-            self.next_player_info_change = Some(self.base.sys.time_get());
+            self.next_player_info_change = Some(self.base.time.now());
         }
 
-        if self.next_player_info_change.is_some_and(|time| {
-            self.base.sys.time_get().saturating_sub(time) > Duration::from_secs(5)
-        }) {
+        if self
+            .next_player_info_change
+            .is_some_and(|time| self.base.time.now().saturating_sub(time) > Duration::from_secs(5))
+        {
             self.next_player_info_change = None;
             for (local_player_id, local_player) in self.game_data.local.local_players.iter_mut() {
                 let character_info = if let Some((info, copy_info)) = local_player

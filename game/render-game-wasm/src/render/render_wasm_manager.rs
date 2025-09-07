@@ -1,7 +1,7 @@
 use std::{rc::Rc, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
-use base::system::{System, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 use base_io::io::Io;
 use base_io_traits::fs_traits::{FileSystemInterface, FileSystemWatcherItemInterface};
 use cache::Cache;
@@ -82,7 +82,7 @@ impl RenderGameWasmManager {
         backend: &Rc<GraphicsBackend>,
         io: &Io,
         thread_pool: &Arc<ThreadPool>,
-        sys: &System,
+        time: &SteadyClock,
         map_file: Vec<u8>,
         config: &ConfigDebug,
         render_mod: RenderGameMod,
@@ -99,7 +99,7 @@ impl RenderGameWasmManager {
                     graphics,
                     io,
                     thread_pool,
-                    &sys.time.time_get(),
+                    &time.now(),
                     map_file,
                     config,
                     props,

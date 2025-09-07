@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use base::system::{SystemTime, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 use pool::{mt_datatypes::PoolVec, mt_pool::Pool};
 use tokio::sync::Mutex as TokioMutex;
 
@@ -100,7 +100,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         con_id: &NetworkConnectionId,
         connections_clone: &NetworkConnections<C, TY>,
         connection: &C,
-        sys: &Arc<SystemTime>,
+        time: &SteadyClock,
         game_event_generator: &mut InternalGameEventGenerator,
         reason: NetworkEventDisconnect,
         all_packets_in_order: &Arc<TokioMutex<NetworkInOrderPackets>>,
@@ -135,7 +135,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                 .await;
         }
 
-        let timestamp = sys.time_get();
+        let timestamp = time.now();
         game_event_generator
             .generate_from_network_event(timestamp, con_id, &NetworkEvent::Disconnected(reason))
             .await;
@@ -145,13 +145,13 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
     async fn process_valid_packet(
         game_event_generator_clone: &InternalGameEventGenerator,
         connection_identifier: &NetworkConnectionId,
-        sys: &Arc<SystemTime>,
+        time: &SteadyClock,
         mut recv_stream: Vec<u8>,
         debug_printing: bool,
         packet_plugins: &Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
         stream_receive_window: Option<u32>,
     ) {
-        let timestamp = sys.time_get();
+        let timestamp = time.now();
 
         for packet_plugin in packet_plugins.iter().rev() {
             if let Err(err) = packet_plugin
@@ -199,7 +199,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         connection_async: Arc<NetworkConnection<C>>,
         game_event_generator_clone: InternalGameEventGenerator,
         connection_identifier: NetworkConnectionId,
-        sys: Arc<SystemTime>,
+        time: SteadyClock,
         debug_printing: bool,
         packet_plugins: Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
         stream_receive_window: Option<u32>,
@@ -212,7 +212,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                     Self::process_valid_packet(
                         &game_event_generator_clone,
                         &connection_identifier,
-                        &sys,
+                        &time,
                         recv_stream,
                         debug_printing,
                         &packet_plugins,
@@ -235,14 +235,14 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         connection_async: Arc<NetworkConnection<C>>,
         game_event_generator: InternalGameEventGenerator,
         connection_identifier: NetworkConnectionId,
-        sys: Arc<SystemTime>,
+        time: SteadyClock,
         debug_printing: bool,
         packet_plugins: Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
         stream_receive_window: Option<u32>,
     ) -> anyhow::Result<()> {
         'conn_loop: loop {
             let game_ev_gen_clone = game_event_generator.clone();
-            let sys_clone = sys.clone();
+            let time_clone = time.clone();
             let connection = &connection_async.conn;
             let packet_plugins = packet_plugins.clone();
             match connection
@@ -253,7 +253,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                                 Self::process_valid_packet(
                                     &game_ev_gen_clone,
                                     &connection_identifier,
-                                    &sys_clone,
+                                    &time_clone,
                                     data,
                                     debug_printing,
                                     &packet_plugins,
@@ -289,20 +289,20 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         connection_async: Arc<NetworkConnection<C>>,
         game_event_generator: InternalGameEventGenerator,
         connection_identifier: NetworkConnectionId,
-        sys: Arc<SystemTime>,
+        time: SteadyClock,
         debug_printing: bool,
         packet_plugins: Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
         stream_receive_window: Option<u32>,
     ) -> anyhow::Result<()> {
         'conn_loop: loop {
             let game_ev_gen_clone = game_event_generator.clone();
-            let sys_clone = sys.clone();
+            let time_clone = time.clone();
             let packet_plugins = packet_plugins.clone();
             let connection = &connection_async.conn;
             match connection
                 .read_ordered_reliable(move |uni| {
                     let game_ev_gen_clone = game_ev_gen_clone.clone();
-                    let sys_clone = sys_clone.clone();
+                    let time_clone = time_clone.clone();
                     let packet_plugins = packet_plugins.clone();
                     tokio::task::spawn(async move {
                         match uni {
@@ -310,7 +310,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                                 Self::process_valid_packet(
                                     &game_ev_gen_clone,
                                     &connection_identifier,
-                                    &sys_clone,
+                                    &time_clone,
                                     data,
                                     debug_printing,
                                     &packet_plugins,
@@ -343,7 +343,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
     }
 
     async fn ping(
-        sys: Arc<SystemTime>,
+        time: SteadyClock,
         game_event_generator: InternalGameEventGenerator,
         connection: Arc<NetworkConnection<C>>,
         con_id: &NetworkConnectionId,
@@ -355,12 +355,12 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
             let game_event_generator_clone = game_event_generator.clone();
             let connection_async = connection.clone();
             let con_id = *con_id;
-            let sys = sys.clone();
+            let time = time.clone();
             tokio::spawn(async move {
                 // send a normal ping pong peng task
                 game_event_generator_clone
                     .generate_from_network_event(
-                        sys.time_get(),
+                        time.now(),
                         &con_id,
                         &NetworkEvent::NetworkStats(connection_async.conn.stats()),
                     )
@@ -374,7 +374,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
         game_event_generator: &InternalGameEventGenerator,
         conn: Z,
         pre_defined_id: Option<&NetworkConnectionId>,
-        sys: Arc<SystemTime>,
+        time: SteadyClock,
         all_packets_in_order: &Arc<TokioMutex<NetworkInOrderPackets>>,
         debug_printing: bool,
         packet_plugins: &Arc<Vec<Arc<dyn NetworkPluginPacket>>>,
@@ -409,7 +409,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                 match connecting.await {
                     Err(err) => {
                         log::debug!("Connection failed to resolve (connecting failed)");
-                        let timestamp = sys.time_get();
+                        let timestamp = time.now();
                         game_event_generator_clone
                             .generate_from_network_event(
                                 timestamp,
@@ -429,7 +429,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                             .await
                             .insert(connection_identifier, connection.clone());
                         log::debug!("connecting established");
-                        let timestamp = sys.time_get();
+                        let timestamp = time.now();
                         for (index, plugin) in connection_plugins.iter().enumerate() {
                             match plugin
                                 .on_connect(&connection_identifier, &remote_addr, &con_cert)
@@ -462,7 +462,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                                         )
                                         .await;
 
-                                    let timestamp = sys.time_get();
+                                    let timestamp = time.now();
                                     game_event_generator_clone
                                         .generate_from_network_event(
                                             timestamp,
@@ -498,7 +498,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                                         .close(ConnectionErrorCode::Kicked, &reason)
                                         .await;
 
-                                    let timestamp = sys.time_get();
+                                    let timestamp = time.now();
                                     game_event_generator_clone
                                         .generate_from_network_event(
                                             timestamp,
@@ -534,14 +534,14 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                 let mut ping_interval = tokio::time::interval(Duration::from_secs(1));
                 let res = tokio::select! {
                     res = Self::handle_connection_recv_unordered_reliable(
-                        connection.clone(), game_event_generator_clone.clone(), connection_identifier, sys.clone(),
+                        connection.clone(), game_event_generator_clone.clone(), connection_identifier, time.clone(),
                         debug_printing,  packet_plugins.clone(), stream_receive_window) => {res}
                     res = Self::handle_connection_recv_ordered_reliable(
-                        connection.clone(), game_event_generator_clone.clone(), connection_identifier, sys.clone(),
+                        connection.clone(), game_event_generator_clone.clone(), connection_identifier, time.clone(),
                         debug_printing, packet_plugins.clone(), stream_receive_window) => {res}
                     res = Self::handle_connection_recv_unordered_unreliable(connection.clone(), game_event_generator_clone.clone(),
-                    connection_identifier, sys.clone(), debug_printing, packet_plugins.clone(), stream_receive_window) => {res}
-                    res = Self::ping(sys.clone(), game_event_generator_clone.clone(), connection.clone(), &connection_identifier, &mut ping_interval) => {res}
+                    connection_identifier, time.clone(), debug_printing, packet_plugins.clone(), stream_receive_window) => {res}
+                    res = Self::ping(time.clone(), game_event_generator_clone.clone(), connection.clone(), &connection_identifier, &mut ping_interval) => {res}
                 };
 
                 let reason = connection.conn.close_reason().unwrap_or_else(|| match res {
@@ -553,7 +553,7 @@ impl<C: NetworkConnectionInterface + Send + Sync + Clone + 'static, const TY: u3
                     &connection_identifier,
                     &connections,
                     &connection.conn,
-                    &sys,
+                    &time,
                     &mut game_event_generator_clone,
                     reason,
                     &all_packets_in_order,

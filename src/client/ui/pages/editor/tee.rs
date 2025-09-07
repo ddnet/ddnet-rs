@@ -18,7 +18,7 @@ use serde_value::Value;
 
 use graphics_types::rendering::State;
 
-use base::system::SystemTimeInterface;
+// removed SystemTimeInterface trait; no longer needed
 
 use math::math::vector::{ubvec4, vec2, vec4};
 use ui_generic::traits::UiPageInterface;

@@ -11,7 +11,6 @@ use base::{
         MtPoolNetworkString, NetworkReducedAsciiString, NetworkString, PoolNetworkString,
     },
     reduced_ascii_str::ReducedAsciiString,
-    system::SystemTimeInterface,
 };
 use base_http::{http::HttpClient, http_server::HttpDownloadServer};
 use base_io::io::Io;
@@ -324,7 +323,7 @@ struct Client {
 
     con_id: Option<NetworkConnectionId>,
 
-    sys: base::system::System,
+    time: base::steady_clock::SteadyClock,
     tp: Arc<rayon::ThreadPool>,
     io: Io,
     http_server: Option<HttpDownloadServer>,
@@ -348,7 +347,7 @@ struct Client {
 impl Client {
     fn run(
         io: &Io,
-        sys: &base::system::System,
+        time: &base::steady_clock::SteadyClock,
         addr: SocketAddr,
         log: ConnectingLog,
     ) -> anyhow::Result<LegacyProxy> {
@@ -391,7 +390,7 @@ impl Client {
                 cert,
                 private_key,
             })),
-            sys,
+            time,
             NetworkServerInitOptions::new()
                 .with_max_thread_count(2)
                 .with_disable_retry_on_connect(true)
@@ -406,7 +405,7 @@ impl Client {
             },
         )?;
 
-        let sys = sys.clone();
+        let time = time.clone();
 
         let is_finished: Arc<AtomicBool> = Default::default();
         let is_finished_thread = is_finished.clone();
@@ -432,7 +431,7 @@ impl Client {
                         addr,
                         Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
                     );
-                    let start_time = sys.time_get();
+                    let start_time = time.now();
                     let mut last_req = start_time;
                     let mut last_reconnect = start_time;
                     while server_info.is_none()
@@ -505,7 +504,7 @@ impl Client {
                             std::thread::sleep(Duration::from_millis(10));
                         }
 
-                        let cur_time = sys.time_get();
+                        let cur_time = time.now();
                         // send new request
                         if cur_time.saturating_sub(last_req) > Duration::from_secs(1) {
                             log.log("Sending new info request after 1s timeout");
@@ -648,7 +647,7 @@ impl Client {
 
                     connect_addr: addr,
 
-                    sys,
+                    time,
                     tp: Arc::new(
                         rayon::ThreadPoolBuilder::new()
                             .thread_name(|index| format!("legacy-proxy-{index}"))
@@ -2155,7 +2154,7 @@ impl Client {
         player_id: CharacterId,
         player: &mut ClientData,
         socket: &mut SocketClient,
-        sys: &base::system::System,
+        time: &base::steady_clock::SteadyClock,
         io: &Io,
         server_network: &QuinnNetworks,
         con_id: NetworkConnectionId,
@@ -2238,8 +2237,8 @@ impl Client {
                 socket.server_pid = pid;
             }
             (_, SystemOrGame::System(System::PongEx(pong_ex))) => {
-                if let Some(time) = base.last_pings.remove(&pong_ex.id.as_u128()) {
-                    base.last_pong = Some(sys.time_get().saturating_sub(time));
+                if let Some(last_time) = base.last_pings.remove(&pong_ex.id.as_u128()) {
+                    base.last_pong = Some(time.now().saturating_sub(last_time));
                 }
             }
             (_, SystemOrGame::System(System::MapDetails(info))) => {
@@ -2473,7 +2472,7 @@ impl Client {
                     allowed_to_vote_count: 0,
                 };
                 let state = (vote.timeout > 0).then_some(state);
-                base.vote_state = state.clone().map(|s| (s, sys.time_get()));
+                base.vote_state = state.clone().map(|s| (s, time.now()));
                 server_network.send_in_order_to(
                     &ServerToClientMessage::Vote(state),
                     &con_id,
@@ -2486,7 +2485,7 @@ impl Client {
                     state.no_votes = vote.no.unsigned_abs() as u64;
                     state.allowed_to_vote_count = vote.total.unsigned_abs() as u64;
 
-                    let now = sys.time_get();
+                    let now = time.now();
                     state.remaining_time = state
                         .remaining_time
                         .saturating_sub(now.saturating_sub(start_time));
@@ -2912,7 +2911,7 @@ impl Client {
                                 .and_then(|i| base.teams.get(&i).map(|(_, stage_id)| *stage_id))
                                 .unwrap_or(base.stage_0_id),
                             collision.as_deref(),
-                            sys.time_get(),
+                            time.now(),
                         );
 
                         base.cur_monotonic_tick +=
@@ -2968,7 +2967,7 @@ impl Client {
                             };
 
                         // quickly rewrite the input ack's logic overhead
-                        let cur_time = sys.time_get();
+                        let cur_time = time.now();
                         let mut inputs_to_ack = Vec::default();
                         while base
                             .inputs_to_ack
@@ -3102,9 +3101,7 @@ impl Client {
                     if !*was_acked {
                         debug!(
                             "est. ping: {}",
-                            sys.time_get()
-                                .saturating_sub(inp.logic_overhead)
-                                .as_millis()
+                            time.now().saturating_sub(inp.logic_overhead).as_millis()
                         );
                         // For now use ping pong for time calculations
                         if let Some(pong_time) = base.last_pong {
@@ -3114,7 +3111,7 @@ impl Client {
                                 .saturating_add(pong_time)
                                 .saturating_add(PREDICTION_EXTRA_MARGIN);
                         } else {
-                            inp.logic_overhead = sys.time_get();
+                            inp.logic_overhead = time.now();
                         }
                         *was_acked = true;
                     }
@@ -3139,7 +3136,7 @@ impl Client {
             }
             (_, SystemOrGame::Game(Game::SvEmoticon(emoticon))) => {
                 base.emoticons
-                    .insert(emoticon.client_id, (sys.time_get(), emoticon.emoticon));
+                    .insert(emoticon.client_id, (time.now(), emoticon.emoticon));
             }
             (_, SystemOrGame::Game(Game::SvKillMsg(msg))) => {
                 let events = base
@@ -3515,7 +3512,7 @@ impl Client {
                                     ProxyClient::new(
                                         Default::default(),
                                         sock_loop,
-                                        self.sys.time_get(),
+                                        self.time.now(),
                                         0,
                                         false,
                                     ),
@@ -3551,7 +3548,7 @@ impl Client {
                                 ProxyClient::new(
                                     Default::default(),
                                     sock_loop,
-                                    self.sys.time_get(),
+                                    self.time.now(),
                                     0,
                                     false,
                                 ),
@@ -3606,7 +3603,7 @@ impl Client {
                                     ProxyClient::new(
                                         ev.player_info,
                                         sock_loop,
-                                        self.sys.time_get(),
+                                        self.time.now(),
                                         ev.id,
                                         true,
                                     ),
@@ -4315,7 +4312,7 @@ impl Client {
                         player_id,
                         player_data,
                         socket,
-                        &self.sys,
+                        &self.time,
                         &self.io,
                         &self.server_network,
                         con_id,
@@ -4516,8 +4513,8 @@ impl Client {
                                     &ServerToClientMessage::ServerInfo {
                                         info: server_info,
                                         overhead: self
-                                            .sys
-                                            .time_get()
+                                            .time
+                                            .now()
                                             .saturating_sub(player.data.connect_time),
                                     },
                                     &con_id,
@@ -4598,7 +4595,7 @@ impl Client {
             }
 
             // Update emoticons (a.k.a. drop them)
-            let cur_time = self.sys.time_get();
+            let cur_time = self.time.now();
             self.base.emoticons.retain(|_, (start_time, _)| {
                 cur_time.saturating_sub(*start_time) <= Duration::from_secs(2)
             });
@@ -4691,7 +4688,7 @@ impl Client {
         self.handle_server_events_and_sleep()?;
 
         // do 10 pings per second to determine accurate ping
-        let time_now = self.sys.time_get();
+        let time_now = self.time.now();
         if self.base.last_ping.is_none_or(|last_ping| {
             time_now.saturating_sub(last_ping) > Duration::from_millis(1000 / 10)
         }) {
@@ -4724,9 +4721,9 @@ impl Client {
 
 pub fn proxy_run(
     io: &Io,
-    sys: &base::system::System,
+    time: &base::steady_clock::SteadyClock,
     addr: SocketAddr,
     log: ConnectingLog,
 ) -> anyhow::Result<LegacyProxy> {
-    Client::run(io, sys, addr, log)
+    Client::run(io, time, addr, log)
 }

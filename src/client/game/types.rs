@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use base_io::io::Io;
 use client_notifications::overlay::ClientNotifications;
 use client_types::{cert::ServerCertMode, console::ConsoleEntry};
@@ -36,7 +36,7 @@ pub struct GameBase {
     pub graphics: Graphics,
     pub graphics_backend: Rc<GraphicsBackend>,
     pub sound: SoundManager,
-    pub sys: System,
+    pub time: SteadyClock,
     pub tp: Arc<rayon::ThreadPool>,
     pub fonts: FontDefinitions,
 }
@@ -98,7 +98,7 @@ pub struct GameMsgPipeline<'a> {
     pub shared_info: &'a Arc<LocalServerInfo>,
     pub account_info: &'a AccountInfo,
     pub ui: &'a mut UiState,
-    pub sys: &'a System,
+    pub time: &'a SteadyClock,
     pub string_pool: &'a StringPool,
     pub spatial_chat: &'a SpatialChat,
     pub notifications: &'a mut ClientNotifications,

@@ -5,10 +5,8 @@ use std::{
 
 use anyhow::anyhow;
 use base::{
-    benchmark::Benchmark,
-    linked_hash_map_view::FxLinkedHashMap,
-    network_string::NetworkString,
-    system::{System, SystemTimeInterface},
+    benchmark::Benchmark, linked_hash_map_view::FxLinkedHashMap, network_string::NetworkString,
+    steady_clock::SteadyClock,
 };
 use base_fs::filesys::FileSystem;
 
@@ -181,7 +179,7 @@ type UiManager = UiManagerBase<Config>;
 
 pub fn ddnet_main(
     start_arguments: Vec<String>,
-    sys: System,
+    time: SteadyClock,
     shared_info: Arc<LocalServerInfo>,
     app: NativeApp,
 ) -> anyhow::Result<()> {
@@ -271,14 +269,13 @@ pub fn ddnet_main(
     // first prepare all io tasks of all components
     benchmark.bench("load_io of graphics backend");
 
-    let sys_time = sys.time.clone();
     let do_bench = config_engine.dbg.bench;
     let dbg_input = config_engine.inp.dbg_mode;
 
     let config_wnd = config_engine.wnd.clone();
 
     let client = ClientNativeLoadingImpl {
-        sys,
+        time: time.clone(),
         shared_info,
         io,
         config_engine,
@@ -294,7 +291,7 @@ pub fn ddnet_main(
         NativeCreateOptions {
             do_bench,
             title: "DDNet".to_string(),
-            sys: &sys_time,
+            time: &time,
             dbg_input,
             start_arguments,
             window: client_window_config_to_native_window_options(config_wnd),
@@ -348,7 +345,7 @@ enum ConnectLocalServerResult {
 }
 
 struct ClientNativeLoadingImpl {
-    sys: System,
+    time: SteadyClock,
     shared_info: Arc<LocalServerInfo>,
     io: IoFileSys,
     config_engine: ConfigEngine,
@@ -361,7 +358,7 @@ struct ClientNativeLoadingImpl {
 }
 
 struct ClientNativeImpl {
-    sys: System,
+    time: SteadyClock,
     shared_info: Arc<LocalServerInfo>,
 
     client_info: ClientInfo,
@@ -494,7 +491,7 @@ impl ClientNativeImpl {
                 if can_start_internal_server {
                     // try to start the local server
                     start_local_server(
-                        &self.sys,
+                        &self.time,
                         self.shared_info.clone(),
                         self.config.engine.clone(),
                         self.config.game.clone(),
@@ -541,7 +538,7 @@ impl ClientNativeImpl {
 
     fn render_menu_background_map(&mut self) {
         if let Some(map) = self.menu_map.continue_loading() {
-            let intra_tick_time = self.sys.time_get();
+            let intra_tick_time = self.time.now();
             let ClientMapFile::Menu { render } = &map else {
                 panic!("this was not a menu map")
             };
@@ -552,10 +549,10 @@ impl ClientNativeImpl {
                     base: RenderPipelineBase {
                         map: &render.data.buffered_map.map_visual,
                         config: &ConfigMap::default(),
-                        cur_time: &self.sys.time_get(),
+                        cur_time: &self.time.now(),
                         cur_anim_time: &RenderMap::calc_anim_time(
                             50.try_into().unwrap(),
-                            (self.sys.time_get().as_millis() / (1000 / 50)).max(1) as GameTickType,
+                            (self.time.now().as_millis() / (1000 / 50)).max(1) as GameTickType,
                             &intra_tick_time,
                         ),
                         include_last_anim_point: false,
@@ -1379,7 +1376,7 @@ impl ClientNativeImpl {
                     &self.sound_backend,
                     &self.config.engine,
                     &self.config.game,
-                    &self.sys,
+                    &self.time,
                     &self.ui_creator,
                 ) {
                     self.notifications
@@ -1417,7 +1414,7 @@ impl ClientNativeImpl {
                     &self.graphics,
                     &self.graphics_backend,
                     &mut self.sound,
-                    &mut UiRenderPipe::new(self.sys.time_get(), &mut self.config),
+                    &mut UiRenderPipe::new(self.time.now(), &mut self.config),
                     if self.local_console.ui.ui_state.is_ui_open || self.game.remote_console_open()
                     {
                         Default::default()
@@ -1438,7 +1435,7 @@ impl ClientNativeImpl {
                     match ui_event {
                         UiEvent::StartLocalServer => {
                             start_local_server(
-                                &self.sys,
+                                &self.time,
                                 self.shared_info.clone(),
                                 self.config.engine.clone(),
                                 self.config.game.clone(),
@@ -1932,7 +1929,7 @@ impl ClientNativeImpl {
                                 self.config.engine.ui.path.route("legacywarning");
                             } else if let Ok(legacy_proxy) = legacy_proxy::proxy_run(
                                 &self.io,
-                                &self.sys,
+                                &self.time,
                                 addr,
                                 self.connecting_log.clone(),
                             ) {
@@ -1984,7 +1981,7 @@ impl ClientNativeImpl {
         if self.local_console.ui.ui_state.is_ui_open {
             let mut pipe = ConsoleRenderPipe {
                 graphics: &self.graphics,
-                sys: &self.sys,
+                time: &self.time,
                 config: &mut self.config,
                 msgs: &mut self.console_logs,
                 custom_matches: &|_| None,
@@ -2009,7 +2006,7 @@ impl ClientNativeImpl {
             let mut pipe =
                 ConsoleRenderPipe {
                     graphics: &self.graphics,
-                    sys: &self.sys,
+                    time: &self.time,
                     config: &mut self.config,
                     msgs: &mut game.remote_console_logs,
                     custom_matches: &|user_ty| match user_ty {
@@ -2151,7 +2148,7 @@ impl ClientNativeImpl {
                 graphics: self.graphics.clone(),
                 graphics_backend: self.graphics_backend.clone(),
                 sound: self.sound.clone(),
-                sys: self.sys.clone(),
+                time: self.time.clone(),
                 tp: self.thread_pool.clone(),
                 fonts: self.font_data.clone(),
             },
@@ -2302,7 +2299,7 @@ impl ClientNativeImpl {
                         };
                     if let Ok(legacy_proxy) = legacy_proxy::proxy_run(
                         &self.io,
-                        &self.sys,
+                        &self.time,
                         legacy_addr,
                         self.connecting_log.clone(),
                     ) {
@@ -2733,7 +2730,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             &sound,
             &graphics,
             &graphics_backend,
-            &loading.sys,
+            &loading.time,
             menu_map_path.as_ref(),
             &"day".try_into().unwrap(),
             None,
@@ -2760,14 +2757,14 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
         let graphics_memory_usage = graphics_backend.memory_usage();
         let client_stats = ClientStats::new(
             &graphics,
-            &loading.sys,
+            &loading.time,
             graphics_memory_usage.texture_memory_usage,
             graphics_memory_usage.buffer_memory_usage,
             graphics_memory_usage.stream_memory_usage,
             graphics_memory_usage.staging_memory_usage,
             &ui_creator,
         );
-        let mut notifications = ClientNotifications::new(&graphics, &loading.sys, &ui_creator);
+        let mut notifications = ClientNotifications::new(&graphics, &loading.time, &ui_creator);
         if loading.has_startup_errors {
             notifications.add_err(
                 "Some startup commands failed to be parsed, \
@@ -2868,7 +2865,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             game_server_info.clone(),
             account_info.clone(),
             votes.clone(),
-            &loading.sys.time_get(),
+            &loading.time.now(),
         ));
         let tee_editor = Box::new(TeeEditor::new(&mut graphics));
         let color_test = Box::new(ColorTest::default());
@@ -2883,7 +2880,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
         ui_manager.register_path("", "connectpassword", password_connect);
         benchmark.bench("registering ui paths");
 
-        let cur_time = loading.sys.time_get();
+        let cur_time = loading.time.now();
         let last_refresh_rate_time = cur_time;
 
         native.confine_mouse(true);
@@ -2951,7 +2948,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             menu_map,
 
             cur_time,
-            sys: loading.sys,
+            time: loading.time,
             shared_info: loading.shared_info,
             client_info,
 
@@ -3156,8 +3153,8 @@ impl AppWithGraphics for ClientNativeImpl {
             }
         }
 
-        let sys = &mut self.sys;
-        self.cur_time = sys.time_get();
+        let time = &mut self.time;
+        self.cur_time = time.now();
 
         if let Some(legacy_proxy) = &self.legacy_proxy_thread
             && !matches!(self.game, Game::Active(_))
@@ -3194,7 +3191,7 @@ impl AppWithGraphics for ClientNativeImpl {
                 config_game: &mut self.config.game,
                 shared_info: &self.shared_info,
                 ui: &mut self.ui_manager.ui.ui_state,
-                sys,
+                time,
                 string_pool: &mut self.string_pool,
                 console_entries: &self.local_console.entries,
 
@@ -3378,7 +3375,7 @@ impl AppWithGraphics for ClientNativeImpl {
                 game.send_input_every_tick,
             );
 
-            game.send_input(&player_inputs, sys);
+            game.send_input(&player_inputs, time);
             let game_state = &mut game.map.game;
             // save the current input of all users for possible recalculations later
             let tick_inps = &mut game.game_data.input_per_tick;
@@ -3584,7 +3581,7 @@ impl AppWithGraphics for ClientNativeImpl {
         );
 
         // sleep time related stuff
-        let cur_time = self.sys.time_get();
+        let cur_time = self.time.now();
 
         // force limit fps in menus
         let refresh_rate = if self.ui_manager.ui.ui_state.is_ui_open && self.demo_player.is_none() {

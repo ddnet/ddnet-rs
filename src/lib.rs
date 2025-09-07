@@ -8,7 +8,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use client::client::ddnet_main;
 pub use client::*;
 use game_base::local_server_info::LocalServerInfo;
@@ -46,7 +46,7 @@ fn show_message_box(title: &str, message: &str) {
 
 fn main_impl(app: NativeApp) {
     let _ = thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max);
-    let sys = System::new();
+    let time = SteadyClock::start();
 
     let shared_info: Arc<LocalServerInfo> = Arc::new(LocalServerInfo::new(true));
 
@@ -87,7 +87,7 @@ fn main_impl(app: NativeApp) {
     if !args.is_empty() {
         args.remove(0);
     }
-    if let Err(err) = ddnet_main(args, sys, shared_info, app) {
+    if let Err(err) = ddnet_main(args, time, shared_info, app) {
         panic!("exited client with an error: {} - {}", err, err.backtrace()); // TODO: panic or graceful closing?
     }
 }

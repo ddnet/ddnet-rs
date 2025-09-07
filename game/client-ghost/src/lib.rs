@@ -9,7 +9,7 @@ use std::{
 use base::{
     hash::{Hash, fmt_hash},
     reduced_ascii_str::ReducedAsciiString,
-    system::System,
+    steady_clock::SteadyClock,
 };
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemEntryTy;
@@ -65,7 +65,7 @@ pub struct GhostViewer {
     graphics: Graphics,
     backend: Rc<GraphicsBackend>,
     sound_backend: Rc<SoundBackend>,
-    sys: System,
+    time: SteadyClock,
 
     ids: GhostIds,
 
@@ -86,7 +86,7 @@ impl GhostViewer {
         graphics: &Graphics,
         backend: &Rc<GraphicsBackend>,
         sound_backend: &Rc<SoundBackend>,
-        sys: &System,
+        time: &SteadyClock,
         map_name: &ReducedAsciiString,
         map_hash: Hash,
         fonts: FontDefinitions,
@@ -115,7 +115,7 @@ impl GhostViewer {
             graphics: graphics.clone(),
             backend: backend.clone(),
             sound_backend: sound_backend.clone(),
-            sys: sys.clone(),
+            time: time.clone(),
 
             ids: GhostIds {
                 usable_ids: Default::default(),
@@ -173,7 +173,7 @@ impl GhostViewer {
                 &self.sound_backend,
                 config,
                 config_game,
-                &self.sys,
+                &self.time,
                 ui_creator,
             ) {
                 log::warn!("failed to render ghost: {err}");

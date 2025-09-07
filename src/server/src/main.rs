@@ -1,12 +1,12 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use game_base::local_server_info::LocalServerInfo;
 use game_server::server::ddnet_server_main;
 use network::network::utils::create_certifified_keys;
 
 fn main() {
-    let sys = System::new();
+    let time = SteadyClock::start();
     if std::env::var("RUST_LOG").is_err() {
         unsafe { std::env::set_var("RUST_LOG", "info") };
     }
@@ -23,11 +23,11 @@ fn main() {
     let server_is_open = Arc::new(AtomicBool::new(true));
     let server_is_open_clone = server_is_open.clone();
 
-    let sys_clone = sys.clone();
+    let time_clone = time.clone();
 
     let shared_info = Arc::new(LocalServerInfo::new(false));
     ddnet_server_main::<false>(
-        sys_clone,
+        time_clone,
         cert,
         server_is_open_clone,
         shared_info,

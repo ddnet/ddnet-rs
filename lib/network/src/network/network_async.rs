@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, net::SocketAddr, sync::Arc};
 
 use anyhow::anyhow;
-use base::system::{System, SystemTime, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 
 use crate::network::{
     errors::ConnectionErrorCode,
@@ -33,7 +33,7 @@ pub struct NetworkAsync<E, C: Send + Sync, Z, I, const TY: u32> {
     pub(crate) connections: NetworkConnections<C, TY>,
     pub(crate) all_in_order_packets: Arc<TokioMutex<NetworkInOrderPackets>>,
     pub(crate) game_event_generator: InternalGameEventGenerator,
-    pub(crate) sys: Arc<SystemTime>,
+    pub(crate) time: SteadyClock,
     pub(crate) is_debug: bool,
     pub(crate) packet_pool: Pool<Vec<u8>>,
 
@@ -59,7 +59,7 @@ where
         addr: &str,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
         cert_mode: NetworkServerCertMode,
-        sys: &System,
+        time: &SteadyClock,
         options: NetworkServerInitOptions,
         plugins: NetworkPlugins,
     ) -> anyhow::Result<(
@@ -108,7 +108,7 @@ where
                 game_event_generator,
                 game_event_notifier: event_notifier.clone(),
             },
-            sys: sys.time.clone(),
+            time: time.clone(),
             is_debug: debug_printing,
             packet_pool: pool.clone(),
 
@@ -134,7 +134,7 @@ where
             Ok(conn) => {
                 let connections = self.connections.clone();
                 let game_event_generator = self.game_event_generator.clone();
-                let sys = self.sys.clone();
+                let time = self.time.clone();
                 let all_in_order_packets = self.all_in_order_packets.clone();
                 let is_debug = self.is_debug;
                 let packet_plugins = self.plugins.packet_plugins.clone();
@@ -149,7 +149,7 @@ where
                                 &game_event_generator,
                                 conn,
                                 Some(&con_id),
-                                sys,
+                                time,
                                 &all_in_order_packets,
                                 is_debug,
                                 &packet_plugins,
@@ -165,7 +165,7 @@ where
                     }))
                 {
                     let game_event_generator_clone = self.game_event_generator.clone();
-                    let timestamp = self.sys.as_ref().time_get();
+                    let timestamp = self.time.now();
                     tokio::spawn(async move {
                         game_event_generator_clone
                             .generate_from_network_event(
@@ -181,7 +181,7 @@ where
             }
             Err(conn) => {
                 let game_event_generator_clone = self.game_event_generator.clone();
-                let timestamp = self.sys.as_ref().time_get();
+                let timestamp = self.time.now();
                 tokio::spawn(async move {
                     game_event_generator_clone
                         .generate_from_network_event(
