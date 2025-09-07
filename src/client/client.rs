@@ -605,7 +605,10 @@ impl ClientNativeImpl {
                 .map(|p| match &p.cam_mode {
                     PlayerCameraMode::Default => false,
                     PlayerCameraMode::Free => true,
-                    PlayerCameraMode::LockedTo { .. } | PlayerCameraMode::LockedOn { .. } => true,
+                    // Use predicted game for ingame locked cameras.
+                    // E.g. dead cam is otherwise off
+                    PlayerCameraMode::LockedTo { locked_ingame, .. }
+                    | PlayerCameraMode::LockedOn { locked_ingame, .. } => !*locked_ingame,
                 })
                 .unwrap_or_default();
 
