@@ -218,8 +218,8 @@ impl ServerMap {
                     .await
                     .map_err(|err| {
                         anyhow!(
-                            "Loading map failed: {map_res_err}, \
-                                    legacy map loading failed too: {err}"
+                            "Loading map failed: {map_res_err}. \
+                            Legacy map loading failed too: {err}"
                         )
                     })?;
                     let map_bytes = map.map.write(&tp)?;

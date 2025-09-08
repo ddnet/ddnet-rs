@@ -4445,7 +4445,7 @@ impl Client {
                                 &self.io,
                                 &NetworkReducedAsciiString::try_from(map_name.clone()).unwrap(),
                                 Some(hash),
-                                anyhow!("The legacy always deals with legacy maps."),
+                                anyhow!("The legacy proxy always loads legacy maps."),
                             )
                             .unwrap();
 

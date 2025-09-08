@@ -1735,7 +1735,7 @@ impl CDatafileWrapper {
                     ext_image_count,
                 ));
             }
-            if is_external {
+            if is_external && !self.duplicated_img_reads.contains_key(&img_index) {
                 ext_image_count += 1;
             }
         }
