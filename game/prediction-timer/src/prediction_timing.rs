@@ -371,17 +371,20 @@ impl PredictionTimer {
             self.ping_min().as_secs_f64() / 2.0 + Self::PREDICTION_MARGIN_NETWORK.as_secs_f64();
         let ping_max = self.ping_max().as_secs_f64() / 2.0;
 
+        let (last_snaps_average, weight) = self.timing.last_snaps_average;
+        let mut adjust_factor = (snap_diff + last_snaps_average) / (weight + 1) as f64;
+
         // check how far off this snap diff is
         // if the snap is outside of the ping jitter, we have to assume a lag
         // either by network or bcs the client clock runs behind/fore
-        let lag_weight = if snap_diff > 0.0 && snap_diff > (ping_max - ping_avg) {
+        let lag_weight = if adjust_factor > 0.0 && adjust_factor > (ping_max - ping_avg) {
             //dbg!((snap_diff * 1000.0, ping_max * 1000.0, ping_avg * 1000.0));
             //dbg!((snap_diff - (ping_max - ping_avg)) * 1000.0);
-            Some(snap_diff - (ping_max - ping_avg))
-        } else if snap_diff < 0.0 && snap_diff.abs() > (ping_avg - ping_min) {
+            Some(adjust_factor - (ping_max - ping_avg))
+        } else if adjust_factor < 0.0 && adjust_factor.abs() > (ping_avg - ping_min) {
             //dbg!((snap_diff * 1000.0, ping_min * 1000.0, ping_avg * 1000.0));
             //dbg!(((ping_avg - ping_min) - snap_diff.abs()) * 1000.0);
-            Some((ping_avg - ping_min) - snap_diff.abs())
+            Some((ping_avg - ping_min) - adjust_factor.abs())
         } else {
             None
         };
@@ -391,12 +394,6 @@ impl PredictionTimer {
             || lag_weight.is_some()
         {
             self.timing.cur_duration_snap = timestamp;
-            let (last_snaps_average, weight) = self.timing.last_snaps_average;
-            let mut adjust_factor = if weight == 0 {
-                0.0
-            } else {
-                last_snaps_average / weight as f64
-            };
             if let Some(lag_weight) = lag_weight {
                 /*dbg!(
                     lag_weight * 1000.0,
@@ -476,19 +473,19 @@ impl PredictionTimer {
     pub fn smooth_adjustment_time(&mut self) -> f64 {
         let frame_time = self.max_frametime().as_secs_f64().clamp(0.000001, f64::MAX);
 
-        /* TODO: check if it's better to adjust the timer faster in some cases
-        let scale = if self.timing.smooth_adjustment_time < 0.0 {
-            1.0 // 10.0
-        } else {
-            1.0
-        };*/
-        let scale = 1.0;
-
         let fps = 1.0 / frame_time;
 
-        let res = (self.timing.smooth_adjustment_time / fps) * scale;
-        self.timing.smooth_adjustment_time -= res;
-        res
+        // 1 ms
+        const HUNDERED_PERCENT_PER_S: f64 = 0.001;
+        const HUNDERED_PERCENT_PER_FPS: f64 = 50.0;
+        let perc_adjust = self.timing.smooth_adjustment_time.abs() / HUNDERED_PERCENT_PER_S;
+        let perc_fps_adjust = HUNDERED_PERCENT_PER_FPS / fps;
+
+        let perc = (perc_adjust * perc_fps_adjust).clamp(0.0, 1.0);
+
+        let adjust = self.timing.smooth_adjustment_time * perc;
+        self.timing.smooth_adjustment_time *= 1.0 - perc;
+        adjust
     }
 }
 
