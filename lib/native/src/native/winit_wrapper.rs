@@ -343,13 +343,13 @@ impl NativeImpl for WinitWindowWrapper {
             height: pixels.height as f64 / scale_factor,
         };
         NativeWindowOptions {
-            mode: if self
-                .window
-                .fullscreen()
-                .is_some_and(|f| matches!(f, Fullscreen::Exclusive(_)))
-            {
+            mode: if let Some(Fullscreen::Exclusive(mode)) = self.window.fullscreen() {
+                let size = mode.size();
                 WindowMode::Fullscreen {
-                    resolution: Some(pixels),
+                    resolution: Some(super::Pixels {
+                        width: size.width,
+                        height: size.height,
+                    }),
                     fallback_window: logical_pixels,
                 }
             } else {
