@@ -286,8 +286,6 @@ impl GraphicsContainersAPI {
             }
             CommandsMisc::SwitchCanvas(_) => todo!(),
             CommandsMisc::UpdateViewport(cmd) => {
-                assert!(!cmd.by_resize);
-
                 assert!(
                     cmd.x >= 0
                         && cmd.width > 0
@@ -302,6 +300,9 @@ impl GraphicsContainersAPI {
                         && (cmd.y as u32).checked_add(cmd.height).unwrap()
                             <= canvas_handle.canvas_height()
                 );
+            }
+            CommandsMisc::CanvasResized(_) => {
+                panic!("canvas resized is a native command.");
             }
             CommandsMisc::Multisampling(cmd) => {
                 // Nothing more that can be done, the backend has to be safe for this one.

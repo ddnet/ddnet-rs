@@ -257,13 +257,16 @@ pub struct CommandMultiSampling {
 }
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]
-pub struct CommandUpdateViewport {
+pub struct UpdateViewport {
     pub x: i32,
     pub y: i32,
     pub width: u32,
     pub height: u32,
-    pub by_resize: bool, // resized by an resize event.. a hint to make clear that the viewport update can be deferred if wanted
 }
+
+pub type CommandUpdateViewport = UpdateViewport;
+
+pub type CommandCanvasResized = UpdateViewport;
 
 #[derive(Debug, Hiarc, Serialize, Deserialize)]
 pub struct CommandTextureCreate {
@@ -391,6 +394,7 @@ pub enum CommandsMisc {
 
     // misc
     UpdateViewport(CommandUpdateViewport),
+    CanvasResized(CommandCanvasResized),
     Multisampling(CommandMultiSampling),
     VSync(CommandVsync),
 }
