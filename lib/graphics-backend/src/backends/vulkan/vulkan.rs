@@ -2313,34 +2313,11 @@ impl VulkanBackend {
 
     fn cmd_canvas_resized(&mut self, cmd: &CommandCanvasResized) -> anyhow::Result<()> {
         if is_verbose(&self.props.dbg) {
-            info!("got resize event, checking if swap chain needs to be recreated.");
+            info!("got resize event: {}x{}.", cmd.width, cmd.height);
         }
 
-        // TODO: rethink if this is a good idea (checking if width changed. maybe some weird edge cases)
-        if self
-            .render
-            .onscreen
-            .native
-            .swap_img_and_viewport_extent
-            .width
-            != cmd.width
-            || self
-                .render
-                .onscreen
-                .native
-                .swap_img_and_viewport_extent
-                .height
-                != cmd.height
-        {
-            self.window_width = cmd.width;
-            self.window_height = cmd.height;
-            self.recreate_swap_chain = true;
-            if is_verbose(&self.props.dbg) {
-                info!(
-                    "queue recreate swapchain because of a viewport update with by_resize == true."
-                );
-            }
-        }
+        self.window_width = cmd.width;
+        self.window_height = cmd.height;
 
         Ok(())
     }
