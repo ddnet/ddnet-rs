@@ -1,6 +1,6 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-use base::system::{System, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 use egui::{Color32, WidgetText};
 use egui_notify::{Toast, Toasts};
 use graphics::{
@@ -21,7 +21,7 @@ use ui_generic::{generic_ui_renderer, traits::UiPageInterface};
 pub struct ClientNotifications {
     pub ui: UiContainer,
 
-    sys: Arc<dyn SystemTimeInterface>,
+    time: SteadyClock,
 
     toasts: Toasts,
 
@@ -32,13 +32,13 @@ pub struct ClientNotifications {
 }
 
 impl ClientNotifications {
-    pub fn new(graphics: &Graphics, sys: &System, creator: &UiCreator) -> Self {
+    pub fn new(graphics: &Graphics, time: &SteadyClock, creator: &UiCreator) -> Self {
         let mut ui = UiContainer::new(creator);
         ui.set_main_panel_color(&Color32::TRANSPARENT);
         ui.ui_state.is_ui_open = false;
         Self {
             ui,
-            sys: sys.time.clone(),
+            time: time.clone(),
 
             toasts: Toasts::new().with_anchor(egui_notify::Anchor::BottomRight),
 
@@ -73,7 +73,7 @@ impl ClientNotifications {
             &self.canvas_handle,
             &mut self.ui,
             &mut Render,
-            &mut UiRenderPipe::new(self.sys.time_get(), &mut &mut self.toasts),
+            &mut UiRenderPipe::new(self.time.now(), &mut &mut self.toasts),
             Default::default(),
         );
         let canvas_width = self.canvas_handle.canvas_width();
@@ -86,7 +86,7 @@ impl ClientNotifications {
             |ui, _, _| {
                 self.toasts.show(ui.ctx());
             },
-            &mut UiRenderPipe::new(self.sys.time_get(), &mut ()),
+            &mut UiRenderPipe::new(self.time.now(), &mut ()),
             Default::default(),
             false,
         );

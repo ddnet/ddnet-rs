@@ -12,7 +12,7 @@ use base::{
     hash::{Hash, fmt_hash},
     join_all,
     linked_hash_map_view::FxLinkedHashMap,
-    system::{System, SystemTimeInterface},
+    steady_clock::SteadyClock,
 };
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemInterface;
@@ -187,7 +187,7 @@ impl Default for MapLoadOptions {
 pub struct Editor {
     tabs: FxLinkedHashMap<String, EditorTab>,
     active_tab: String,
-    sys: System,
+    time: SteadyClock,
 
     ui: EditorUiRender,
     // events triggered by ui
@@ -260,7 +260,7 @@ impl Editor {
     ) -> Self {
         let hotkeys_file = EditorBindsFile::load_file(io);
 
-        let sys = System::new();
+        let time = SteadyClock::start();
         let default_entities =
             EntitiesContainer::load_default(io, ENTITIES_CONTAINER_PATH.as_ref());
         let scene = sound.scene_handle.create(Default::default());
@@ -312,7 +312,7 @@ impl Editor {
             .load_texture_rgba_u8(mem, "fake-editor-texture")
             .unwrap();
 
-        let last_time = sys.time_get();
+        let last_time = time.now();
 
         let graphics_mt = graphics.get_graphics_mt();
 
@@ -397,7 +397,7 @@ impl Editor {
             last_time,
 
             notifications: Default::default(),
-            notifications_overlay: ClientNotifications::new(graphics, &sys, &ui_creator),
+            notifications_overlay: ClientNotifications::new(graphics, &time, &ui_creator),
 
             graphics: graphics.clone(),
 
@@ -417,7 +417,7 @@ impl Editor {
 
             hovered_file: Default::default(),
 
-            sys,
+            time,
         };
         res.load_map("map/maps/ctf1.twmap.tar".as_ref(), Default::default());
         res
@@ -433,7 +433,7 @@ impl Editor {
                 color,
                 admin_password,
             }) => EditorServer::new(
-                &self.sys,
+                &self.time,
                 cert,
                 port,
                 password.unwrap_or_default(),
@@ -492,7 +492,7 @@ impl Editor {
                 }
             };
         let client = EditorClient::new(
-            &self.sys,
+            &self.time,
             &server_addr,
             server_cert,
             self.notifications.clone(),
@@ -620,7 +620,7 @@ impl Editor {
                     active: false,
                     interval: Some(Duration::from_secs(60)),
                     path: None,
-                    last_time: Some(self.sys.time_get()),
+                    last_time: Some(self.time.now()),
                 },
                 last_info_update: None,
                 admin_panel: Default::default(),
@@ -1179,7 +1179,7 @@ impl Editor {
         let map = self.map_to_editor_map(map.map, resources);
 
         let server = EditorServer::new(
-            &self.sys,
+            &self.time,
             options.cert,
             options.port,
             options.password.clone().unwrap_or_default(),
@@ -1187,7 +1187,7 @@ impl Editor {
             self.io.clone(),
         )?;
         let client = EditorClient::new(
-            &self.sys,
+            &self.time,
             &format!("127.0.0.1:{}", server.port),
             match &server.cert {
                 NetworkServerCertModeResult::Cert { cert } => {
@@ -1223,7 +1223,7 @@ impl Editor {
                     active: false,
                     interval: Some(Duration::from_secs(60)),
                     path: Some(path.into()),
-                    last_time: Some(self.sys.time_get()),
+                    last_time: Some(self.time.now()),
                 },
                 last_info_update: None,
                 admin_panel: Default::default(),
@@ -1324,7 +1324,7 @@ impl Editor {
         let map = self.map_to_editor_map(map, resources);
 
         let server = EditorServer::new(
-            &self.sys,
+            &self.time,
             options.cert,
             options.port,
             options.password.clone().unwrap_or_default(),
@@ -1332,7 +1332,7 @@ impl Editor {
             self.io.clone(),
         )?;
         let client = EditorClient::new(
-            &self.sys,
+            &self.time,
             &format!("127.0.0.1:{}", server.port),
             match &server.cert {
                 NetworkServerCertModeResult::Cert { cert } => {
@@ -1368,7 +1368,7 @@ impl Editor {
                     active: false,
                     interval: Some(Duration::from_secs(60)),
                     path: Some(load_path),
-                    last_time: Some(self.sys.time_get()),
+                    last_time: Some(self.time.now()),
                 },
                 last_info_update: None,
                 admin_panel: Default::default(),
@@ -1664,7 +1664,7 @@ impl Editor {
     }
 
     fn update(&mut self) {
-        let time_now = self.sys.time_get();
+        let time_now = self.time.now();
         let time_diff = time_now - self.last_time;
         self.last_time = time_now;
         let mut removed_tabs: Vec<String> = Default::default();
@@ -1730,12 +1730,12 @@ impl Editor {
                 let last_time = tab
                     .auto_saver
                     .last_time
-                    .get_or_insert_with(|| self.sys.time_get());
+                    .get_or_insert_with(|| self.time.now());
 
                 if let (Some(interval), Some(path)) =
                     (tab.auto_saver.interval, tab.auto_saver.path.as_ref())
                 {
-                    let cur_time = self.sys.time_get();
+                    let cur_time = self.time.now();
                     if cur_time.saturating_sub(*last_time) > interval {
                         *last_time = cur_time;
                         let path = path.clone();
@@ -2615,7 +2615,7 @@ impl Editor {
         let mut input_state: Option<InputState> = None;
         let mut ui_canvas: Option<UiCanvasSize> = None;
         let egui_output = self.ui.render(EditorUiRenderPipe {
-            cur_time: self.sys.time_get(),
+            cur_time: self.time.now(),
             config,
             inp: input,
             editor_tabs: EditorTabsRefMut {
@@ -2742,7 +2742,7 @@ impl Editor {
                 }
                 EditorUiEvent::CursorWorldPos { pos } => {
                     if let Some(tab) = self.tabs.get_mut(&self.active_tab) {
-                        let now = self.sys.time_get();
+                        let now = self.time.now();
                         // 50 times per sec
                         if tab.last_info_update.is_none_or(|last_info_update| {
                             now.saturating_sub(last_info_update) > Duration::from_millis(20)

@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use clap::Parser;
 use community::{Register, ServerInfo};
 use network::network::{
@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
             cert,
             private_key,
         })),
-        &System::new(),
+        &SteadyClock::start(),
         NetworkServerInitOptions::new()
             .with_keep_alive(Duration::from_secs(60))
             .with_timeout(Duration::from_secs(120)),

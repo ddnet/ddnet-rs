@@ -126,7 +126,6 @@ pub mod canvas {
                 y,
                 width,
                 height,
-                by_resize: false,
             };
             self.backend_handle
                 .add_cmd(AllCommands::Misc(CommandsMisc::UpdateViewport(cmd)));

@@ -29,7 +29,7 @@ use base::benchmark::Benchmark;
 use super::backend_mt::GraphicsBackendMultiThreaded;
 
 use graphics_types::{
-    commands::{AllCommands, CommandUpdateViewport, CommandsMisc},
+    commands::{AllCommands, CommandCanvasResized, CommandsMisc},
     gpu::Gpus,
     types::{
         GraphicsBackendMemory, GraphicsMemoryAllocationMode, GraphicsMemoryAllocationType,
@@ -264,12 +264,11 @@ impl GraphicsBackendBase {
         new_height: u32,
     ) -> WindowProps {
         self.wait_idle().unwrap();
-        let cmd_viewport = CommandsMisc::UpdateViewport(CommandUpdateViewport {
+        let cmd_viewport = CommandsMisc::CanvasResized(CommandCanvasResized {
             x: 0,
             y: 0,
             width: new_width,
             height: new_height,
-            by_resize: true,
         });
 
         buffer.add_cmd(AllCommands::Misc(cmd_viewport));

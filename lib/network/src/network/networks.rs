@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use serde::Serialize;
 
 use super::{
@@ -56,7 +56,7 @@ where
         port_v6: u16,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
         cert_mode: NetworkServerCertMode,
-        sys: &System,
+        time: &SteadyClock,
         options: NetworkServerInitOptions,
         plugins: NetworkPlugins,
     ) -> anyhow::Result<(
@@ -69,7 +69,7 @@ where
             &format!("{bind_addr_v4}:{port_v4}"),
             game_event_generator.clone(),
             cert_mode.clone(),
-            sys,
+            time,
             options.clone(),
             plugins.clone(),
         )?;
@@ -77,7 +77,7 @@ where
             &format!("[{bind_addr_v6}]:{port_v6}"),
             game_event_generator,
             cert_mode,
-            sys,
+            time,
             options,
             plugins,
         )?;

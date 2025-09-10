@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
-use base::{join_thread::JoinThread, system::System};
+use base::{join_thread::JoinThread, steady_clock::SteadyClock};
 use config::config::ConfigEngine;
 use game_base::local_server_info::{LocalServerInfo, LocalServerState, LocalServerThread};
 use game_config::config::ConfigGame;
@@ -9,7 +9,7 @@ use network::network::utils::create_certifified_keys;
 use crate::server::ddnet_server_main;
 
 pub fn start_local_server(
-    sys: &System,
+    time: &SteadyClock,
     shared_info: Arc<LocalServerInfo>,
     config_engine: ConfigEngine,
     config_game: ConfigGame,
@@ -24,7 +24,7 @@ pub fn start_local_server(
     let server_is_open = Arc::new(AtomicBool::new(true));
     let server_is_open_clone = server_is_open.clone();
 
-    let sys_clone = sys.clone();
+    let time_clone = time.clone();
 
     let mut state = shared_info.state.lock().unwrap();
 
@@ -33,7 +33,7 @@ pub fn start_local_server(
         .name("server".into())
         .spawn(move || {
             ddnet_server_main::<true>(
-                sys_clone,
+                time_clone,
                 (cert, private_key),
                 server_is_open_clone,
                 shared_info_thread,

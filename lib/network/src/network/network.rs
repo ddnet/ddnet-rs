@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use pool::mt_pool::Pool;
 use serde::Serialize;
 
@@ -122,7 +122,7 @@ where
         addr: &str,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
         cert_mode: NetworkServerCertMode,
-        sys: &System,
+        time: &SteadyClock,
         options: NetworkServerInitOptions,
         plugins: NetworkPlugins,
     ) -> anyhow::Result<(
@@ -153,7 +153,7 @@ where
                 addr,
                 game_event_generator,
                 cert_mode,
-                sys,
+                time,
                 options,
                 plugins,
             )?;
@@ -180,7 +180,7 @@ where
     pub fn init_client(
         forced_port: Option<u16>,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
-        sys: &System,
+        time: &SteadyClock,
         options: NetworkClientInitOptions,
         plugins: NetworkPlugins,
         connect_addr: &str,
@@ -247,7 +247,7 @@ where
                     game_event_generator,
                     game_event_notifier: event_notifier.clone(),
                 },
-                sys: sys.time.clone(),
+                time: time.clone(),
                 is_debug: debug_printing,
                 packet_pool: pool.clone(),
 
@@ -291,7 +291,7 @@ where
                 let endpoint = network_thread.endpoint.clone();
                 let connections = network_thread.connections.clone();
                 let game_event_generator = network_thread.game_event_generator.clone();
-                let sys = network_thread.sys.clone();
+                let time = network_thread.time.clone();
                 let all_packets_in_order = network_thread.all_in_order_packets.clone();
 
                 let is_server = network_thread.is_server;
@@ -322,7 +322,7 @@ where
                                     &game_event_generator,
                                     conn,
                                     pre_defined_id.as_ref(),
-                                    sys.clone(),
+                                    time.clone(),
                                     &all_packets_in_order,
                                     is_debug,
                                     &packet_plugins,

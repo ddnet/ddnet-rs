@@ -15,7 +15,7 @@ use std::{
 use anyhow::anyhow;
 pub use av_encoder::types::EncoderSettings;
 use av_encoder::{AvEncoder, traits::AudioVideoEncoder};
-use base::system::{System, SystemTime, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use client_map::client_map::{ClientMapFile, ClientMapLoading, GameMap, RenderGameWasmManager};
 use client_render_base::map::render_pipe::GameTimeInfo;
@@ -294,7 +294,7 @@ pub struct DemoViewerImpl {
 
     io: Io,
 
-    time: Arc<SystemTime>,
+    time: SteadyClock,
     last_time: Option<Duration>,
     last_monotonic_tick: Option<GameTickType>,
 
@@ -312,7 +312,7 @@ impl DemoViewerImpl {
         backend: &Rc<GraphicsBackend>,
         sound_backend: &Rc<SoundBackend>,
         demo: DemoContainer,
-        sys: &System,
+        time: &SteadyClock,
         io: Io,
         ui_creator: &UiCreator,
         encode_to_video: Option<DemoVideoEncodeProperties>,
@@ -363,7 +363,7 @@ impl DemoViewerImpl {
             demo_name: name,
 
             io: io.clone(),
-            time: sys.time.clone(),
+            time: time.clone(),
             last_time: None,
             last_monotonic_tick: None,
 
@@ -689,7 +689,7 @@ impl DemoViewerImpl {
                 self.last_time.replace(cur_time).unwrap_or_default(),
             )
         } else {
-            let cur_time = self.time.time_get();
+            let cur_time = self.time.now();
             (
                 cur_time,
                 self.last_time.replace(cur_time).unwrap_or(cur_time),
@@ -709,7 +709,7 @@ impl DemoViewerImpl {
         )?;
         self.demo_ui.render(
             &mut DemoPlayerUiRenderPipe {
-                cur_time: &self.time.time_get(),
+                cur_time: &self.time.now(),
                 player_info: UserData {
                     stream_handle: &self.data.stream_handle,
                     canvas_handle: &self.data.canvas_handle,
@@ -1152,7 +1152,7 @@ impl DemoViewer {
         sound_backend: &Rc<SoundBackend>,
         config: &ConfigEngine,
         config_game: &ConfigGame,
-        sys: &System,
+        time: &SteadyClock,
         ui_creator: &UiCreator,
     ) -> anyhow::Result<Option<&DemoViewerImpl>> {
         let mut dummy = DemoViewer::None;
@@ -1175,7 +1175,7 @@ impl DemoViewer {
                             sound,
                             graphics,
                             backend,
-                            sys,
+                            time,
                             "map/maps/".as_ref(),
                             &demo_container.header_ext.map,
                             Some(demo_container.header_ext.map_hash),
@@ -1280,7 +1280,7 @@ impl DemoViewer {
                         backend,
                         sound_backend,
                         demo,
-                        sys,
+                        time,
                         io,
                         ui_creator,
                         encode_to_video,

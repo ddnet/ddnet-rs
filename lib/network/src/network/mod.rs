@@ -34,7 +34,7 @@ pub mod tests {
     };
 
     use async_trait::async_trait;
-    use base::system::{System, SystemTimeInterface};
+    use base::steady_clock::SteadyClock;
     use serde::{Deserialize, Serialize};
     use spki::der::Encode;
     use tokio::sync::Mutex;
@@ -308,7 +308,7 @@ pub mod tests {
             .subject_public_key_info
             .fingerprint_bytes()
             .unwrap();
-        let sys = System::new();
+        let time = SteadyClock::start();
         let compressor: Arc<Vec<Arc<dyn NetworkPluginPacket>>> =
             Arc::new(vec![Arc::new(DefaultNetworkPacketCompressor::new())]);
         let game_event_generator_server = Arc::new(TestGameEventGenerator::new());
@@ -322,7 +322,7 @@ pub mod tests {
                 cert: client_cert,
                 private_key: client_private_key,
             })),
-            &sys,
+            &time,
             NetworkServerInitOptions::new()
                 .with_debug_priting(true)
                 .with_max_thread_count(4)
@@ -337,7 +337,7 @@ pub mod tests {
         let (mut network_client, notifier) = Network::<E, C, Z, I, TY>::init_client(
             None,
             game_event_generator_client.clone(),
-            &sys,
+            &time,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByPubKeyHash {
                     hash: Cow::Borrowed(&server_pub_key_hash),
@@ -359,7 +359,7 @@ pub mod tests {
         let (mut network_client2, _notifier2) = Network::<E, C, Z, I, TY>::init_client(
             None,
             game_event_generator_client2.clone(),
-            &sys,
+            &time,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByCert {
                     cert: server_cert.clone().into(),
@@ -381,7 +381,7 @@ pub mod tests {
         let (mut network_client3, _notifier3) = Network::<E, C, Z, I, TY>::init_client(
             None,
             game_event_generator_client3.clone(),
-            &sys,
+            &time,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByCert {
                     cert: server_cert.into(),
@@ -710,7 +710,7 @@ pub mod tests {
     fn max_datagram_size_tests() {
         let (client_cert, client_private_key) = create_certifified_keys();
         let server_cert = client_cert.to_der().unwrap().to_vec();
-        let sys = System::new();
+        let time = SteadyClock::start();
         let game_event_generator_server = Arc::new(TestGameEventGenerator::new());
         let game_event_generator_client = Arc::new(TestGameEventGenerator::new());
         let (network_server, _, addr, notifier_server) = QuinnNetwork::init_server(
@@ -720,7 +720,7 @@ pub mod tests {
                 cert: client_cert,
                 private_key: client_private_key,
             })),
-            &sys,
+            &time,
             NetworkServerInitOptions::new()
                 .with_debug_priting(true)
                 .with_max_thread_count(2)
@@ -732,7 +732,7 @@ pub mod tests {
         let (network_client, notifier) = QuinnNetwork::init_client(
             None,
             game_event_generator_client.clone(),
-            &sys,
+            &time,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByCert {
                     cert: server_cert.into(),
@@ -792,7 +792,7 @@ pub mod tests {
             .subject_public_key_info
             .fingerprint_bytes()
             .unwrap();
-        let sys = System::new();
+        let time = SteadyClock::start();
         let game_event_generator_server = Arc::new(TestGameEventGenerator::new());
         let game_event_generator_client = Arc::new(TestGameEventGenerator::new());
         let (network_server, _, addr, notifier_server) = QuinnNetwork::init_server(
@@ -802,7 +802,7 @@ pub mod tests {
                 cert: client_cert,
                 private_key: client_private_key,
             })),
-            &sys,
+            &time,
             Default::default(),
             Default::default(),
         )
@@ -815,13 +815,13 @@ pub mod tests {
         let total_packets = Arc::new(AtomicUsize::new(0));
 
         let total_packets_thread = total_packets.clone();
-        let sys_thread = sys.clone();
+        let time_thread = time.clone();
 
         let (client_cert, client_private_key) = create_certifified_keys();
         let (network_client, notifier) = QuinnNetwork::init_client(
             None,
             game_event_generator_client.clone(),
-            &sys,
+            &time,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByPubKeyHash {
                     hash: Cow::Borrowed(&server_pub_key_hash),
@@ -848,7 +848,7 @@ pub mod tests {
         }
 
         let msg = vec![0; 64];
-        let start_time = sys_thread.time_get();
+        let start_time = time_thread.now();
         game_event_generator_server.bench_start.store(
             start_time.as_nanos() as usize,
             std::sync::atomic::Ordering::SeqCst,
@@ -870,7 +870,7 @@ pub mod tests {
                 std::thread::yield_now();
             }
 
-            if (sys_thread.time_get() - start_time).as_millis() > BENCH_TIME_MS {
+            if (time_thread.now() - start_time).as_millis() > BENCH_TIME_MS {
                 break;
             }
         }
@@ -913,7 +913,7 @@ pub mod tests {
     pub fn test_benchmark_multi() {
         let (client_cert, client_private_key) = create_certifified_keys();
         let server_cert = client_cert.to_der().unwrap().to_vec();
-        let sys = System::new();
+        let time = SteadyClock::start();
         let game_event_generator_server = Arc::new(TestGameEventGenerator::new());
         let (network_server, _, addr, notifier_server) = QuinnNetwork::init_server(
             "0.0.0.0:0",
@@ -922,7 +922,7 @@ pub mod tests {
                 cert: client_cert,
                 private_key: client_private_key,
             })),
-            &sys,
+            &time,
             Default::default(),
             Default::default(),
         )
@@ -936,7 +936,7 @@ pub mod tests {
 
         let mut thread_joins: Vec<JoinHandle<()>> = Default::default();
         let bench_start = game_event_generator_server.bench_start.clone();
-        let start_time_ = sys.time_get();
+        let start_time_ = time.now();
         bench_start.store(
             start_time_.as_nanos() as usize,
             std::sync::atomic::Ordering::SeqCst,
@@ -949,7 +949,7 @@ pub mod tests {
             let game_event_generator_client = Arc::new(TestGameEventGenerator::new());
 
             let total_packets_thread = total_packets.clone();
-            let sys_thread = sys.clone();
+            let time_thread = time.clone();
             let total_count = game_event_generator_server.bench_total_multi[i].clone();
             let server_cert = server_cert.clone();
 
@@ -957,7 +957,7 @@ pub mod tests {
             let (network_client, notifier) = QuinnNetwork::init_client(
                 None,
                 game_event_generator_client.clone(),
-                &sys_thread,
+                &time_thread,
                 NetworkClientInitOptions::new(
                     NetworkClientCertCheckMode::CheckByCert {
                         cert: server_cert.into(),
@@ -985,7 +985,7 @@ pub mod tests {
                 .spawn(move || {
                     let total_packets_this_thread = Arc::new(AtomicUsize::new(0));
                     let msg = vec![0; 64];
-                    let start_time = sys_thread.time_get();
+                    let start_time = time_thread.now();
                     loop {
                         network_client.send_in_order_to_server(
                             &TestGameMessage::BenchMulti {
@@ -1009,7 +1009,7 @@ pub mod tests {
                             std::thread::yield_now();
                         }
 
-                        if (sys_thread.time_get() - start_time).as_millis() > BENCH_TIME_MS {
+                        if (time_thread.now() - start_time).as_millis() > BENCH_TIME_MS {
                             break;
                         }
                     }
@@ -1048,7 +1048,7 @@ pub mod tests {
     pub fn rapid_connect_disconnect() {
         let (client_cert, client_private_key) = create_certifified_keys();
         let server_cert = client_cert.to_der().unwrap().to_vec();
-        let sys = System::new();
+        let time = SteadyClock::start();
         let game_event_generator_server = Arc::new(TestGameEventGenerator::new());
         let (_network_server, _, addr, _) = QuinnNetwork::init_server(
             "0.0.0.0:0",
@@ -1057,7 +1057,7 @@ pub mod tests {
                 cert: client_cert,
                 private_key: client_private_key,
             })),
-            &sys,
+            &time,
             Default::default(),
             Default::default(),
         )
@@ -1068,7 +1068,7 @@ pub mod tests {
             .store(false, std::sync::atomic::Ordering::Relaxed);
 
         let bench_start = game_event_generator_server.bench_start.clone();
-        let start_time_ = sys.time_get();
+        let start_time_ = time.now();
         bench_start.store(
             start_time_.as_nanos() as usize,
             std::sync::atomic::Ordering::SeqCst,
@@ -1076,7 +1076,7 @@ pub mod tests {
 
         let game_event_generator_client = Arc::new(TestGameEventGenerator::new());
 
-        let sys_thread = sys.clone();
+        let time_thread = time.clone();
         let server_cert = server_cert.clone();
 
         let (client_cert, client_private_key) = create_certifified_keys();
@@ -1085,7 +1085,7 @@ pub mod tests {
             let (network_client, _) = QuinnNetwork::init_client(
                 None,
                 game_event_generator_client.clone(),
-                &sys_thread,
+                &time_thread,
                 NetworkClientInitOptions::new(
                     NetworkClientCertCheckMode::CheckByCert {
                         cert: server_cert.clone().into(),
@@ -1111,7 +1111,7 @@ pub mod tests {
             let (network_client, _) = QuinnNetwork::init_client(
                 None,
                 game_event_generator_client.clone(),
-                &sys_thread,
+                &time_thread,
                 NetworkClientInitOptions::new(
                     NetworkClientCertCheckMode::CheckByCert {
                         cert: server_cert.clone().into(),
@@ -1138,7 +1138,7 @@ pub mod tests {
     pub fn too_many_channels() {
         let (client_cert, client_private_key) = create_certifified_keys();
         let server_cert = client_cert.to_der().unwrap().to_vec();
-        let sys = System::new();
+        let time = SteadyClock::start();
         let game_event_generator_server = Arc::new(TestGameEventGenerator::new());
         let (_network_server, _, addr, notifier_server) = QuinnNetwork::init_server(
             "0.0.0.0:0",
@@ -1147,7 +1147,7 @@ pub mod tests {
                 cert: client_cert,
                 private_key: client_private_key,
             })),
-            &sys,
+            &time,
             Default::default(),
             Default::default(),
         )
@@ -1158,7 +1158,7 @@ pub mod tests {
             .store(false, std::sync::atomic::Ordering::Relaxed);
 
         let bench_start = game_event_generator_server.bench_start.clone();
-        let start_time_ = sys.time_get();
+        let start_time_ = time.now();
         bench_start.store(
             start_time_.as_nanos() as usize,
             std::sync::atomic::Ordering::SeqCst,
@@ -1166,7 +1166,7 @@ pub mod tests {
 
         let game_event_generator_client = Arc::new(TestGameEventGenerator::new());
 
-        let sys_thread = sys.clone();
+        let time_thread = time.clone();
         let server_cert = server_cert.clone();
 
         let (client_cert, client_private_key) = create_certifified_keys();
@@ -1174,7 +1174,7 @@ pub mod tests {
         let (network_client, _) = QuinnNetwork::init_client(
             None,
             game_event_generator_client.clone(),
-            &sys_thread,
+            &time_thread,
             NetworkClientInitOptions::new(
                 NetworkClientCertCheckMode::CheckByCert {
                     cert: server_cert.clone().into(),

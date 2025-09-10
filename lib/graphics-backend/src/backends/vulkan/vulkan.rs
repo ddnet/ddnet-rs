@@ -27,8 +27,8 @@ use graphics_base_traits::traits::{
 use anyhow::anyhow;
 use graphics_types::{
     commands::{
-        AllCommands, CommandClear, CommandCreateBufferObject, CommandCreateShaderStorage,
-        CommandDeleteBufferObject, CommandDeleteShaderStorage,
+        AllCommands, CommandCanvasResized, CommandClear, CommandCreateBufferObject,
+        CommandCreateShaderStorage, CommandDeleteBufferObject, CommandDeleteShaderStorage,
         CommandIndicesForQuadsRequiredNotify, CommandMultiSampling, CommandOffscreenCanvasCreate,
         CommandOffscreenCanvasDestroy, CommandOffscreenCanvasSkipFetchingOnce,
         CommandRecreateBufferObject, CommandRender, CommandRenderQuadContainer,
@@ -693,6 +693,7 @@ impl VulkanBackend {
             CommandsMisc::ConsumeMultiSamplingTargets => self.cmd_consume_multi_sampling_targets(),
             CommandsMisc::SwitchCanvas(cmd) => self.cmd_switch_canvas_mode(cmd),
             CommandsMisc::UpdateViewport(cmd) => self.cmd_update_viewport(&cmd),
+            CommandsMisc::CanvasResized(cmd) => self.cmd_canvas_resized(&cmd),
             CommandsMisc::Multisampling(cmd) => self.cmd_mutli_sampling(cmd),
             CommandsMisc::VSync(cmd) => self.cmd_vsync(cmd),
         }
@@ -2294,53 +2295,29 @@ impl VulkanBackend {
     }
 
     fn cmd_update_viewport(&mut self, cmd: &CommandUpdateViewport) -> anyhow::Result<()> {
-        if cmd.by_resize {
-            if is_verbose(&self.props.dbg) {
-                info!("got resize event, checking if swap chain needs to be recreated.");
-            }
-
-            // TODO: rethink if this is a good idea (checking if width changed. maybe some weird edge cases)
-            if self
-                .render
-                .onscreen
-                .native
-                .swap_img_and_viewport_extent
-                .width
-                != cmd.width
-                || self
-                    .render
-                    .onscreen
-                    .native
-                    .swap_img_and_viewport_extent
-                    .height
-                    != cmd.height
-            {
-                self.window_width = cmd.width;
-                self.window_height = cmd.height;
-                self.recreate_swap_chain = true;
-                if is_verbose(&self.props.dbg) {
-                    info!(
-                        "queue recreate swapchain because of a viewport update with by_resize == true."
-                    );
-                }
-            }
+        let viewport = self.render.get().native.swap_img_and_viewport_extent;
+        if cmd.x != 0 || cmd.y != 0 || cmd.width != viewport.width || cmd.height != viewport.height
+        {
+            self.has_dynamic_viewport = true;
+            self.dynamic_viewport_offset = vk::Offset2D { x: cmd.x, y: cmd.y };
+            self.dynamic_viewport_size = vk::Extent2D {
+                width: cmd.width,
+                height: cmd.height,
+            };
         } else {
-            let viewport = self.render.get().native.swap_img_and_viewport_extent;
-            if cmd.x != 0
-                || cmd.y != 0
-                || cmd.width != viewport.width
-                || cmd.height != viewport.height
-            {
-                self.has_dynamic_viewport = true;
-                self.dynamic_viewport_offset = vk::Offset2D { x: cmd.x, y: cmd.y };
-                self.dynamic_viewport_size = vk::Extent2D {
-                    width: cmd.width,
-                    height: cmd.height,
-                };
-            } else {
-                self.has_dynamic_viewport = false;
-            }
+            self.has_dynamic_viewport = false;
         }
+
+        Ok(())
+    }
+
+    fn cmd_canvas_resized(&mut self, cmd: &CommandCanvasResized) -> anyhow::Result<()> {
+        if is_verbose(&self.props.dbg) {
+            info!("got resize event: {}x{}.", cmd.width, cmd.height);
+        }
+
+        self.window_width = cmd.width;
+        self.window_height = cmd.height;
 
         Ok(())
     }

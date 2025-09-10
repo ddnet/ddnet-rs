@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use base::system::{self, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 use client_containers::skins::SkinContainer;
 use client_render_base::render::tee::RenderTee;
 use client_types::console::ConsoleEntry;
@@ -17,7 +17,7 @@ use ui_generic::generic_ui_renderer;
 
 pub struct ConsoleRenderPipe<'a> {
     pub graphics: &'a Graphics,
-    pub sys: &'a system::System,
+    pub time: &'a SteadyClock,
     pub config: &'a mut Config,
     pub msgs: &'a mut String,
     pub custom_matches: &'a dyn Fn(&str) -> Option<Vec<String>>,
@@ -101,7 +101,7 @@ impl<E, T> ConsoleRender<E, T> {
             skin_container: pipe.skin_container,
             render_tee: pipe.render_tee,
         };
-        let mut ui_pipe = UiRenderPipe::new(pipe.sys.time_get(), &mut user_data);
+        let mut ui_pipe = UiRenderPipe::new(pipe.time.now(), &mut user_data);
 
         generic_ui_renderer::render(
             &pipe.graphics.backend_handle,

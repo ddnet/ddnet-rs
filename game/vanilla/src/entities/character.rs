@@ -1764,6 +1764,20 @@ pub mod character {
         }
     }
 
+    pub trait WeaponsExt {
+        fn insert_sorted(&mut self, key: WeaponType, weapon: Weapon);
+    }
+
+    impl WeaponsExt for FxLinkedHashMap<WeaponType, Weapon> {
+        fn insert_sorted(&mut self, key: WeaponType, weapon: Weapon) {
+            let mut cursor = self.cursor_front_mut();
+            while cursor.current().is_some_and(|(k, _)| *k < key) {
+                cursor.move_next();
+            }
+            cursor.insert_before(key, weapon);
+        }
+    }
+
     #[hiarc_safer_rc_refcell]
     #[derive(Debug, Hiarc)]
     pub struct PhasedCharacters {

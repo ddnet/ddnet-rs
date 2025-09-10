@@ -1,7 +1,7 @@
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
-use base::system::System;
+use base::steady_clock::SteadyClock;
 use network::network::{
     connection::NetworkConnectionId,
     event::{NetworkEvent, NetworkEventDisconnect},
@@ -49,7 +49,7 @@ pub struct EditorNetwork {
 
 impl EditorNetwork {
     pub fn new_server(
-        sys: &System,
+        time: &SteadyClock,
         event_generator: Arc<EditorEventGenerator>,
         cert: Option<NetworkServerCertMode>,
         port: Option<u16>,
@@ -64,7 +64,7 @@ impl EditorNetwork {
                     private_key,
                 }))
             }),
-            sys,
+            time,
             NetworkServerInitOptions::new()
                 .with_max_thread_count(6)
                 .with_timeout(Duration::from_secs(120))
@@ -92,7 +92,7 @@ impl EditorNetwork {
     }
 
     pub fn new_client(
-        sys: &System,
+        time: &SteadyClock,
         event_generator: Arc<EditorEventGenerator>,
         server_addr: &str,
         server_info: NetworkClientCertCheckMode,
@@ -101,7 +101,7 @@ impl EditorNetwork {
         let network = QuinnNetwork::init_client(
             None,
             event_generator.clone(),
-            sys,
+            time,
             NetworkClientInitOptions::new(
                 server_info,
                 NetworkClientCertMode::FromCertAndPrivateKey {

@@ -44,7 +44,7 @@ pub fn render(
                                 let (bg_color_text, match_color, default_color, margin, shadow) =
                                     if *pipe.user_data.select_index == Some(entry_index.index()) {
                                         (
-                                            Color32::from_rgba_unmultiplied(140, 140, 140, 15),
+                                            Color32::from_rgba_unmultiplied(140, 140, 140, 100),
                                             Color32::from_rgb(180, 180, 255),
                                             Color32::from_rgb(255, 255, 255),
                                             Margin::symmetric(5, 5),

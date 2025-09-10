@@ -13,7 +13,7 @@ use base::{
     hash::{Hash, fmt_hash, generate_hash_for},
     linked_hash_map_view::{FxLinkedHashMap, FxLinkedHashSet},
     network_string::{NetworkReducedAsciiString, NetworkString},
-    system::{System, SystemTimeInterface},
+    steady_clock::SteadyClock,
 };
 use base_fs::filesys::FileSystem;
 use base_http::http::HttpClient;
@@ -199,7 +199,7 @@ pub struct Server {
     io: Io,
     http_v6: Option<Arc<HttpClient>>,
 
-    sys: System,
+    time: SteadyClock,
 
     last_tick_time: Duration,
     last_register_time: Option<Duration>,
@@ -638,7 +638,7 @@ impl Server {
     }
 
     pub fn new(
-        sys: System,
+        time: SteadyClock,
         is_open: Arc<AtomicBool>,
         cert_and_private_key: (x509_cert::Certificate, SigningKey),
         shared_info: Arc<LocalServerInfo>,
@@ -771,7 +771,7 @@ impl Server {
                 cert: cert_and_private_key.0,
                 private_key: cert_and_private_key.1,
             })),
-            &sys,
+            &time,
             NetworkServerInitOptions::new()
                 .with_max_thread_count(if shared_info.is_internal_server { 2 } else { 6 })
                 .with_disable_retry_on_connect(
@@ -936,14 +936,14 @@ impl Server {
                 },
             )?,
 
-            last_tick_time: sys.time_get(),
+            last_tick_time: time.now(),
             last_register_time: None,
             register_task: None,
             last_register_serial: 0,
 
-            last_network_stats_time: sys.time_get(),
+            last_network_stats_time: time.now(),
 
-            sys,
+            time,
 
             shared_info: Arc::downgrade(&shared_info),
 
@@ -1049,7 +1049,7 @@ impl Server {
             self.network.send_unordered_to(
                 &ServerToClientMessage::ServerInfo {
                     info: server_info,
-                    overhead: self.sys.time_get().saturating_sub(*timestamp),
+                    overhead: self.time.now().saturating_sub(*timestamp),
                 },
                 con_id,
             );
@@ -1224,7 +1224,7 @@ impl Server {
         self.broadcast_in_order(
             ServerToClientMessage::Vote(vote_state.map(|mut vote_state| {
                 vote_state.remaining_time = Duration::from_secs(25)
-                    .saturating_sub(self.sys.time_get().saturating_sub(start_time));
+                    .saturating_sub(self.time.now().saturating_sub(start_time));
                 vote_state
             })),
             NetworkInOrderChannel::Custom(7013), // This number reads as "vote".
@@ -1270,7 +1270,7 @@ impl Server {
 
                 self.network.send_unordered_auto_to(
                     &ServerToClientMessage::Snapshot {
-                        overhead_time: self.sys.time_get().saturating_sub(self.last_tick_time),
+                        overhead_time: self.time.now().saturating_sub(self.last_tick_time),
                         snapshot: snap,
                         diff_id: None,
                         snap_id_diffed: snap_id,
@@ -1613,7 +1613,7 @@ impl Server {
                                             as u64,
                                     },
                                     extra_vote_info,
-                                    started_at: self.sys.time_get(),
+                                    started_at: self.time.now(),
                                     participating_ip: [(player.ip, Voted::Yes)]
                                         .into_iter()
                                         .chain(
@@ -3046,13 +3046,13 @@ impl Server {
     }
 
     pub fn run(&mut self) {
-        let mut cur_time = self.sys.time_get();
+        let mut cur_time = self.time.now();
         self.last_tick_time = cur_time;
         self.last_register_time = None;
 
         let game_event_generator = self.game_event_generator_server.clone();
         while self.is_open.load(std::sync::atomic::Ordering::Relaxed) {
-            cur_time = self.sys.time_get();
+            cur_time = self.time.now();
             if self
                 .last_register_time
                 .is_none_or(|time| cur_time - time > Duration::from_secs(10))
@@ -3141,7 +3141,7 @@ impl Server {
                                     client.network_stats = network_stats;
                                 }
                                 // every second
-                                let cur_time = self.sys.time_get();
+                                let cur_time = self.time.now();
                                 if cur_time - self.last_network_stats_time > Duration::from_secs(1)
                                 {
                                     self.last_network_stats_time = cur_time;
@@ -3171,7 +3171,7 @@ impl Server {
             let ticks_in_a_second = self.game_server.game.game_tick_speed();
 
             // get time before checking ticks
-            cur_time = self.sys.time_get();
+            cur_time = self.time.now();
 
             // update vote
             if let Some(vote) = &mut self.game_server.cur_vote {
@@ -3425,13 +3425,13 @@ impl Server {
                             };
 
                         // quickly rewrite the input ack's logic overhead
-                        let cur_time = self.sys.time_get();
+                        let cur_time = self.time.now();
                         client.inputs_to_ack.iter_mut().for_each(|inp| {
                             inp.logic_overhead = cur_time.saturating_sub(inp.logic_overhead);
                         });
                         self.network.send_unordered_auto_to(
                             &ServerToClientMessage::Snapshot {
-                                overhead_time: (self.sys.time_get() - self.last_tick_time),
+                                overhead_time: (self.time.now() - self.last_tick_time),
                                 snapshot: snap_diff.as_ref().into(),
                                 diff_id,
                                 snap_id_diffed: diff_id
@@ -3550,7 +3550,7 @@ impl Server {
             std::mem::swap(&mut self.db_requests_helper, &mut self.db_requests);
 
             // time and sleeps
-            cur_time = self.sys.time_get();
+            cur_time = self.time.now();
 
             if is_next_tick(
                 cur_time,
@@ -3656,7 +3656,7 @@ impl Server {
                 self.network
                     .send_unordered_to(&ServerToClientMessage::Load(server_info.clone()), net_id);
             });
-        self.last_tick_time = self.sys.time_get();
+        self.last_tick_time = self.time.now();
 
         Ok(())
     }
@@ -3701,7 +3701,7 @@ pub fn load_config() -> (Io, ConfigEngine, ConfigGame) {
 }
 
 pub fn ddnet_server_main<const IS_INTERNAL_SERVER: bool>(
-    sys: System,
+    time: SteadyClock,
     cert_and_private_key: (x509_cert::Certificate, SigningKey),
     is_open: Arc<AtomicBool>,
     shared_info: Arc<LocalServerInfo>,
@@ -3758,7 +3758,7 @@ pub fn ddnet_server_main<const IS_INTERNAL_SERVER: bool>(
     }
 
     let mut server = Server::new(
-        sys,
+        time,
         is_open,
         cert_and_private_key,
         shared_info,

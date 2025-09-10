@@ -7,7 +7,7 @@ use std::{
 use anyhow::anyhow;
 use base::{
     hash::{Hash, generate_hash_for},
-    system::{System, SystemTimeInterface},
+    steady_clock::SteadyClock,
 };
 use base_io::io::Io;
 use client_notifications::overlay::ClientNotifications;
@@ -92,7 +92,7 @@ pub struct EditorServer {
 
     client_ids: u64,
 
-    sys: System,
+    time: SteadyClock,
     last_client_infos: Duration,
     needs_client_info_update: bool,
 
@@ -101,7 +101,7 @@ pub struct EditorServer {
 
 impl EditorServer {
     pub fn new(
-        sys: &System,
+        time: &SteadyClock,
         cert_mode: Option<NetworkServerCertMode>,
         port: Option<u16>,
         password: String,
@@ -112,7 +112,7 @@ impl EditorServer {
         let event_generator = Arc::new(EditorEventGenerator::new(has_events.clone()));
 
         let (network, cert, port) =
-            EditorNetwork::new_server(sys, event_generator.clone(), cert_mode, port)?;
+            EditorNetwork::new_server(time, event_generator.clone(), cert_mode, port)?;
         Ok(Self {
             action_groups: Default::default(),
             cur_action_group: None,
@@ -134,8 +134,8 @@ impl EditorServer {
             client_ids: 0,
 
             needs_client_info_update: false,
-            last_client_infos: sys.time_get(),
-            sys: sys.clone(),
+            last_client_infos: time.now(),
+            time: time.clone(),
 
             io,
         })
@@ -1031,7 +1031,7 @@ impl EditorServer {
         notifications: &mut ClientNotifications,
         should_save: &mut bool,
     ) {
-        let now = self.sys.time_get();
+        let now = self.time.now();
         if self.needs_client_info_update
             && now.saturating_sub(self.last_client_infos) > Duration::from_millis(10)
         {

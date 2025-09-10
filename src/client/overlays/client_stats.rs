@@ -24,7 +24,7 @@ use ui_base::{
 
 use math::math::{blend, vector::luffixed};
 
-use base::system::{self, SystemTimeInterface};
+use base::steady_clock::SteadyClock;
 
 use crate::game::data::NetworkByteStats;
 
@@ -217,10 +217,10 @@ pub struct ClientStatsData {
 }
 
 impl ClientStatsData {
-    pub fn new(sys: &system::System) -> Self {
+    pub fn new(time: &SteadyClock) -> Self {
         Self {
             fps: FixedI64::from_num(60.0),
-            last_frame_time: sys.time_get(),
+            last_frame_time: time.now(),
         }
     }
 
@@ -269,7 +269,7 @@ pub struct ClientStats {
     dbg: DebugHudData,
     pub ui: UiContainer,
 
-    sys: Arc<dyn SystemTimeInterface>,
+    time: SteadyClock,
 
     pub backend_handle: GraphicsBackendHandle,
     pub canvas_handle: GraphicsCanvasHandle,
@@ -280,7 +280,7 @@ pub struct ClientStats {
 impl ClientStats {
     pub fn new(
         graphics: &Graphics,
-        sys: &system::System,
+        time: &SteadyClock,
         texture_memory_usage: Arc<AtomicU64>,
         buffer_memory_usage: Arc<AtomicU64>,
         stream_memory_usage: Arc<AtomicU64>,
@@ -291,7 +291,7 @@ impl ClientStats {
         ui.set_main_panel_color(&Color32::TRANSPARENT);
         ui.ui_state.is_ui_open = false;
         Self {
-            stats: ClientStatsData::new(sys),
+            stats: ClientStatsData::new(time),
             dbg: DebugHudData::new(
                 texture_memory_usage,
                 buffer_memory_usage,
@@ -299,7 +299,7 @@ impl ClientStats {
                 staging_memory_usage,
             ),
             ui,
-            sys: sys.time.clone(),
+            time: time.clone(),
             backend_handle: graphics.backend_handle.clone(),
             canvas_handle: graphics.canvas_handle.clone(),
             stream_handle: graphics.stream_handle.clone(),
@@ -352,7 +352,7 @@ impl ClientStats {
                     Self::render_connection_issues(ui);
                 }
             },
-            &mut UiRenderPipe::new(self.sys.time_get(), &mut ()),
+            &mut UiRenderPipe::new(self.time.now(), &mut ()),
             Default::default(),
             false,
         );

@@ -1,8 +1,8 @@
 use std::path::PathBuf;
-use std::sync::Arc;
+// no Arc needed in this module interface
 
 use app::NativeApp;
-use base::system::SystemTime;
+use base::steady_clock::SteadyClock;
 pub use native_display::NativeDisplayBackend;
 use winit::monitor::MonitorHandle;
 
@@ -143,7 +143,7 @@ pub struct NativeCreateOptions<'a> {
     pub do_bench: bool,
     pub dbg_input: bool,
     pub title: String,
-    pub sys: &'a Arc<SystemTime>,
+    pub time: &'a SteadyClock,
     pub start_arguments: Vec<String>,
     pub window: NativeWindowOptions,
 }

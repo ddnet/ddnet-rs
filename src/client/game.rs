@@ -15,7 +15,6 @@ use base::{
     hash::Hash,
     linked_hash_map_view::FxLinkedHashMap,
     network_string::{NetworkReducedAsciiString, NetworkString},
-    system::SystemTimeInterface,
 };
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use client_accounts::accounts::Accounts;
@@ -140,7 +139,7 @@ impl Game {
         auto_cleanup: DisconnectAutoCleanup,
     ) -> anyhow::Result<Self> {
         let servers = connect.browser_data.list();
-        let time_now = base.sys.time.time_get();
+        let time_now = base.time.now();
 
         let server_cert = connect.server_cert.clone();
         let http = io.http.clone();
@@ -239,7 +238,7 @@ impl Game {
         match QuinnNetwork::init_client(
             None,
             game_event_generator_client.clone(),
-            &base.sys,
+            &base.time,
             NetworkClientInitOptions::new(
                 if config.dbg.untrusted_cert {
                     NetworkClientCertCheckMode::DisableCheck
@@ -278,7 +277,7 @@ impl Game {
                     network: network_client,
                     game_event_generator_client,
                     has_new_events_client,
-                    server_connect_time: base.sys.time_get(),
+                    server_connect_time: base.time.now(),
                 },
                 connect,
                 auto_cleanup,
@@ -339,7 +338,7 @@ impl Game {
                 &base.sound,
                 &base.graphics,
                 &base.graphics_backend,
-                &base.sys,
+                &base.time,
                 "map/maps".as_ref(),
                 map,
                 Some(*map_blake3_hash),
@@ -616,7 +615,7 @@ impl Game {
 
                         replay,
 
-                        game_data: GameData::new(base.sys.time_get(), prediction_timer, local),
+                        game_data: GameData::new(base.time.now(), prediction_timer, local),
 
                         events: events_pool.new(),
                         map_votes_loaded: Default::default(),
@@ -968,7 +967,7 @@ impl Game {
                             .log("Got first snapshot, client fully connected.");
                         // set the first ping based on the intial packets,
                         // later prefer the network stats
-                        let last_game_tick = pipe.sys.time_get()
+                        let last_game_tick = pipe.time.now()
                             - *overhead_time
                             - game.game_data.prediction_timer.pred_max_smoothing(
                                 Duration::from_nanos(
