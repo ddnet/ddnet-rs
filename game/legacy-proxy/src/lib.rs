@@ -686,6 +686,16 @@ impl Client {
 }
 
 impl Client {
+    fn ping_id_to_sys_msg(id: u128) -> system::PingEx {
+        system::PingEx {
+            id: uuid::Uuid::from_u128(id),
+        }
+    }
+
+    fn sys_msg_to_ping_id(msg: system::PongEx) -> u128 {
+        msg.id.as_u128()
+    }
+
     fn player_info_mut<'a>(
         id: i32,
         base: &ClientBase,
@@ -2237,7 +2247,8 @@ impl Client {
                 socket.server_pid = pid;
             }
             (_, SystemOrGame::System(System::PongEx(pong_ex))) => {
-                if let Some(last_time) = base.last_pings.remove(&pong_ex.id.as_u128()) {
+                if let Some(last_time) = base.last_pings.remove(&Self::sys_msg_to_ping_id(pong_ex))
+                {
                     base.last_pong = Some(time.now().saturating_sub(last_time));
                 }
             }
@@ -4697,11 +4708,7 @@ impl Client {
             if let Some(player) = self.players.values_mut().next()
                 && matches!(player.data.state, ClientState::Ingame)
             {
-                let pkt = system::PingEx {
-                    id: hex::encode(self.base.last_ping_uuid.to_ne_bytes())
-                        .parse()
-                        .unwrap(),
-                };
+                let pkt = Self::ping_id_to_sys_msg(self.base.last_ping_uuid);
                 player.socket.sends(System::PingEx(pkt));
                 player.socket.flush();
 
@@ -4726,4 +4733,22 @@ pub fn proxy_run(
     log: ConnectingLog,
 ) -> anyhow::Result<LegacyProxy> {
     Client::run(io, time, addr, log)
+}
+
+#[cfg(test)]
+mod test {
+    use libtw2_gamenet_ddnet::msg::system;
+
+    use crate::Client;
+
+    #[test]
+    fn uuid_convert() {
+        let id = 1u128;
+        let ping_ex = Client::ping_id_to_sys_msg(id);
+
+        assert_eq!(
+            Client::sys_msg_to_ping_id(system::PongEx { id: ping_ex.id }),
+            id
+        );
+    }
 }
