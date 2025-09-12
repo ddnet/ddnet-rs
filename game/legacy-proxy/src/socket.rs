@@ -1,4 +1,6 @@
+use anyhow::anyhow;
 use base_io::{io::Io, runtime::IoRuntimeTask};
+use futures::FutureExt;
 use libtw2_net::{Timestamp, net::Callback};
 use rand::RngCore as _;
 use std::{error, fmt, future, io, net::SocketAddr, sync::Arc, time::Instant};
@@ -75,25 +77,47 @@ impl Socket {
             let (sender, receiver) = channel::<(Vec<u8>, SocketAddr)>(4096);
             let recv_task = io
                 .rt
-                .spawn(async move {
-                    let mut b = Vec::with_capacity(4096);
+                .spawn(
+                    async move {
+                        let mut b = Vec::with_capacity(4096);
 
-                    while let Ok((_, addr)) = s.recv_buf_from(&mut b).await {
-                        sender.send((b.clone(), addr)).await?;
-                        b.clear();
+                        while let Ok((_, addr)) = s.recv_buf_from(&mut b).await {
+                            sender.send((b.clone(), addr)).await?;
+                            b.clear();
+                        }
+
+                        anyhow::Ok(())
                     }
-
-                    anyhow::Ok(())
-                })
+                    .inspect(|r| match r {
+                        Ok(()) => {
+                            log::info!("Proxy socket recv part closed");
+                        }
+                        Err(err) => {
+                            log::error!("recv failed: {err}");
+                        }
+                    }),
+                )
                 .abortable();
             // send
             let (sender, mut receiver_task) = channel::<Option<(Vec<u8>, SocketAddr)>>(4096);
-            let send_task = io.rt.spawn(async move {
-                while let Some(Some((pkt, addr))) = receiver_task.recv().await {
-                    socket.send_to(&pkt, addr).await?;
+            let send_task = io.rt.spawn(
+                async move {
+                    while let Some(Some((pkt, addr))) = receiver_task.recv().await {
+                        socket.send_to(&pkt, addr).await.map_err(|err| {
+                            anyhow!("Failed to send {} bytes to {addr}: {err}", pkt.len())
+                        })?;
+                    }
+                    anyhow::Ok(())
                 }
-                anyhow::Ok(())
-            });
+                .inspect(|r| match r {
+                    Ok(()) => {
+                        log::info!("Proxy socket sending part closed");
+                    }
+                    Err(err) => {
+                        log::error!("sending failed: {err}");
+                    }
+                }),
+            );
             AsyncSocket {
                 sender,
                 receiver: Arc::new(Mutex::new(receiver)),

@@ -28,13 +28,14 @@ libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 # stuck for compat with libtw2
 arrayvec = "=0.5.2"
+# stuck for compat with libtw2
+uuid = "=0.8.2"
 bincode = { version = "2.0.1", features = ["serde"] }
 hexdump = "0.1.2"
 rand = { version = "0.9.2", features = ["thread_rng"] }
 sha2 = "0.10.9"
 
 futures = "0.3.31"
-hex = "0.4.3"
 log = "0.4.28"
 rayon = "1.11.0"
 tokio = { version = "1.47.1", features = [

@@ -5901,7 +5901,6 @@ dependencies = [
  "game-interface",
  "game-network",
  "game-server",
- "hex",
  "hexdump",
  "legacy-map",
  "libtw2-gamenet-ddnet",
@@ -5917,6 +5916,7 @@ dependencies = [
  "rayon",
  "sha2",
  "tokio",
+ "uuid 0.8.2",
  "vanilla",
  "warn",
 ]

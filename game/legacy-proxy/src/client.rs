@@ -86,7 +86,8 @@ impl SocketClient {
     pub fn disconnect(&mut self, reason: &[u8]) {
         self.net
             .disconnect(&mut self.socket, self.server_pid, reason)
-            .unwrap();
+            .map_err(|err| err.to_string())
+            .expect("disconnecting failed:");
     }
     fn send(&mut self, chunk: Chunk) {
         self.net.send(&mut self.socket, chunk).unwrap();
@@ -97,7 +98,10 @@ impl SocketClient {
             .unwrap();
     }
     pub fn flush(&mut self) {
-        self.net.flush(&mut self.socket, self.server_pid).unwrap();
+        self.net
+            .flush(&mut self.socket, self.server_pid)
+            .map_err(|err| err.to_string())
+            .expect("flushing failed:");
     }
 
     fn sends_impl(msg: System, vital: bool, socket_client: &mut SocketClient) {
