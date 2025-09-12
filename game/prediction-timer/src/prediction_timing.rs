@@ -475,8 +475,9 @@ impl PredictionTimer {
 
         let fps = 1.0 / frame_time;
 
-        // 1 ms
-        const HUNDERED_PERCENT_PER_S: f64 = 0.001;
+        // 500 ms, basically ratio a lag compansates per call
+        const HUNDERED_PERCENT_PER_S: f64 = 0.5;
+        // basically the minimum fps we support
         const HUNDERED_PERCENT_PER_FPS: f64 = 50.0;
         let perc_adjust = self.timing.smooth_adjustment_time.abs() / HUNDERED_PERCENT_PER_S;
         let perc_fps_adjust = HUNDERED_PERCENT_PER_FPS / fps;
