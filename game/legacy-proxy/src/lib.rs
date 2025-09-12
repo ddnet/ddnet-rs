@@ -254,6 +254,11 @@ impl ServerInfoTy {
     }
 }
 
+struct InputToAck {
+    msg: MsgSvInputAck,
+    was_acked: bool,
+}
+
 struct ClientBase {
     vanilla_snap_pool: SnapshotPool,
     stage_0_id: StageId,
@@ -282,7 +287,7 @@ struct ClientBase {
 
     legacy_id_in_stage_id: HashMap<i32, StageId>,
 
-    inputs_to_ack: BTreeMap<i32, (MsgSvInputAck, bool)>,
+    inputs_to_ack: BTreeMap<i32, InputToAck>,
 
     events: events::GameEvents,
     event_id_generator: EventIdGenerator,
@@ -2985,7 +2990,8 @@ impl Client {
                             .first_key_value()
                             .is_some_and(|(&intended_tick, _)| intended_tick <= base.ack_input_tick)
                         {
-                            let (_, (mut inp, _)) = base.inputs_to_ack.pop_first().unwrap();
+                            let (_, InputToAck { msg: mut inp, .. }) =
+                                base.inputs_to_ack.pop_first().unwrap();
                             inp.logic_overhead = cur_time.saturating_sub(inp.logic_overhead);
                             inputs_to_ack.push(inp);
                         }
@@ -3104,7 +3110,13 @@ impl Client {
             (_, SystemOrGame::System(System::InputTiming(timing))) => {
                 // adjust timing information for input acks
                 base.ack_input_tick = base.ack_input_tick.max(timing.input_pred_tick);
-                for (_, (inp, was_acked)) in base
+                for (
+                    _,
+                    InputToAck {
+                        msg: inp,
+                        was_acked,
+                    },
+                ) in base
                     .inputs_to_ack
                     .iter_mut()
                     .filter(|&(&intended_tick, _)| intended_tick <= timing.input_pred_tick)
@@ -3116,11 +3128,7 @@ impl Client {
                         );
                         // For now use ping pong for time calculations
                         if let Some(pong_time) = base.last_pong {
-                            const PREDICTION_EXTRA_MARGIN: Duration = Duration::from_millis(5);
-                            inp.logic_overhead = inp
-                                .logic_overhead
-                                .saturating_add(pong_time)
-                                .saturating_add(PREDICTION_EXTRA_MARGIN);
+                            inp.logic_overhead = inp.logic_overhead.saturating_add(pong_time);
                         } else {
                             inp.logic_overhead = time.now();
                         }
@@ -4191,14 +4199,14 @@ impl Client {
                                 self.base
                                     .inputs_to_ack
                                     .entry(highest_intended_tick)
-                                    .or_insert((
-                                        MsgSvInputAck {
+                                    .or_insert(InputToAck {
+                                        msg: MsgSvInputAck {
                                             id,
                                             // reuse this field this one time
                                             logic_overhead: timestamp,
                                         },
-                                        false,
-                                    ));
+                                        was_acked: false,
+                                    });
                             }
 
                             for &MsgClSnapshotAck { snap_id } in snap_ack.iter() {
