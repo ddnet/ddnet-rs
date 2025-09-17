@@ -2318,6 +2318,10 @@ impl VulkanBackend {
 
         self.window_width = cmd.width;
         self.window_height = cmd.height;
+        #[cfg(not(target_os = "macos"))]
+        {
+            self.recreate_swap_chain = true;
+        }
 
         Ok(())
     }
