@@ -133,8 +133,10 @@ impl LegacyRulesLoading {
                             index_rules: Default::default(),
                         }],
                     };
-                    configs.insert(name.clone(), new_conf);
-                    cur_conf_name = Some(name);
+                    let cur_count = configs.len();
+                    let full_name = format!("%{cur_count}%{name}");
+                    configs.insert(full_name.clone(), new_conf);
+                    cur_conf_name = Some(full_name);
                     cur_run_index = Some(0);
                 } else if let Some(cur_conf) = line
                     .starts_with("NewRun")

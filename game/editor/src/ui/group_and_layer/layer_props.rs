@@ -679,15 +679,33 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                             ui.label("Select auto mapper rule");
                             ComboBox::new("auto-mapper-rule-selector-tile-layer", "")
                                 .selected_text(
-                                    layer.user.auto_mapper_rule.as_deref().unwrap_or("None"),
+                                    pipe.user_data
+                                        .auto_mapper
+                                        .rule_display_name_reg
+                                        .replace_all(
+                                            layer
+                                                .user
+                                                .auto_mapper_rule
+                                                .as_deref()
+                                                .unwrap_or("None"),
+                                            "",
+                                        ),
                                 )
                                 .show_ui(ui, |ui| {
                                     let values: BTreeMap<_, _> =
                                         rule.rules.iter().map(|(k, (_, v))| (k, v)).collect();
+
                                     for (rule, ty) in values {
+                                        let rule_display_name = pipe
+                                            .user_data
+                                            .auto_mapper
+                                            .rule_display_name_reg
+                                            .replace_all(rule, "");
                                         let text = match ty {
-                                            ResourceHashTy::Hashed => format!("\u{23}{rule}"),
-                                            ResourceHashTy::NoHash => rule.to_string(),
+                                            ResourceHashTy::Hashed => {
+                                                format!("\u{23}{rule_display_name}")
+                                            }
+                                            ResourceHashTy::NoHash => rule_display_name.to_string(),
                                         };
                                         if ui.button(text).clicked() {
                                             layer.user.auto_mapper_rule = Some(rule.clone());

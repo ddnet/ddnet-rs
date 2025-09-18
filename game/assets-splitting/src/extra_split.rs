@@ -50,9 +50,9 @@ pub fn split_06_extras(
     width: u32,
     height: u32,
 ) -> anyhow::Result<Extras06ConvertResult> {
-    if width % 16 != 0 {
+    if !width.is_multiple_of(16) {
         Err(anyhow!("width is not divisible by 16"))
-    } else if height % 16 != 0 {
+    } else if !height.is_multiple_of(16) {
         Err(anyhow!("height is not divisible by 16"))
     } else {
         let full_width = width as usize * 4; // * 4 for RGBA

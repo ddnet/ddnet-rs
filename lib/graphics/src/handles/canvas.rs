@@ -194,7 +194,7 @@ pub mod canvas {
         pub fn canvas_aspect(&self) -> f32 {
             self.cur_dynamic_viewport
                 .as_ref()
-                .map(|vp| (vp.width as f32 / vp.height as f32))
+                .map(|vp| vp.width as f32 / vp.height as f32)
                 .unwrap_or(self.window_canvas_aspect())
         }
 

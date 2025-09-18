@@ -1783,7 +1783,7 @@ impl CDatafileWrapper {
                     height = new_height;
                 }
                 if dilate {
-                    if in_tile_layer_only && width % 16 == 0 && height % 16 == 0 {
+                    if in_tile_layer_only && width.is_multiple_of(16) && height.is_multiple_of(16) {
                         let sub_width = width / 16;
                         let sub_height = height / 16;
                         for y in 0..16 {

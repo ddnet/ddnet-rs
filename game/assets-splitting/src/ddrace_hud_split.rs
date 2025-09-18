@@ -58,9 +58,9 @@ pub fn split_ddrace_hud(
     width: u32,
     height: u32,
 ) -> anyhow::Result<DdraceHudConvertResult> {
-    if width % 16 != 0 {
+    if !width.is_multiple_of(16) {
         Err(anyhow!("width is not divisible by 16"))
-    } else if height % 16 != 0 {
+    } else if !height.is_multiple_of(16) {
         Err(anyhow!("height is not divisible by 16"))
     } else {
         let mut jump: Vec<u8> = Default::default();

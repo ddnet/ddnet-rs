@@ -332,7 +332,7 @@ impl GraphicsContainersAPI {
             && (quad_offset as u64 + quad_num as u64) <= self.index_buffer_quad_count;
 
         // common min alignment
-        assert!(byte_offset % allowed_alignment.get() == 0);
+        assert!(byte_offset.is_multiple_of(allowed_alignment.get()));
 
         // make sure the buffer is big enough
         let number_of_quads = quad_offset.checked_add(quad_num).unwrap();
@@ -364,7 +364,7 @@ impl GraphicsContainersAPI {
             && (quad_offset as u64 + quad_num as u64) <= self.index_buffer_quad_count;
 
         // common min alignment
-        assert!(allowed_alignment.get() % 2 == 0);
+        assert!(allowed_alignment.get().is_multiple_of(2));
 
         // make sure the shader storage is big enough
         let number_of_quads = quad_offset.checked_add(quad_num).unwrap();
@@ -384,7 +384,7 @@ impl GraphicsContainersAPI {
         uniform_offset_before_commands: usize,
     ) {
         *uniform_instance += uniform_offset_before_commands;
-        assert!(byte_size_of_single_instance % 4 == 0);
+        assert!(byte_size_of_single_instance.is_multiple_of(4));
         assert!(
             stream_handle.stream_data().uniform_instance_count() > *uniform_instance
                 && stream_handle

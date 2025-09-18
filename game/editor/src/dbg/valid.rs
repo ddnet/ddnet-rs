@@ -50,13 +50,13 @@ use crate::{
 
 fn move_group_valid(map: &EditorMap) -> Vec<EditorAction> {
     let mut old_is_background = false;
-    let new_is_background = rand::rng().next_u64() % 2 == 0;
+    let new_is_background = rand::rng().next_u64().is_multiple_of(2);
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
     } else if !map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         old_is_background = true;
     } else if !map.groups.background.is_empty() && !map.groups.foreground.is_empty() {
-        old_is_background = rand::rng().next_u64() % 2 == 0;
+        old_is_background = rand::rng().next_u64().is_multiple_of(2);
     }
 
     let old_groups = if old_is_background {
@@ -95,8 +95,8 @@ fn move_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
         old_is_background = true;
         new_is_background = true;
     } else if !map.groups.background.is_empty() && !map.groups.foreground.is_empty() {
-        old_is_background = rand::rng().next_u64() % 2 == 0;
-        new_is_background = rand::rng().next_u64() % 2 == 0;
+        old_is_background = rand::rng().next_u64().is_multiple_of(2);
+        new_is_background = rand::rng().next_u64().is_multiple_of(2);
     }
 
     if map.groups.background.iter().any(|g| !g.layers.is_empty())
@@ -599,14 +599,14 @@ pub(crate) fn quad_layer_add_quads_valid(map: &EditorMap) -> Vec<EditorAction> {
 
                 for _ in 0..(rand::rng().next_u64() % 100) + 1 {
                     res.push(Quad {
-                        color_anim: if rand::rng().next_u64() % 2 == 0 {
+                        color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                             None
                         } else {
                             (!map.animations.color.is_empty()).then(|| {
                                 rand::rng().next_u64() as usize % map.animations.color.len()
                             })
                         },
-                        pos_anim: if rand::rng().next_u64() % 2 == 0 {
+                        pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                             None
                         } else {
                             (!map.animations.pos.is_empty())
@@ -691,14 +691,14 @@ pub(crate) fn sound_layer_add_sounds_valid(map: &EditorMap) -> Vec<EditorAction>
                         panning: Default::default(),
                         time_delay: Default::default(),
                         falloff: Default::default(),
-                        pos_anim: if rand::rng().next_u64() % 2 == 0 {
+                        pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                             None
                         } else {
                             (!map.animations.pos.is_empty())
                                 .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
                         },
                         pos_anim_offset: Default::default(),
-                        sound_anim: if rand::rng().next_u64() % 2 == 0 {
+                        sound_anim: if rand::rng().next_u64().is_multiple_of(2) {
                             None
                         } else {
                             (!map.animations.sound.is_empty()).then(|| {
@@ -892,7 +892,7 @@ pub(crate) fn add_tile_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                             height: (h as u16).try_into().unwrap(),
                             color: Default::default(),
                             high_detail: Default::default(),
-                            color_anim: if rand::rng().next_u64() % 2 == 0 {
+                            color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                                 None
                             } else {
                                 (!map.animations.color.is_empty()).then(|| {
@@ -900,7 +900,7 @@ pub(crate) fn add_tile_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                                 })
                             },
                             color_anim_offset: Default::default(),
-                            image_array: if rand::rng().next_u64() % 2 == 0 {
+                            image_array: if rand::rng().next_u64().is_multiple_of(2) {
                                 None
                             } else {
                                 (!map.resources.image_arrays.is_empty()).then(|| {
@@ -943,7 +943,7 @@ pub(crate) fn add_quad_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                     index,
                     layer: MapLayerQuad {
                         attr: MapLayerQuadsAttrs {
-                            image: if rand::rng().next_u64() % 2 == 0 {
+                            image: if rand::rng().next_u64().is_multiple_of(2) {
                                 None
                             } else {
                                 (!map.resources.images.is_empty()).then(|| {
@@ -986,7 +986,7 @@ pub fn add_sound_layer_valid(map: &EditorMap) -> Vec<EditorAction> {
                     index,
                     layer: MapLayerSound {
                         attr: MapLayerSoundAttrs {
-                            sound: if rand::rng().next_u64() % 2 == 0 {
+                            sound: if rand::rng().next_u64().is_multiple_of(2) {
                                 None
                             } else {
                                 (!map.resources.sounds.is_empty()).then(|| {
@@ -1358,7 +1358,7 @@ fn tile_physics_layer_replace_tiles_valid(map: &EditorMap) -> Vec<EditorAction> 
 }
 
 fn add_group_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let is_background = (rand::rng().next_u64() % 2) == 0;
+    let is_background = rand::rng().next_u64().is_multiple_of(2);
 
     let groups = if is_background {
         &map.groups.background
@@ -1386,7 +1386,7 @@ fn add_group_valid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn rem_group_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let mut is_background = (rand::rng().next_u64() % 2) == 0;
+    let mut is_background = rand::rng().next_u64().is_multiple_of(2);
 
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
@@ -1414,7 +1414,7 @@ fn rem_group_valid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn change_group_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let mut is_background = (rand::rng().next_u64() % 2) == 0;
+    let mut is_background = rand::rng().next_u64().is_multiple_of(2);
 
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
@@ -1445,7 +1445,7 @@ fn change_group_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
     })]
 }
 fn change_group_name_valid(map: &EditorMap) -> Vec<EditorAction> {
-    let mut is_background = (rand::rng().next_u64() % 2) == 0;
+    let mut is_background = rand::rng().next_u64().is_multiple_of(2);
 
     if map.groups.background.is_empty() && map.groups.foreground.is_empty() {
         return Default::default();
@@ -1560,7 +1560,7 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                                 height: (h as u16).try_into().unwrap(),
                                 color: Default::default(),
                                 high_detail: Default::default(),
-                                color_anim: if rand::rng().next_u64() % 2 == 0 {
+                                color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                                     None
                                 } else {
                                     (!map.animations.color.is_empty()).then(|| {
@@ -1568,7 +1568,7 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                                     })
                                 },
                                 color_anim_offset: Default::default(),
-                                image_array: if rand::rng().next_u64() % 2 == 0 {
+                                image_array: if rand::rng().next_u64().is_multiple_of(2) {
                                     None
                                 } else {
                                     (!map.resources.image_arrays.is_empty()).then(|| {
@@ -1589,7 +1589,7 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                         layer_index: act.old_layer,
                         old_attr: layer.layer.attr,
                         new_attr: MapLayerQuadsAttrs {
-                            image: if rand::rng().next_u64() % 2 == 0 {
+                            image: if rand::rng().next_u64().is_multiple_of(2) {
                                 None
                             } else {
                                 (!map.resources.images.is_empty()).then(|| {
@@ -1607,7 +1607,7 @@ pub(crate) fn change_layer_design_attr_valid(map: &EditorMap) -> Vec<EditorActio
                         layer_index: act.old_layer,
                         old_attr: layer.layer.attr,
                         new_attr: MapLayerSoundAttrs {
-                            sound: if rand::rng().next_u64() % 2 == 0 {
+                            sound: if rand::rng().next_u64().is_multiple_of(2) {
                                 None
                             } else {
                                 (!map.resources.sounds.is_empty()).then(|| {
@@ -1694,14 +1694,14 @@ pub(crate) fn change_quad_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
             points: Default::default(),
             colors: Default::default(),
             tex_coords: Default::default(),
-            pos_anim: if rand::rng().next_u64() % 2 == 0 {
+            pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                 None
             } else {
                 (!map.animations.pos.is_empty())
                     .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
             },
             pos_anim_offset: Default::default(),
-            color_anim: if rand::rng().next_u64() % 2 == 0 {
+            color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                 None
             } else {
                 (!map.animations.color.is_empty())
@@ -1753,14 +1753,14 @@ pub(crate) fn change_sound_attr_valid(map: &EditorMap) -> Vec<EditorAction> {
             panning: Default::default(),
             time_delay: Default::default(),
             falloff: Default::default(),
-            pos_anim: if rand::rng().next_u64() % 2 == 0 {
+            pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                 None
             } else {
                 (!map.animations.pos.is_empty())
                     .then(|| rand::rng().next_u64() as usize % map.animations.pos.len())
             },
             pos_anim_offset: Default::default(),
-            sound_anim: if rand::rng().next_u64() % 2 == 0 {
+            sound_anim: if rand::rng().next_u64().is_multiple_of(2) {
                 None
             } else {
                 (!map.animations.sound.is_empty())
