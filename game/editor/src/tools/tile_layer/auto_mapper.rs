@@ -30,6 +30,7 @@ use map::{
     types::NonZeroU16MinusOne,
 };
 use math::math::{Rng, vector::ivec2};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -603,6 +604,8 @@ pub struct TileLayerAutoMapper {
     pub selected_grid: Option<ivec2>,
     pub new_rule_name: String,
 
+    pub rule_display_name_reg: Regex,
+
     // ui shown
     pub active: bool,
     pub window_rect: Rect,
@@ -634,6 +637,8 @@ impl TileLayerAutoMapper {
             active_resource: None,
             active_rule: None,
             active: false,
+
+            rule_display_name_reg: Regex::new(r"%.*?%").unwrap(),
 
             window_rect: Rect::from_min_size(Default::default(), vec2(50.0, 50.0)),
 

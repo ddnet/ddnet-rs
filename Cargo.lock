@@ -3404,6 +3404,7 @@ dependencies = [
  "pool",
  "rand 0.9.2",
  "rayon",
+ "regex",
  "rustc-hash 2.1.1",
  "scan_fmt",
  "serde",
