@@ -884,7 +884,7 @@ pub mod tests {
             let cur_events = game_event_generator_server
                 .bench_total
                 .load(std::sync::atomic::Ordering::SeqCst);
-            if cur_events % 1000 == 0 {
+            if cur_events.is_multiple_of(1000) {
                 println!(
                     "waiting for server: {}/{}",
                     cur_events,

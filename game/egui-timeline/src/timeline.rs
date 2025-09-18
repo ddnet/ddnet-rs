@@ -640,7 +640,7 @@ impl Timeline {
                     {
                         let time = *point.time();
                         if let Some((c, outgoing)) = pointer_in_point_radius(
-                            &|index| (time + bezier[index].out_tangent.x),
+                            &|index| time + bezier[index].out_tangent.x,
                             &mut point.channels().into_iter().enumerate().map(
                                 |(index, (_, _, _, c))| {
                                     c.value() + bezier[index].out_tangent.y.to_num::<f32>()
@@ -708,7 +708,7 @@ impl Timeline {
                                 // check if the pointer clicked on this point
                                 let time = *point.time();
                                 if let Some((bezier_index, outgoing)) = pointer_in_point_radius(
-                                    &|index| (time + bezier[index].out_tangent.x),
+                                    &|index| time + bezier[index].out_tangent.x,
                                     &mut point.channels().into_iter().enumerate().map(
                                         |(index, (_, _, _, c))| {
                                             c.value() + bezier[index].out_tangent.y.to_num::<f32>()

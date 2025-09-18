@@ -58,9 +58,9 @@ pub fn split_06_skin(
     width: u32,
     height: u32,
 ) -> anyhow::Result<Skin06ConvertResult> {
-    if width % 8 != 0 {
+    if !width.is_multiple_of(8) {
         Err(anyhow!("width is not divisible by 8"))
-    } else if height % 4 != 0 {
+    } else if !height.is_multiple_of(4) {
         Err(anyhow!("height is not divisible by 4"))
     } else {
         let mut body: Vec<u8> = Default::default();

@@ -42,7 +42,7 @@ pub fn stars_text(diff: MapDifficulty) -> String {
         added_stars += 1;
     }
     // eventually add half star
-    if diff.get() % 2 != 0 {
+    if !diff.get().is_multiple_of(2) {
         stars.push('\u{f5c0}');
         added_stars += 1;
     }

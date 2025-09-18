@@ -55,19 +55,19 @@ use super::valid::quad_layer_add_quads_valid;
 
 fn move_group_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::MoveGroup(ActMoveGroup {
-        old_is_background: rand::rng().next_u64() % 2 == 0,
+        old_is_background: rand::rng().next_u64().is_multiple_of(2),
         old_group: rand::rng().next_u64() as usize,
-        new_is_background: rand::rng().next_u64() % 2 == 0,
+        new_is_background: rand::rng().next_u64().is_multiple_of(2),
         new_group: rand::rng().next_u64() as usize,
     })]
 }
 
 fn move_layer_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::MoveLayer(ActMoveLayer {
-        old_is_background: rand::rng().next_u64() % 2 == 0,
+        old_is_background: rand::rng().next_u64().is_multiple_of(2),
         old_group: rand::rng().next_u64() as usize,
         old_layer: rand::rng().next_u64() as usize,
-        new_is_background: rand::rng().next_u64() % 2 == 0,
+        new_is_background: rand::rng().next_u64().is_multiple_of(2),
         new_group: rand::rng().next_u64() as usize,
         new_layer: rand::rng().next_u64() as usize,
     })]
@@ -82,20 +82,20 @@ fn add_img_invalid(_map: &EditorMap) -> Vec<EditorAction> {
                     .try_into()
                     .unwrap(),
                 meta: MapResourceMetaData {
-                    blake3_hash: if (rand::rng().next_u64() % 2) == 0 {
+                    blake3_hash: if rand::rng().next_u64().is_multiple_of(2) {
                         generate_hash_for(&INVALID_PNG)
-                    } else if (rand::rng().next_u64() % 2) == 0 {
+                    } else if rand::rng().next_u64().is_multiple_of(2) {
                         generate_hash_for(&VALID_PNG)
                     } else {
                         Default::default()
                     },
-                    ty: if (rand::rng().next_u64() % 2) == 0 {
+                    ty: if rand::rng().next_u64().is_multiple_of(2) {
                         "png".try_into().unwrap()
                     } else {
                         Default::default()
                     },
                 },
-                hq_meta: if (rand::rng().next_u64() % 2) == 0 {
+                hq_meta: if rand::rng().next_u64().is_multiple_of(2) {
                     None
                 } else {
                     Some(MapResourceMetaData {
@@ -104,7 +104,7 @@ fn add_img_invalid(_map: &EditorMap) -> Vec<EditorAction> {
                     })
                 },
             },
-            file: if (rand::rng().next_u64() % 2) == 0 {
+            file: if rand::rng().next_u64().is_multiple_of(2) {
                 VALID_PNG.to_vec()
             } else {
                 INVALID_PNG.to_vec()
@@ -123,18 +123,18 @@ fn add_img_2d_array_invalid(_map: &EditorMap) -> Vec<EditorAction> {
                     .try_into()
                     .unwrap(),
                 meta: MapResourceMetaData {
-                    blake3_hash: if (rand::rng().next_u64() % 2) == 0 {
+                    blake3_hash: if rand::rng().next_u64().is_multiple_of(2) {
                         generate_hash_for(&INVALID_PNG)
                     } else {
                         Default::default()
                     },
-                    ty: if (rand::rng().next_u64() % 2) == 0 {
+                    ty: if rand::rng().next_u64().is_multiple_of(2) {
                         "png".try_into().unwrap()
                     } else {
                         Default::default()
                     },
                 },
-                hq_meta: if (rand::rng().next_u64() % 2) == 0 {
+                hq_meta: if rand::rng().next_u64().is_multiple_of(2) {
                     None
                 } else {
                     Some(MapResourceMetaData {
@@ -143,7 +143,7 @@ fn add_img_2d_array_invalid(_map: &EditorMap) -> Vec<EditorAction> {
                     })
                 },
             },
-            file: if (rand::rng().next_u64() % 2) == 0 {
+            file: if rand::rng().next_u64().is_multiple_of(2) {
                 VALID_PNG.to_vec()
             } else {
                 INVALID_PNG.to_vec()
@@ -208,11 +208,13 @@ fn rem_img_2d_array_invalid(map: &EditorMap) -> Vec<EditorAction> {
 fn layer_change_image_index_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::LayerChangeImageIndex(
         ActLayerChangeImageIndex {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
-            old_index: (rand::rng().next_u64() % 2 == 0).then_some(rand::rng().next_u64() as usize),
-            new_index: (rand::rng().next_u64() % 2 == 0).then_some(rand::rng().next_u64() as usize),
+            old_index: (rand::rng().next_u64().is_multiple_of(2))
+                .then_some(rand::rng().next_u64() as usize),
+            new_index: (rand::rng().next_u64().is_multiple_of(2))
+                .then_some(rand::rng().next_u64() as usize),
         },
     )]
 }
@@ -220,18 +222,20 @@ fn layer_change_image_index_invalid(_map: &EditorMap) -> Vec<EditorAction> {
 fn layer_change_sound_index_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::LayerChangeSoundIndex(
         ActLayerChangeSoundIndex {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
-            old_index: (rand::rng().next_u64() % 2 == 0).then_some(rand::rng().next_u64() as usize),
-            new_index: (rand::rng().next_u64() % 2 == 0).then_some(rand::rng().next_u64() as usize),
+            old_index: (rand::rng().next_u64().is_multiple_of(2))
+                .then_some(rand::rng().next_u64() as usize),
+            new_index: (rand::rng().next_u64().is_multiple_of(2))
+                .then_some(rand::rng().next_u64() as usize),
         },
     )]
 }
 
 fn quad_layer_add_quads_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::QuadLayerAddQuads(mut act)) = quad_layer_add_quads_valid(map).pop()
         else {
             return Default::default();
@@ -244,7 +248,7 @@ fn quad_layer_add_quads_invalid(map: &EditorMap) -> Vec<EditorAction> {
     } else {
         vec![EditorAction::QuadLayerAddQuads(ActQuadLayerAddQuads {
             base: ActQuadLayerAddRemQuads {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 layer_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
@@ -264,7 +268,7 @@ fn quad_layer_add_quads_invalid(map: &EditorMap) -> Vec<EditorAction> {
 
 fn sound_layer_add_sounds_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::SoundLayerAddSounds(mut act)) =
             sound_layer_add_sounds_valid(map).pop()
         else {
@@ -278,7 +282,7 @@ fn sound_layer_add_sounds_invalid(map: &EditorMap) -> Vec<EditorAction> {
     } else {
         vec![EditorAction::SoundLayerAddSounds(ActSoundLayerAddSounds {
             base: ActSoundLayerAddRemSounds {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 layer_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
@@ -312,7 +316,7 @@ fn sound_layer_add_sounds_invalid(map: &EditorMap) -> Vec<EditorAction> {
 fn quad_layer_rem_quads_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::QuadLayerRemQuads(ActQuadLayerRemQuads {
         base: ActQuadLayerAddRemQuads {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
             index: rand::rng().next_u64() as usize,
@@ -332,7 +336,7 @@ fn quad_layer_rem_quads_invalid(_map: &EditorMap) -> Vec<EditorAction> {
 fn sound_layer_rem_sounds_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::SoundLayerRemSounds(ActSoundLayerRemSounds {
         base: ActSoundLayerAddRemSounds {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
             index: rand::rng().next_u64() as usize,
@@ -364,7 +368,7 @@ fn sound_layer_rem_sounds_invalid(_map: &EditorMap) -> Vec<EditorAction> {
 
 fn add_tile_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::AddTileLayer(mut act)) = add_tile_layer_valid(map).pop() else {
             return Default::default();
         };
@@ -374,7 +378,7 @@ fn add_tile_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
     } else {
         vec![EditorAction::AddTileLayer(ActAddTileLayer {
             base: ActAddRemTileLayer {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
                 layer: MapLayerTile {
@@ -387,13 +391,13 @@ fn add_tile_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
                             .unwrap(),
                         color: Default::default(),
                         high_detail: Default::default(),
-                        color_anim: if rand::rng().next_u64() % 2 == 0 {
+                        color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
                         },
                         color_anim_offset: Default::default(),
-                        image_array: if rand::rng().next_u64() % 2 == 0 {
+                        image_array: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -414,11 +418,11 @@ fn add_tile_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
 
 fn add_quad_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::AddQuadLayer(mut act)) = add_quad_layer_valid(map).pop() else {
             return Default::default();
         };
-        if rand::rng().next_u64() % 2 == 0 {
+        if rand::rng().next_u64().is_multiple_of(2) {
             act.base.layer.attr.image = Some(rand::rng().next_u64() as usize);
         } else {
             for q in act.base.layer.quads.iter_mut() {
@@ -430,12 +434,12 @@ fn add_quad_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
     } else {
         vec![EditorAction::AddQuadLayer(ActAddQuadLayer {
             base: ActAddRemQuadLayer {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
                 layer: MapLayerQuad {
                     attr: MapLayerQuadsAttrs {
-                        image: if rand::rng().next_u64() % 2 == 0 {
+                        image: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -452,11 +456,11 @@ fn add_quad_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
 
 fn add_sound_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::AddSoundLayer(mut act)) = add_sound_layer_valid(map).pop() else {
             return Default::default();
         };
-        if rand::rng().next_u64() % 2 == 0 {
+        if rand::rng().next_u64().is_multiple_of(2) {
             act.base.layer.attr.sound = Some(rand::rng().next_u64() as usize);
         } else {
             for q in act.base.layer.sounds.iter_mut() {
@@ -468,12 +472,12 @@ fn add_sound_layer_invalid(map: &EditorMap) -> Vec<EditorAction> {
     } else {
         vec![EditorAction::AddSoundLayer(ActAddSoundLayer {
             base: ActAddRemSoundLayer {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
                 layer: MapLayerSound {
                     attr: MapLayerSoundAttrs {
-                        sound: if rand::rng().next_u64() % 2 == 0 {
+                        sound: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -492,7 +496,7 @@ fn rem_design_layer_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![match rand::rng().next_u64() % 3 {
         0 => EditorAction::RemTileLayer(ActRemTileLayer {
             base: ActAddRemTileLayer {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
                 layer: MapLayerTile {
@@ -505,13 +509,13 @@ fn rem_design_layer_invalid(_map: &EditorMap) -> Vec<EditorAction> {
                             .unwrap(),
                         color: Default::default(),
                         high_detail: Default::default(),
-                        color_anim: if rand::rng().next_u64() % 2 == 0 {
+                        color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
                         },
                         color_anim_offset: Default::default(),
-                        image_array: if rand::rng().next_u64() % 2 == 0 {
+                        image_array: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -529,12 +533,12 @@ fn rem_design_layer_invalid(_map: &EditorMap) -> Vec<EditorAction> {
         }),
         1 => EditorAction::RemQuadLayer(ActRemQuadLayer {
             base: ActAddRemQuadLayer {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
                 layer: MapLayerQuad {
                     attr: MapLayerQuadsAttrs {
-                        image: if rand::rng().next_u64() % 2 == 0 {
+                        image: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -548,12 +552,12 @@ fn rem_design_layer_invalid(_map: &EditorMap) -> Vec<EditorAction> {
         }),
         2 => EditorAction::RemSoundLayer(ActRemSoundLayer {
             base: ActAddRemSoundLayer {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 index: rand::rng().next_u64() as usize,
                 layer: MapLayerSound {
                     attr: MapLayerSoundAttrs {
-                        sound: if rand::rng().next_u64() % 2 == 0 {
+                        sound: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -622,7 +626,7 @@ fn tile_layer_replace_tiles_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::TileLayerReplaceTiles(
         ActTileLayerReplaceTiles {
             base: ActTileLayerReplTilesBase {
-                is_background: rand::rng().next_u64() as usize % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 layer_index: rand::rng().next_u64() as usize,
                 old_tiles: vec![
@@ -706,7 +710,7 @@ fn tile_physics_layer_replace_tiles_invalid(_map: &EditorMap) -> Vec<EditorActio
 fn add_group_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::AddGroup(ActAddGroup {
         base: ActAddRemGroup {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             index: rand::rng().next_u64() as usize,
             group: MapGroup {
                 attr: MapGroupAttr {
@@ -730,7 +734,7 @@ fn rem_group_invalid(map: &EditorMap) -> Vec<EditorAction> {
 }
 
 fn change_group_attr_invalid(_map: &EditorMap) -> Vec<EditorAction> {
-    let is_background = (rand::rng().next_u64() % 2) == 0;
+    let is_background = rand::rng().next_u64().is_multiple_of(2);
     let index = rand::rng().next_u64() as usize;
 
     vec![EditorAction::ChangeGroupAttr(ActChangeGroupAttr {
@@ -749,7 +753,7 @@ fn change_group_attr_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     })]
 }
 fn change_group_name_invalid(_map: &EditorMap) -> Vec<EditorAction> {
-    let is_background = (rand::rng().next_u64() % 2) == 0;
+    let is_background = rand::rng().next_u64().is_multiple_of(2);
     let index = rand::rng().next_u64() as usize;
 
     vec![EditorAction::ChangeGroupName(ActChangeGroupName {
@@ -782,7 +786,7 @@ fn change_physics_group_attr_invalid(_map: &EditorMap) -> Vec<EditorAction> {
 
 fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(act) = change_layer_design_attr_valid(map).pop() else {
             return Default::default();
         };
@@ -809,7 +813,7 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                 let len = ((rand::rng().next_u64() % u8::MAX as u64) + 1) as usize;
                 Some(EditorAction::ChangeTileLayerDesignAttr(
                     ActChangeTileLayerDesignAttr {
-                        is_background: rand::rng().next_u64() % 2 == 0,
+                        is_background: rand::rng().next_u64().is_multiple_of(2),
                         group_index: rand::rng().next_u64() as usize,
                         layer_index: rand::rng().next_u64() as usize,
                         old_attr: MapTileLayerAttr {
@@ -817,13 +821,13 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                             height: (h as u16).try_into().unwrap(),
                             color: Default::default(),
                             high_detail: Default::default(),
-                            color_anim: if rand::rng().next_u64() % 2 == 0 {
+                            color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                                 Default::default()
                             } else {
                                 Some(rand::rng().next_u64() as usize)
                             },
                             color_anim_offset: Default::default(),
-                            image_array: if rand::rng().next_u64() % 2 == 0 {
+                            image_array: if rand::rng().next_u64().is_multiple_of(2) {
                                 Default::default()
                             } else {
                                 Some(rand::rng().next_u64() as usize)
@@ -834,13 +838,13 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                             height: (h as u16).try_into().unwrap(),
                             color: Default::default(),
                             high_detail: Default::default(),
-                            color_anim: if rand::rng().next_u64() % 2 == 0 {
+                            color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                                 Default::default()
                             } else {
                                 Some(rand::rng().next_u64() as usize)
                             },
                             color_anim_offset: Default::default(),
-                            image_array: if rand::rng().next_u64() % 2 == 0 {
+                            image_array: if rand::rng().next_u64().is_multiple_of(2) {
                                 Default::default()
                             } else {
                                 Some(rand::rng().next_u64() as usize)
@@ -852,11 +856,11 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                 ))
             }
             1 => Some(EditorAction::ChangeQuadLayerAttr(ActChangeQuadLayerAttr {
-                is_background: rand::rng().next_u64() % 2 == 0,
+                is_background: rand::rng().next_u64().is_multiple_of(2),
                 group_index: rand::rng().next_u64() as usize,
                 layer_index: rand::rng().next_u64() as usize,
                 old_attr: MapLayerQuadsAttrs {
-                    image: if rand::rng().next_u64() % 2 == 0 {
+                    image: if rand::rng().next_u64().is_multiple_of(2) {
                         Default::default()
                     } else {
                         Some(rand::rng().next_u64() as usize)
@@ -864,7 +868,7 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                     high_detail: Default::default(),
                 },
                 new_attr: MapLayerQuadsAttrs {
-                    image: if rand::rng().next_u64() % 2 == 0 {
+                    image: if rand::rng().next_u64().is_multiple_of(2) {
                         Default::default()
                     } else {
                         Some(rand::rng().next_u64() as usize)
@@ -874,11 +878,11 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
             })),
             2 => Some(EditorAction::ChangeSoundLayerAttr(
                 ActChangeSoundLayerAttr {
-                    is_background: rand::rng().next_u64() % 2 == 0,
+                    is_background: rand::rng().next_u64().is_multiple_of(2),
                     group_index: rand::rng().next_u64() as usize,
                     layer_index: rand::rng().next_u64() as usize,
                     old_attr: MapLayerSoundAttrs {
-                        sound: if rand::rng().next_u64() % 2 == 0 {
+                        sound: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -886,7 +890,7 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                         high_detail: Default::default(),
                     },
                     new_attr: MapLayerSoundAttrs {
-                        sound: if rand::rng().next_u64() % 2 == 0 {
+                        sound: if rand::rng().next_u64().is_multiple_of(2) {
                             Default::default()
                         } else {
                             Some(rand::rng().next_u64() as usize)
@@ -904,7 +908,7 @@ fn change_layer_design_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
 fn change_design_layer_name_invalid(_map: &EditorMap) -> Vec<EditorAction> {
     vec![EditorAction::ChangeDesignLayerName(
         ActChangeDesignLayerName {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
             old_name: Default::default(),
@@ -915,7 +919,7 @@ fn change_design_layer_name_invalid(_map: &EditorMap) -> Vec<EditorAction> {
 
 fn change_quad_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::ChangeQuadAttr(mut act)) = change_quad_attr_valid(map).pop() else {
             return Default::default();
         };
@@ -927,7 +931,7 @@ fn change_quad_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
         let index = rand::rng().next_u64() as usize;
 
         vec![EditorAction::ChangeQuadAttr(Box::new(ActChangeQuadAttr {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
             index,
@@ -935,13 +939,13 @@ fn change_quad_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                 points: Default::default(),
                 colors: Default::default(),
                 tex_coords: Default::default(),
-                pos_anim: if rand::rng().next_u64() % 2 == 0 {
+                pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
                 },
                 pos_anim_offset: Default::default(),
-                color_anim: if rand::rng().next_u64() % 2 == 0 {
+                color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
@@ -952,13 +956,13 @@ fn change_quad_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                 points: Default::default(),
                 colors: Default::default(),
                 tex_coords: Default::default(),
-                pos_anim: if rand::rng().next_u64() % 2 == 0 {
+                pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
                 },
                 pos_anim_offset: Default::default(),
-                color_anim: if rand::rng().next_u64() % 2 == 0 {
+                color_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
@@ -970,7 +974,7 @@ fn change_quad_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
 }
 fn change_sound_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
     // do a semi valid invalid action
-    if rand::rng().next_u64() % 2 == 0 {
+    if rand::rng().next_u64().is_multiple_of(2) {
         let Some(EditorAction::ChangeSoundAttr(mut act)) = change_sound_attr_valid(map).pop()
         else {
             return Default::default();
@@ -983,7 +987,7 @@ fn change_sound_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
         let index = rand::rng().next_u64() as usize;
 
         vec![EditorAction::ChangeSoundAttr(ActChangeSoundAttr {
-            is_background: rand::rng().next_u64() % 2 == 0,
+            is_background: rand::rng().next_u64().is_multiple_of(2),
             group_index: rand::rng().next_u64() as usize,
             layer_index: rand::rng().next_u64() as usize,
             index,
@@ -993,13 +997,13 @@ fn change_sound_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                 panning: Default::default(),
                 time_delay: Default::default(),
                 falloff: Default::default(),
-                pos_anim: if rand::rng().next_u64() % 2 == 0 {
+                pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
                 },
                 pos_anim_offset: Default::default(),
-                sound_anim: if rand::rng().next_u64() % 2 == 0 {
+                sound_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
@@ -1015,13 +1019,13 @@ fn change_sound_attr_invalid(map: &EditorMap) -> Vec<EditorAction> {
                 panning: Default::default(),
                 time_delay: Default::default(),
                 falloff: Default::default(),
-                pos_anim: if rand::rng().next_u64() % 2 == 0 {
+                pos_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
                 },
                 pos_anim_offset: Default::default(),
-                sound_anim: if rand::rng().next_u64() % 2 == 0 {
+                sound_anim: if rand::rng().next_u64().is_multiple_of(2) {
                     Default::default()
                 } else {
                     Some(rand::rng().next_u64() as usize)
@@ -1071,13 +1075,13 @@ fn change_tune_zone_invalid(_map: &EditorMap) -> Vec<EditorAction> {
         old_tunes: Default::default(),
         new_tunes: new_tunes.into_iter().collect(),
         old_enter_msg: None,
-        new_enter_msg: Some(if rand::rng().next_u64() % 2 == 0 {
+        new_enter_msg: Some(if rand::rng().next_u64().is_multiple_of(2) {
             "".into()
         } else {
             "test".into()
         }),
         old_leave_msg: None,
-        new_leave_msg: Some(if rand::rng().next_u64() % 2 == 0 {
+        new_leave_msg: Some(if rand::rng().next_u64().is_multiple_of(2) {
             "".into()
         } else {
             "test".into()

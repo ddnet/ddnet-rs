@@ -744,7 +744,7 @@ impl EditorServer {
                             if undo_redo < props.undo_redo_probability as u64
                                 || props.undo_redo_probability == u8::MAX
                             {
-                                let is_undo = (rand::rng().next_u64() % 2) == 0;
+                                let is_undo = rand::rng().next_u64().is_multiple_of(2);
                                 self.handle_client_ev(
                                     id,
                                     EditorEventClientToServer::Command(if is_undo {

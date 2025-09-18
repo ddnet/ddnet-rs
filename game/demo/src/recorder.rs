@@ -171,7 +171,7 @@ impl DemoRecorder {
         let mut mem = in_memory.map(std::io::Cursor::new);
         trait WriteSeek: Write + Seek {}
         impl<T: Write + Seek> WriteSeek for T {}
-        let mut file: Box<&mut (dyn WriteSeek)> = if let Some(tmp_file) = &mut tmp_file {
+        let mut file: Box<&mut dyn WriteSeek> = if let Some(tmp_file) = &mut tmp_file {
             Box::new(tmp_file.as_file_mut())
         } else if let Some(mem) = &mut mem {
             Box::new(mem)

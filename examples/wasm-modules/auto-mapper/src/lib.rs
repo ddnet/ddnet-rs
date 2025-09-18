@@ -69,7 +69,7 @@ impl AutoMapperInterface for AutoMapperGrassMain {
                     // set current tile to 32, which is grass top left
                     tiles[y_off + x].index = 32;
                     // just to show some randomness
-                    if rng.random_int() % 2 == 0 {
+                    if rng.random_int().is_multiple_of(2) {
                         tiles[y_off + x].index = 4;
                     }
                     tiles[y_off + x].flags = Default::default();

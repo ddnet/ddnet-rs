@@ -254,9 +254,9 @@ impl RenderMapLoading {
                     let conv_data: Vec<u8>;
 
                     if convert_width == 0
-                        || (convert_width % 16) != 0
+                        || !convert_width.is_multiple_of(16)
                         || convert_height == 0
-                        || (convert_height % 16) != 0
+                        || !convert_height.is_multiple_of(16)
                     {
                         let new_width =
                             std::cmp::max(highest_bit(convert_width as u32) as usize, 16);
