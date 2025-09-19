@@ -87,6 +87,7 @@ pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe
                         .fill(Color32::from_black_alpha(20))
                         .inner_margin(5)
                         .show(ui, |ui| {
+                            ui.style_mut().spacing.scroll.floating = false;
                             ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
                                 for log in logs {
                                     ui.label(
