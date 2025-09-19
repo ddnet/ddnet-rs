@@ -496,6 +496,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
         clearable_edit_field(ui, &mut search, Some(200.0), None);
     });
 
+    ui.style_mut().spacing.scroll.floating = false;
     ScrollArea::vertical()
         .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysVisible)
         .show(ui, |ui| {
