@@ -14,6 +14,7 @@ use std::{
     time::Duration,
 };
 use tokio::sync::Semaphore;
+use tracing::instrument;
 
 use anyhow::anyhow;
 use base::hash::{Hash, fmt_hash};
@@ -359,6 +360,7 @@ where
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn check_default_loaded(&mut self) {
         // make sure default is loaded
         if let Some(DefaultItem { task, notifier }) = self.default_item.take() {
@@ -908,6 +910,7 @@ where
         })
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn load(
         container_name: String,
         graphics_mt: GraphicsMultiThreaded,
@@ -963,6 +966,7 @@ where
     /// or if not exist, try to load it.
     /// Return default as long as the item is loading
     /// or if the item was not found.
+    #[instrument(level = "trace", skip_all)]
     pub fn get_or_default<Q>(&mut self, name: &Q) -> &A
     where
         Q: Borrow<ContainerKey>,
@@ -1059,6 +1063,7 @@ where
 
     /// Automatically uses the default key if the given key is `None`,
     /// otherwise identical to [`Container::get_or_default`].
+    #[instrument(level = "trace", skip_all)]
     pub fn get_or_default_opt<Q>(&mut self, name: Option<&Q>) -> &A
     where
         Q: Borrow<ContainerKey>,
@@ -1070,6 +1075,7 @@ where
     /// Checks if the given key is fully loaded.
     ///
     /// Note: does not trigger any kind of loading process.
+    #[instrument(level = "trace", skip_all)]
     pub fn contains_key<Q>(&self, name: &Q) -> bool
     where
         Q: Borrow<ContainerKey>,
@@ -1078,6 +1084,7 @@ where
     }
 
     /// Remove all items and load tasks, except for the default item.
+    #[instrument(level = "trace", skip_all)]
     pub fn clear_except_default(&mut self) {
         let default_item = self.items.remove(&self.default_key);
         self.items.clear();
@@ -1089,6 +1096,7 @@ where
     }
 
     /// Checks if default already loaded without initiating the loading process
+    #[instrument(level = "trace", skip_all)]
     pub fn is_default_loaded(&self) -> bool {
         self.default_item.is_none()
     }
@@ -1096,6 +1104,7 @@ where
     /// Sets the resource download url and if
     /// different to the last url, then also
     /// clears the container.
+    #[instrument(level = "trace", skip_all)]
     pub fn set_resource_download_url_and_clear_on_change(&mut self, url: Option<Url>) {
         if url != self.resource_server_download_url {
             self.resource_server_download_url = url;
@@ -1107,6 +1116,7 @@ where
     /// Returns `true` if the resource was loaded without a fail.
     ///
     /// This call is non-blocking.
+    #[instrument(level = "trace", skip_all)]
     pub fn is_loaded<Q>(&mut self, name: &Q) -> bool
     where
         Q: Borrow<ContainerKey>,
@@ -1127,6 +1137,7 @@ where
     /// `false` otherwise.
     ///
     /// This call is non-blocking.
+    #[instrument(level = "trace", skip_all)]
     pub fn is_loaded_or_failed<Q>(&mut self, name: &Q) -> bool
     where
         Q: Borrow<ContainerKey>,
@@ -1138,6 +1149,7 @@ where
     ///
     /// This is only useful for programs that don't run
     /// in real time.
+    #[instrument(level = "trace", skip_all)]
     pub fn blocking_wait_loaded<Q>(&mut self, name: &Q)
     where
         Q: Borrow<ContainerKey>,
@@ -1155,6 +1167,7 @@ where
     /// Get a list of entries that can potentially be loaded by this
     /// container.
     /// This also includes assets downloaded over http (if supported/active)
+    #[instrument(level = "trace", skip_all)]
     pub fn entries_index(&mut self) -> HashMap<String, ContainerItemIndexType> {
         let mut entries: HashMap<String, ContainerItemIndexType> = Default::default();
         // do http first so that on collision, disk overwrites the ContainerItemIndexType

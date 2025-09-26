@@ -60,6 +60,7 @@ use network::network::{
 use pool::{datatypes::PoolFxLinkedHashMap, mt_datatypes::PoolCow, pool::Pool};
 use rand::RngCore;
 use sql::database::{Database, DatabaseDetails};
+use tracing::instrument;
 use vanilla::{
     command_chain::{Command, CommandChain},
     sql::account_info::AccountInfo,
@@ -2715,6 +2716,7 @@ impl Server {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn dbg_game<'a>(
         config: &ConfigDebug,
         last_tick_time: &Duration,

@@ -24,4 +24,7 @@ render-game-wasm = { path = "../render-game-wasm" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 log = "0.4.28"
 rayon = "1.11.0"
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }
 wasmparser = "0.238.1"

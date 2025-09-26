@@ -31,6 +31,7 @@ use math::math::{length, normalize_pre_length, vector::dvec2};
 use input_binds::binds::{BindKey, Binds, MouseExtra};
 use native::native::NativeImpl;
 use native::native::{DeviceId, MouseButton, MouseScrollDelta, PhysicalKey, Window};
+use tracing::instrument;
 use ui_base::{types::UiState, ui::UiContainer};
 
 use crate::game::data::{GameData, LocalPlayerGameData};
@@ -154,24 +155,29 @@ impl InputHandling {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn new_frame(&mut self) {
         self.inp.take();
     }
 
     /// use this if you want to consume the input, all further calls will get `None` (for the current frame)
+    #[instrument(level = "trace", skip_all)]
     pub fn take_inp(&mut self) -> InputRes {
         self.inp.take()
     }
 
     /// clone the input and leave it there for other components
+    #[instrument(level = "trace", skip_all)]
     pub fn clone_inp(&mut self) -> InputCloneRes {
         self.inp.cloned()
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn collect_events(&mut self) {
         self.inp.egui = Some(self.state.egui_input_mut().take());
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn set_last_known_cursor(&mut self, config: &ConfigEngine, cursor: CursorIcon) {
         if !config.inp.dbg_mode {
             self.last_known_cursor = Some(cursor);
@@ -180,6 +186,7 @@ impl InputHandling {
 
     /// `apply_latest_known_cursor` is good if the ui that calls this
     /// actually doesn't have input focus right now
+    #[instrument(level = "trace", skip_all)]
     pub fn handle_platform_output(
         &mut self,
         native: &mut dyn NativeImpl,
@@ -784,6 +791,7 @@ impl InputHandling {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn handle_global_binds(
         &self,
         global_binds: &mut Binds<BindActionsHotkey>,
@@ -835,6 +843,7 @@ impl InputHandling {
     }
 
     /// returns a list of immediate events that are a result of an input
+    #[instrument(level = "trace", skip_all)]
     pub fn handle_player_binds(
         &mut self,
         game_data: &mut GameData,

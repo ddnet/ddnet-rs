@@ -1,8 +1,10 @@
 use egui::{Grid, Layout, Slider};
+use tracing::instrument;
 use ui_base::types::UiRenderPipe;
 
 use crate::main_menu::{settings::constants::SETTINGS_SUB_UI_PAGE_QUERY, user_data::UserData};
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
     let cur_sub = pipe
         .user_data

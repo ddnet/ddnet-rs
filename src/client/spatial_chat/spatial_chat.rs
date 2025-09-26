@@ -29,6 +29,7 @@ use sound::{
     scene_object::SceneObject, sound_listener::SoundListener, stream_object::StreamObject,
     types::StreamPlayProps,
 };
+use tracing::instrument;
 
 /// Keep alive RAII objects
 pub struct StreamEntity {
@@ -265,6 +266,7 @@ impl SpatialChat {
             .unwrap_or(SpatialChatGameWorldTy::ClientSideDeactivated)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn update(
         &mut self,
         scene: &SceneObject,

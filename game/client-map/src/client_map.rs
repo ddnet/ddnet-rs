@@ -32,6 +32,7 @@ use render_game_wasm::render::render_wasm_manager::{RENDER_MODS_PATH, RenderGame
 
 use game_base::{connecting_log::ConnectingLog, network::messages::GameModification};
 use sound::sound::SoundManager;
+use tracing::instrument;
 
 #[derive(Debug)]
 pub enum ClientGameStateModTask {
@@ -587,6 +588,7 @@ impl ClientMapLoading {
         false
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn continue_loading(&mut self) -> Option<&ClientMapFile> {
         let mut self_helper = ClientMapLoading::None;
         std::mem::swap(&mut self_helper, self);

@@ -6,9 +6,10 @@ use std::{
     time::Duration,
 };
 
-use egui::{Color32, FontDefinitions, Modifiers, TextureId, Vec2, ViewportId};
+use egui::{Color32, FontDefinitions, FullOutput, Modifiers, TextureId, Vec2, ViewportId};
 use graphics::handles::texture::texture::TextureContainer;
 use hiarc::Hiarc;
+use tracing::instrument;
 
 use crate::{custom_callback::CustomCallbackTrait, style::default_style};
 
@@ -64,6 +65,7 @@ pub struct UiCachedOutput {
 
 pub type RepaintListeners = Arc<RwLock<HashMap<ViewportId, Arc<AtomicBool>>>>;
 
+#[instrument(level = "trace", skip_all)]
 fn load_proportional_fonts(egui_ctx: &egui::Context, font_definitions: &FontDefinitions) {
     // by default only copy the proportional fonts
     let mut apply_font_definitions = FontDefinitions::empty();
@@ -235,12 +237,13 @@ impl UiContainer {
     }
 
     /// returns the canvas rect, full output and current zoom level
+    #[instrument(level = "trace", skip_all)]
     pub fn render<U>(
         &mut self,
         canvas_width: u32,
         canvas_height: u32,
         pixels_per_point: f32,
-        mut render_func: impl FnMut(&mut egui::Ui, &mut UiRenderPipe<U>, &mut UiState),
+        render_func: impl FnMut(&mut egui::Ui, &mut UiRenderPipe<U>, &mut UiState),
         pipe: &mut UiRenderPipe<U>,
         mut input: egui::RawInput,
         as_stencil: bool,
@@ -269,47 +272,63 @@ impl UiContainer {
         // first go through all events
         let mut hint_has_text_input = false;
         // scale the input events down
-        input.events.retain_mut(|ev| match ev {
-            egui::Event::PointerMoved(ev) => {
-                *ev = egui::pos2(ev.x, ev.y) / zoom_diff;
-                true
-            }
-            egui::Event::PointerButton {
-                pos,
-                button: _,
-                pressed: _,
-                modifiers: _,
-            } => {
-                *pos = egui::pos2(pos.x, pos.y) / zoom_diff;
-                true
-            }
-            egui::Event::Text(_) => {
-                hint_has_text_input = true;
-                true
-            }
-            egui::Event::MouseWheel {
-                delta:
-                    Vec2 {
-                        y: extra_zoom_level,
-                        ..
-                    },
-                modifiers: Modifiers { ctrl: true, .. },
-                ..
-            }
-            | egui::Event::Zoom(extra_zoom_level) => {
-                let incr_val = if *extra_zoom_level > 0.0 {
-                    if zoom_level < 1.5 { 0.25 } else { 0.5 }
-                } else if *extra_zoom_level < 0.0 {
-                    if zoom_level > 1.5 { -0.5 } else { -0.25 }
-                } else {
-                    0.0
-                };
-                zoom_level =
-                    (zoom_level + incr_val).clamp(pixels_per_point - 0.5, pixels_per_point + 1.0);
-                false
-            }
-            _ => true,
-        });
+        #[instrument(level = "trace", skip_all)]
+        fn scale_input(
+            input: &mut egui::RawInput,
+            pixels_per_point: f32,
+            zoom_diff: f32,
+            zoom_level: &mut f32,
+            hint_has_text_input: &mut bool,
+        ) {
+            input.events.retain_mut(|ev| match ev {
+                egui::Event::PointerMoved(ev) => {
+                    *ev = egui::pos2(ev.x, ev.y) / zoom_diff;
+                    true
+                }
+                egui::Event::PointerButton {
+                    pos,
+                    button: _,
+                    pressed: _,
+                    modifiers: _,
+                } => {
+                    *pos = egui::pos2(pos.x, pos.y) / zoom_diff;
+                    true
+                }
+                egui::Event::Text(_) => {
+                    *hint_has_text_input = true;
+                    true
+                }
+                egui::Event::MouseWheel {
+                    delta:
+                        Vec2 {
+                            y: extra_zoom_level,
+                            ..
+                        },
+                    modifiers: Modifiers { ctrl: true, .. },
+                    ..
+                }
+                | egui::Event::Zoom(extra_zoom_level) => {
+                    let incr_val = if *extra_zoom_level > 0.0 {
+                        if *zoom_level < 1.5 { 0.25 } else { 0.5 }
+                    } else if *extra_zoom_level < 0.0 {
+                        if *zoom_level > 1.5 { -0.5 } else { -0.25 }
+                    } else {
+                        0.0
+                    };
+                    *zoom_level = (*zoom_level + incr_val)
+                        .clamp(pixels_per_point - 0.5, pixels_per_point + 1.0);
+                    false
+                }
+                _ => true,
+            })
+        }
+        scale_input(
+            &mut input,
+            pixels_per_point,
+            zoom_diff,
+            &mut zoom_level,
+            &mut hint_has_text_input,
+        );
         self.ui_state.hint_had_input = hint_has_text_input;
 
         let screen_rect = egui::Rect {
@@ -370,13 +389,47 @@ impl UiContainer {
                 i.pixels_per_point = zoom_level;
             });
         }
-        (
-            screen_rect,
+
+        #[instrument(level = "trace", skip_all)]
+        fn egui_run<U>(
+            egui_ctx: &egui::Context,
+            input: egui::RawInput,
+            main_panel_color: &Color32,
+            mut render_func: impl FnMut(&mut egui::Ui, &mut UiRenderPipe<U>, &mut UiState),
+            pipe: &mut UiRenderPipe<U>,
+            ui_state: &mut UiState,
+        ) -> FullOutput {
             egui_ctx.run(input, |egui_ctx| {
                 egui_ctx.set_style(default_style());
-                gui_main_panel(&self.main_panel_color)
-                    .show(egui_ctx, |ui| render_func(ui, pipe, &mut self.ui_state));
-            }),
+                gui_main_panel(main_panel_color).show(egui_ctx, |ui| {
+                    #[instrument(level = "trace", skip_all)]
+                    fn render_wrapped<U>(
+                        ui: &mut egui::Ui,
+                        render_func: &mut dyn FnMut(
+                            &mut egui::Ui,
+                            &mut UiRenderPipe<U>,
+                            &mut UiState,
+                        ),
+                        pipe: &mut UiRenderPipe<U>,
+                        ui_state: &mut UiState,
+                    ) {
+                        render_func(ui, pipe, ui_state);
+                    }
+                    render_wrapped(ui, &mut render_func, pipe, ui_state);
+                });
+            })
+        }
+
+        (
+            screen_rect,
+            egui_run(
+                egui_ctx,
+                input,
+                &self.main_panel_color,
+                render_func,
+                pipe,
+                &mut self.ui_state,
+            ),
             zoom_level,
         )
     }

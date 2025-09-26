@@ -8,7 +8,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use base::steady_clock::SteadyClock;
+use base::{benchmark, steady_clock::SteadyClock};
 use client::client::ddnet_main;
 pub use client::*;
 use game_base::local_server_info::LocalServerInfo;
@@ -49,6 +49,8 @@ fn main_impl(app: NativeApp) {
     let time = SteadyClock::start();
 
     let shared_info: Arc<LocalServerInfo> = Arc::new(LocalServerInfo::new(true));
+
+    benchmark::global_init();
 
     let thread_id = std::thread::current().id();
     std::panic::set_hook(Box::new(move |info| {

@@ -10,6 +10,7 @@ use graphics::graphics::graphics::Graphics;
 use graphics_backend::backend::GraphicsBackend;
 use rayon::ThreadPool;
 use sound::sound::SoundManager;
+use tracing::instrument;
 use wasm_runtime::WasmManager;
 
 use super::{editor_lib::editor_lib::EditorLib, editor_wasm::editor_wasm::EditorWasm};
@@ -120,14 +121,17 @@ impl EditorWasmManager {
 }
 
 impl EditorInterface for EditorWasmManager {
+    #[instrument(level = "trace", skip_all)]
     fn render(&mut self, input: egui::RawInput, config: &ConfigEngine) -> EditorResult {
         self.state.as_mut().render(input, config)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn file_dropped(&mut self, file: PathBuf) {
         self.state.as_mut().file_dropped(file)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn file_hovered(&mut self, file: Option<PathBuf>) {
         self.state.as_mut().file_hovered(file)
     }
@@ -142,10 +146,12 @@ pub enum EditorState {
 }
 
 impl EditorState {
+    #[instrument(level = "trace", skip_all)]
     pub fn is_open(&self) -> bool {
         matches!(self, Self::Open(_))
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn should_reload(&self) -> bool {
         match self {
             EditorState::Open(editor) | EditorState::Minimized(editor) => editor.should_reload(),

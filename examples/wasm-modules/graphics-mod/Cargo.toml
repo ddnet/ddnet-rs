@@ -23,6 +23,7 @@ ignored = [
   "num-traits",
   "pool",
   "rayon",
+  "tracing",
 ]
 
 [dependencies]
@@ -46,3 +47,6 @@ bitflags = { version = "2.9.4", features = ["serde"] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 rayon = "1.11.0"
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }

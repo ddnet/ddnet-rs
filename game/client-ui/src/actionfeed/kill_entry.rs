@@ -2,6 +2,7 @@ use client_types::actionfeed::ActionKill;
 use egui::{Color32, Layout, Rect};
 use game_interface::{events::GameWorldActionKillWeapon, types::render::character::TeeEye};
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 use vanilla::weapons::definitions::weapon_def::get_weapon_visual_scale;
 
@@ -13,6 +14,7 @@ use crate::{
 use super::user_data::{RenderTeeInfo, UserData};
 
 /// one actionfeed entry
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

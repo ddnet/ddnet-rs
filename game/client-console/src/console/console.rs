@@ -9,6 +9,7 @@ use command_parser::parser::ParserCache;
 use egui::Color32;
 use game_config::config::Config;
 use graphics::graphics::graphics::Graphics;
+use tracing::instrument;
 use ui_base::{
     types::{UiRenderPipe, UiState},
     ui::{UiContainer, UiCreator},
@@ -77,6 +78,7 @@ impl<E, T> ConsoleRender<E, T> {
     }
 
     #[must_use]
+    #[instrument(level = "trace", skip_all)]
     pub fn render(
         &mut self,
         inp: egui::RawInput,

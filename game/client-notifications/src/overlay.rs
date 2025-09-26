@@ -10,6 +10,7 @@ use graphics::{
         stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
     },
 };
+use tracing::instrument;
 use ui_base::{
     types::UiRenderPipe,
     ui::{UiContainer, UiCreator},
@@ -49,6 +50,7 @@ impl ClientNotifications {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn render(&mut self) {
         if self.toasts.is_empty() {
             return;
@@ -110,6 +112,7 @@ impl ClientNotifications {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn add_info(&mut self, text: impl Into<WidgetText>, duration: Duration) {
         // upper limit in case of abuse
         if self.toasts.len() >= 1000 {
@@ -119,6 +122,7 @@ impl ClientNotifications {
         self.truncate();
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn add_warn(&mut self, text: impl Into<WidgetText>, duration: Duration) {
         // upper limit in case of abuse
         if self.toasts.len() >= 1000 {
@@ -130,6 +134,7 @@ impl ClientNotifications {
         self.truncate();
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn add_err(&mut self, text: impl Into<WidgetText>, duration: Duration) {
         // upper limit in case of abuse
         if self.toasts.len() >= 1000 {

@@ -5,6 +5,7 @@ use egui::{Align, Color32, FontId, Layout, Stroke, Vec2, text::LayoutJob};
 use game_base::network::types::chat::NetChatMsgPlayerChannel;
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::utils::render_tee_for_ui;
@@ -15,6 +16,7 @@ use super::{
 };
 
 /// one chat entry
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

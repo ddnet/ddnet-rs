@@ -4,6 +4,7 @@ use anyhow::anyhow;
 use base::benchmark::Benchmark;
 use native_display::{NativeDisplayBackend, get_native_display_backend};
 use raw_window_handle::HasDisplayHandle;
+use tracing::instrument;
 use winit::{
     application::ApplicationHandler,
     dpi::{PhysicalPosition, PhysicalSize, Size},
@@ -259,6 +260,7 @@ impl WinitWindowWrapper {
 }
 
 impl NativeImpl for WinitWindowWrapper {
+    #[instrument(level = "trace", skip_all)]
     fn confine_mouse(&mut self, confined: bool) {
         if !self.mouse.cur_relative_cursor && self.mouse.user_requested_is_confined != confined {
             if confined {
@@ -281,10 +283,12 @@ impl NativeImpl for WinitWindowWrapper {
         }
         self.mouse.user_requested_is_confined = confined;
     }
+    #[instrument(level = "trace", skip_all)]
     fn relative_mouse(&mut self, relative: bool) {
         self.mouse
             .toggle_relative_cursor_internal(relative, &self.window);
     }
+    #[instrument(level = "trace", skip_all)]
     fn set_window_config(&mut self, wnd: NativeWindowOptions) -> anyhow::Result<()> {
         let (monitor, video_mode) = WinitWindowWrapper::find_monitor_and_video_mode(
             || Box::new(self.window.available_monitors()),
@@ -312,12 +316,15 @@ impl NativeImpl for WinitWindowWrapper {
 
         Ok(())
     }
+    #[instrument(level = "trace", skip_all)]
     fn borrow_window(&self) -> &Window {
         &self.window
     }
+    #[instrument(level = "trace", skip_all)]
     fn monitors(&self) -> Vec<MonitorHandle> {
         self.window.available_monitors().collect()
     }
+    #[instrument(level = "trace", skip_all)]
     fn window_options(&self) -> NativeWindowOptions {
         let (refresh_rate_milli_hertz, monitor_name) = self
             .window
@@ -369,9 +376,11 @@ impl NativeImpl for WinitWindowWrapper {
             monitor: monitor_name,
         }
     }
+    #[instrument(level = "trace", skip_all)]
     fn quit(&self) {
         self.destroy.set(true);
     }
+    #[instrument(level = "trace", skip_all)]
     fn start_arguments(&self) -> &Vec<String> {
         &self.start_arguments
     }

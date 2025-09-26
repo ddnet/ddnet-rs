@@ -1,5 +1,6 @@
 use egui::{Align2, Color32, FontId, Modal, ModifierNames, Popup, Window};
 use map::utils::file_ext_or_twmap_tar;
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::network::{NetworkClientState, NetworkState};
@@ -9,6 +10,7 @@ use super::{
     user_data::{UserData, UserDataWithTab},
 };
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     super::mapper_cursors::main_frame::render(
         ui,

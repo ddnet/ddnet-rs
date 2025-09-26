@@ -65,6 +65,7 @@ use network::network::{
 use pool::{mt_pool::Pool as MtPool, pool::Pool};
 use prediction_timer::prediction_timing::PredictionTimer;
 use sound::scene_object::SceneObject;
+use tracing::instrument;
 use types::{DisconnectAutoCleanup, GameBase, GameConnect, GameMsgPipeline, GameNetwork};
 use ui_base::ui::UiCreator;
 use url::Url;
@@ -372,6 +373,7 @@ impl Game {
         }))
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn player_net_infos(
         expected_local_players: &FxLinkedHashMap<u64, ClientConnectedPlayer>,
         config_game: &mut ConfigGame,
@@ -481,6 +483,7 @@ impl Game {
         )
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn update(
         &mut self,
         config: &ConfigEngine,

@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use tracing::instrument;
+
 use crate::{
     backend_handle::SoundBackendHandle,
     backend_types::SoundBackendInterface,
@@ -24,6 +26,7 @@ impl SoundManager {
         })
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn swap(&self) {
         self.backend_handle
             .add_cmd(SoundCommand::State(SoundCommandState::Swap));

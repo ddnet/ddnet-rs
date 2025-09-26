@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use base::network_string::NetworkString;
 use game_interface::votes::{MAX_CATEGORY_NAME_LEN, MapVote, MapVoteKey, MiscVote, MiscVoteKey};
 use hiarc::{Hiarc, hiarc_safer_rc_refcell};
+use tracing::instrument;
 use url::Url;
 
 #[hiarc_safer_rc_refcell]
@@ -26,10 +27,12 @@ impl Votes {
     /// Automatically resets the "need" state, so
     /// another [`Votes::request_map_votes`] has to
     /// be called.
+    #[instrument(level = "trace", skip_all)]
     pub fn needs_map_votes(&mut self) -> bool {
         std::mem::replace(&mut self.need_map_votes, false)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn fill_map_votes(
         &mut self,
         map_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MapVoteKey, MapVote>>,
@@ -39,24 +42,29 @@ impl Votes {
         self.has_unfinished_map_votes = has_unfinished_map_votes;
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn collect_map_votes(
         &self,
     ) -> BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MapVoteKey, MapVote>> {
         self.map_votes.clone()
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn has_unfinished_map_votes(&self) -> bool {
         self.has_unfinished_map_votes
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn set_thumbnail_server_resource_download_url(&mut self, url: Option<Url>) {
         self.thumbnail_server_resource_download_url = url;
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn thumbnail_server_resource_download_url(&self) -> Option<Url> {
         self.thumbnail_server_resource_download_url.clone()
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn request_misc_votes(&mut self) {
         self.need_misc_votes = true;
     }
@@ -64,10 +72,12 @@ impl Votes {
     /// Automatically resets the "need" state, so
     /// another [`Votes::request_misc_votes`] has to
     /// be called.
+    #[instrument(level = "trace", skip_all)]
     pub fn needs_misc_votes(&mut self) -> bool {
         std::mem::replace(&mut self.need_misc_votes, false)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn fill_misc_votes(
         &mut self,
         misc_votes: BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MiscVoteKey, MiscVote>>,
@@ -75,6 +85,7 @@ impl Votes {
         self.misc_votes = misc_votes;
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn collect_misc_votes(
         &self,
     ) -> BTreeMap<NetworkString<MAX_CATEGORY_NAME_LEN>, BTreeMap<MiscVoteKey, MiscVote>> {

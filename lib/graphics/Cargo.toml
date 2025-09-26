@@ -13,3 +13,6 @@ math = { path = "../math" }
 pool = { path = "../pool", features = ["enable_hiarc"] }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }

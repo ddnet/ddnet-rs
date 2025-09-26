@@ -1,10 +1,12 @@
 use egui::{Pos2, Rect, Vec2};
 
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::user_data::UserData;
 
 /// big square, rounded edges
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let max_width = 1750.0;
 

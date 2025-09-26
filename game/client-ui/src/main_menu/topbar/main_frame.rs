@@ -3,6 +3,7 @@ use egui::{Frame, Layout};
 
 use game_base::server_browser::{SortDir, TableSort};
 use game_config::config::Config;
+use tracing::instrument;
 use ui_base::style::bg_frame_color;
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_base::{
@@ -67,6 +68,7 @@ pub fn render_right_buttons(
 }
 
 /// main frame. full width
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     ui_state: &mut UiState,

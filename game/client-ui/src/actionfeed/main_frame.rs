@@ -1,5 +1,6 @@
 use egui::{Pos2, Rect, UiBuilder, Vec2};
 
+use tracing::instrument;
 use ui_base::{
     types::{UiRenderPipe, UiState},
     utils::{add_margins, get_margin},
@@ -8,6 +9,7 @@ use ui_base::{
 use super::user_data::UserData;
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     // last 1/2 is for action feed
     let x_offset = ui.available_width() * 1.0 / 2.0;

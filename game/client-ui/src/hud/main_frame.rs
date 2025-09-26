@@ -19,6 +19,7 @@ use game_interface::types::{
     },
 };
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::{
     better_frame::BetterFrame,
     types::{UiRenderPipe, UiState},
@@ -29,6 +30,7 @@ use crate::utils::{render_tee_for_ui, render_texture_for_ui};
 use super::user_data::UserData;
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     ui.style_mut().animation_time = 0.0;
     ui.add_space(5.0);

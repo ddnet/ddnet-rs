@@ -11,6 +11,7 @@ use graphics::handles::{
 use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
 use image_utils::png::load_png_image_as_rgba;
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::{style::bg_frame_color, types::UiState};
 
 use crate::{
@@ -91,6 +92,7 @@ enum CustomRender<'a> {
     Custom(Box<dyn FnMut(&mut egui::Ui, &mut UiState, Rect, Rect) + 'a>),
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     user_data: &mut UserData,

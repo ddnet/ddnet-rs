@@ -7,6 +7,7 @@ use egui::{
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -282,6 +283,7 @@ fn render_inner(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPi
     }
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     if pipe.user_data.is_input_active {
         ui.allocate_ui(

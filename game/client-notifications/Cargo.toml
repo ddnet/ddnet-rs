@@ -11,3 +11,6 @@ ui-generic = { path = "../../lib/ui-generic" }
 
 egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 egui-notify = "0.20.0"
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }

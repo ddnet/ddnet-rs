@@ -2,6 +2,7 @@ use client_containers::container::ContainerItemIndexType;
 use egui::{Align2, Color32, FontId};
 use game_config::config::ConfigPlayer;
 use game_interface::types::render::character::TeeEye;
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
     utils::render_tee_for_ui,
 };
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let cur_sub = pipe
         .user_data

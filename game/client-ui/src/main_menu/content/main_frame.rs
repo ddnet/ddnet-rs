@@ -1,3 +1,4 @@
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::main_menu::{
@@ -9,6 +10,7 @@ use crate::main_menu::{
 };
 
 /// big box, rounded edges
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

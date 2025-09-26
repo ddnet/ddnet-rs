@@ -6,6 +6,7 @@ use config::{
 };
 use egui::{CollapsingHeader, Color32, ComboBox, DragValue, Grid, ScrollArea, TextEdit};
 use game_config::config::ConfigGame;
+use tracing::instrument;
 use ui_base::{components::clearable_edit_field::clearable_edit_field, types::UiRenderPipe};
 
 use crate::main_menu::user_data::UserData;
@@ -456,6 +457,7 @@ fn render_conf_val(
     }
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
     ui.label("Here is a searchable list of all config values.\nHover over the names to get a description.");
 

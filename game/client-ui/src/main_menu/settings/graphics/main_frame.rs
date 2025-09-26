@@ -4,6 +4,7 @@ use egui_extras::{Size, StripBuilder};
 use game_config::config::ConfigRender;
 use graphics_types::gpu::{Gpu, GpuType};
 use num_traits::FromPrimitive;
+use tracing::instrument;
 use ui_base::types::UiRenderPipe;
 
 use crate::{events::UiEvent, main_menu::user_data::UserData};
@@ -337,6 +338,7 @@ fn render_monitors(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
     }
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
     let wnd_old = pipe.user_data.config.engine.wnd.clone();
 

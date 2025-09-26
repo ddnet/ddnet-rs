@@ -1,6 +1,7 @@
 use egui::{Align2, Color32, FontId, Frame, RichText, ScrollArea, Vec2, Window, vec2};
 
 use game_base::connecting_log::ConnectModes;
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -68,6 +69,7 @@ pub fn render_modes(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
 
 /// top bar
 /// big square, rounded edges
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     let res = Window::new("")
         .resizable(false)

@@ -6,6 +6,7 @@ use egui_extras::{Size, StripBuilder};
 use game_config::config::ConfigDummyScreenAnchor;
 use game_interface::types::render::character::{PlayerCameraMode, PlayerIngameMode};
 use math::math::vector::ubvec4;
+use tracing::instrument;
 use ui_base::{
     style::topbar_secondary_buttons,
     types::{UiRenderPipe, UiState},
@@ -13,6 +14,7 @@ use ui_base::{
 
 use crate::{events::UiEvent, ingame_menu::user_data::UserData};
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     let config = &mut pipe.user_data.browser_menu.config;
     let mut frame_rect = ui.available_rect_before_wrap();

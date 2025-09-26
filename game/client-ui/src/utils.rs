@@ -38,6 +38,7 @@ use graphics::{
 use graphics_types::rendering::{ColorRgba, State};
 use math::math::vector::{dvec2, ubvec4, vec2};
 use pool::mt_datatypes::PoolVec;
+use tracing::instrument;
 use ui_base::{custom_callback::CustomCallbackTrait, types::UiState};
 
 /// TODO: this function exists in the editor already. graphics also have a similar one.
@@ -55,6 +56,7 @@ pub fn rotate(center: &vec2, rotation: f32, points: &mut [vec2]) {
     }
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_tee_for_ui_with_skin(
     canvas_handle: &GraphicsCanvasHandle,
     skin: Rc<Skin>,
@@ -159,6 +161,7 @@ pub fn render_tee_for_ui_with_skin(
     ui_state.add_custom_paint(ui, render_rect, Rc::new(cb));
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_tee_for_ui(
     canvas_handle: &GraphicsCanvasHandle,
     skin_container: &mut SkinContainer,
@@ -189,6 +192,7 @@ pub fn render_tee_for_ui(
     )
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_weapon_for_ui(
     canvas_handle: &GraphicsCanvasHandle,
     weapon_container: &mut WeaponContainer,
@@ -263,6 +267,7 @@ pub fn render_weapon_for_ui(
     ui_state.add_custom_paint(ui, render_rect, Rc::new(cb));
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_hook_for_ui(
     canvas_handle: &GraphicsCanvasHandle,
     hook_container: &mut HookContainer,
@@ -334,6 +339,7 @@ pub fn render_hook_for_ui(
     ui_state.add_custom_paint(ui, render_rect, Rc::new(cb));
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_emoticon_for_ui(
     stream_handle: &GraphicsStreamHandle,
     canvas_handle: &GraphicsCanvasHandle,
@@ -428,6 +434,7 @@ pub fn render_emoticon_for_ui(
     ui_state.add_custom_paint(ui, render_rect, Rc::new(cb));
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_flag_for_ui(
     stream_handle: &GraphicsStreamHandle,
     canvas_handle: &GraphicsCanvasHandle,
@@ -498,6 +505,7 @@ pub fn render_flag_for_ui(
     ui_state.add_custom_paint(ui, render_rect, Rc::new(cb));
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_entities_for_ui(
     canvas_handle: &GraphicsCanvasHandle,
     entities_container: &mut EntitiesContainer,
@@ -595,6 +603,7 @@ pub fn render_entities_for_ui(
     ui_state.add_custom_paint(ui, render_rect, Rc::new(cb));
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_texture_for_ui(
     stream_handle: &GraphicsStreamHandle,
     canvas_handle: &GraphicsCanvasHandle,

@@ -16,6 +16,7 @@ use graphics_backend::backend::GraphicsBackend;
 use graphics_types::types::WindowProps;
 use rayon::ThreadPool;
 use sound::sound::SoundManager;
+use tracing::instrument;
 use wasm_runtime::WasmManager;
 
 use super::render_wasm::render_wasm::RenderWasm;
@@ -127,6 +128,7 @@ impl RenderGameWasmManager {
 }
 
 impl RenderGameInterface for RenderGameWasmManager {
+    #[instrument(level = "trace", skip_all)]
     fn render(
         &mut self,
         config_map: &ConfigMap,

@@ -20,9 +20,13 @@ hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", feat
   "serde_impl",
 ] }
 hex = "0.4.3"
-once_cell = "1.21.3"
 parking_lot = "0.12.4"
 rayon = "1.11.0"
 rustc-hash = "2.1.1"
 serde = { version = "1.0.219", features = ["derive"] }
 thiserror = "2.0.16"
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }
+tracing-subscriber = { version = "0.3.18", features = ["std", "env-filter"] }
+owo-colors = "4.1.0"

@@ -8,6 +8,7 @@ use math::math::{
     PI, length, normalize_pre_length,
     vector::{dvec2, vec2},
 };
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::utils::{render_emoticon_for_ui, render_tee_for_ui, rotate};
@@ -15,6 +16,7 @@ use crate::utils::{render_emoticon_for_ui, render_tee_for_ui, rotate};
 use super::user_data::{EmoteWheelEvent, UserData};
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let rect = ui.ctx().screen_rect();
 

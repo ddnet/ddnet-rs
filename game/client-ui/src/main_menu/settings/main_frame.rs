@@ -1,6 +1,7 @@
 use egui::{Button, Color32, CornerRadius, Frame, Layout, Rect, Shape};
 use egui_extras::{Size, StripBuilder};
 
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -163,6 +164,7 @@ fn render_nav(
 }
 
 /// big box, rounded edges
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

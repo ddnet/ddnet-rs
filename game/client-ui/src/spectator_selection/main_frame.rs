@@ -4,6 +4,7 @@ use egui::{Align2, Frame, ScrollArea, Vec2, Window, vec2};
 
 use game_interface::types::render::character::TeeEye;
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -15,6 +16,7 @@ use crate::utils::render_tee_for_ui;
 use super::user_data::{SpectatorSelectionEvent, UserData};
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     ui.style_mut().animation_time = 0.0;
     ui.add_space(5.0);

@@ -56,6 +56,7 @@ use sound::{
     sound::SoundManager,
 };
 use sound_backend::sound_backend::SoundBackend;
+use tracing::instrument;
 use ui::render::{DemoPlayerUiRender, DemoPlayerUiRenderPipe};
 use ui_base::ui::UiCreator;
 
@@ -659,6 +660,7 @@ impl DemoViewerImpl {
         Ok(())
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn render(
         &mut self,
         input: egui::RawInput,
@@ -1144,6 +1146,7 @@ impl DemoViewer {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn continue_loading(
         &mut self,
         sound: &SoundManager,

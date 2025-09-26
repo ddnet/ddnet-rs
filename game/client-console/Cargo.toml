@@ -25,3 +25,6 @@ ui-generic = { path = "../../lib/ui-generic" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 log = "0.4.28"
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }

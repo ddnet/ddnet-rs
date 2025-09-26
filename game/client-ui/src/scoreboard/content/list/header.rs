@@ -2,6 +2,7 @@ use egui::{Layout, RichText};
 use egui_extras::{Size, StripBuilder};
 
 use game_interface::types::render::scoreboard::ScoreboardGameTypeOptions;
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::scoreboard::{
@@ -12,6 +13,7 @@ use crate::scoreboard::{
 };
 
 /// table header
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

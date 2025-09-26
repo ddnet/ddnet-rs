@@ -1,5 +1,6 @@
 use egui::Frame;
 
+use tracing::instrument;
 use ui_base::{
     components::menu_top_button::{MenuTopButtonProps, menu_top_button},
     style::{bg_frame_color, topbar_buttons},
@@ -13,6 +14,7 @@ use crate::{
 };
 
 /// main frame. full width
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     let res = Frame::default().fill(bg_frame_color()).show(ui, |ui| {
         add_horizontal_margins(ui, |ui| {

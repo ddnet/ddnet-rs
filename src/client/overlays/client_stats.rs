@@ -16,6 +16,7 @@ use graphics::{
 };
 
 use prediction_timer::prediction_timing::PredictionTimer;
+use tracing::instrument;
 use ui_base::{
     types::UiRenderPipe,
     ui::{UiContainer, UiCreator},
@@ -317,6 +318,7 @@ impl ClientStats {
         );
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn render(&mut self, pipe: &mut ClientStatsRenderPipe) {
         let dbg_hud_open = self.ui.ui_state.is_ui_open;
         if !dbg_hud_open && !pipe.show_fps && !pipe.connection_issues {

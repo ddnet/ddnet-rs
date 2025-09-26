@@ -23,6 +23,9 @@ wasm-runtime = { path = "../wasm-runtime" }
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 egui = { version = "0.32.2", default-features = false, features = ["serde"] }
 serde = "1.0.219"
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }
 wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
   "sys",
   "cranelift",
