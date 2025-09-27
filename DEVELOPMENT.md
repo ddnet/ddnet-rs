@@ -103,4 +103,6 @@ cargo run --release --no-default-features --features bench_slow_paths
 ```
 
 which enables tracing support for the sync update code and prints how long paths took,
-as soon as the whole update took over a certain amount of time (e.g. 17ms which is slower than 1/60 fps).
+as soon as the whole update took over a certain amount of time.
+The threshold can be adjusted with the environment variable `BENCHMARK_IGNORE_UNDER_NS` in nanoseconds, the default
+is 17ms which is just above the frametime of a single frame in 60 fps.
