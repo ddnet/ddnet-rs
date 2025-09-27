@@ -2387,7 +2387,7 @@ impl Client {
                         log.log(format!("Received map chunk: {}", map_data.chunk));
                         log.log(format!("{total_len} of {expected_size} bytes downloaded"));
                         let downloading_chunks = data.values().filter(|d| d.is_empty()).count();
-                        for i in next_chunk..next_chunk + 50usize.saturating_sub(downloading_chunks)
+                        for i in next_chunk..next_chunk + 10usize.saturating_sub(downloading_chunks)
                         {
                             data.insert(i, Default::default());
                             socket.sends(System::RequestMapData(system::RequestMapData {
