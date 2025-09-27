@@ -519,6 +519,7 @@ impl DemoViewerImpl {
         let stages = game.all_stages(intra_tick_ratio);
 
         let scoreboard_info = None; // game.collect_scoreboard_info();
+        let date_time = None;
 
         let load_events = !last_monotonic_tick.is_some_and(|tick| tick == monotonic_tick);
         last_monotonic_tick.replace(monotonic_tick);
@@ -560,6 +561,7 @@ impl DemoViewerImpl {
             character_infos,
             stages,
             scoreboard_info,
+            date_time,
             chat_msgs,
             game_time_info,
             settings: if let Some(DemoEncoder {

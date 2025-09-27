@@ -2,6 +2,7 @@ use api_ui_game::render::{create_ctf_container, create_skin_container};
 use base::{linked_hash_map_view::FxLinkedHashMap, network_string::PoolNetworkString};
 use client_containers::{ctf::CtfContainer, skins::SkinContainer};
 use client_render_base::render::tee::RenderTee;
+use client_ui::hud::user_data::RenderDateTime;
 use game_interface::types::{
     character_info::{NetworkCharacterInfo, NetworkSkinInfo},
     id_gen::IdGenerator,
@@ -18,7 +19,7 @@ use graphics::{
     graphics::graphics::Graphics,
     handles::{canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle},
 };
-use pool::rc::PoolRc;
+use pool::{datatypes::PoolString, rc::PoolRc};
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
 
@@ -108,6 +109,10 @@ impl HudPage {
                     character_infos: &self.character_infos,
                     canvas_handle: &self.canvas_handle,
                     stream_handle: &self.stream_handle,
+                    date_time: &Some(RenderDateTime {
+                        time: PoolString::new_str_without_pool("22:14:14"),
+                        date: PoolString::new_str_without_pool("Saturday, 27. September 2025"),
+                    }),
                 },
             ),
             ui_state,

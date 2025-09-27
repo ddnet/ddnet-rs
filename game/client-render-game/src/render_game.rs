@@ -47,6 +47,7 @@ use client_types::{
 use client_ui::{
     chat::user_data::{ChatEvent, ChatMode, MsgInChat},
     emote_wheel::user_data::EmoteWheelEvent,
+    hud::user_data::RenderDateTime,
     spectator_selection::user_data::SpectatorSelectionEvent,
     thumbnail_container::{
         DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
@@ -401,6 +402,8 @@ pub struct RenderGameInput {
     pub character_infos: PoolFxLinkedHashMap<CharacterId, CharacterInfo>,
     pub stages: PoolFxLinkedHashMap<StageId, StageRenderInfo>,
     pub scoreboard_info: Option<Scoreboard>,
+
+    pub date_time: Option<RenderDateTime>,
 
     pub game_time_info: GameTimeInfo,
 
@@ -1008,6 +1011,7 @@ impl RenderGame {
                 skin_renderer: &self.players.tee_renderer,
                 ctf_container: &mut self.containers.ctf_container,
                 character_infos: &render_info.character_infos,
+                date_time: &render_info.date_time,
             });
             if let Some(scoreboard_info) = local_render_info
                 .scoreboard_active

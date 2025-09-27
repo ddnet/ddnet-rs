@@ -9,6 +9,14 @@ use game_interface::types::{
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
+use pool::datatypes::PoolString;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RenderDateTime {
+    pub time: PoolString,
+    pub date: PoolString,
+}
 
 pub struct UserData<'a> {
     pub canvas_handle: &'a GraphicsCanvasHandle,
@@ -23,4 +31,6 @@ pub struct UserData<'a> {
     pub ctf_container: &'a mut CtfContainer,
 
     pub character_infos: &'a FxLinkedHashMap<CharacterId, CharacterInfo>,
+
+    pub date_time: &'a Option<RenderDateTime>,
 }
