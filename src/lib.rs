@@ -6,7 +6,7 @@ pub mod client;
 #[cfg(test)]
 mod tests;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use base::{benchmark, steady_clock::SteadyClock};
 use client::client::ddnet_main;
@@ -50,7 +50,12 @@ fn main_impl(app: NativeApp) {
 
     let shared_info: Arc<LocalServerInfo> = Arc::new(LocalServerInfo::new(true));
 
-    benchmark::global_init();
+    benchmark::global_init(
+        std::env::var("BENCHMARK_IGNORE_UNDER_NS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .map(Duration::from_nanos),
+    );
 
     let thread_id = std::thread::current().id();
     std::panic::set_hook(Box::new(move |info| {

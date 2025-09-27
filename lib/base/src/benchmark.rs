@@ -1,13 +1,10 @@
-use std::sync::atomic::AtomicU64;
+use std::{sync::atomic::AtomicU64, time::Duration};
 
 use owo_colors::{DynColors, OwoColorize};
 use tracing::{Level, Span};
 use tracing_subscriber::{
     EnvFilter, Layer, Registry, layer::Context, prelude::*, registry::LookupSpan,
 };
-
-// Skip rendering an entire tree if it took less than this threshold.
-const TREE_SKIP_THRESHOLD_NS: u64 = 17_000_000;
 
 const PALETTE: [DynColors; 8] = [
     DynColors::Ansi(owo_colors::AnsiColors::Green),
@@ -121,7 +118,9 @@ struct Node {
     children: Vec<Node>,
 }
 
-struct BenchLayer;
+struct BenchLayer {
+    benchmark_ignore_under: Duration,
+}
 
 impl<S> Layer<S> for BenchLayer
 where
@@ -196,14 +195,14 @@ where
                     }
                 } else {
                     // Render the tree based on threshold policy.
-                    print_tree_root_policy(&node);
+                    print_tree_root_policy(&node, &self.benchmark_ignore_under);
                 }
             }
         }
     }
 }
 
-fn print_tree(node: &Node) {
+fn print_tree(node: &Node, benchmark_ignore_under: &Duration) {
     if !node.skip_render {
         // Print current node
         let indent = "  ".repeat(node.depth);
@@ -211,7 +210,7 @@ fn print_tree(node: &Node) {
         let ms = node.ns as f64 / 1_000_000.0;
         let time_str = format!("{:>10.4} ms", ms);
         // Add a unicode lag icon if this node exceeds the skip threshold
-        let lag_icon = if node.ns >= TREE_SKIP_THRESHOLD_NS {
+        let lag_icon = if node.ns >= benchmark_ignore_under.as_nanos() as u64 {
             // turtle
             "\u{1F422} "
         } else {
@@ -223,45 +222,49 @@ fn print_tree(node: &Node) {
 
     // Print children in insertion order
     for child in &node.children {
-        print_tree(child);
+        print_tree(child, benchmark_ignore_under);
     }
 }
 
-fn print_tree_root_policy(root: &Node) {
-    if root.ns >= TREE_SKIP_THRESHOLD_NS {
+fn print_tree_root_policy(root: &Node, benchmark_ignore_under: &Duration) {
+    if root.ns >= benchmark_ignore_under.as_nanos() as u64 {
         // Print the full tree normally.
-        print_tree(root);
+        print_tree(root, benchmark_ignore_under);
     } else {
         // Tree is below threshold; only print forced nodes (and their subtrees as-is).
-        print_tree_forced_only(root);
+        print_tree_forced_only(root, benchmark_ignore_under);
     }
 }
 
-fn print_tree_forced_only(node: &Node) {
+fn print_tree_forced_only(node: &Node, benchmark_ignore_under: &Duration) {
     if node.force_render {
         // Print this node and its entire subtree normally.
-        print_tree(node);
+        print_tree(node, benchmark_ignore_under);
     } else {
         for child in &node.children {
-            print_tree_forced_only(child);
+            print_tree_forced_only(child, benchmark_ignore_under);
         }
     }
 }
 
 /// Initialize the global tracing subscriber with the custom benchmark layer and filter level.
 /// Safe to call multiple times; subsequent calls are ignored.
-fn global_init_with_level(level: Level) {
+fn global_init_with_level(benchmark_ignore_under: Option<Duration>, level: Level) {
+    // Skip rendering an entire tree if it took less than this threshold.
+    const TREE_SKIP_THRESHOLD: Duration = Duration::from_nanos(17_000_000);
     let filter = EnvFilter::from_default_env()
         .add_directive(level.into())
         .add_directive("winit=off".parse().unwrap())
         .add_directive("quinn=off".parse().unwrap());
-    let subscriber = Registry::default().with(filter).with(BenchLayer);
+    let subscriber = Registry::default().with(filter).with(BenchLayer {
+        benchmark_ignore_under: benchmark_ignore_under.unwrap_or(TREE_SKIP_THRESHOLD),
+    });
     let _ = tracing::subscriber::set_global_default(subscriber);
 }
 
 /// Initialize with TRACE level and default env filter.
-pub fn global_init() {
-    global_init_with_level(Level::TRACE);
+pub fn global_init(benchmark_ignore_under: Option<Duration>) {
+    global_init_with_level(benchmark_ignore_under, Level::TRACE);
 }
 
 pub struct Benchmark {
