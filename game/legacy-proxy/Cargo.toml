@@ -20,10 +20,10 @@ legacy-map = { path = "../legacy-map" }
 map = { path = "../map" }
 vanilla = { path = "../vanilla" }
 
-libtw2-gamenet-ddnet = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
-libtw2-net = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
-libtw2-packer = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
-libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57" }
+libtw2-gamenet-ddnet = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc00c48483dca51eedf04656efb66d" }
+libtw2-net = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc00c48483dca51eedf04656efb66d" }
+libtw2-packer = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc00c48483dca51eedf04656efb66d" }
+libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc00c48483dca51eedf04656efb66d" }
 
 anyhow = { version = "1.0.99", features = ["backtrace"] }
 # stuck for compat with libtw2
