@@ -237,7 +237,7 @@ impl IoRuntime {
                     self.0.store(true, std::sync::atomic::Ordering::SeqCst);
                 }
             }
-            Finisher(task_finished);
+            let _finisher = Finisher(task_finished);
             let storage_wrapped = task.await;
             *storage_task.lock().await = storage_wrapped;
         })
