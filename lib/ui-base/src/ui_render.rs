@@ -5,6 +5,7 @@ use egui::{
     FullOutput, ImageData, TextureId,
     epaint::{self, Primitive},
 };
+use tracing::instrument;
 
 use crate::{
     custom_callback::CustomCallbackTrait,
@@ -23,6 +24,7 @@ use graphics_types::{
 use hiarc::hi_closure;
 use math::math::vector::vec2;
 
+#[instrument(level = "trace", skip_all)]
 fn prepare_render(
     ui: &mut UiContainer,
     shapes: Vec<epaint::ClippedShape>,
@@ -65,6 +67,7 @@ fn prepare_render(
     (context, clipped_primitives, custom_paints)
 }
 
+#[instrument(level = "trace", skip_all)]
 fn render_ui_prepared(
     textures: &mut HashMap<TextureId, TextureContainer>,
     clipped_primitives: &[egui::ClippedPrimitive],
@@ -270,6 +273,7 @@ fn render_ui_prepared(
     });
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_ui(
     ui: &mut UiContainer,
     full_output: FullOutput,

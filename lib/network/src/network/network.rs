@@ -11,6 +11,7 @@ use anyhow::anyhow;
 use base::steady_clock::SteadyClock;
 use pool::mt_pool::Pool;
 use serde::Serialize;
+use tracing::instrument;
 
 use std::sync::mpsc::{Receiver, SyncSender as Sender};
 
@@ -118,6 +119,7 @@ where
 
     /// Returns a tuple of:
     /// Self, server_cert, server_addr, net_event_notifier
+    #[instrument(level = "trace", skip_all)]
     pub fn init_server(
         addr: &str,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
@@ -177,6 +179,7 @@ where
         Ok((res, server_cert, sock_addr, event_notifier))
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn init_client(
         forced_port: Option<u16>,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
@@ -273,6 +276,7 @@ where
         Ok((res, event_notifier))
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn init(
         &mut self,
         runtime: Arc<tokio::runtime::Runtime>,
@@ -344,6 +348,7 @@ where
         Ok(())
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn close(&mut self) {
         let (sender, receiver) = sync_channel(1);
         self.events_send
@@ -370,6 +375,7 @@ where
             .close(ConnectionErrorCode::Shutdown, "graceful shutdown");
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn connect(&mut self, connect_addr: &str) -> anyhow::Result<()> {
         let notifier: Arc<tokio::sync::Notify> = Default::default();
         self.events_send.send(NetworkLogicEvent::Connect {
@@ -381,6 +387,7 @@ where
         Ok(())
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn kick(&self, connection_id: &NetworkConnectionId, ty: KickType) {
         self.events_send
             .send(NetworkLogicEvent::Kick {
@@ -409,6 +416,7 @@ where
     /// Tries to send as unrealible first, if unsupported
     /// or packet too big for a single packet, falls back
     /// to reliable.
+    #[instrument(level = "trace", skip_all)]
     pub fn send_unordered_auto_to<T>(&self, msg: &T, connection_id: &NetworkConnectionId)
     where
         T: Serialize,
@@ -416,6 +424,7 @@ where
         self.send_to_impl(msg, connection_id, NetworkEventSendType::UnorderedAuto);
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn send_unordered_to<T>(&self, msg: &T, connection_id: &NetworkConnectionId)
     where
         T: Serialize,
@@ -423,6 +432,7 @@ where
         self.send_to_impl(msg, connection_id, NetworkEventSendType::ReliableUnordered);
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn send_in_order_to<T>(
         &self,
         msg: &T,
@@ -438,6 +448,7 @@ where
         );
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn send_unreliable_to<T>(&self, msg: &T, connection_id: &NetworkConnectionId)
     where
         T: Serialize,
@@ -452,6 +463,7 @@ where
     /// Tries to send as unrealible first, if unsupported
     /// or packet too big for a single packet, falls back
     /// to reliable.
+    #[instrument(level = "trace", skip_all)]
     pub fn send_unordered_auto_to_server<T>(&self, msg: &T)
     where
         T: Serialize,
@@ -460,6 +472,7 @@ where
     }
 
     /// Only use this if `connect` was used
+    #[instrument(level = "trace", skip_all)]
     pub fn send_unordered_to_server<T>(&self, msg: &T)
     where
         T: Serialize,
@@ -468,6 +481,7 @@ where
     }
 
     /// Only use this if `connect` was used
+    #[instrument(level = "trace", skip_all)]
     pub fn send_in_order_to_server<T>(&self, msg: &T, channel: NetworkInOrderChannel)
     where
         T: Serialize,
@@ -476,6 +490,7 @@ where
     }
 
     /// Only use this if `connect` was used
+    #[instrument(level = "trace", skip_all)]
     pub fn send_unreliable_to_server<T>(&self, msg: &T)
     where
         T: Serialize,

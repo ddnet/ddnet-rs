@@ -9,6 +9,7 @@ use game_interface::types::{
     render::{character::CharacterInfo, scoreboard::ScoreboardStageInfo},
 };
 use hashlink::LinkedHashMap;
+use tracing::instrument;
 use ui_base::{
     types::{UiRenderPipe, UiState},
     utils::add_horizontal_margins,
@@ -137,6 +138,7 @@ fn calc_font_size_index(
 }
 
 /// table header + player list
+#[instrument(level = "trace", skip_all)]
 pub fn render<'a>(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

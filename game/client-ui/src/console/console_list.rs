@@ -1,10 +1,12 @@
 use egui::Layout;
 
+use tracing::instrument;
 use ui_base::types::UiRenderPipe;
 
 use super::user_data::UserData;
 
 /// frame for the console entries
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, has_text_selection: &mut bool) {
     egui::ScrollArea::vertical()
         .stick_to_bottom(true)

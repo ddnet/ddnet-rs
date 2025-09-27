@@ -11,6 +11,7 @@ use network::network::event::{
     NetworkEventDisconnect,
 };
 use sound::scene_object::SceneObject;
+use tracing::instrument;
 
 use crate::game::Game;
 
@@ -26,6 +27,7 @@ pub struct GameEventPipeline<'a> {
 pub struct GameEventsClient {}
 
 impl GameEventsClient {
+    #[instrument(level = "trace", skip_all)]
     pub fn update(pipe: &mut GameEventPipeline<'_>) {
         let event_gen = match pipe.game {
             Game::None | Game::Err(_) | Game::PrepareConnect(_) => None,

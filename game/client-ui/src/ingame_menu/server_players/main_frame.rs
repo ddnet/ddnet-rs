@@ -1,5 +1,6 @@
 use egui::Frame;
 use egui_extras::{Column, TableBuilder};
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -8,6 +9,7 @@ use ui_base::{
 
 use crate::ingame_menu::user_data::UserData;
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     pipe.user_data.server_players.request_player_infos();
     let server_players: Vec<_> = pipe

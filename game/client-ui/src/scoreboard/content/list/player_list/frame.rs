@@ -8,6 +8,7 @@ use game_interface::types::{
     id_types::{CharacterId, StageId},
     render::{character::CharacterInfo, scoreboard::ScoreboardStageInfo},
 };
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::scoreboard::{
@@ -18,6 +19,7 @@ use crate::scoreboard::{
 use super::entry::{FrameRect, RenderPlayer};
 
 /// player list frame
+#[instrument(level = "trace", skip_all)]
 pub fn render<'a>(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

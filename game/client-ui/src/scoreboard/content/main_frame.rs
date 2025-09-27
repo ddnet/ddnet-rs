@@ -13,6 +13,7 @@ use game_interface::types::{
         },
     },
 };
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -22,6 +23,7 @@ use crate::scoreboard::user_data::UserData;
 
 use super::{list::player_list::entry::RenderPlayer, topbar::TopBarTypes};
 
+#[instrument(level = "trace", skip_all)]
 fn render_scoreboard_frame<'a>(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,
@@ -80,6 +82,7 @@ fn render_scoreboard_frame<'a>(
 }
 
 /// big boxes, rounded edges
+#[instrument(level = "trace", skip_all)]
 pub fn render_players(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,
@@ -342,6 +345,7 @@ pub fn render_players(
     res
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_spectators(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

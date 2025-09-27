@@ -43,6 +43,7 @@ use pool::{
     rc::PoolRc,
 };
 use prediction_timer::prediction_timing::PredictionTimer;
+use tracing::instrument;
 
 use crate::{
     client::input::input_handling::DeviceToLocalPlayerIndex,
@@ -89,6 +90,7 @@ pub struct LocalPlayerGameData {
 }
 
 impl LocalPlayerGameData {
+    #[instrument(level = "trace", skip_all)]
     pub fn active_local_player(&self) -> Option<(&PlayerId, &ClientPlayer)> {
         self.expected_local_players
             .get(&self.active_local_player_id)
@@ -100,6 +102,7 @@ impl LocalPlayerGameData {
             })
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn active_local_player_mut(&mut self) -> Option<(&PlayerId, &mut ClientPlayer)> {
         self.expected_local_players
             .get(&self.active_local_player_id)
@@ -112,6 +115,7 @@ impl LocalPlayerGameData {
             })
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn inactive_local_players(&self) -> impl Iterator<Item = (&PlayerId, &ClientPlayer)> {
         self.expected_local_players
             .iter()
@@ -124,6 +128,7 @@ impl LocalPlayerGameData {
             })
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn first_inactive_local_players_mut(&mut self) -> Option<(&PlayerId, &mut ClientPlayer)> {
         let local_players = &mut self.local_players;
         self.expected_local_players
@@ -576,6 +581,7 @@ impl GameData {
         });
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn get_and_update_latest_input(
         &mut self,
         cur_time: Duration,

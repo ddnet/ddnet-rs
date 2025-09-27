@@ -93,3 +93,14 @@ print("Breakpoint hit!")
 os.system("setxkbmap -option grab:break_actions")
 os.system("xdotool key XF86Ungrab")
 ```
+
+# Profile slow paths
+
+To help understanding where potential lags come from, use
+
+```bash
+cargo run --release --no-default-features --features bench_slow_paths
+```
+
+which enables tracing support for the sync update code and prints how long paths took,
+as soon as the whole update took over a certain amount of time (e.g. 17ms which is slower than 1/60 fps).

@@ -1,5 +1,6 @@
 use egui_extras::{Size, StripBuilder};
 
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::{
@@ -110,6 +111,7 @@ pub fn render_content(
         });
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render<'a>(
     ui: &mut egui::Ui,
     pipe: &'a mut UiRenderPipe<'a, UserData<'a>>,

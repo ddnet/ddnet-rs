@@ -48,6 +48,7 @@ use pool::{
     pool::Pool,
     rc::PoolRc,
 };
+use tracing::instrument;
 use url::Url;
 
 use crate::{
@@ -115,6 +116,7 @@ pub struct ActiveGame {
 }
 
 impl ActiveGame {
+    #[instrument(level = "trace", skip_all)]
     pub fn send_input(
         &mut self,
         player_inputs: &FxLinkedHashMap<PlayerId, PoolVec<PlayerInputChainable>>,
@@ -860,6 +862,7 @@ impl ActiveGame {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn update(
         &mut self,
         cur_time: &Duration,

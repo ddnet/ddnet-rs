@@ -38,6 +38,7 @@ use game_interface::vote_commands::{VoteCommand, VoteCommandResult};
 use math::math::vector::vec2;
 use pool::datatypes::{PoolFxLinkedHashMap, PoolVec};
 use pool::mt_datatypes::PoolCow as MtPoolCow;
+use tracing::instrument;
 use vanilla::state::state::GameState;
 use wasm_runtime::WasmManager;
 
@@ -186,22 +187,27 @@ impl GameStateCreate for GameStateWasmManager {
 }
 
 impl GameStateInterface for GameStateWasmManager {
+    #[instrument(level = "trace", skip_all)]
     fn collect_characters_info(&self) -> PoolFxLinkedHashMap<CharacterId, CharacterInfo> {
         self.state.as_ref().collect_characters_info()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn collect_render_ext(&self) -> PoolVec<u8> {
         self.state.as_ref().collect_render_ext()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn collect_scoreboard_info(&self) -> Scoreboard {
         self.state.as_ref().collect_scoreboard_info()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn all_stages(&self, ratio: f64) -> PoolFxLinkedHashMap<StageId, StageRenderInfo> {
         self.state.as_ref().all_stages(ratio)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn collect_character_local_render_info(
         &self,
         player_id: &PlayerId,
@@ -211,18 +217,22 @@ impl GameStateInterface for GameStateWasmManager {
             .collect_character_local_render_info(player_id)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn get_client_camera_join_pos(&self) -> vec2 {
         self.state.as_ref().get_client_camera_join_pos()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn player_join(&mut self, player_info: &PlayerClientInfo) -> PlayerId {
         self.state.as_mut().player_join(player_info)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn player_drop(&mut self, player_id: &PlayerId, reason: PlayerDropReason) {
         self.state.as_mut().player_drop(player_id, reason)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn try_overwrite_player_character_info(
         &mut self,
         id: &PlayerId,
@@ -234,12 +244,14 @@ impl GameStateInterface for GameStateWasmManager {
             .try_overwrite_player_character_info(id, info, version)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn account_created(&mut self, account_id: AccountId, cert_fingerprint: Hash) {
         self.state
             .as_mut()
             .account_created(account_id, cert_fingerprint)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn account_renamed(
         &mut self,
         account_id: AccountId,
@@ -248,18 +260,22 @@ impl GameStateInterface for GameStateWasmManager {
         self.state.as_mut().account_renamed(account_id, new_name)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn network_stats(&mut self, stats: PoolFxLinkedHashMap<PlayerId, PlayerNetworkStats>) {
         self.state.as_mut().network_stats(stats)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn settings(&self) -> GameStateSettings {
         self.state.as_ref().settings()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn client_command(&mut self, player_id: &PlayerId, cmd: ClientCommand) {
         self.state.as_mut().client_command(player_id, cmd)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn rcon_command(
         &mut self,
         player_id: Option<PlayerId>,
@@ -268,64 +284,79 @@ impl GameStateInterface for GameStateWasmManager {
         self.state.as_mut().rcon_command(player_id, cmd)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn vote_command(&mut self, cmd: VoteCommand) -> VoteCommandResult {
         self.state.as_mut().vote_command(cmd)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn voted_player(&mut self, player_id: Option<PlayerId>) {
         self.state.as_mut().voted_player(player_id)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn set_player_inputs(&mut self, inps: PoolFxLinkedHashMap<PlayerId, CharacterInputInfo>) {
         self.state.as_mut().set_player_inputs(inps)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn set_player_emoticon(&mut self, player_id: &PlayerId, emoticon: EmoticonType) {
         self.state.as_mut().set_player_emoticon(player_id, emoticon)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn set_player_eye(&mut self, player_id: &PlayerId, eye: TeeEye, duration: Duration) {
         self.state.as_mut().set_player_eye(player_id, eye, duration)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn tick(&mut self, options: TickOptions) -> TickResult {
         self.state.as_mut().tick(options)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn snapshot_for(&self, client: SnapshotClientInfo) -> MtPoolCow<'static, [u8]> {
         self.state.as_ref().snapshot_for(client)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn build_from_snapshot(&mut self, snapshot: &MtPoolCow<'static, [u8]>) -> SnapshotLocalPlayers {
         self.state.as_mut().build_from_snapshot(snapshot)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn snapshot_for_hotreload(&self) -> Option<MtPoolCow<'static, [u8]>> {
         self.state.as_ref().snapshot_for_hotreload()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn build_from_snapshot_by_hotreload(&mut self, snapshot: &MtPoolCow<'static, [u8]>) {
         self.state
             .as_mut()
             .build_from_snapshot_by_hotreload(snapshot)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn build_from_snapshot_for_prev(&mut self, snapshot: &MtPoolCow<'static, [u8]>) {
         self.state.as_mut().build_from_snapshot_for_prev(snapshot)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn build_ghosts_from_snapshot(&self, snapshot: &MtPoolCow<'static, [u8]>) -> GhostResult {
         self.state.as_ref().build_ghosts_from_snapshot(snapshot)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn events_for(&self, client: EventClientInfo) -> GameEvents {
         self.state.as_ref().events_for(client)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn clear_events(&mut self) {
         self.state.as_mut().clear_events()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn sync_event_id(&self, event_id: IdGeneratorIdType) {
         self.state.as_ref().sync_event_id(event_id)
     }

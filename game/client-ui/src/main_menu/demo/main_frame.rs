@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use base::duration_ext::DurationToRaceStr;
 use egui::{Align2, ComboBox, DragValue, Grid, Vec2};
 use egui_extras::{Size, StripBuilder};
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -100,6 +101,7 @@ fn record_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
         });
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     ui_state: &mut UiState,

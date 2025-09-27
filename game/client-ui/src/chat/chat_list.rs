@@ -3,11 +3,13 @@ use std::time::Duration;
 use client_types::chat::ServerMsg;
 use egui::Layout;
 
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use super::user_data::UserData;
 
 /// frame for the chat entries
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
         // active input comes first (most bottom)

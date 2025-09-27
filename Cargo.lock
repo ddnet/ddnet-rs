@@ -847,13 +847,15 @@ dependencies = [
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hex",
  "hiarc",
- "once_cell",
+ "owo-colors",
  "parking_lot",
  "pool",
  "rayon",
  "rustc-hash 2.1.1",
  "serde",
  "thiserror 2.0.16",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1598,6 +1600,7 @@ dependencies = [
  "graphics",
  "hiarc",
  "log 0.4.28",
+ "tracing",
  "ui-base",
  "ui-generic",
 ]
@@ -1629,6 +1632,7 @@ dependencies = [
  "serde_json",
  "sound",
  "tokio",
+ "tracing",
  "url",
 ]
 
@@ -1661,6 +1665,7 @@ dependencies = [
  "serde",
  "sound",
  "sound-backend",
+ "tracing",
  "ui-base",
  "ui-generic",
 ]
@@ -1709,6 +1714,7 @@ dependencies = [
  "rayon",
  "render-game-wasm",
  "sound",
+ "tracing",
  "wasmparser 0.238.1",
 ]
 
@@ -1720,6 +1726,7 @@ dependencies = [
  "egui",
  "egui-notify",
  "graphics",
+ "tracing",
  "ui-base",
  "ui-generic",
 ]
@@ -1886,6 +1893,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sound",
+ "tracing",
  "ui-base",
  "ui-generic",
  "url",
@@ -2913,6 +2921,7 @@ dependencies = [
  "steam",
  "thread-priority",
  "tokio",
+ "tracing",
  "trybuild",
  "ui-base",
  "ui-generic",
@@ -3414,6 +3423,7 @@ dependencies = [
  "tempfile",
  "time",
  "tokio",
+ "tracing",
  "ui-base",
  "ui-generic",
  "x509-cert",
@@ -3500,6 +3510,7 @@ dependencies = [
  "libloading",
  "rayon",
  "sound",
+ "tracing",
  "wasm-logic-fs",
  "wasm-logic-graphics",
  "wasm-logic-http",
@@ -4473,6 +4484,7 @@ dependencies = [
  "serde_json",
  "sql",
  "thread-priority",
+ "tracing",
  "vanilla",
  "x509-cert",
 ]
@@ -4491,6 +4503,7 @@ dependencies = [
  "game-interface",
  "math",
  "pool",
+ "tracing",
  "vanilla",
  "wasm-logic-db",
  "wasm-runtime",
@@ -4687,6 +4700,7 @@ dependencies = [
  "image-utils",
  "math",
  "pool",
+ "tracing",
 ]
 
 [[package]]
@@ -4782,6 +4796,7 @@ dependencies = [
  "num-traits",
  "pool",
  "rayon",
+ "tracing",
 ]
 
 [[package]]
@@ -6002,7 +6017,7 @@ dependencies = [
 [[package]]
 name = "libtw2-common"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "arrayvec 0.5.2",
  "zerocopy 0.7.35",
@@ -6011,7 +6026,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-common"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -6027,7 +6042,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-ddnet"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -6042,7 +6057,7 @@ dependencies = [
 [[package]]
 name = "libtw2-gamenet-snap"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "buffer",
  "libtw2-common",
@@ -6054,7 +6069,7 @@ dependencies = [
 [[package]]
 name = "libtw2-huffman"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -6065,7 +6080,7 @@ dependencies = [
 [[package]]
 name = "libtw2-net"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -6082,7 +6097,7 @@ dependencies = [
 [[package]]
 name = "libtw2-packer"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "arrayvec 0.5.2",
  "buffer",
@@ -6094,7 +6109,7 @@ dependencies = [
 [[package]]
 name = "libtw2-snapshot"
 version = "0.0.1"
-source = "git+https://github.com/Jupeyy/libtw2.git?rev=0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57#0e6a9e2f21f12bf34efd2da9f41043e1e3de4c57"
+source = "git+https://github.com/Jupeyy/libtw2.git?rev=0b6b1b7533dc00c48483dca51eedf04656efb66d#0b6b1b7533dc00c48483dca51eedf04656efb66d"
 dependencies = [
  "buffer",
  "libtw2-common",
@@ -6472,6 +6487,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "matchers"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
+dependencies = [
+ "regex-automata",
+]
+
+[[package]]
 name = "matchit"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6738,6 +6762,7 @@ dependencies = [
  "log 0.4.28",
  "native-display",
  "raw-window-handle",
+ "tracing",
  "winit",
 ]
 
@@ -6887,6 +6912,7 @@ dependencies = [
  "thiserror 2.0.16",
  "tokio",
  "tokio-tungstenite",
+ "tracing",
  "x509-cert",
  "zstd",
 ]
@@ -6948,6 +6974,15 @@ name = "notify-types"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e0826a989adedc2a244799e823aece04662b66609d96af8dff7ac6df9a8925d"
+
+[[package]]
+name = "nu-ansi-term"
+version = "0.50.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4a28e057d01f97e61255210fcff094d74ed0466038633e95017f5beb68e4399"
+dependencies = [
+ "windows-sys 0.52.0",
+]
 
 [[package]]
 name = "num"
@@ -7685,6 +7720,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "owo-colors"
+version = "4.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48dd4f4a2c8405440fd0462561f0e5806bd0f77e86f51c761481bdd4018b545e"
+
+[[package]]
 name = "oxipng"
 version = "9.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8089,6 +8130,7 @@ dependencies = [
  "math",
  "rgb",
  "textplots",
+ "tracing",
 ]
 
 [[package]]
@@ -8769,6 +8811,7 @@ dependencies = [
  "graphics-types",
  "rayon",
  "sound",
+ "tracing",
  "wasm-logic-fs",
  "wasm-logic-graphics",
  "wasm-logic-http",
@@ -9541,6 +9584,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sharded-slab"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "shared-buffer"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9684,6 +9736,7 @@ dependencies = [
  "math",
  "serde",
  "thiserror 2.0.16",
+ "tracing",
 ]
 
 [[package]]
@@ -10878,6 +10931,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9d12581f227e93f094d3af2ae690a574abb8a2b9b7a96e7cfe9647b2b617678"
 dependencies = [
  "once_cell",
+ "valuable",
+]
+
+[[package]]
+name = "tracing-log"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
+dependencies = [
+ "log 0.4.28",
+ "once_cell",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.3.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2054a14f5307d601f88daf0553e1cbf472acc4f2c51afab632431cdcd72124d5"
+dependencies = [
+ "matchers",
+ "nu-ansi-term",
+ "once_cell",
+ "regex-automata",
+ "sharded-slab",
+ "smallvec",
+ "thread_local",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
 ]
 
 [[package]]
@@ -11151,6 +11234,7 @@ dependencies = [
  "hiarc",
  "math",
  "serde",
+ "tracing",
 ]
 
 [[package]]
@@ -11160,6 +11244,7 @@ dependencies = [
  "egui",
  "graphics",
  "math",
+ "tracing",
  "ui-base",
 ]
 
@@ -11178,6 +11263,7 @@ dependencies = [
  "hiarc",
  "serde",
  "sound",
+ "tracing",
  "ui-base",
  "ui-generic",
  "wasm-logic-fs",
@@ -11311,6 +11397,12 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "valuable"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vanilla"

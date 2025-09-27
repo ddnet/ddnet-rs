@@ -2,6 +2,7 @@ use std::{marker::PhantomData, net::SocketAddr, sync::Arc};
 
 use anyhow::anyhow;
 use base::steady_clock::SteadyClock;
+use tracing::instrument;
 
 use crate::network::{
     errors::ConnectionErrorCode,
@@ -55,6 +56,7 @@ where
 {
     /// Returns a tuple of:
     /// Self, server_cert, server_addr, net_event_notifier
+    #[instrument(level = "trace", skip_all)]
     pub fn init_server(
         addr: &str,
         game_event_generator: Arc<dyn NetworkEventToGameEventGenerator + Send + Sync>,
@@ -122,6 +124,7 @@ where
         Ok((res, server_cert, sock_addr, event_notifier))
     }
 
+    #[instrument(level = "trace", skip_all, parent = None, fields(bench_skip_render = true))]
     pub fn connect(
         &self,
         con_id: NetworkConnectionId,
@@ -196,6 +199,7 @@ where
         Ok(())
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn disconnect(&self, connection_id: NetworkConnectionId) {
         log::debug!("disconnecting");
         let connections_ = self.connections.clone();
@@ -216,6 +220,7 @@ where
         }));
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub async fn kick(&self, connection_id: NetworkConnectionId, ty: KickType) {
         log::debug!("kick {connection_id:?}");
         let connections_ = self.connections.clone();

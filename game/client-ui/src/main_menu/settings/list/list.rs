@@ -5,11 +5,13 @@ use egui::{Layout, ScrollArea, Shape, epaint::RectShape};
 use egui_extras::{Size, StripBuilder};
 use fuzzy_matcher::FuzzyMatcher;
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::{
     components::clearable_edit_field::clearable_edit_field, style::bg_frame_color,
     utils::add_margins,
 };
 
+#[instrument(level = "trace", skip_all)]
 pub fn render<'a>(
     ui: &mut egui::Ui,
     entries: impl Iterator<Item = (&'a str, ContainerItemIndexType)>,

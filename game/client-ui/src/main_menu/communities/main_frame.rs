@@ -1,12 +1,14 @@
 use crate::main_menu::user_data::UserData;
 use egui::Frame;
 use egui_extras::{Size, StripBuilder};
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
     utils::add_margins,
 };
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let w = ui.available_width();
     let max_width = 800.0;

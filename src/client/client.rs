@@ -133,6 +133,7 @@ use rayon::ThreadPool;
 use sound::{scene_object::SceneObject, sound::SoundManager};
 use sound_backend::sound_backend::SoundBackend;
 use steam::{init_steam, traits::SteamRaii};
+use tracing::instrument;
 use ui_base::{
     font_data::{UiFontData, UiFontDataLoading},
     types::UiRenderPipe,
@@ -536,6 +537,7 @@ impl ClientNativeImpl {
             .multi_sampling(self.config.engine.gl.msaa_samples);
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn render_menu_background_map(&mut self) {
         if let Some(map) = self.menu_map.continue_loading() {
             let intra_tick_time = self.time.now();
@@ -566,6 +568,7 @@ impl ClientNativeImpl {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn render_game(&mut self, native: &mut dyn NativeImpl) {
         let remote_console_open = self.game.remote_console_open();
         if let Game::Active(game) = &mut self.game {
@@ -1300,6 +1303,7 @@ impl ClientNativeImpl {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn render(&mut self, native: &mut dyn NativeImpl) {
         // first unload editor => then reload. else native library doesn't get a reload
         if self.editor.should_reload() {
@@ -2554,6 +2558,7 @@ impl ClientNativeImpl {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn handle_console_events(&mut self, native: &mut dyn NativeImpl) {
         let events = self.local_console.get_events();
         self.handle_console_events_impl(native, events, 0);
@@ -3123,6 +3128,7 @@ impl AppWithGraphics for ClientNativeImpl {
         )
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn run(&mut self, native: &mut dyn NativeImpl) {
         self.inp_manager.collect_events();
 
@@ -3407,6 +3413,7 @@ impl AppWithGraphics for ClientNativeImpl {
                 let _ = game_state.build_from_snapshot(&cur_state_snap);
             }
 
+            #[instrument(level = "trace", skip_all)]
             fn apply_input(
                 predicted_game_monotonic_tick: GameTickType,
                 tick_inps: &mut FxLinkedHashMap<u64, PoolFxLinkedHashMap<PlayerId, PlayerInput>>,

@@ -1,5 +1,6 @@
 use egui::{Align2, Frame, Vec2, Window, vec2};
 
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -9,6 +10,7 @@ use ui_base::{
 use super::user_data::UserData;
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     ui.style_mut().animation_time = 0.0;
     ui.set_clip_rect(ui.available_rect_before_wrap());

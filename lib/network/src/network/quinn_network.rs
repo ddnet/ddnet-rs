@@ -12,6 +12,7 @@ use pool::mt_datatypes::PoolVec;
 use quinn::{ConnectError, ConnectionError, SendDatagramError};
 use spki::der::Decode;
 use tokio::io::AsyncWriteExt;
+use tracing::instrument;
 
 use super::{
     connection::ConnectionStats,
@@ -479,6 +480,7 @@ impl NetworkEndpointInterface<QuinnNetworkConnectingWrapper, QuinnNetworkIncomin
             .close((error_code as u32).into(), reason.as_bytes());
     }
 
+    #[instrument(level = "trace", skip_all, parent = None, fields(bench_skip_render = true))]
     fn make_server_endpoint(
         bind_addr: std::net::SocketAddr,
         cert_mode: NetworkServerCertMode,
@@ -498,6 +500,7 @@ impl NetworkEndpointInterface<QuinnNetworkConnectingWrapper, QuinnNetworkIncomin
         ))
     }
 
+    #[instrument(level = "trace", skip_all, parent = None, fields(bench_skip_render = true))]
     fn make_client_endpoint(
         bind_addr: std::net::SocketAddr,
         options: &NetworkClientInitOptions,

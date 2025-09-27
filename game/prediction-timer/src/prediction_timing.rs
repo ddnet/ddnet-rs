@@ -1,5 +1,7 @@
 use std::{collections::VecDeque, num::NonZeroU64, ops::Deref, time::Duration};
 
+use tracing::instrument;
+
 #[derive(Debug, Clone, Copy)]
 pub struct PredictionTimingCollection {
     pub max: Duration,
@@ -41,6 +43,7 @@ pub struct PredictionTiming {
 impl PredictionTiming {
     /// the more jitter we got, the more values we use from the past
     /// to have more stability in the values
+    #[instrument(level = "trace", skip_all)]
     pub fn calc_farsight_of_jitter(&self) -> usize {
         // TODO: random values
         if self.jitter_range.as_millis() < 2 {
@@ -58,6 +61,7 @@ impl PredictionTiming {
 
     /// the more jitter we got, the more values we use from the past
     /// This version is only for ping avg
+    #[instrument(level = "trace", skip_all)]
     pub fn calc_farsight_of_jitter_avg(&self) -> usize {
         // TODO: random values
         if self.jitter_range.as_millis() < 2 {
@@ -83,6 +87,7 @@ impl PredictionTiming {
     }
 
     /// get's the highest value
+    #[instrument(level = "trace", skip_all)]
     pub fn ping_max(&self) -> Duration {
         self.ping_max_impl(self.calc_farsight_of_jitter())
     }
@@ -97,11 +102,13 @@ impl PredictionTiming {
     }
 
     /// get's the lowest value
+    #[instrument(level = "trace", skip_all)]
     pub fn ping_min(&self) -> Duration {
         self.ping_min_impl(self.calc_farsight_of_jitter())
     }
 
     /// get's the average value
+    #[instrument(level = "trace", skip_all)]
     pub fn ping_average(&self) -> Duration {
         let count = self.calc_farsight_of_jitter_avg();
         Duration::from_nanos(
@@ -128,6 +135,7 @@ impl PredictionTimer {
     /// ~500us jitter/overhead of the network implementation on the server and on the client combined.
     pub const PREDICTION_MARGIN_NETWORK: Duration = Duration::from_micros(500);
 
+    #[instrument(level = "trace", skip_all)]
     pub fn new(first_ping: Duration, cur_time: Duration) -> Self {
         Self {
             timing: PredictionTiming {
@@ -162,6 +170,7 @@ impl PredictionTimer {
 
     /// Take a snapshot of the predicting timing.
     /// Useful for debugging
+    #[instrument(level = "trace", skip_all)]
     pub fn snapshot(&self) -> PredictionTiming {
         self.timing.clone()
     }
@@ -181,6 +190,7 @@ impl PredictionTimer {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn calc_jitter_range(&self) -> Duration {
         let count = if self.timing.jitter_range.as_millis() > 500 {
             10
@@ -190,6 +200,7 @@ impl PredictionTimer {
         self.ping_max_impl(count) - self.ping_min_impl(count)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn add_ping(&mut self, ping: Duration, cur_time: Duration) {
         let whole_second = cur_time.as_secs().max(self.timing.cur_whole_second);
         // more than 3 seconds of laggs are not supported.
@@ -229,6 +240,7 @@ impl PredictionTimer {
         self.timing.cur_whole_second = whole_second;
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn add_frametime(&mut self, time: Duration, cur_time: Duration) {
         let whole_second = cur_time
             .as_secs()
@@ -251,10 +263,12 @@ impl PredictionTimer {
         self.timing.cur_whole_second_frametime = whole_second;
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn max_frametime(&self) -> Duration {
         *self.timing.frame_time_max.iter().max().unwrap()
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn packet_loss(&self) -> f64 {
         self.timing
             .last_secs_of_packets_stats
@@ -296,12 +310,14 @@ impl PredictionTimer {
     }
 
     /// `time_unit_time` is the time one tick takes in the physics
+    #[instrument(level = "trace", skip_all)]
     pub fn extra_prediction_margin_by_packet_loss(&self, time_unit_time: Duration) -> Duration {
         time_unit_time * self.extra_time_units_to_respect_by_packet_loss()
     }
 
     /// How many time units to respect to have a high chance to
     /// not drop any inputs
+    #[instrument(level = "trace", skip_all)]
     pub fn time_units_to_respect(&self, time_unit_time: Duration, max_units: NonZeroU64) -> u64 {
         (self.calc_jitter_range().as_nanos() / time_unit_time.as_nanos())
             .max(self.extra_time_units_to_respect_by_packet_loss() as u128)
@@ -313,6 +329,7 @@ impl PredictionTimer {
     /// This assumes the total number of packets lost & send, the timer
     /// internally then calculates the current packet loss for a time period,
     /// which the timer assumes as likely to influence the prediction.
+    #[instrument(level = "trace", skip_all)]
     pub fn add_packet_stats(&mut self, cur_time: Duration, packets_sent: u64, packets_lost: u64) {
         let whole_second = cur_time.as_secs().max(self.timing.cur_whole_second_stats);
 
@@ -364,6 +381,7 @@ impl PredictionTimer {
 
     /// prepares the smooth timer adjustment based on the likeliness
     /// of effect of the snapshot being off the expected time.
+    #[instrument(level = "trace", skip_all)]
     pub fn add_snap(&mut self, snap_diff: f64, timestamp: Duration) {
         let ping_avg = self.ping_average().as_secs_f64() / 2.0
             + Self::PREDICTION_MARGIN_NETWORK.as_secs_f64() / 2.0;
@@ -450,6 +468,7 @@ impl PredictionTimer {
     /// because of ping jitters.
     ///
     /// `time_unit_time` is the time one tick takes in the physics.
+    #[instrument(level = "trace", skip_all)]
     pub fn pred_max_smoothing(&mut self, time_unit_time: Duration) -> Duration {
         self.pred_max_smooth_impl(time_unit_time, 1.0)
     }
@@ -460,6 +479,7 @@ impl PredictionTimer {
     /// Note: This is the minimum, so this function often returns more ticks
     /// than needed to make the calculation robust against very small prediction
     /// margins.
+    #[instrument(level = "trace", skip_all)]
     pub fn pred_tick_offset(&mut self, time_unit_time: Duration) -> Duration {
         let pred_time = self.pred_max_smooth_impl(time_unit_time, 0.0);
         Duration::from_nanos(
@@ -470,6 +490,7 @@ impl PredictionTimer {
     }
 
     /// How much a single frame should adjust the prediction time
+    #[instrument(level = "trace", skip_all)]
     pub fn smooth_adjustment_time(&mut self) -> f64 {
         let frame_time = self.max_frametime().as_secs_f64().clamp(0.000001, f64::MAX);
 

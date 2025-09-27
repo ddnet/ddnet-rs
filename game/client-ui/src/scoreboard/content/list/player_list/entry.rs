@@ -12,6 +12,7 @@ use game_interface::types::{
     },
 };
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::types::{UiRenderPipe, UiState};
 
 use crate::{
@@ -34,6 +35,7 @@ pub struct FrameRect {
 }
 
 /// single player entry
+#[instrument(level = "trace", skip_all)]
 pub fn render<'a>(
     ui: &mut egui::Ui,
     pipe: &mut UiRenderPipe<UserData>,

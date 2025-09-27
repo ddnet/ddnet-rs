@@ -13,6 +13,7 @@ pub mod graphics {
     use graphics_base_traits::traits::GraphicsStreamedData;
     use hiarc::Hiarc;
     use image_utils::png::save_png_image;
+    use tracing::instrument;
 
     use crate::{
         graphics_mt::GraphicsMultiThreaded,
@@ -220,6 +221,7 @@ pub mod graphics {
             }
         }
 
+        #[instrument(level = "trace", skip_all)]
         pub fn swap(&self) {
             self.backend_handle
                 .add_cmd(AllCommands::Misc(CommandsMisc::Swap));

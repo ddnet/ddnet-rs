@@ -6,6 +6,7 @@ use egui::{
     TopBottomPanel, Vec2, Window,
 };
 
+use tracing::instrument;
 use ui_base::{
     types::{UiRenderPipe, UiState},
     utils::{add_horizontal_margins, text_sized},
@@ -16,6 +17,7 @@ use crate::demo_player::user_data::{DemoViewerEvent, DemoViewerEventExport};
 use super::user_data::UserData;
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let res = TopBottomPanel::bottom("demo-main")
         .exact_height(40.0)

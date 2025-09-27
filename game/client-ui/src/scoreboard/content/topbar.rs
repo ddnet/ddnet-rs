@@ -1,5 +1,6 @@
 use egui::{Color32, CornerRadius, Layout, RichText, epaint::RectShape};
 
+use tracing::instrument;
 use ui_base::utils::add_horizontal_margins;
 
 pub enum TopBarTypes {
@@ -14,6 +15,7 @@ pub enum TopBarTypes {
 /// map name, team name, differently colored
 /// current team score, best player time
 /// spectator info etc.
+#[instrument(level = "trace", skip_all)]
 pub fn render(
     ui: &mut egui::Ui,
     ty: TopBarTypes,

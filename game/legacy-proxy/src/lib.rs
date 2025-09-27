@@ -511,8 +511,8 @@ impl Client {
 
                         let cur_time = time.now();
                         // send new request
-                        if cur_time.saturating_sub(last_req) > Duration::from_secs(1) {
-                            log.log("Sending new info request after 1s timeout");
+                        if cur_time.saturating_sub(last_req) > Duration::from_secs(5) {
+                            log.log("Sending new info request after 5s timeout");
                             let token = rand::rng().next_u32() as u8;
                             conless.sendc(
                                 addr,
@@ -525,8 +525,8 @@ impl Client {
                         }
 
                         // try to reconnect
-                        if cur_time.saturating_sub(last_reconnect) > Duration::from_secs(3) {
-                            log.log("Trying to reconnect after 3s timeout");
+                        if cur_time.saturating_sub(last_reconnect) > Duration::from_secs(6) {
+                            log.log("Trying to reconnect after 6s timeout");
                             conless
                                 .net
                                 .disconnect(&mut conless.socket, conless.server_pid, b"reconnect")

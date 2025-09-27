@@ -1,5 +1,6 @@
 use egui::{Pos2, Rect, UiBuilder, Vec2};
 
+use tracing::instrument;
 use ui_base::{
     types::{UiRenderPipe, UiState},
     utils::{add_margins, get_margin},
@@ -8,6 +9,7 @@ use ui_base::{
 use super::user_data::UserData;
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let margin = (15.0 - get_margin(ui)).max(0.0);
     let x_offset = margin;

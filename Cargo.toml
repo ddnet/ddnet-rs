@@ -13,6 +13,9 @@ publish = false
 #strip = true
 #panic = "abort"
 
+[package.metadata.cargo-machete]
+ignored = ["tracing"]
+
 [package.metadata.bundle]
 short_description = "DDraceNetwork, a free cooperative platformer game"
 long_description = """
@@ -172,6 +175,13 @@ alloc_track = ["dep:alloc-track"]
 alloc_stats = ["dep:stats_alloc"]
 auto_updater = ["dep:auto-updater"]
 
+bench_slow_paths = [
+  "tracing/max_level_trace",
+  "tracing/release_max_level_trace",
+]
+
+default = ["tracing/max_level_info", "tracing/release_max_level_info"]
+
 [dependencies]
 base = { path = "lib/base" }
 base-fs = { path = "lib/base-fs" }
@@ -265,6 +275,9 @@ tokio = { version = "1.47.1", features = [
   "time",
   "macros",
 ] }
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }
 trybuild = "1.0"
 url = "2.5.7"
 x509-cert = { version = "0.2.5" }
@@ -278,6 +291,12 @@ native-dialog = "0.9.0"
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15.1"
 ndk = { version = "0.9.0", default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tracing = { version = "0.1.40", default-features = false, features = [
+  "max_level_off",
+  "release_max_level_off",
+] }
 
 [dev-dependencies]
 client-render = { path = "game/client-render" }

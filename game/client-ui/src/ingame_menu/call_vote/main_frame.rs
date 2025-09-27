@@ -1,4 +1,5 @@
 use egui::{Button, Frame, Layout};
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -7,6 +8,7 @@ use ui_base::{
 
 use crate::ingame_menu::{constants::INGAME_MENU_VOTE_QUERY, user_data::UserData};
 
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let res = Frame::default()
         .fill(bg_frame_color())

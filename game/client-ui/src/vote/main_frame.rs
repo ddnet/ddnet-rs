@@ -7,6 +7,7 @@ use egui::{
 };
 use game_interface::{types::render::character::TeeEye, votes::Voted};
 use math::math::vector::vec2;
+use tracing::instrument;
 use ui_base::{
     types::{UiRenderPipe, UiState},
     utils::get_margin,
@@ -21,6 +22,7 @@ use crate::{
 use super::user_data::{UserData, VoteRenderType};
 
 /// not required
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let full_rect = ui.ctx().screen_rect();
     let mut rect = ui.ctx().screen_rect();

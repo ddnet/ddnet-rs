@@ -14,6 +14,7 @@ use graphics_backend::backend::GraphicsBackend;
 use hiarc::{Hiarc, hiarc_safer_rc_refcell};
 use serde::Serialize;
 use sound::sound::SoundManager;
+use tracing::instrument;
 use ui_base::{
     types::{RawInputWrapper, RawOutputWrapper, UiFonts, UiRenderPipe},
     ui::{UiContainer, UiCreator},
@@ -44,6 +45,7 @@ impl UiWasmPageEntry {
         self.wasm_runtime.run_by_name::<()>("ui_unmount")
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn call(
         &mut self,
         cur_time: &Duration,
@@ -184,6 +186,7 @@ where
             .map(|_| ())
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn mount_path(ui: &mut UiPageEntry<U>) {
         match ui {
             UiPageEntry::Wasm(cb) => {
@@ -193,6 +196,7 @@ where
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn unmount_path(ui: &mut UiPageEntry<U>) {
         match ui {
             UiPageEntry::Wasm(cb) => {
@@ -205,6 +209,7 @@ where
     }
 
     #[must_use]
+    #[instrument(level = "trace", skip_all)]
     pub fn run_ui_path(
         &mut self,
         path: &str,
@@ -358,6 +363,7 @@ where
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn render(
         &mut self,
         path: &str,

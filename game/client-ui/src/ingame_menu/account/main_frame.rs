@@ -1,6 +1,7 @@
 use base::network_string::NetworkReducedAsciiString;
 use egui::{Color32, Frame, TextEdit};
 
+use tracing::instrument;
 use ui_base::{
     style::bg_frame_color,
     types::{UiRenderPipe, UiState},
@@ -67,6 +68,7 @@ fn render_name_change(ui: &mut egui::Ui, events: &UiEvents, account_info: &Accou
 }
 
 /// main frame. full width
+#[instrument(level = "trace", skip_all)]
 pub fn render(ui: &mut egui::Ui, ui_state: &mut UiState, pipe: &mut UiRenderPipe<UserData>) {
     let res = Frame::default()
         .fill(bg_frame_color())

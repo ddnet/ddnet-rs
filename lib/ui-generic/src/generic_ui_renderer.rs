@@ -10,12 +10,14 @@ use graphics::{
     utils::{DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS, render_blur, render_swapped_frame},
 };
 use math::math::vector::vec4;
+use tracing::instrument;
 use ui_base::{
     types::{BlurShape, UiRenderPipe, UiState},
     ui::UiContainer,
     ui_render::render_ui,
 };
 
+#[instrument(level = "trace", skip_all)]
 fn render_impl<U>(
     canvas_handle: &GraphicsCanvasHandle,
     ui: &mut UiContainer,
@@ -42,6 +44,7 @@ fn render_impl<U>(
     )
 }
 
+#[instrument(level = "trace", skip_all)]
 pub fn render_blur_if_needed(
     backend_handle: &GraphicsBackendHandle,
     texture_handle: &GraphicsTextureHandle,
@@ -109,6 +112,7 @@ pub fn render_blur_if_needed(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[instrument(level = "trace", skip_all)]
 pub fn render_ex<U>(
     backend_handle: &GraphicsBackendHandle,
     texture_handle: &GraphicsTextureHandle,
