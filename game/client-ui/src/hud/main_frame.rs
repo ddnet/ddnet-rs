@@ -384,6 +384,52 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         }
     };
 
+    // Floating overlay for date/time
+    if let Some(dt) = pipe.user_data.date_time {
+        let res = Window::new("date_time_overlay")
+            .order(egui::Order::Tooltip)
+            .interactable(false)
+            .title_bar(false)
+            .resizable(false)
+            .frame(
+                Frame::new()
+                    .fill(Color32::from_black_alpha(50))
+                    .inner_margin(10)
+                    .corner_radius(CornerRadius {
+                        nw: 0,
+                        ne: 0,
+                        sw: 10,
+                        se: 10,
+                    }),
+            )
+            .max_width(200.0)
+            .anchor(Align2::CENTER_TOP, Vec2::new(400.0, 0.0))
+            .show(ui.ctx(), |ui| {
+                ui.with_layout(
+                    Layout::top_down(egui::Align::Center)
+                        .with_main_wrap(true)
+                        .with_main_justify(false)
+                        .with_cross_justify(false),
+                    |ui| {
+                        ui.label(RichText::new(dt.time.as_str()).color(Color32::WHITE));
+                        ui.label(RichText::new(dt.date.as_str()).color(Color32::LIGHT_GRAY));
+                    },
+                );
+            });
+
+        if let Some(res) = res {
+            ui_state.add_blur_rect(
+                res.response.rect,
+                CornerRadius {
+                    nw: 0,
+                    ne: 0,
+                    sw: 10,
+                    se: 10,
+                },
+            );
+        }
+    }
+
     let res = Window::new("")
         .resizable(false)
         .title_bar(false)

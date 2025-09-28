@@ -54,7 +54,7 @@ pub fn render<'a>(
                             |ui| {
                                 for (entry_index, (entry_name, ty)) in
                                     entries.enumerate().filter(|(_, (name, _))| {
-                                        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
+                                        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default().ignore_case();
                                         matcher.fuzzy_match(name, &search_str).is_some()
                                     })
                                 {

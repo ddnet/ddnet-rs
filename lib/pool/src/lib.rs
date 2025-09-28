@@ -192,12 +192,7 @@ mod tests {
             pooled_vec[i].deref_mut().clone_from(&copy_vec);
         }
 
-        println!(
-            "time st-pool round 1: {}s",
-            std::time::Instant::now()
-                .duration_since(bench)
-                .as_secs_f64()
-        );
+        println!("time st-pool round 1: {}s", bench.elapsed().as_secs_f64());
 
         let bench = std::time::Instant::now();
 
@@ -209,12 +204,7 @@ mod tests {
             pooled_vec_mt[i].deref_mut().clone_from(&copy_vec);
         }
 
-        println!(
-            "time mt-pool round 1: {}s",
-            std::time::Instant::now()
-                .duration_since(bench)
-                .as_secs_f64()
-        );
+        println!("time mt-pool round 1: {}s", bench.elapsed().as_secs_f64());
 
         let bench = std::time::Instant::now();
 
@@ -225,12 +215,7 @@ mod tests {
             vec[i].clone_from(&copy_vec);
         }
 
-        println!(
-            "time no-pool round 1: {}s",
-            std::time::Instant::now()
-                .duration_since(bench)
-                .as_secs_f64()
-        );
+        println!("time no-pool round 1: {}s", bench.elapsed().as_secs_f64());
 
         // #### round 2 #####
         let bench = std::time::Instant::now();
@@ -242,12 +227,7 @@ mod tests {
             pooled_vec[i].deref_mut().clone_from(&copy_vec);
         }
 
-        println!(
-            "time st-pool round 2: {}s",
-            std::time::Instant::now()
-                .duration_since(bench)
-                .as_secs_f64()
-        );
+        println!("time st-pool round 2: {}s", bench.elapsed().as_secs_f64());
 
         let bench = std::time::Instant::now();
         pooled_vec_mt.clear();
@@ -258,12 +238,7 @@ mod tests {
             pooled_vec_mt[i].deref_mut().clone_from(&copy_vec);
         }
 
-        println!(
-            "time mt-pool round 2: {}s",
-            std::time::Instant::now()
-                .duration_since(bench)
-                .as_secs_f64()
-        );
+        println!("time mt-pool round 2: {}s", bench.elapsed().as_secs_f64());
 
         let bench = std::time::Instant::now();
         vec.clear();
@@ -274,12 +249,7 @@ mod tests {
             vec[i].clone_from(&copy_vec);
         }
 
-        println!(
-            "time no-pool round 2: {}s",
-            std::time::Instant::now()
-                .duration_since(bench)
-                .as_secs_f64()
-        );
+        println!("time no-pool round 2: {}s", bench.elapsed().as_secs_f64());
     }
 
     #[test]

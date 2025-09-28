@@ -4,6 +4,7 @@ use base::{linked_hash_map_view::FxLinkedHashMap, network_string::PoolNetworkStr
 use client_containers::utils::RenderGameContainers;
 use client_render_base::render::tee::RenderTee;
 use client_render_game::components::hud::{RenderHud, RenderHudPipe};
+use client_ui::hud::user_data::RenderDateTime;
 use game_interface::types::{
     character_info::{NetworkCharacterInfo, NetworkSkinInfo},
     emoticons::IntoEnumIterator,
@@ -22,7 +23,10 @@ use game_interface::types::{
     weapons::{EnumCount, WeaponType},
 };
 use graphics::graphics::graphics::Graphics;
-use pool::{datatypes::PoolFxLinkedHashSet, rc::PoolRc};
+use pool::{
+    datatypes::{PoolFxLinkedHashSet, PoolString},
+    rc::PoolRc,
+};
 use ui_base::ui::UiCreator;
 
 use crate::tests::utils::render_helper;
@@ -58,6 +62,10 @@ pub fn test_hud(
                 skin_renderer: render_tee,
                 ctf_container: &mut containers.ctf_container,
                 character_infos,
+                date_time: &Some(RenderDateTime {
+                    time: PoolString::new_str_without_pool("22:14:14"),
+                    date: PoolString::new_str_without_pool("Saturday, 27. September 2025"),
+                }),
             })
         };
         render_helper(

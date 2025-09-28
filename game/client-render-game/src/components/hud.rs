@@ -10,6 +10,7 @@ use client_containers::{
 };
 use client_render::hud::page::{HudRender, HudRenderPipe};
 use client_render_base::render::tee::RenderTee;
+use client_ui::hud::user_data::RenderDateTime;
 use game_interface::types::{
     emoticons::{EnumCount, IntoEnumIterator},
     game::{GameTickType, NonZeroGameTickType},
@@ -53,6 +54,7 @@ pub struct RenderHudPipe<'a> {
     pub skin_renderer: &'a RenderTee,
     pub ctf_container: &'a mut CtfContainer,
     pub character_infos: &'a FxLinkedHashMap<CharacterId, CharacterInfo>,
+    pub date_time: &'a Option<RenderDateTime>,
 }
 
 pub struct RenderOffsetsVanilla {
@@ -803,6 +805,7 @@ impl RenderHud {
             skin_renderer: pipe.skin_renderer,
             ctf_container: pipe.ctf_container,
             character_infos: pipe.character_infos,
+            date_time: pipe.date_time,
         });
 
         let hud = pipe.hud_container.get_or_default_opt(pipe.hud_key);

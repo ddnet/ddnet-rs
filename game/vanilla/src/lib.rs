@@ -146,7 +146,7 @@ mod test {
                 game.clear_events();
 
                 ticks += 1;
-                if Instant::now().duration_since(now) >= Duration::from_secs(5) {
+                if now.elapsed() >= Duration::from_secs(5) {
                     break;
                 }
             }
@@ -178,7 +178,7 @@ mod test {
                 game.collision
                     .move_box(&mut pos, &mut vel, &physical_size_vec2(), 0.0);
             }
-            let took = Instant::now().duration_since(now);
+            let took = now.elapsed();
             println!("{} s - pos: {:?}, vel: {:?}", took.as_secs_f64(), pos, vel);
             let calls_per_second = iterations as f64 / took.as_secs_f64();
             println!("{calls_per_second} call/s");

@@ -3,7 +3,10 @@ use std::time::Duration;
 use base::linked_hash_map_view::FxLinkedHashMap;
 use client_containers::{ctf::CtfContainer, skins::SkinContainer};
 use client_render_base::render::tee::RenderTee;
-use client_ui::hud::{page::HudUi, user_data::UserData};
+use client_ui::hud::{
+    page::HudUi,
+    user_data::{RenderDateTime, UserData},
+};
 use egui::Color32;
 use game_interface::types::{
     game::{GameTickType, NonZeroGameTickType},
@@ -20,9 +23,8 @@ use graphics::{
 use ui_base::{
     types::UiRenderPipe,
     ui::{UiContainer, UiCreator},
-    ui_render::render_ui,
 };
-use ui_generic::traits::UiPageInterface;
+use ui_generic::generic_ui_renderer;
 
 pub struct HudRenderPipe<'a> {
     pub race_timer_counter: &'a GameTickType,
@@ -33,6 +35,7 @@ pub struct HudRenderPipe<'a> {
     pub skin_renderer: &'a RenderTee,
     pub ctf_container: &'a mut CtfContainer,
     pub character_infos: &'a FxLinkedHashMap<CharacterId, CharacterInfo>,
+    pub date_time: &'a Option<RenderDateTime>,
 }
 
 pub struct HudRender {
@@ -61,10 +64,6 @@ impl HudRender {
     }
 
     pub fn render(&mut self, pipe: &mut HudRenderPipe) {
-        let canvas_width = self.canvas_handle.canvas_width();
-        let canvas_height = self.canvas_handle.canvas_height();
-        let pixels_per_point = self.canvas_handle.pixels_per_point();
-
         let mut user_data = UserData {
             race_round_timer_counter: pipe.race_timer_counter,
             ticks_per_second: pipe.ticks_per_second,
@@ -75,27 +74,19 @@ impl HudRender {
             character_infos: pipe.character_infos,
             canvas_handle: &self.canvas_handle,
             stream_handle: &self.stream_handle,
+            date_time: pipe.date_time,
         };
         let mut dummy_pipe = UiRenderPipe::new(*pipe.cur_time, &mut user_data);
-        let (screen_rect, full_output, zoom_level) = self.ui.render_cached(
-            canvas_width,
-            canvas_height,
-            pixels_per_point,
-            |ui, inner_pipe, ui_state| self.hud_ui.render(ui, inner_pipe, ui_state),
-            &mut dummy_pipe,
-            Default::default(),
-            false,
-            true,
-        );
-        render_ui(
-            &mut self.ui,
-            full_output,
-            &screen_rect,
-            zoom_level,
+
+        generic_ui_renderer::render(
             &self.backend_handle,
             &self.texture_handle,
             &self.stream_handle,
-            false,
+            &self.canvas_handle,
+            &mut self.ui,
+            &mut self.hud_ui,
+            &mut dummy_pipe,
+            Default::default(),
         );
     }
 }

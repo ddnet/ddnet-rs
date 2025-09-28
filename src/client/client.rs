@@ -49,6 +49,7 @@ use client_ui::{
     connect::page::ConnectingUi,
     console::utils::run_commands,
     events::{UiEvent, UiEvents},
+    hud::user_data::RenderDateTime,
     ingame_menu::{
         account_info::AccountInfo,
         client_info::{ActiveClientInfo, ClientInfo},
@@ -836,6 +837,7 @@ impl ClientNativeImpl {
                 character_infos,
                 stages,
                 scoreboard_info: None,
+                date_time: None,
                 game_time_info: GameTimeInfo {
                     ticks_per_second: main_game.game_tick_speed(),
                     intra_tick_time: game.game_data.intra_tick_time,
@@ -1180,6 +1182,19 @@ impl ClientNativeImpl {
                 let scoreboard_info = main_game.collect_scoreboard_info();
                 // TODO: use predicted world info for scoreboard?
                 render_game_input.scoreboard_info = Some(scoreboard_info);
+            }
+
+            // show date time when scoreboard is open
+            if requires_scoreboard {
+                let now = chrono::Local::now();
+                render_game_input.date_time = Some(RenderDateTime {
+                    time: self
+                        .string_pool
+                        .new_str(&now.format("%H:%M:%S").to_string()),
+                    date: self
+                        .string_pool
+                        .new_str(&now.format("%A, %d. %B %Y").to_string()),
+                });
             }
 
             let res = render.render(&self.config.game.map, &self.cur_time, render_game_input);
@@ -3474,11 +3489,10 @@ impl AppWithGraphics for ClientNativeImpl {
                         );
                     },
                 );
-                game_state.set_player_inputs(inps);
-
                 let cur_snap = game_state.snapshot_for(SnapshotClientInfo::Everything);
                 game_state.build_from_snapshot_for_prev(&cur_snap);
 
+                game_state.set_player_inputs(inps);
                 game_state.predicted_game_monotonic_tick += 1;
                 game_state.tick(Default::default());
 
