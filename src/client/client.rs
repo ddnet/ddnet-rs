@@ -3489,11 +3489,10 @@ impl AppWithGraphics for ClientNativeImpl {
                         );
                     },
                 );
-                game_state.set_player_inputs(inps);
-
                 let cur_snap = game_state.snapshot_for(SnapshotClientInfo::Everything);
                 game_state.build_from_snapshot_for_prev(&cur_snap);
 
+                game_state.set_player_inputs(inps);
                 game_state.predicted_game_monotonic_tick += 1;
                 game_state.tick(Default::default());
 
