@@ -2732,7 +2732,8 @@ impl Server {
             || config.client_server_sync_log.players
             || config.client_server_sync_log.projectiles
         {
-            // breaks prediction, but currently only way to get useful information
+            // breaks prediction (except with instant input),
+            // but currently only way to get useful information
             let cur_snap = game.snapshot_for(SnapshotClientInfo::Everything);
             game.build_from_snapshot_for_prev(&cur_snap);
 
@@ -2764,9 +2765,14 @@ impl Server {
                         || now.duration_since(dbg_game.time)
                             > Duration::from_millis(1000 / ticks_in_a_second))
                         && config.client_server_sync_log.time
+                        // for prediction times are wrong and this makes the check kinda useless
+                        && !caller_name.contains("pred")
+                        && !dbg_game.caller.contains("pred")
                     {
                         println!(
-                            "out of sync: instant: {:?}, tick_time: {:?}, tick: {:?}",
+                            "out of sync {} vs. {caller_name}: \
+                            instant: {:?}, tick_time: {:?}, tick: {:?}",
+                            dbg_game.caller,
                             now.duration_since(dbg_game.time),
                             (*last_tick_time).max(dbg_game.tick_time)
                                 - (*last_tick_time).min(dbg_game.tick_time),
