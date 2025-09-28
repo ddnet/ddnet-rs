@@ -51,7 +51,7 @@ impl AnalyzeStream {
 
                     *cur_loudest_thread.write().unwrap() = loudest;
                 }
-                let cur_time = Instant::now().duration_since(start_time);
+                let cur_time = start_time.elapsed();
                 let time_until_sample_nanos = (Duration::from_secs(1).as_nanos() as u64
                     / OPUS_SAMPLE_RATE as u64)
                     * OPUS_10_MS as u64;
