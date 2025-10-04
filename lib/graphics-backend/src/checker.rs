@@ -446,6 +446,9 @@ impl GraphicsContainersAPI {
                 CommandsRenderStream::RenderBlurred { cmd, .. } => {
                     self.check_render_cmd(stream_handle, cmd, vertices_offset_before_commands)
                 }
+                CommandsRenderStream::RenderGlass { cmd, .. } => {
+                    self.check_render_cmd(stream_handle, cmd, vertices_offset_before_commands)
+                }
             },
             CommandsRender::Clear(_) => {
                 todo!()
