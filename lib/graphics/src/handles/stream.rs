@@ -370,6 +370,7 @@ pub mod stream {
                         scale: *scale,
                         blur_color: *blur_color,
                     },
+                    &RenderMode::Glass(glass) => CommandsRenderStream::RenderGlass { cmd, glass },
                 };
 
                 self.backend_handle

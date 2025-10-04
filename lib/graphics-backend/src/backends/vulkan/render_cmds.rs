@@ -11,9 +11,11 @@ use graphics_types::{
         CommandsRenderQuadContainer, CommandsRenderStream, GRAPHICS_DEFAULT_UNIFORM_SIZE,
         GRAPHICS_MAX_UNIFORM_RENDER_COUNT, PrimType, RenderSpriteInfo,
     },
-    rendering::{ColorRgba, State, StateTexture, WrapType},
+    rendering::{ColorRgba, RenderModeGlass, State, StateTexture, WrapType},
 };
 use math::math::vector::{vec2, vec4};
+
+use crate::backends::vulkan::vulkan_uniform::UniformGGlass;
 
 use super::{
     command_pool::AutoCommandBuffer,
@@ -38,6 +40,16 @@ pub fn get_address_mode_index(state: &State) -> usize {
     }
 }
 
+enum RenderMode {
+    Normal,
+    Blur {
+        blur_radius: f32,
+        scale: vec2,
+        blur_color: vec4,
+    },
+    Glass(RenderModeGlass),
+}
+
 fn render_blur(
     mut render_manager: RenderManager,
     state: &State,
@@ -58,10 +70,33 @@ fn render_blur(
         prim_type,
         primitive_count,
         &m,
-        true,
-        blur_radius,
-        scale,
-        blur_color,
+        RenderMode::Blur {
+            blur_radius,
+            scale,
+            blur_color,
+        },
+    )
+}
+
+fn render_glass(
+    mut render_manager: RenderManager,
+    state: &State,
+    texture_index: &StateTexture,
+    prim_type: PrimType,
+    primitive_count: usize,
+    glass: RenderModeGlass,
+) {
+    let mut m: [f32; 4 * 2] = Default::default();
+    render_manager.get_state_matrix(state, &mut m);
+
+    render_manager.bind_pipeline(state, texture_index, SubRenderPassAttributes::GlassPipeline);
+
+    render_standard_impl::<false>(
+        render_manager,
+        prim_type,
+        primitive_count,
+        &m,
+        RenderMode::Glass(glass),
     )
 }
 
@@ -70,10 +105,7 @@ fn render_standard_impl<const IS_3D_TEXTURED: bool>(
     prim_type: PrimType,
     primitive_count: usize,
     m: &[f32],
-    as_blur: bool,
-    blur_radius: f32,
-    scale: vec2,
-    blur_color: vec4,
+    mode: RenderMode,
 ) {
     let mut vert_per_prim: usize = 2;
     let mut is_indexed: bool = false;
@@ -99,24 +131,60 @@ fn render_standard_impl<const IS_3D_TEXTURED: bool>(
             std::mem::size_of_val(m),
         )
     });
-    if as_blur {
-        let viewport_size = render_manager.viewport_size();
-        let blur_push = UniformGBlur {
-            texture_size: vec2::new(viewport_size.width as f32, viewport_size.height as f32),
+    match mode {
+        RenderMode::Normal => {
+            // nothing to do
+        }
+        RenderMode::Blur {
             blur_radius,
             scale,
-            color: blur_color,
-        };
-        render_manager.push_constants(
-            BackendShaderStage::FRAGMENT,
-            std::mem::size_of::<UniformGPos>() as u32,
-            unsafe {
-                std::slice::from_raw_parts(
-                    &blur_push as *const _ as *const u8,
-                    std::mem::size_of::<UniformGBlur>(),
-                )
-            },
-        );
+            blur_color,
+        } => {
+            let viewport_size = render_manager.viewport_size();
+            let blur_push = UniformGBlur {
+                texture_size: vec2::new(viewport_size.width as f32, viewport_size.height as f32),
+                blur_radius,
+                scale,
+                color: blur_color,
+            };
+            render_manager.push_constants(
+                BackendShaderStage::FRAGMENT,
+                std::mem::size_of::<UniformGPos>() as u32,
+                unsafe {
+                    std::slice::from_raw_parts(
+                        &blur_push as *const _ as *const u8,
+                        std::mem::size_of::<UniformGBlur>(),
+                    )
+                },
+            );
+        }
+        RenderMode::Glass(glass) => {
+            let blur_push = UniformGGlass {
+                elipse_strength: glass.elipse_strength,
+                exponent_offset: glass.exponent_offset,
+                decay_scale: glass.decay_scale,
+                base_factor: glass.base_factor,
+                deca_rate: glass.deca_rate,
+                refraction_falloff: glass.refraction_falloff,
+                noise: glass.noise,
+                glow_weight: glass.glow_weight,
+                glow_bias: glass.glow_bias,
+                glow_edge0: glass.glow_edge0,
+                glow_edge1: glass.glow_edge1,
+                center: glass.center,
+                size: glass.size,
+            };
+            render_manager.push_constants(
+                BackendShaderStage::FRAGMENT,
+                std::mem::size_of::<UniformGPos>() as u32,
+                unsafe {
+                    std::slice::from_raw_parts(
+                        &blur_push as *const _ as *const u8,
+                        std::mem::size_of::<UniformGGlass>(),
+                    )
+                },
+            );
+        }
     }
 
     if is_indexed {
@@ -155,10 +223,7 @@ fn render_standard<const IS_3D_TEXTURED: bool>(
         prim_type,
         primitive_count,
         &m,
-        false,
-        0.0,
-        vec2::default(),
-        vec4::default(),
+        RenderMode::Normal,
     )
 }
 
@@ -189,6 +254,18 @@ fn cmd_render_blurred(
         blur_radius,
         scale,
         blur_color,
+    )
+}
+
+fn cmd_render_glass(render_manager: RenderManager, cmd: &CommandRender, glass: RenderModeGlass) {
+    // draw where the stencil buffer triggered
+    render_glass(
+        render_manager,
+        &cmd.state,
+        &cmd.texture_index,
+        cmd.prim_type,
+        cmd.prim_count,
+        glass,
     )
 }
 
@@ -397,6 +474,10 @@ pub(crate) fn command_cb_render(
                 blur_color,
             } => {
                 cmd_render_blurred(render_manager, cmd, *blur_radius, *scale, *blur_color);
+                Ok(())
+            }
+            CommandsRenderStream::RenderGlass { cmd, glass } => {
+                cmd_render_glass(render_manager, cmd, *glass);
                 Ok(())
             }
         },

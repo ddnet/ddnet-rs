@@ -4,7 +4,7 @@ use api::{GRAPHICS, GRAPHICS_BACKEND, read_param_from_host, upload_return_val};
 
 use graphics_types::types::WindowProps;
 use ui_base::{
-    types::{BlurShape, RawInputWrapper, RawOutputWrapper, UiFonts, UiRenderPipe},
+    types::{BlurShape, GlassShape, RawInputWrapper, RawOutputWrapper, UiFonts, UiRenderPipe},
     ui::UiContainer,
     ui_render::render_ui,
 };
@@ -44,7 +44,7 @@ fn ui_run_impl(
     inp: RawInputWrapper,
     zoom_level: Option<f32>,
     mut user_data: U,
-) -> (egui::PlatformOutput, Vec<BlurShape>) {
+) -> (egui::PlatformOutput, Vec<BlurShape>, Vec<GlassShape>) {
     API_UI.with(|g| g.borrow_mut().zoom_level.set(zoom_level));
     GRAPHICS.with(|g| g.resized(window_props));
 
@@ -88,6 +88,7 @@ fn ui_run_impl(
     (
         platform_output,
         API_UI.with(|ui| std::mem::take(&mut ui.borrow_mut().ui_state.blur_shapes)),
+        API_UI.with(|ui| std::mem::take(&mut ui.borrow_mut().ui_state.glass_shapes)),
     )
 }
 
@@ -108,10 +109,12 @@ pub fn ui_run() {
     let inp = read_param_from_host::<RawInputWrapper>(2);
     let zoom_level = read_param_from_host::<Option<f32>>(3);
 
-    let (output, blur_shapes) = ui_run_impl(cur_time, window_props, inp, zoom_level, ());
+    let (output, blur_shapes, glass_shapes) =
+        ui_run_impl(cur_time, window_props, inp, zoom_level, ());
     upload_return_val(RawOutputWrapper {
         output,
         blur_shapes,
+        glass_shapes,
         zoom_level: API_UI.with(|g| g.borrow().zoom_level.get()),
     });
 }

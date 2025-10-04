@@ -252,10 +252,10 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
         );
     }
 
-    ui.painter().circle(
+    ui_state.add_glass_elipse(
         egui::pos2(mouse.x as f32, mouse.y as f32),
-        10.0,
-        Color32::from_white_alpha(100),
-        Stroke::NONE,
+        egui::vec2(75.0, 75.0),
+        2.2,
+        Color32::from_rgba_unmultiplied(200, 200, 255, 255),
     );
 }

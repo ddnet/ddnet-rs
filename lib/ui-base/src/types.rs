@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 
-use egui::{Color32, CornerRadius, FontDefinitions, Pos2, Rect};
+use egui::{Color32, CornerRadius, FontDefinitions, Pos2, Rect, Vec2};
 use serde::{Deserialize, Serialize};
 
 use crate::custom_callback::CustomCallbackTrait;
@@ -19,7 +19,7 @@ impl<'a, U: 'a> UiRenderPipe<'a, U> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct BlurRect {
     pub rect: Rect,
     pub rounding: CornerRadius,
@@ -36,7 +36,7 @@ impl BlurRect {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct BlurCircle {
     pub center: Pos2,
     pub radius: f32,
@@ -53,10 +53,34 @@ impl BlurCircle {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum BlurShape {
     Rect(BlurRect),
     Circle(BlurCircle),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub struct GlassElipse {
+    pub center: Pos2,
+    pub size: Vec2,
+    pub power: f32,
+    pub color: Color32,
+}
+
+impl GlassElipse {
+    pub fn new(center: Pos2, size: Vec2, power: f32, color: Color32) -> Self {
+        Self {
+            center,
+            size,
+            power,
+            color,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub enum GlassShape {
+    Elipse(GlassElipse),
 }
 
 #[derive(Debug)]
@@ -70,6 +94,9 @@ pub struct UiState {
     /// blur shapes of this frame, if empty, then
     /// bluring is skipped.
     pub blur_shapes: Vec<BlurShape>,
+    /// glass shapes of this frame, if empty, then
+    /// all glass rendering is skipped.
+    pub glass_shapes: Vec<GlassShape>,
 }
 
 impl Default for UiState {
@@ -82,6 +109,7 @@ impl Default for UiState {
             custom_paint_id: 0,
 
             blur_shapes: Default::default(),
+            glass_shapes: Default::default(),
         }
     }
 }
@@ -111,6 +139,12 @@ impl UiState {
         self.blur_shapes
             .push(BlurShape::Circle(BlurCircle::new(center, radius)));
     }
+
+    pub fn add_glass_elipse(&mut self, center: Pos2, size: Vec2, power: f32, color: Color32) {
+        self.glass_shapes.push(GlassShape::Elipse(GlassElipse::new(
+            center, size, power, color,
+        )));
+    }
 }
 
 /// for encode and decode
@@ -124,6 +158,7 @@ pub struct RawInputWrapper {
 pub struct RawOutputWrapper {
     pub output: egui::PlatformOutput,
     pub blur_shapes: Vec<BlurShape>,
+    pub glass_shapes: Vec<GlassShape>,
     pub zoom_level: Option<f32>,
 }
 

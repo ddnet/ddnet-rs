@@ -1,18 +1,21 @@
 use std::time::Duration;
 
 use crate::traits::UiPageInterface;
-use egui::Stroke;
+use egui::{Color32, Rect, Stroke};
 use graphics::{
     handles::{
         backend::backend::GraphicsBackendHandle, canvas::canvas::GraphicsCanvasHandle,
         stream::stream::GraphicsStreamHandle, texture::texture::GraphicsTextureHandle,
     },
-    utils::{DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS, render_blur, render_swapped_frame},
+    utils::{
+        DEFAULT_BLUR_MIX_LENGTH, DEFAULT_BLUR_RADIUS, render_blur, render_glass, render_glass_rest,
+        render_swapped_frame,
+    },
 };
-use math::math::vector::vec4;
+use math::math::vector::{vec2, vec4};
 use tracing::instrument;
 use ui_base::{
-    types::{BlurShape, UiRenderPipe, UiState},
+    types::{BlurShape, GlassShape, UiRenderPipe, UiState},
     ui::UiContainer,
     ui_render::render_ui,
 };
@@ -111,6 +114,72 @@ pub fn render_blur_if_needed(
     }
 }
 
+#[instrument(level = "trace", skip_all)]
+pub fn render_glass_if_needed(
+    backend_handle: &GraphicsBackendHandle,
+    texture_handle: &GraphicsTextureHandle,
+    stream_handle: &GraphicsStreamHandle,
+    canvas_handle: &GraphicsCanvasHandle,
+    ui: &mut UiContainer,
+) {
+    if !ui.ui_state.glass_shapes.is_empty() {
+        let glass_shapes = ui.ui_state.glass_shapes.clone();
+        let (screen_rect, full_output, zoom_level) = render_impl(
+            canvas_handle,
+            ui,
+            |ui, _, ui_state| {
+                for glass_shape in ui_state.glass_shapes.drain(..) {
+                    let GlassShape::Elipse(elipse) = glass_shape;
+
+                    ui.painter().rect(
+                        Rect::from_center_size(elipse.center, elipse.size - egui::vec2(2.0, 2.0)),
+                        0.0,
+                        Color32::WHITE,
+                        Stroke::NONE,
+                        egui::StrokeKind::Inside,
+                    );
+                }
+            },
+            &mut UiRenderPipe {
+                cur_time: Duration::ZERO,
+                user_data: &mut (),
+            },
+            egui::RawInput::default(),
+            true,
+        );
+        backend_handle.next_switch_pass();
+        let _ = render_ui(
+            ui,
+            full_output,
+            &screen_rect,
+            zoom_level,
+            backend_handle,
+            texture_handle,
+            stream_handle,
+            true,
+        );
+        for glass_shape in glass_shapes {
+            let GlassShape::Elipse(elipse) = glass_shape;
+            render_glass(
+                stream_handle,
+                vec2::new(screen_rect.min.x, screen_rect.min.y),
+                vec2::new(screen_rect.width(), screen_rect.height()),
+                vec2::new(elipse.center.x, elipse.center.y),
+                vec2::new(elipse.size.x, elipse.size.y),
+                elipse.power,
+                vec4::new(
+                    elipse.color.r() as f32 / 255.0,
+                    elipse.color.g() as f32 / 255.0,
+                    elipse.color.b() as f32 / 255.0,
+                    elipse.color.a() as f32 / 255.0,
+                ),
+            );
+        }
+        render_glass_rest(backend_handle, stream_handle);
+        render_swapped_frame(canvas_handle, stream_handle);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 #[instrument(level = "trace", skip_all)]
 pub fn render_ex<U>(
@@ -146,7 +215,7 @@ pub fn render_ex<U>(
         canvas_handle,
         ui,
     );
-    render_ui(
+    let res = render_ui(
         ui,
         full_output,
         &screen_rect,
@@ -155,7 +224,15 @@ pub fn render_ex<U>(
         texture_handle,
         stream_handle,
         false,
-    )
+    );
+    render_glass_if_needed(
+        backend_handle,
+        texture_handle,
+        stream_handle,
+        canvas_handle,
+        ui,
+    );
+    res
 }
 
 #[allow(clippy::too_many_arguments)]
