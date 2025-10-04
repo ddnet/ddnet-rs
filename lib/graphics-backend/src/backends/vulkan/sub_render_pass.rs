@@ -11,7 +11,10 @@ use hiarc::Hiarc;
 use num_traits::FromPrimitive;
 use strum::EnumCount;
 
-use crate::{backend::CustomPipelines, backends::vulkan::vulkan_types::SupportedBlendModes};
+use crate::{
+    backend::CustomPipelines,
+    backends::vulkan::{vulkan_types::SupportedBlendModes, vulkan_uniform::UniformGGlass},
+};
 
 use super::{
     compiler::compiler::ShaderCompiler,
@@ -40,6 +43,7 @@ pub struct SubRenderPass {
     pub standard_blur_pipeline: PipelineContainer,
     pub standard_3d_pipeline: PipelineContainer,
     pub blur_pipeline: PipelineContainer,
+    pub glass_pipeline: PipelineContainer,
     pub prim_ex_pipeline: PipelineContainer,
     pub prim_ex_rotationless_pipeline: PipelineContainer,
     pub sprite_multi_pipeline: PipelineContainer,
@@ -54,6 +58,7 @@ impl SubRenderPass {
             SubRenderPassAttributes::StandardBlurPipeline => &self.standard_blur_pipeline,
             SubRenderPassAttributes::Standard3dPipeline => &self.standard_3d_pipeline,
             SubRenderPassAttributes::BlurPipeline => &self.blur_pipeline,
+            SubRenderPassAttributes::GlassPipeline => &self.glass_pipeline,
             SubRenderPassAttributes::PrimExPipeline => &self.prim_ex_pipeline,
             SubRenderPassAttributes::PrimExRotationlessPipeline => {
                 &self.prim_ex_rotationless_pipeline
@@ -564,235 +569,305 @@ impl SubRenderPass {
             pipeline_cache,
         );
 
-        let (res1, res2, res3, res4, res5, res6, res7, res8) = runtime_threadpool.install(|| {
-            join_all!(
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.standard_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                Some((
-                                    "shader/vulkan/prim.vert.spv".into(),
-                                    "shader/vulkan/prim_textured.frag.spv".into(),
-                                ))
-                            } else {
-                                Some((
-                                    "shader/vulkan/prim.vert.spv".into(),
-                                    "shader/vulkan/prim.frag.spv".into(),
-                                ))
-                            }
-                        },
-                        |is_textured, address_mode| {
-                            Self::standard_pipeline_layout(
-                                layouts,
-                                is_textured,
-                                false,
-                                address_mode,
-                            )
-                        },
-                    )
-                    .map_err(|err| anyhow!("Create standard graphics pipeline: {err}"))?;
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.standard_line_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                None
-                            } else {
-                                Some((
-                                    "shader/vulkan/prim.vert.spv".into(),
-                                    "shader/vulkan/prim.frag.spv".into(),
-                                ))
-                            }
-                        },
-                        |is_textured, address_mode| {
-                            Self::standard_pipeline_layout(layouts, is_textured, true, address_mode)
-                        },
-                    )
-                    .map_err(|err| anyhow!("Create standard line graphics pipeline: {err}"))?;
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.blur_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                Some((
-                                    "shader/vulkan/prim.vert.spv".into(),
-                                    "shader/vulkan/blur.frag.spv".into(),
-                                ))
-                            } else {
-                                None
-                            }
-                        },
-                        |is_textured, address_mode| {
-                            let (
-                                input_attributes,
-                                set_layouts,
-                                mut push_constants,
-                                stride,
-                                is_line,
-                            ) = Self::standard_pipeline_layout(
-                                layouts,
-                                is_textured,
-                                false,
-                                address_mode,
-                            );
-                            push_constants.push(vk::PushConstantRange {
-                                stage_flags: vk::ShaderStageFlags::FRAGMENT,
-                                offset: std::mem::size_of::<UniformGPos>() as u32,
-                                size: std::mem::size_of::<UniformGBlur>() as u32,
-                            });
-                            (
-                                input_attributes,
-                                set_layouts,
-                                push_constants,
-                                stride,
-                                is_line,
-                            )
-                        },
-                    )
-                    .map_err(|err| anyhow!("Create blur graphics pipeline: {err}"))?;
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.standard_3d_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                Some((
-                                    "shader/vulkan/prim3d_textured.vert.spv".into(),
-                                    "shader/vulkan/prim3d_textured.frag.spv".into(),
-                                ))
-                            } else {
-                                Some((
-                                    "shader/vulkan/prim3d.vert.spv".into(),
-                                    "shader/vulkan/prim3d.frag.spv".into(),
-                                ))
-                            }
-                        },
-                        |is_textured, address_mode| {
-                            Self::standard_3d_pipeline_layout(layouts, is_textured, address_mode)
-                        },
-                    )
-                    .map_err(|err| anyhow!("Create standard 3d graphics pipeline: {err}"))?;
+        let (res1, res2, res3, res4, res5, res6, res7, res8, res9) =
+            runtime_threadpool.install(|| {
+                join_all!(
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.standard_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/prim.vert.spv".into(),
+                                        "shader/vulkan/prim_textured.frag.spv".into(),
+                                    ))
+                                } else {
+                                    Some((
+                                        "shader/vulkan/prim.vert.spv".into(),
+                                        "shader/vulkan/prim.frag.spv".into(),
+                                    ))
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                Self::standard_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    false,
+                                    address_mode,
+                                )
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create standard graphics pipeline: {err}"))?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.standard_line_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    None
+                                } else {
+                                    Some((
+                                        "shader/vulkan/prim.vert.spv".into(),
+                                        "shader/vulkan/prim.frag.spv".into(),
+                                    ))
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                Self::standard_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    true,
+                                    address_mode,
+                                )
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create standard line graphics pipeline: {err}"))?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.blur_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/prim.vert.spv".into(),
+                                        "shader/vulkan/blur.frag.spv".into(),
+                                    ))
+                                } else {
+                                    None
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                let (
+                                    input_attributes,
+                                    set_layouts,
+                                    mut push_constants,
+                                    stride,
+                                    is_line,
+                                ) = Self::standard_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    false,
+                                    address_mode,
+                                );
+                                push_constants.push(vk::PushConstantRange {
+                                    stage_flags: vk::ShaderStageFlags::FRAGMENT,
+                                    offset: std::mem::size_of::<UniformGPos>() as u32,
+                                    size: std::mem::size_of::<UniformGBlur>() as u32,
+                                });
+                                (
+                                    input_attributes,
+                                    set_layouts,
+                                    push_constants,
+                                    stride,
+                                    is_line,
+                                )
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create blur graphics pipeline: {err}"))?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.glass_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/prim.vert.spv".into(),
+                                        "shader/vulkan/glass.frag.spv".into(),
+                                    ))
+                                } else {
+                                    None
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                let (
+                                    input_attributes,
+                                    set_layouts,
+                                    mut push_constants,
+                                    stride,
+                                    is_line,
+                                ) = Self::standard_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    false,
+                                    address_mode,
+                                );
+                                push_constants.push(vk::PushConstantRange {
+                                    stage_flags: vk::ShaderStageFlags::FRAGMENT,
+                                    offset: std::mem::size_of::<UniformGPos>() as u32,
+                                    size: std::mem::size_of::<UniformGGlass>() as u32,
+                                });
+                                (
+                                    input_attributes,
+                                    set_layouts,
+                                    push_constants,
+                                    stride,
+                                    is_line,
+                                )
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create glass graphics pipeline: {err}"))?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.standard_3d_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/prim3d_textured.vert.spv".into(),
+                                        "shader/vulkan/prim3d_textured.frag.spv".into(),
+                                    ))
+                                } else {
+                                    Some((
+                                        "shader/vulkan/prim3d.vert.spv".into(),
+                                        "shader/vulkan/prim3d.frag.spv".into(),
+                                    ))
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                Self::standard_3d_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    address_mode,
+                                )
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create standard 3d graphics pipeline: {err}"))?;
 
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.prim_ex_rotationless_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                Some((
-                                    "shader/vulkan/primex_tex_rotationless.vert.spv".into(),
-                                    "shader/vulkan/primex_tex_rotationless.frag.spv".into(),
-                                ))
-                            } else {
-                                Some((
-                                    "shader/vulkan/primex_rotationless.vert.spv".into(),
-                                    "shader/vulkan/primex_rotationless.frag.spv".into(),
-                                ))
-                            }
-                        },
-                        |is_textured, address_mode| {
-                            Self::prim_ex_pipeline_layout(layouts, is_textured, true, address_mode)
-                        },
-                    )
-                    .map_err(|err| {
-                        anyhow!("Create prim ex graphics rotationless pipeline: {err}")
-                    })?;
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.prim_ex_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                Some((
-                                    "shader/vulkan/primex_tex.vert.spv".into(),
-                                    "shader/vulkan/primex_tex.frag.spv".into(),
-                                ))
-                            } else {
-                                Some((
-                                    "shader/vulkan/primex.vert.spv".into(),
-                                    "shader/vulkan/primex.frag.spv".into(),
-                                ))
-                            }
-                        },
-                        |is_textured, address_mode| {
-                            Self::prim_ex_pipeline_layout(layouts, is_textured, false, address_mode)
-                        },
-                    )
-                    .map_err(|err| anyhow!("Create prim ex graphics pipeline: {err}"))?;
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    (!stop_execution_flag
-                        .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                    .then_some(Some(()))
-                    .ok_or(anyhow!("Execution termination was requested."))?;
-                    Self::create_graphics_pipeline_generic(
-                        &mut self.sprite_multi_pipeline,
-                        &pipeline_manager,
-                        |is_textured| {
-                            if is_textured {
-                                Some((
-                                    "shader/vulkan/spritemulti.vert.spv".into(),
-                                    "shader/vulkan/spritemulti.frag.spv".into(),
-                                ))
-                            } else {
-                                None
-                            }
-                        },
-                        |_, address_mode| Self::sprite_multi_pipeline_layout(layouts, address_mode),
-                    )
-                    .map_err(|err| anyhow!("Create sprite multi graphics pipeline: {err}"))?;
-                    Ok(())
-                },
-                || -> anyhow::Result<()> {
-                    let custom_pipes = custom_pipes.read();
-                    let mut name_offset = 0;
-                    for custom_pipe in custom_pipes.iter() {
-                        let count = custom_pipe.pipeline_count();
-                        for _ in 0..count {
-                            (!stop_execution_flag
-                                .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
-                            .then_some(Some(()))
-                            .ok_or(anyhow!("Execution termination was requested."))?;
-                            Self::create_graphics_pipeline_generic(
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.prim_ex_rotationless_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/primex_tex_rotationless.vert.spv".into(),
+                                        "shader/vulkan/primex_tex_rotationless.frag.spv".into(),
+                                    ))
+                                } else {
+                                    Some((
+                                        "shader/vulkan/primex_rotationless.vert.spv".into(),
+                                        "shader/vulkan/primex_rotationless.frag.spv".into(),
+                                    ))
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                Self::prim_ex_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    true,
+                                    address_mode,
+                                )
+                            },
+                        )
+                        .map_err(|err| {
+                            anyhow!("Create prim ex graphics rotationless pipeline: {err}")
+                        })?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.prim_ex_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/primex_tex.vert.spv".into(),
+                                        "shader/vulkan/primex_tex.frag.spv".into(),
+                                    ))
+                                } else {
+                                    Some((
+                                        "shader/vulkan/primex.vert.spv".into(),
+                                        "shader/vulkan/primex.frag.spv".into(),
+                                    ))
+                                }
+                            },
+                            |is_textured, address_mode| {
+                                Self::prim_ex_pipeline_layout(
+                                    layouts,
+                                    is_textured,
+                                    false,
+                                    address_mode,
+                                )
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create prim ex graphics pipeline: {err}"))?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        (!stop_execution_flag
+                            .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                        .then_some(Some(()))
+                        .ok_or(anyhow!("Execution termination was requested."))?;
+                        Self::create_graphics_pipeline_generic(
+                            &mut self.sprite_multi_pipeline,
+                            &pipeline_manager,
+                            |is_textured| {
+                                if is_textured {
+                                    Some((
+                                        "shader/vulkan/spritemulti.vert.spv".into(),
+                                        "shader/vulkan/spritemulti.frag.spv".into(),
+                                    ))
+                                } else {
+                                    None
+                                }
+                            },
+                            |_, address_mode| {
+                                Self::sprite_multi_pipeline_layout(layouts, address_mode)
+                            },
+                        )
+                        .map_err(|err| anyhow!("Create sprite multi graphics pipeline: {err}"))?;
+                        Ok(())
+                    },
+                    || -> anyhow::Result<()> {
+                        let custom_pipes = custom_pipes.read();
+                        let mut name_offset = 0;
+                        for custom_pipe in custom_pipes.iter() {
+                            let count = custom_pipe.pipeline_count();
+                            for _ in 0..count {
+                                (!stop_execution_flag
+                                    .is_some_and(|v| v.load(std::sync::atomic::Ordering::Relaxed)))
+                                .then_some(Some(()))
+                                .ok_or(anyhow!("Execution termination was requested."))?;
+                                Self::create_graphics_pipeline_generic(
                                 &mut self.additional_pipes[name_offset as usize],
                                 &pipeline_manager,
                                 |is_textured| {
@@ -811,14 +886,14 @@ impl SubRenderPass {
                         "Creating custom graphics pipeline (index: {name_offset}) failed: {err}"
                     )
                             })?;
-                            name_offset += 1;
+                                name_offset += 1;
+                            }
                         }
-                    }
 
-                    Ok(())
-                }
-            )
-        });
+                        Ok(())
+                    }
+                )
+            });
 
         res1?;
         res2?;
@@ -828,6 +903,7 @@ impl SubRenderPass {
         res6?;
         res7?;
         res8?;
+        res9?;
 
         Ok(())
     }
@@ -880,6 +956,7 @@ impl SubRenderPass {
             standard_blur_pipeline: PipelineContainer::new(mode.clone()),
             standard_3d_pipeline: PipelineContainer::new(mode.clone()),
             blur_pipeline: PipelineContainer::new(mode.clone()),
+            glass_pipeline: PipelineContainer::new(mode.clone()),
             prim_ex_pipeline: PipelineContainer::new(mode.clone()),
             prim_ex_rotationless_pipeline: PipelineContainer::new(mode.clone()),
             sprite_multi_pipeline: PipelineContainer::new(mode.clone()),

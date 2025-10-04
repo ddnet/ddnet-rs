@@ -716,6 +716,9 @@ impl VulkanBackend {
                 CommandsRenderStream::RenderBlurred { cmd, .. } => {
                     Self::cmd_render_blurred_fill_execute_buffer(&mut render_execute_manager, cmd)
                 }
+                CommandsRenderStream::RenderGlass { cmd, .. } => {
+                    Self::cmd_render_glass_fill_execute_buffer(&mut render_execute_manager, cmd)
+                }
             },
             CommandsRender::QuadContainer(cmd) => match cmd {
                 CommandsRenderQuadContainer::Render(cmd) => {
@@ -2288,6 +2291,13 @@ impl VulkanBackend {
     }
 
     fn cmd_render_blurred_fill_execute_buffer(
+        render_execute_manager: &mut RenderCommandExecuteManager,
+        cmd: &CommandRender,
+    ) {
+        Self::cmd_render_fill_execute_buffer(render_execute_manager, cmd);
+    }
+
+    fn cmd_render_glass_fill_execute_buffer(
         render_execute_manager: &mut RenderCommandExecuteManager,
         cmd: &CommandRender,
     ) {

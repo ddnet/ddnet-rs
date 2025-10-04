@@ -249,6 +249,14 @@ where
                             Ok(output) => {
                                 self.ui.zoom_level.set(output.zoom_level);
                                 self.ui.ui_state.blur_shapes = output.blur_shapes;
+                                self.ui.ui_state.glass_shapes = output.glass_shapes;
+                                generic_ui_renderer::render_glass_if_needed(
+                                    &graphics.backend_handle,
+                                    &graphics.texture_handle,
+                                    &graphics.stream_handle,
+                                    &graphics.canvas_handle,
+                                    &mut self.ui,
+                                );
                                 UiPageRunReturn::Success(output.output)
                             }
                             Err(err) => UiPageRunReturn::RuntimeError(err),

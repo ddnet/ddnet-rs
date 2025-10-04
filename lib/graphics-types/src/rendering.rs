@@ -205,6 +205,24 @@ impl Default for State {
     }
 }
 
+#[derive(Debug, Hiarc, Default, Clone, Copy, Serialize, Deserialize)]
+pub struct RenderModeGlass {
+    pub elipse_strength: f32,
+    pub exponent_offset: f32,
+    pub decay_scale: f32,
+    pub base_factor: f32,
+    pub deca_rate: f32,
+    pub refraction_falloff: f32,
+    pub noise: f32,
+    pub glow_weight: f32,
+    pub glow_bias: f32,
+    pub glow_edge0: f32,
+    pub glow_edge1: f32,
+
+    pub center: vec2,
+    pub size: vec2,
+}
+
 #[derive(Debug, Hiarc, Default, Clone, Copy)]
 pub enum RenderMode {
     #[default]
@@ -218,6 +236,7 @@ pub enum RenderMode {
         /// transparency
         blur_color: vec4,
     },
+    Glass(RenderModeGlass),
 }
 
 #[derive(Debug, Hiarc, Default, Clone, Copy, Serialize, Deserialize)]
