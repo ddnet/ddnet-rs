@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, net::SocketAddr, time::Duration};
+use std::{collections::BTreeMap, net::SocketAddr};
 
 use anyhow::anyhow;
 use arrayvec::ArrayVec;
@@ -208,8 +208,6 @@ pub struct ClientData {
     pub latest_input: snap_obj::PlayerInput,
     pub latest_char_input: CharacterInput,
 
-    pub connect_time: Duration,
-
     pub player_info: NetworkCharacterInfo,
 
     pub latest_inputs: BTreeMap<i32, (CharacterInput, snap_obj::PlayerInput)>,
@@ -226,7 +224,6 @@ impl ProxyClient {
     pub fn new(
         player_info: NetworkCharacterInfo,
         socket: SocketClient,
-        connect_time: Duration,
         id: u64,
         secondary_player: bool,
     ) -> Self {
@@ -254,8 +251,6 @@ impl ProxyClient {
 
                     inp
                 },
-
-                connect_time,
 
                 player_info,
 

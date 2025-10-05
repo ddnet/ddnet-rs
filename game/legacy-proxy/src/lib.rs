@@ -347,6 +347,8 @@ struct Client {
     log: ConnectingLog,
 
     last_snapshot: Snapshot,
+
+    start_time: Duration,
 }
 
 impl Client {
@@ -356,6 +358,7 @@ impl Client {
         addr: SocketAddr,
         log: ConnectingLog,
     ) -> anyhow::Result<LegacyProxy> {
+        let proxy_start = time.now();
         let fs = io.fs.clone();
 
         log.log("Preparing proxy socket");
@@ -675,6 +678,8 @@ impl Client {
                     is_finished: is_finished_thread,
 
                     log,
+
+                    start_time: proxy_start,
                 };
 
                 app.run_loop().unwrap();
@@ -3528,13 +3533,7 @@ impl Client {
 
                                 self.players.insert(
                                     self.base.id_generator.next_id(),
-                                    ProxyClient::new(
-                                        Default::default(),
-                                        sock_loop,
-                                        self.time.now(),
-                                        0,
-                                        false,
-                                    ),
+                                    ProxyClient::new(Default::default(), sock_loop, 0, false),
                                 );
                             }
                         }
@@ -3564,13 +3563,7 @@ impl Client {
 
                             self.players.insert(
                                 self.base.id_generator.next_id(),
-                                ProxyClient::new(
-                                    Default::default(),
-                                    sock_loop,
-                                    self.time.now(),
-                                    0,
-                                    false,
-                                ),
+                                ProxyClient::new(Default::default(), sock_loop, 0, false),
                             );
                         }
                         ClientToServerMessage::Ready(msg) => {
@@ -3619,13 +3612,7 @@ impl Client {
                                 let player_id = self.base.id_generator.next_id();
                                 self.players.insert(
                                     player_id,
-                                    ProxyClient::new(
-                                        ev.player_info,
-                                        sock_loop,
-                                        self.time.now(),
-                                        ev.id,
-                                        true,
-                                    ),
+                                    ProxyClient::new(ev.player_info, sock_loop, ev.id, true),
                                 );
                                 if let Some(con_id) = self.con_id {
                                     self.server_network.send_unordered_to(
@@ -4531,10 +4518,9 @@ impl Client {
                                 self.server_network.send_unordered_to(
                                     &ServerToClientMessage::ServerInfo {
                                         info: server_info,
-                                        overhead: self
-                                            .time
-                                            .now()
-                                            .saturating_sub(player.data.connect_time),
+                                        // the proxy is not really good at estimating the first ping
+                                        // so give it the whole startup time as overhead instead
+                                        overhead: self.time.now().saturating_sub(self.start_time),
                                     },
                                     &con_id,
                                 );
