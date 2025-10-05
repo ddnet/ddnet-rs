@@ -440,7 +440,7 @@ impl Client {
                         Connless::RequestInfo(msg::connless::RequestInfo { token: tokens[0] }),
                     );
                     let start_time = time.now();
-                    let mut last_req = start_time;
+                    let mut last_req = None;
                     let mut last_reconnect = start_time;
                     while server_info.is_none()
                         && !is_finished_thread.load(std::sync::atomic::Ordering::SeqCst)
@@ -514,8 +514,12 @@ impl Client {
 
                         let cur_time = time.now();
                         // send new request
-                        if cur_time.saturating_sub(last_req) > Duration::from_secs(5) {
-                            log.log("Sending new info request after 5s timeout");
+                        if last_req.is_none_or(|last_req| {
+                            cur_time.saturating_sub(last_req) > Duration::from_secs(1)
+                        }) {
+                            if last_req.is_some() {
+                                log.log("Sending new info request after 1s timeout");
+                            }
                             let token = rand::rng().next_u32() as u8;
                             conless.sendc(
                                 addr,
@@ -524,7 +528,7 @@ impl Client {
 
                             tokens.push(token);
 
-                            last_req = cur_time;
+                            last_req = Some(cur_time);
                         }
 
                         // try to reconnect
