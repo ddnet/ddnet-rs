@@ -1593,7 +1593,7 @@ impl Client {
                     }
                 }
                 SnapObj::ClientInfo(client_info) => {
-                    if let Some((character_id, info)) = Self::player_info_mut(id, base, snapshot) {
+                    if let Some((_, info)) = Self::player_info_mut(id, base, snapshot) {
                         fn ints_to_net_str<const MAX_LENGTH: usize>(
                             int_arr: &[i32],
                         ) -> NetworkString<MAX_LENGTH> {
@@ -1605,14 +1605,14 @@ impl Client {
                                 .map(NetworkString::new_lossy)
                                 .unwrap_or_default()
                         }
-                        let mut player_info = (*info.player_info).clone();
 
                         // Apply as much info from known player info as possible
-                        if character_id == player_id {
-                            player_info = player.player_info.clone();
-                        } else if let Some(dummy) = base.local_players.get(&id) {
-                            player_info = dummy.player_info.clone();
-                        }
+                        let mut player_info = if let Some(dummy) = base.local_players.get(&id) {
+                            dummy.player_info.clone()
+                        } else {
+                            // fall back to player info, since legacy servers don't send enough info
+                            player.player_info.clone()
+                        };
 
                         // Then overwrite the info the server knows about
                         player_info.name = ints_to_net_str(client_info.name.as_slice());
