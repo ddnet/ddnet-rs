@@ -22,6 +22,25 @@ pub struct UniformGBlur {
 
 #[derive(Default)]
 #[repr(C)]
+pub struct UniformGGlass {
+    pub center: vec2,
+    pub size: vec2,
+
+    pub elipse_strength: f32,
+    pub exponent_offset: f32,
+    pub decay_scale: f32,
+    pub base_factor: f32,
+    pub deca_rate: f32,
+    pub refraction_falloff: f32,
+    pub noise: f32,
+    pub glow_weight: f32,
+    pub glow_bias: f32,
+    pub glow_edge0: f32,
+    pub glow_edge1: f32,
+}
+
+#[derive(Default)]
+#[repr(C)]
 pub struct UniformPrimExGPosRotationless {
     pub pos: [f32; 4 * 2],
 }

@@ -102,7 +102,7 @@ pub fn render_tee_for_ui_with_skin(
             let tee_render_info = TeeRenderInfo {
                 color_body,
                 color_feet,
-                got_air_jump: false,
+                got_air_jump: true,
                 feet_flipped: false,
                 size: self.size,
                 eye_left: self.eyes,

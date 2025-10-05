@@ -4,7 +4,9 @@ use pool::mt_datatypes::{PoolString, PoolVec};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rendering::{ColorRgba, GlColor, GlColorf, GlPoint, SPoint, State, StateTexture},
+    rendering::{
+        ColorRgba, GlColor, GlColorf, GlPoint, RenderModeGlass, SPoint, State, StateTexture,
+    },
     types::GraphicsBackendMemory,
 };
 use math::math::vector::*;
@@ -331,6 +333,10 @@ pub enum CommandsRenderStream {
         blur_radius: f32,
         scale: vec2,
         blur_color: vec4,
+    },
+    RenderGlass {
+        cmd: CommandRender,
+        glass: RenderModeGlass,
     },
 }
 

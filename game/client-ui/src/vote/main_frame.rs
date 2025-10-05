@@ -116,12 +116,22 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                             },
                             Color32::RED,
                         );
-                        at.x -= no_size / 2.0 - 5.0;
-                        ui.painter().text(
-                            at,
-                            egui::Align2::LEFT_CENTER,
+                        at = rect.left_center();
+                        let galley = ui.painter().layout_no_wrap(
                             format!("{:.1}%", no_perc * 100.0),
                             FontId::default(),
+                            Color32::WHITE,
+                        );
+                        let size = galley.size();
+                        ui.painter().galley(
+                            if size.x + 10.0 < rect.width() {
+                                at + egui::vec2(5.0, -size.y / 2.0)
+                            } else {
+                                rect.right_center()
+                                    - egui::vec2(size.x, size.y / 2.0)
+                                    - egui::vec2(5.0, 0.0)
+                            },
+                            galley,
                             Color32::WHITE,
                         );
                     }
@@ -142,13 +152,21 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                             },
                             Color32::GREEN,
                         );
-                        at.x += yes_size / 2.0 - 5.0;
-                        ui.painter().text(
-                            at,
-                            egui::Align2::RIGHT_CENTER,
+                        at = rect.right_center();
+                        let galley = ui.painter().layout_no_wrap(
                             format!("{:.1}%", yes_perc * 100.0),
                             FontId::default(),
-                            Color32::BLACK,
+                            Color32::DARK_GRAY,
+                        );
+                        let size = galley.size();
+                        ui.painter().galley(
+                            if size.x + 10.0 < rect.width() {
+                                at - egui::vec2(size.x, size.y / 2.0) - egui::vec2(5.0, 0.0)
+                            } else {
+                                rect.left_center() + egui::vec2(5.0, -size.y / 2.0)
+                            },
+                            galley,
+                            Color32::DARK_GRAY,
                         );
                     }
 

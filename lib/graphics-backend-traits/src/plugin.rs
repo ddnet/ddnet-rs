@@ -159,6 +159,7 @@ pub enum SubRenderPassAttributes {
     StandardBlurPipeline,
     Standard3dPipeline,
     BlurPipeline,
+    GlassPipeline,
     PrimExPipeline,
     PrimExRotationlessPipeline,
     SpriteMultiPipeline,
