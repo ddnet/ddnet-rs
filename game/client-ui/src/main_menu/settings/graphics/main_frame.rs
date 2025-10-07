@@ -82,7 +82,8 @@ fn render_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         } else {
                             format!("{samples}")
                         }
-                    }),
+                    })
+                    .custom_parser(|n| n.parse().ok().map(|msaa_step: f64| msaa_step.log2())),
             )
             .changed()
         {
