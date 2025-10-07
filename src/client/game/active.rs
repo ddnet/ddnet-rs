@@ -941,16 +941,12 @@ impl ActiveGame {
                     .last_apply_time
                     .is_none_or(|t| *cur_time >= t + UPDATE_TIME)
                 {
-                    let mut zoom_diff = 0.0;
-                    match state.mode {
-                        ClientPlayerZoomMode::ZoomingIn => {
-                            zoom_diff += 1.0;
-                        }
-                        ClientPlayerZoomMode::ZoomingOut => {
-                            zoom_diff -= 1.0;
-                        }
-                    }
-                    local_player.zoom = (local_player.zoom - zoom_diff * 0.1).clamp(0.01, 1024.0);
+                    const ZOOM_STEP: f32 = 1.1;
+                    let zoom_factor = match state.mode {
+                        ClientPlayerZoomMode::ZoomingIn => 1.0 / ZOOM_STEP,
+                        ClientPlayerZoomMode::ZoomingOut => ZOOM_STEP,
+                    };
+                    local_player.zoom = (local_player.zoom * zoom_factor).clamp(0.01, 1024.0);
 
                     let apply_time = state
                         .last_apply_time

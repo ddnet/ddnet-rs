@@ -82,7 +82,8 @@ fn render_settings(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
                         } else {
                             format!("{samples}")
                         }
-                    }),
+                    })
+                    .custom_parser(|n| n.parse().ok().map(|msaa_step: f64| msaa_step.log2())),
             )
             .changed()
         {
@@ -227,7 +228,7 @@ fn render_monitors(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             |ui| {
                 let wnd = &mut config.engine.wnd;
                 fn fmt_res(w: u32, h: u32, refresh_rate_mhz: u32) -> String {
-                    let g = gcd::binary_u32(w, h);
+                    let g = gcd::binary_u32(w, h).max(1);
                     format!(
                         "{}x{} @{:0.2} ({}:{})",
                         w,
