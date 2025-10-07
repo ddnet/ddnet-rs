@@ -227,7 +227,7 @@ fn render_monitors(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>) {
             |ui| {
                 let wnd = &mut config.engine.wnd;
                 fn fmt_res(w: u32, h: u32, refresh_rate_mhz: u32) -> String {
-                    let g = gcd::binary_u32(w, h);
+                    let g = gcd::binary_u32(w, h).max(1);
                     format!(
                         "{}x{} @{:0.2} ({}:{})",
                         w,
