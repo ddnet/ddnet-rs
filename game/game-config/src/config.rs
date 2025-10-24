@@ -246,8 +246,6 @@ pub struct ConfigClient {
     pub team: ConfigTeam,
     /// Config related to rendering graphics & sound.
     pub render: ConfigRender,
-    #[default = "autumn"]
-    pub menu_background_map: String,
     /// Configs related to spatial chat support.
     pub spatial_chat: ConfigSpatialChat,
     /// Configurations for the demo video encoder.
@@ -754,6 +752,14 @@ pub struct ConfigMenu {
     /// Log some sync related stuff from the internal server & client
     /// only use in release mode
     pub favorite_servers: Vec<String>,
+    /// Background map shown in the menu.
+    /// Reserved names are:
+    /// - auto
+    /// - default
+    /// - random
+    /// - seasons
+    #[default = "autumn"]
+    pub background_map: String,
 }
 
 #[config_default]

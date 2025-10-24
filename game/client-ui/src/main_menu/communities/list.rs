@@ -19,7 +19,7 @@ pub fn community_list(
 ) {
     let communities = &pipe.user_data.ddnet_info.communities;
     let entries_sorted = communities.iter().collect::<BTreeMap<_, _>>();
-    let setting = &mut pipe.user_data.config.game.cl.menu_background_map;
+    let setting = &mut pipe.user_data.config.game.menu.background_map;
     let search_str = pipe
         .user_data
         .config

@@ -2750,7 +2750,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
 
         let menu_map_path = format!(
             "themes/{}",
-            loading.config_game.cl.menu_background_map.as_str()
+            loading.config_game.menu.background_map.as_str()
         );
         let menu_map = ClientMapLoading::new(
             &sound,
