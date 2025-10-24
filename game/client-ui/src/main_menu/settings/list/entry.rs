@@ -10,6 +10,7 @@ pub fn render(
     entry_visual_size: f32,
     validation_fn: &impl Fn(usize, &str) -> anyhow::Result<()>,
     is_selected_fn: &impl Fn(usize, &str) -> bool,
+    label_fn: &impl Fn(String) -> String,
     render_fn: &mut impl FnMut(&mut egui::Ui, usize, &str, vec2, f32),
     on_click_fn: &mut impl FnMut(usize, &str),
     tooltip_text: &str,
@@ -58,7 +59,7 @@ pub fn render(
                                 .with_layout(
                                     Layout::top_down(egui::Align::Center).with_cross_justify(true),
                                     |ui| {
-                                        ui.add(Label::new(entry_name).wrap())
+                                        ui.add(Label::new(label_fn(entry_name.to_string())).wrap())
                                             .on_hover_text(tooltip_text)
                                     },
                                 )

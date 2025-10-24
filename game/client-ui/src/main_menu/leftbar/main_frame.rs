@@ -1,93 +1,36 @@
+use base::{hash::decode_hash, reduced_ascii_str::ReducedAsciiString};
 use config::config::ConfigPath;
 use egui::{
     Color32, CornerRadius, FontId, Frame, Layout, Rect, RichText, ScrollArea, Shape, Style,
     UiBuilder, scroll_area::ScrollBarVisibility, vec2,
 };
 use egui_extras::{Size, StripBuilder};
-use game_interface::types::{character_info::NetworkSkinInfo, render::character::TeeEye};
+use game_interface::types::{
+    character_info::NetworkSkinInfo, render::character::TeeEye, resource_key::ResourceKey,
+};
 use graphics::handles::{
     canvas::canvas::GraphicsCanvasHandle, stream::stream::GraphicsStreamHandle,
 };
-use graphics_types::{commands::TexFlags, types::GraphicsMemoryAllocationType};
-use image_utils::png::load_png_image_as_rgba;
 use math::math::vector::vec2;
 use tracing::instrument;
 use ui_base::{style::bg_frame_color, types::UiState};
 
 use crate::{
     main_menu::{
-        communities::CommunityIcon,
+        communities::IconUrlHash,
         constants::{
             MENU_COMMUNITY_PREFIX, MENU_EXPLORE_COMMUNITIES_NAME, MENU_FAVORITES_NAME,
             MENU_INTERNET_NAME, MENU_LAN_NAME, MENU_PROFILE_NAME, MENU_SETTINGS_NAME,
         },
         user_data::{PROFILE_SKIN_PREVIEW, ProfileSkin, UserData},
     },
+    thumbnail_container::Thumbnail,
     utils::{render_tee_for_ui, render_texture_for_ui},
 };
 
-fn update_communities(user_data: &mut UserData) {
-    let communities = &user_data.ddnet_info.communities;
-
-    communities.values().for_each(|c| {
-        let icons = &mut *user_data.icons;
-        let icon = icons.entry(c.id.clone()).or_insert_with(|| {
-            let graphics_mt = user_data.graphics_mt.clone();
-            let http = user_data.io.http.clone();
-            let url = c.icon.url.clone();
-            url.map(|url| {
-                CommunityIcon::Loading(Ok(user_data.io.rt.spawn(async move {
-                    let icon = http.download_binary_secure(url).await?.to_vec();
-
-                    let mut img_mem = None;
-                    let img = load_png_image_as_rgba(&icon, |width, height, _| {
-                        img_mem = Some(graphics_mt.mem_alloc(
-                            GraphicsMemoryAllocationType::TextureRgbaU8 {
-                                width: width.try_into().unwrap(),
-                                height: height.try_into().unwrap(),
-                                flags: TexFlags::empty(),
-                            },
-                        ));
-                        img_mem.as_mut().unwrap().as_mut_slice()
-                    })?;
-
-                    let width = img.width;
-                    let height = img.height;
-                    Ok((img_mem.unwrap(), width, height))
-                })))
-            })
-            .unwrap_or_else(|| CommunityIcon::Loading(Err("icon url was None".to_string())))
-        });
-
-        match icon {
-            CommunityIcon::Icon { .. } => {}
-            CommunityIcon::Loading(task) => {
-                if task.as_ref().is_ok_and(|task| task.is_finished()) {
-                    let task = std::mem::replace(task, Err("loading failed.".to_string()));
-                    let task = task.unwrap().get();
-                    if let Ok((mem, width, height)) = task {
-                        match user_data.texture_handle.load_texture_rgba_u8(mem, "icon") {
-                            Ok(texture) => {
-                                *icon = CommunityIcon::Icon {
-                                    texture,
-                                    width,
-                                    height,
-                                };
-                            }
-                            Err(err) => {
-                                *icon = CommunityIcon::Loading(Err(err.to_string()));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
 enum CustomRender<'a> {
     None,
-    Icon(&'a CommunityIcon),
+    Icon(&'a Thumbnail),
     #[allow(clippy::type_complexity)]
     Custom(Box<dyn FnMut(&mut egui::Ui, &mut UiState, Rect, Rect) + 'a>),
 }
@@ -102,7 +45,6 @@ pub fn render(
     fallback_query: &str,
 ) {
     ui_state.add_blur_rect(ui.available_rect_before_wrap(), 0.0);
-    update_communities(user_data);
 
     let current_active = user_data
         .config
@@ -159,22 +101,15 @@ pub fn render(
                         let style = ui.style_mut();
                         btn_style(style, size);
                         let text = match icon {
-                            CustomRender::None => text,
-                            CustomRender::Icon(icon) => {
-                                if matches!(icon, CommunityIcon::Icon { .. }) {
-                                    ""
-                                } else {
-                                    text
-                                }
-                            }
-                            CustomRender::Custom(_) => "",
+                            CustomRender::None => text.chars().next().unwrap_or('U').to_string(),
+                            CustomRender::Icon(_) | CustomRender::Custom(_) => "".to_string(),
                         };
                         let clicked = ui
                             .button(RichText::new(text).font(FontId::proportional(18.0)))
                             .clicked();
                         match icon {
-                            CustomRender::Icon(CommunityIcon::Icon {
-                                texture,
+                            CustomRender::Icon(Thumbnail {
+                                thumbnail,
                                 width,
                                 height,
                             }) => {
@@ -186,7 +121,7 @@ pub fn render(
                                 render_texture_for_ui(
                                     stream_handle,
                                     canvas_handle,
-                                    texture,
+                                    thumbnail,
                                     ui,
                                     ui_state,
                                     ui.ctx().screen_rect(),
@@ -199,7 +134,7 @@ pub fn render(
                             CustomRender::Custom(mut render) => {
                                 render(ui, ui_state, clip_rect, rect);
                             }
-                            CustomRender::None | CustomRender::Icon(CommunityIcon::Loading(_)) => {
+                            CustomRender::None => {
                                 // ignore
                             }
                         }
@@ -313,12 +248,27 @@ pub fn render(
                             );
 
                             for community in user_data.ddnet_info.communities.values() {
-                                let icon = user_data.icons.get(&community.id);
+                                let key = ResourceKey {
+                                    name: ReducedAsciiString::from_str_lossy(&community.id),
+                                    hash: if let IconUrlHash::Blake3 { blake3: hash } =
+                                        &community.icon.hash
+                                    {
+                                        decode_hash(hash)
+                                    } else {
+                                        None
+                                    },
+                                };
+                                let is_loaded = user_data.icons.is_loaded(&key);
+                                let icon = user_data.icons.get_or_default(&key);
                                 round_btn(
                                     ui,
                                     &community.id,
                                     MENU_COMMUNITY_PREFIX,
-                                    icon.map(CustomRender::Icon).unwrap_or(CustomRender::None),
+                                    if is_loaded {
+                                        CustomRender::Icon(icon)
+                                    } else {
+                                        CustomRender::None
+                                    },
                                     &current_active,
                                     size,
                                     path,

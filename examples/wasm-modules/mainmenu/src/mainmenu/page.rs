@@ -31,6 +31,7 @@ use client_ui::{
         theme_container::ThemeContainer,
         user_data::MainMenuInterface,
     },
+    thumbnail_container::{DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer},
 };
 use game_base::server_browser::ServerBrowserPlayer;
 use game_base::server_browser::{
@@ -51,6 +52,8 @@ use graphics::{
 };
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
+
+use crate::mainmenu::create_thumbnail_container;
 
 use super::{create_theme_container, profiles::Profiles};
 
@@ -89,6 +92,7 @@ pub struct MainMenu {
     hud_container: HudContainer,
     ctf_container: CtfContainer,
     theme_container: ThemeContainer,
+    icons_container: ThumbnailContainer,
 
     map_render: MapGraphics,
     tile_layer_visuals: Option<TileLayerVisuals>,
@@ -255,6 +259,10 @@ impl MainMenu {
             hud_container: create_hud_container(),
             ctf_container: create_ctf_container(),
             theme_container: create_theme_container(),
+            icons_container: create_thumbnail_container(
+                DEFAULT_THUMBNAIL_CONTAINER_PATH,
+                "community-icons",
+            ),
 
             map_render: MapGraphics::new(&graphics.backend_handle),
             tile_layer_visuals: None,
@@ -282,7 +290,7 @@ impl MainMenu {
                     ddnet_info: &Default::default(),
                     demos: &self.demos,
                     demo_info: &None,
-                    icons: &mut Default::default(),
+                    icons: &mut self.icons_container,
 
                     server_info: &Default::default(),
                     render_options: client_ui::main_menu::user_data::RenderOptions {

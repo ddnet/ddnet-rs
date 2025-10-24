@@ -1,0 +1,31 @@
+[package]
+name = "ddnet-info-proxy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base = { path = "../../lib/base" }
+base-io = { path = "../../lib/base-io" }
+base-io-traits = { path = "../../lib/base-io-traits" }
+
+client-ui = { path = "../client-ui" }
+
+anyhow = { version = "1.0.99", features = ["backtrace"] }
+axum = "0.8.4"
+reqwest = { version = "0.12.23", default-features = false, features = [
+  "rustls-tls",
+  "json",
+] }
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.47.1", features = [
+  "rt-multi-thread",
+  "macros",
+  "sync",
+  "time",
+] }
+tracing = { version = "0.1.40", default-features = false, features = [
+  "attributes",
+] }
+url = { version = "2.5.7", features = ["serde"] }
+log = "0.4.28"
+async-trait = "0.1.89"

@@ -46,14 +46,11 @@ impl MapVotes {
                         Ok((
                             key.as_str().try_into()?,
                             val.into_iter()
-                                .map(|(original_key, val)| {
-                                    let key: String = original_key.chars().rev().collect();
-                                    key.split_once("_")
-                                        .map(|(hash, name)| {
-                                            let name: String = name.chars().rev().collect();
-                                            let name = name.as_str().try_into()?;
-                                            let hash: String = hash.chars().rev().collect();
-                                            let hash = decode_hash(&hash)
+                                .map(|(key, val)| {
+                                    key.rsplit_once("_")
+                                        .map(|(name, hash)| {
+                                            let name = name.try_into()?;
+                                            let hash = decode_hash(hash)
                                                 .ok_or_else(|| anyhow!("no hash decoded."))?;
                                             Ok((
                                                 MapVoteKey {
@@ -66,7 +63,7 @@ impl MapVotes {
                                         .unwrap_or_else(|| {
                                             Ok((
                                                 MapVoteKey {
-                                                    name: original_key.as_str().try_into()?,
+                                                    name: key.as_str().try_into()?,
                                                     hash: None,
                                                 },
                                                 val,

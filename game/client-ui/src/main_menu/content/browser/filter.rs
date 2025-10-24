@@ -90,6 +90,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                     20.0,
                                     |_, _| Ok(()),
                                     |_, _| true,
+                                    |s| s,
                                     |ui, _, name, pos, size| {
                                         let key =
                                             pipe.user_data.flags_container.default_key.clone();

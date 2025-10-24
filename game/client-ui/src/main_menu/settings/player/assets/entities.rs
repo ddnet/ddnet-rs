@@ -34,6 +34,7 @@ pub fn entities_list(
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.entities == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let tile_set_preview = pipe.user_data.tile_set_preview.get_or_insert_with(|| {
                 ClientMapBuffered::tile_set_preview(

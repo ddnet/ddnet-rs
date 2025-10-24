@@ -36,10 +36,10 @@ use url::Url;
 use crate::{
     events::UiEvents,
     ingame_menu::{client_info::ClientInfo, raw_input_info::RawInputInfo},
+    thumbnail_container::ThumbnailContainer,
 };
 
 use super::{
-    communities::CommunityIcons,
     ddnet_info::DdnetInfo,
     demo_list::DemoList,
     features::EnabledFeatures,
@@ -595,7 +595,7 @@ pub struct UserData<'a> {
     pub server_info: &'a Arc<LocalServerInfo>,
 
     pub ddnet_info: &'a DdnetInfo,
-    pub icons: &'a mut CommunityIcons,
+    pub icons: &'a mut ThumbnailContainer,
 
     pub demos: &'a DemoList,
     pub demo_info: &'a Option<(DemoHeader, DemoHeaderExt)>,

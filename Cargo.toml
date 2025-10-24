@@ -70,6 +70,7 @@ members = [
   "game/client-ui",
   "game/community",
   "game/demo",
+  "game/ddnet-info-proxy",
   "game/editor",
   "game/editor-auto-mapper-wasm",
   "game/editor-interface",
@@ -225,6 +226,7 @@ client-replay = { path = "game/client-replay" }
 client-types = { path = "game/client-types" }
 client-ui = { path = "game/client-ui", features = ["binds"] }
 demo = { path = "game/demo", features = ["recorder"] }
+ddnet-info-proxy = { path = "game/ddnet-info-proxy" }
 editor = { path = "game/editor", default-features = false }
 editor-wasm = { path = "game/editor-wasm", default-features = false }
 game-base = { path = "game/game-base" }

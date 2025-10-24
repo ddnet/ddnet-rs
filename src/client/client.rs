@@ -71,6 +71,7 @@ use client_ui::{
 };
 use command_parser::parser::ParserCache;
 use config::config::ConfigEngine;
+use ddnet_info_proxy::DdnetInfoProxy;
 use demo::recorder::DemoRecorder;
 use editor::editor::{EditorInterface, EditorResult};
 use egui::{CursorIcon, FontDefinitions};
@@ -397,6 +398,8 @@ struct ClientNativeImpl {
     ui_events: UiEvents,
     font_data: FontDefinitions,
     ui_creator: UiCreator,
+
+    _ddnet_info_proxy: DdnetInfoProxy,
 
     /// RAII object that must live as long as the app
     _steam_rt: Box<dyn SteamRaii>,
@@ -2747,7 +2750,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
 
         let menu_map_path = format!(
             "themes/{}",
-            loading.config_game.cl.menu_background_map.as_str()
+            loading.config_game.menu.background_map.as_str()
         );
         let menu_map = ClientMapLoading::new(
             &sound,
@@ -2847,6 +2850,8 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             spatial_chat: microphone(),
         };
 
+        let ddnet_info_proxy = ddnet_info_proxy::spawn(&io)?;
+
         let main_menu = Box::new(MainMenuUi::new(
             &graphics,
             &sound,
@@ -2864,6 +2869,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             raw_input_info.clone(),
             browser_data.clone(),
             enabled_features,
+            ddnet_info_proxy.state.clone(),
         ));
         let connecting_menu =
             Box::new(ConnectingUi::new(connecting_log.clone(), ui_events.clone()));
@@ -2889,6 +2895,7 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             account_info.clone(),
             votes.clone(),
             &loading.time.now(),
+            ddnet_info_proxy.state.clone(),
         ));
         let tee_editor = Box::new(TeeEditor::new(&mut graphics));
         let color_test = Box::new(ColorTest::default());
@@ -3003,6 +3010,8 @@ impl FromNativeLoadingImpl<ClientNativeLoadingImpl> for GraphicsApp<ClientNative
             ui_events,
             font_data,
             ui_creator,
+
+            _ddnet_info_proxy: ddnet_info_proxy,
 
             _steam_rt: steam_rt,
 

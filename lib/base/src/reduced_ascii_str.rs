@@ -115,11 +115,8 @@ impl ReducedAsciiString {
         }
         if Self::is_hash_like(s.as_str()).is_err() {
             s = s
-                .chars()
-                .rev()
-                .collect::<String>()
-                .split_once("_")
-                .map(|(_, rest)| rest.chars().rev().collect())
+                .rsplit_once("_")
+                .map(|(rest, _)| rest.to_string())
                 .unwrap_or_default();
         }
 

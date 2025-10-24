@@ -27,7 +27,6 @@ config = { path = "../../lib/config" }
 graphics = { path = "../../lib/graphics" }
 graphics-types = { path = "../../lib/graphics-types" }
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
-image-utils = { path = "../../lib/image-utils" }
 math = { path = "../../lib/math" }
 pool = { path = "../../lib/pool" }
 sound = { path = "../../lib/sound" }
@@ -58,7 +57,6 @@ tracing = { version = "0.1.40", default-features = false, features = [
   "attributes",
 ] }
 url = { version = "2.5.7", features = ["serde"] }
-urlencoding = "2.1.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 chrono = { version = "0.4.41", default-features = false, features = [

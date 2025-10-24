@@ -1,6 +1,5 @@
 use std::{net::SocketAddr, path::Path, sync::Arc, time::Duration};
 
-use anyhow::anyhow;
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::{fs_traits::FileSystemEntryTy, http_traits::HttpClientInterface};
 use client_containers::{
@@ -46,18 +45,18 @@ use math::colors::legacy_color_to_rgba;
 use sound::{scene_object::SceneObject, sound::SoundManager};
 use ui_base::types::{UiRenderPipe, UiState};
 use ui_generic::traits::UiPageInterface;
+use url::Url;
 
 use crate::{
     events::UiEvents,
     ingame_menu::{client_info::ClientInfo, raw_input_info::RawInputInfo},
-    main_menu::user_data::MainMenuInterface,
+    main_menu::{ddnet_info::DdnetInfoRequest, user_data::MainMenuInterface},
     thumbnail_container::{
         DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
     },
 };
 
 use super::{
-    communities::CommunityIcons,
     ddnet_info::DdnetInfo,
     demo_list::{DemoList, DemoListEntry},
     features::EnabledFeatures,
@@ -74,7 +73,7 @@ use super::{
 pub struct MainMenuIo {
     pub(crate) io: Io,
     cur_servers_task: Option<IoRuntimeTask<Vec<ServerBrowserServer>>>,
-    cur_ddnet_info_task: Option<IoRuntimeTask<String>>,
+    cur_ddnet_info_task: Option<IoRuntimeTask<DdnetInfo>>,
     cur_demos_task: Option<IoRuntimeTask<DemoList>>,
     cur_demo_info_task: Option<IoRuntimeTask<(DemoHeader, DemoHeaderExt)>>,
     remove_demo_info: bool,
@@ -104,7 +103,6 @@ pub struct MainMenuUi {
     pub(crate) client_info: ClientInfo,
     pub(crate) browser_data: ServerBrowserData,
     pub(crate) ddnet_info: DdnetInfo,
-    pub(crate) community_icons: CommunityIcons,
 
     pub(crate) demos: DemoList,
     pub(crate) demo_info: Option<(DemoHeader, DemoHeaderExt)>,
@@ -331,23 +329,14 @@ impl MainMenuUi {
             .cancelable()
     }
 
-    fn req_ddnet_info(io: &Io, name: &str) -> IoRuntimeTask<String> {
-        let http = io.http.clone();
+    fn req_ddnet_info(
+        io: &Io,
+        name: &str,
+        ddnet_info_req: Arc<dyn DdnetInfoRequest>,
+    ) -> IoRuntimeTask<DdnetInfo> {
         let name = name.to_string();
         io.rt
-            .spawn(async move {
-                Ok(http
-                    .download_text(
-                        format!(
-                            "https://info.ddnet.org/info?name={}",
-                            urlencoding::encode(&name)
-                        )
-                        .as_str()
-                        .try_into()
-                        .unwrap(),
-                    )
-                    .await?)
-            })
+            .spawn(async move { ddnet_info_req.get(&name).await })
             .cancelable()
     }
 
@@ -368,6 +357,7 @@ impl MainMenuUi {
         raw_input_info: RawInputInfo,
         browser_data: ServerBrowserData,
         features: EnabledFeatures,
+        ddnet_info_req: Arc<dyn DdnetInfoRequest>,
     ) -> Self {
         let cur_servers_task = Self::req_server_list(&io);
         let cur_ddnet_info_task = Self::req_ddnet_info(
@@ -377,6 +367,7 @@ impl MainMenuUi {
                 .get(config_game.profiles.main as usize)
                 .map(|p| p.name.as_str())
                 .unwrap_or(""),
+            ddnet_info_req.clone(),
         );
 
         let mut profile_tasks: ProfileTasks = Default::default();
@@ -400,21 +391,26 @@ impl MainMenuUi {
             &scene,
         );
 
-        let load_thumbnail_container = |path: &str, container_name: &str| {
-            load_thumbnail_container(
-                io.clone(),
-                tp.clone(),
-                path,
-                container_name,
-                graphics,
-                sound,
-                scene.clone(),
-                None,
-            )
-        };
-        let theme_container = load_thumbnail_container(THEME_CONTAINER_PATH, "theme-container");
-        let community_icon_container =
-            load_thumbnail_container(DEFAULT_THUMBNAIL_CONTAINER_PATH, "community-icon-container");
+        let load_thumbnail_container_short =
+            |path: &str, container_name: &str, res_url: Option<Url>| {
+                load_thumbnail_container(
+                    io.clone(),
+                    tp.clone(),
+                    path,
+                    container_name,
+                    graphics,
+                    sound,
+                    scene.clone(),
+                    res_url,
+                )
+            };
+        let theme_container =
+            load_thumbnail_container_short(THEME_CONTAINER_PATH, "theme-container", None);
+        let community_icon_container = load_thumbnail_container_short(
+            DEFAULT_THUMBNAIL_CONTAINER_PATH,
+            "community-icon-container",
+            Some(ddnet_info_req.url().clone()),
+        );
 
         let tile_layer_visuals = None;
         Self {
@@ -425,7 +421,6 @@ impl MainMenuUi {
             ddnet_info: DdnetInfo::default(),
             demos: DemoList::default(),
             demo_info: None,
-            community_icons: Default::default(),
 
             menu_io: MainMenuIo {
                 io: io.clone(),
@@ -479,7 +474,7 @@ impl MainMenuUi {
             server_info: &self.server_info,
             client_info: &self.client_info,
             ddnet_info: &self.ddnet_info,
-            icons: &mut self.community_icons,
+            icons: &mut self.community_icon_container,
 
             browser_data: &mut self.browser_data,
             demos: &self.demos,
@@ -603,14 +598,7 @@ impl MainMenuUi {
         if let Some(server_task) = &self.menu_io.cur_ddnet_info_task
             && server_task.is_finished()
         {
-            match self
-                .menu_io
-                .cur_ddnet_info_task
-                .take()
-                .unwrap()
-                .get()
-                .and_then(|s| serde_json::from_str(&s).map_err(|err| anyhow!(err)))
-            {
+            match self.menu_io.cur_ddnet_info_task.take().unwrap().get() {
                 Ok(ddnet_info) => {
                     self.ddnet_info = ddnet_info;
                 }

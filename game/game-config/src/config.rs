@@ -246,8 +246,6 @@ pub struct ConfigClient {
     pub team: ConfigTeam,
     /// Config related to rendering graphics & sound.
     pub render: ConfigRender,
-    #[default = "autumn"]
-    pub menu_background_map: String,
     /// Configs related to spatial chat support.
     pub spatial_chat: ConfigSpatialChat,
     /// Configurations for the demo video encoder.
@@ -750,25 +748,43 @@ pub struct ConfigDebug {
 
 #[config_default]
 #[derive(Debug, Clone, Serialize, Deserialize, ConfigInterface)]
+pub struct ConfigMenu {
+    /// Log some sync related stuff from the internal server & client
+    /// only use in release mode
+    pub favorite_servers: Vec<String>,
+    /// Background map shown in the menu.
+    /// Reserved names are:
+    /// - auto
+    /// - default
+    /// - random
+    /// - seasons
+    #[default = "autumn"]
+    pub background_map: String,
+}
+
+#[config_default]
+#[derive(Debug, Clone, Serialize, Deserialize, ConfigInterface)]
 pub struct ConfigGame {
-    // Client related config.
+    /// Client related config.
     pub cl: ConfigClient,
-    // List of players' config.
+    /// Menu related config.
+    pub menu: ConfigMenu,
+    /// List of players' config.
     #[conf_valid(length(min = 2))]
     #[default = vec![ConfigPlayer::default(), ConfigPlayer::new("brainless tee")]]
     #[conf_alias(player, players[$profiles.main$])]
     #[conf_alias(dummy, players[$profiles.dummy.index$])]
     pub players: Vec<ConfigPlayer>,
     pub profiles: ConfigPlayerProfiles,
-    // Map rendering related config.
+    /// Map rendering related config.
     pub map: ConfigMap,
-    // Input related config.
+    /// Input related config.
     pub inp: ConfigInput,
-    // Server related config.
+    /// Server related config.
     pub sv: ConfigServer,
-    // Sound related config.
+    /// Sound related config.
     pub snd: ConfigSound,
-    // Debug related config for the game.
+    /// Debug related config for the game.
     pub dbg: ConfigDebug,
 }
 

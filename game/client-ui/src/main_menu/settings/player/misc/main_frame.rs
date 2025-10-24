@@ -91,6 +91,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                 flag_valid.map(|_| ()).map_err(|err| err.into())
             },
             |_, name| player.flag == name.to_lowercase().replace("-", "_"),
+            |s| s,
             |ui, _, name, pos, flag_size| {
                 render_flag_for_ui(
                     pipe.user_data.stream_handle,

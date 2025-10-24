@@ -93,6 +93,7 @@ pub struct IngameMenu {
     ctf_container: CtfContainer,
     theme_container: ThemeContainer,
     map_vote_thumbnail_container: ThumbnailContainer,
+    icons_container: ThumbnailContainer,
     map_render: MapGraphics,
     tile_layer_visuals: Option<TileLayerVisuals>,
 }
@@ -133,6 +134,10 @@ impl IngameMenu {
             map_vote_thumbnail_container: create_thumbnail_container(
                 DEFAULT_THUMBNAIL_CONTAINER_PATH,
                 "map-vote-thumbnail",
+            ),
+            icons_container: create_thumbnail_container(
+                DEFAULT_THUMBNAIL_CONTAINER_PATH,
+                "community-icons",
             ),
             map_render: MapGraphics::new(&graphics.backend_handle),
             tile_layer_visuals: None,
@@ -181,7 +186,7 @@ impl IngameMenu {
                         ddnet_info: &Default::default(),
                         demos: &Default::default(),
                         demo_info: &None,
-                        icons: &mut Default::default(),
+                        icons: &mut self.icons_container,
 
                         server_info: &Default::default(),
                         render_options: client_ui::main_menu::user_data::RenderOptions {

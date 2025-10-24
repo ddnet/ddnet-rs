@@ -9,7 +9,7 @@ use crate::{main_menu::user_data::UserData, utils::render_texture_for_ui};
 pub fn theme_list(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &mut UiState) {
     let entries = pipe.user_data.theme_container.entries_index();
     let entries_sorted = entries.into_iter().collect::<BTreeMap<_, _>>();
-    let setting = &mut pipe.user_data.config.game.cl.menu_background_map;
+    let setting = &mut pipe.user_data.config.game.menu.background_map;
     let search_str = pipe
         .user_data
         .config
@@ -29,6 +29,7 @@ pub fn theme_list(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| setting == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let key: ResourceKey = name.try_into().unwrap_or_default();
             let theme = pipe.user_data.theme_container.get_or_default(&key);

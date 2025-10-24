@@ -1881,7 +1881,6 @@ dependencies = [
  "graphics-types",
  "hashlink 0.10.0 (git+https://github.com/Jupeyy/hashlink/?branch=ddnet)",
  "hiarc",
- "image-utils",
  "log 0.4.28",
  "master-server-types",
  "math",
@@ -1897,7 +1896,6 @@ dependencies = [
  "ui-base",
  "ui-generic",
  "url",
- "urlencoding",
  "vanilla",
 ]
 
@@ -2836,6 +2834,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d79237cd097ee4edc03bf18219af985d881027e0a06bdac67c72d5171a52006b"
 
 [[package]]
+name = "ddnet-info-proxy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "base",
+ "base-io",
+ "base-io-traits",
+ "client-ui",
+ "log 0.4.28",
+ "reqwest",
+ "serde",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "ddnet-rs"
 version = "0.1.0"
 dependencies = [
@@ -2871,6 +2888,7 @@ dependencies = [
  "config",
  "config-fs",
  "crossbeam",
+ "ddnet-info-proxy",
  "demo",
  "editor",
  "editor-wasm",

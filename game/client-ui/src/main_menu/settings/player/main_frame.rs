@@ -82,6 +82,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                         .as_ref()
                         .is_some_and(|profile_index| (index as u64).to_string().eq(profile_index))
                 },
+                |s| s,
                 |ui, index, _, pos, skin_size| {
                     let skin_name = &config.players[index].skin.name;
                     let skin_info = (&config.players[index].skin).into();
