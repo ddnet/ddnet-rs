@@ -19,7 +19,7 @@ use base::hash::{fmt_hash, generate_hash_for};
 use base_io::{io::Io, runtime::IoRuntimeTask};
 use base_io_traits::fs_traits::FileSystemInterface;
 use client_ui::main_menu::{
-    communities::IconUrlHash,
+    communities::{CommunityServers, IconUrlHash},
     ddnet_info::{DdnetInfo, DdnetInfoRequest},
 };
 use reqwest::{Client, header::CONTENT_TYPE};
@@ -76,6 +76,18 @@ impl ProxyState {
 
         let mut icons: HashMap<String, Vec<u8>> = Default::default();
         for community in info.communities.values_mut() {
+            // servers bug workaround
+            if let Some(servers) = community.icon.servers_for_ddnet_bug_workaround() {
+                community.servers = CommunityServers::new(servers);
+            }
+            if community.id == "ddnet" {
+                community.servers =
+                    CommunityServers::new(info.workaround_servers.take_ddnet_servers());
+            } else if community.id == "kog" {
+                community.servers =
+                    CommunityServers::new(info.workaround_servers.take_kog_servers());
+            }
+
             let icon = &mut community.icon;
 
             let Some(source_url) = &icon.url else {

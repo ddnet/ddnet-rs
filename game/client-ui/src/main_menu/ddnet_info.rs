@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     net::{SocketAddrV4, SocketAddrV6},
     ops::{Deref, DerefMut},
 };
@@ -15,18 +15,9 @@ use serde_with::DefaultOnError;
 use serde_with::serde_as;
 use url::Url;
 
-use super::communities::{Community, ServerIpList};
+use crate::main_menu::communities::Server;
 
-#[serde_as]
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct Server {
-    #[serde(default)]
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    pub name: String,
-    #[serde(default)]
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    pub servers: HashMap<String, ServerIpList>,
-}
+use super::communities::Community;
 
 #[derive(Debug, Default, Clone)]
 pub struct DdnetInfoCommunities(FxLinkedHashMap<String, Community>);
@@ -67,6 +58,27 @@ impl DerefMut for DdnetInfoCommunities {
 
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct DdnetInfoServers {
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnError")]
+    servers: Vec<Server>,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnError")]
+    #[serde(alias = "servers-kog")]
+    servers_kog: Vec<Server>,
+}
+
+impl DdnetInfoServers {
+    pub fn take_ddnet_servers(&mut self) -> Vec<Server> {
+        std::mem::take(&mut self.servers)
+    }
+    pub fn take_kog_servers(&mut self) -> Vec<Server> {
+        std::mem::take(&mut self.servers_kog)
+    }
+}
+
+#[serde_as]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct DdnetInfo {
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
@@ -77,13 +89,10 @@ pub struct DdnetInfo {
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
     pub points: i64,
+    #[serde(flatten)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
-    pub servers: Vec<Server>,
-    #[serde(default)]
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    #[serde(alias = "servers-kog")]
-    pub servers_kog: Vec<Server>,
+    pub workaround_servers: DdnetInfoServers,
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
     pub communities: DdnetInfoCommunities,

@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use base::hash::Hash;
+use base::linked_hash_map_view::FxLinkedHashSet;
 use base::network_string::NetworkReducedAsciiString;
 use base::network_string::NetworkString;
 use game_config::config::MAX_SERVER_NAME_LEN;
@@ -193,6 +194,7 @@ pub struct FilterCache {
     favorites: FavoritePlayers,
     sort: TableSort,
     finished_maps: HashSet<NetworkReducedAsciiString<MAX_MAP_NAME_LEN>>,
+    community_name: ServerTypeFilterCache,
 }
 
 #[derive(Debug, Hiarc, Default)]
@@ -219,6 +221,33 @@ impl ServerBrowserList {
     pub fn find_str(&self, addr: &str) -> Option<ServerBrowserServer> {
         addr.parse().ok().and_then(|addr| self.find(addr))
     }
+}
+
+#[derive(Debug, Hiarc)]
+pub enum ServerTypeFilter<'a> {
+    Community((&'a str, &'a FxLinkedHashSet<SocketAddr>)),
+    Favorites(FxLinkedHashSet<SocketAddr>),
+    // All
+    Internet,
+}
+
+impl ServerTypeFilter<'_> {
+    fn to_cache(&self) -> ServerTypeFilterCache {
+        match self {
+            Self::Community((name, _)) => ServerTypeFilterCache::Community(name.to_string()),
+            Self::Favorites(_) => ServerTypeFilterCache::Favorites,
+            Self::Internet => ServerTypeFilterCache::Internet,
+        }
+    }
+}
+
+#[derive(Debug, Hiarc, Default, PartialEq, Eq)]
+pub enum ServerTypeFilterCache {
+    Community(String),
+    Favorites,
+    // All
+    #[default]
+    Internet,
 }
 
 #[hiarc_safer_rc_refcell]
@@ -397,11 +426,13 @@ impl ServerBrowserData {
         favorites: &FavoritePlayers,
         sort: &TableSort,
         finished_maps: &HashSet<NetworkReducedAsciiString<MAX_MAP_NAME_LEN>>,
+        ty_filter: ServerTypeFilter,
     ) -> Arc<Vec<ServerBrowserServer>> {
         if let Some(filtered_sorted) = (self.cache.filter.eq(filter)
             && self.cache.favorites.eq(favorites)
             && self.cache.sort.eq(sort)
-            && self.cache.finished_maps.eq(finished_maps))
+            && self.cache.finished_maps.eq(finished_maps)
+            && self.cache.community_name.eq(&ty_filter.to_cache()))
         .then_some(self.filtered_sorted.as_ref())
         .flatten()
         {
@@ -412,6 +443,17 @@ impl ServerBrowserData {
                     .cloned()
                     .collect();
             Self::servers_sorted(&mut servers_filtered, sort);
+            let servers_filtered = match ty_filter {
+                ServerTypeFilter::Community((_, community_ips)) => servers_filtered
+                    .into_iter()
+                    .filter(|s| s.addresses.iter().any(|a| community_ips.contains(a)))
+                    .collect(),
+                ServerTypeFilter::Favorites(ips) => servers_filtered
+                    .into_iter()
+                    .filter(|s| s.addresses.iter().any(|a| ips.contains(a)))
+                    .collect(),
+                ServerTypeFilter::Internet => servers_filtered,
+            };
             let servers = Arc::new(servers_filtered);
             self.filtered_sorted = Some(servers.clone());
             servers

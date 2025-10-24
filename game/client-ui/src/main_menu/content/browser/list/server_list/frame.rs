@@ -4,14 +4,19 @@ use egui_extras::TableBody;
 use game_base::{
     browser_favorite_player::FavoritePlayers,
     local_server_info::LocalServerState,
-    server_browser::{ServerBrowserInfo, ServerBrowserServer, ServerFilter, TableSort},
+    server_browser::{
+        ServerBrowserInfo, ServerBrowserServer, ServerFilter, ServerTypeFilter, TableSort,
+    },
 };
 
 use ui_base::types::UiRenderPipe;
 
 use crate::{
     events::UiEvent,
-    main_menu::{constants::MENU_LAN_NAME, user_data::UserData},
+    main_menu::{
+        constants::{MENU_COMMUNITY_PREFIX, MENU_FAVORITES_NAME, MENU_LAN_NAME},
+        user_data::UserData,
+    },
 };
 
 /// server list frame (scrollable)
@@ -26,11 +31,34 @@ pub fn render(mut body: TableBody<'_>, pipe: &mut UiRenderPipe<UserData>, cur_pa
         .config
         .storage::<FavoritePlayers>("favorite-players");
     let sort = pipe.user_data.config.storage::<TableSort>("browser_sort");
+    let ty_filter = if cur_page.starts_with(MENU_COMMUNITY_PREFIX)
+        && let Some(community) = pipe
+            .user_data
+            .ddnet_info
+            .communities
+            .get(&cur_page[MENU_COMMUNITY_PREFIX.len()..])
+    {
+        ServerTypeFilter::Community((community.id.as_str(), &*community.servers))
+    } else if cur_page == MENU_FAVORITES_NAME {
+        ServerTypeFilter::Favorites(
+            pipe.user_data
+                .config
+                .game
+                .menu
+                .favorite_servers
+                .iter()
+                .filter_map(|ip| ip.parse().ok())
+                .collect(),
+        )
+    } else {
+        ServerTypeFilter::Internet
+    };
     let servers = pipe.user_data.browser_data.filtered_and_sorted(
         &filter,
         &favorites,
         &sort,
         &ddnet_info.maps,
+        ty_filter,
     );
     struct LanServer {
         server: ServerBrowserServer,
