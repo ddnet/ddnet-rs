@@ -29,6 +29,7 @@ pub fn theme_list(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| setting == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let key: ResourceKey = name.try_into().unwrap_or_default();
             let theme = pipe.user_data.theme_container.get_or_default(&key);

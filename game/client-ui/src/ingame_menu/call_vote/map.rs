@@ -447,6 +447,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state: &m
                                     300.0,
                                     |_, _| Ok(()),
                                     |i, _| index == i,
+                                    |s| s,
                                     |ui, i, _, pos, size| {
                                         let (_, info) = &map_infos[i];
                                         let key =

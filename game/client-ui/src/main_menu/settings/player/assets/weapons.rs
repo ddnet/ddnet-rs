@@ -37,6 +37,7 @@ pub fn weapon_list(
             wpn_valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.weapon == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let weapon_size = asset_size / 6.0;
             let pos = pos - vec2::new(asset_size / 4.0, weapon_size);

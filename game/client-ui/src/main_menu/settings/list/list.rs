@@ -18,6 +18,7 @@ pub fn render<'a>(
     entry_visual_size: f32,
     validation_fn: impl Fn(usize, &str) -> anyhow::Result<()>,
     is_selected_fn: impl Fn(usize, &str) -> bool,
+    label_fn: impl Fn(String) -> String,
     mut render_fn: impl FnMut(&mut egui::Ui, usize, &str, vec2, f32),
     mut on_click_fn: impl FnMut(usize, &str),
     tooltip_text: impl Fn(&str, ContainerItemIndexType) -> Option<Cow<'static, str>>,
@@ -54,7 +55,8 @@ pub fn render<'a>(
                             |ui| {
                                 for (entry_index, (entry_name, ty)) in
                                     entries.enumerate().filter(|(_, (name, _))| {
-                                        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default().ignore_case();
+                                        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default()
+                                            .ignore_case();
                                         matcher.fuzzy_match(name, &search_str).is_some()
                                     })
                                 {
@@ -65,6 +67,7 @@ pub fn render<'a>(
                                         entry_visual_size,
                                         &validation_fn,
                                         &is_selected_fn,
+                                        &label_fn,
                                         &mut render_fn,
                                         &mut on_click_fn,
                                         &tooltip_text(entry_name, ty)
@@ -78,8 +81,9 @@ pub fn render<'a>(
                                                     )
                                                 } else {
                                                     format!(
-                                                    "{entry_name}\nStored as local asset in on your disk."
-                                                )
+                                                        "{entry_name}\nStored as local asset \
+                                                        in on your disk."
+                                                    )
                                                 }
                                             }),
                                     );

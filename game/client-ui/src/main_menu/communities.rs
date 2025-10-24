@@ -4,9 +4,6 @@ pub mod main_frame;
 use std::ops::Deref;
 use std::{collections::HashMap, net::SocketAddr};
 
-use base_io::runtime::IoRuntimeTask;
-use graphics::handles::texture::texture::TextureContainer;
-use graphics_types::types::GraphicsBackendMemory;
 use serde::{Deserialize, Serialize};
 use serde_with::DefaultOnError;
 use serde_with::serde_as;
@@ -35,12 +32,26 @@ pub struct Server {
     pub servers: HashMap<String, ServerIpList>,
 }
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum IconUrlHash {
+    Sha256 {
+        sha256: String,
+    },
+    Blake3 {
+        blake3: String,
+    },
+    #[default]
+    None,
+}
+
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Icon {
+    #[serde(flatten)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
-    pub sha256: String,
+    pub hash: IconUrlHash,
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnError")]
     pub url: Option<Url>,
@@ -68,15 +79,3 @@ pub struct Community {
     #[serde_as(as = "serde_with::VecSkipError<_>")]
     pub contact_urls: Vec<Url>,
 }
-
-#[derive(Debug)]
-pub enum CommunityIcon {
-    Icon {
-        texture: TextureContainer,
-        width: u32,
-        height: u32,
-    },
-    Loading(Result<IoRuntimeTask<(GraphicsBackendMemory, u32, u32)>, String>),
-}
-
-pub type CommunityIcons = HashMap<String, CommunityIcon>;

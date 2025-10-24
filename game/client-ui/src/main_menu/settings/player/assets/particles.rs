@@ -38,6 +38,7 @@ pub fn particles_list(
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.particles == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let item_size = asset_size / 4.0;
             let pos = pos

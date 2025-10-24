@@ -37,6 +37,7 @@ pub fn freeze_list(
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.freeze == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let skin_info = NetworkSkinInfo::Original;
             let key: ResourceKey = name.try_into().unwrap_or_default();

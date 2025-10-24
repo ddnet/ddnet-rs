@@ -38,6 +38,7 @@ pub fn emoticons_list(
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.emoticons == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let emoticons_size = asset_size / 4.0;
             let pos = pos

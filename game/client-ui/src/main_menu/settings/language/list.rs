@@ -45,6 +45,7 @@ pub fn lang_list(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserData>, ui_state:
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| setting == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let flag = pipe.user_data.flags_container.default_key.clone();
             let name = &languages.get(name).unwrap().flag;

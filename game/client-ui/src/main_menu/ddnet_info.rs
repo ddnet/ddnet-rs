@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     net::{SocketAddrV4, SocketAddrV6},
-    ops::Deref,
+    ops::{Deref, DerefMut},
 };
 
+use async_trait::async_trait;
 use base::{
     linked_hash_map_view::FxLinkedHashMap,
     network_string::{NetworkReducedAsciiString, NetworkString},
@@ -58,6 +59,12 @@ impl Deref for DdnetInfoCommunities {
     }
 }
 
+impl DerefMut for DdnetInfoCommunities {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct DdnetInfo {
@@ -105,4 +112,10 @@ pub struct DdnetInfo {
     #[serde_as(deserialize_as = "DefaultOnError")]
     #[serde(alias = "stun-servers-ipv4")]
     pub stun_servers_ipv4: Vec<SocketAddrV4>,
+}
+
+#[async_trait]
+pub trait DdnetInfoRequest: Send + Sync {
+    async fn get(&self, name: &str) -> anyhow::Result<DdnetInfo>;
+    fn url(&self) -> &Url;
 }

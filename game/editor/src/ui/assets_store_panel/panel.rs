@@ -99,6 +99,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         valid.map(|_| ()).map_err(|err| err.into())
                     },
                     |_, name| tab.assets_store.selected_entry == name,
+                    |s| s,
                     |ui, _, name, pos, size| {
                         let key: ResourceKey = name.try_into().unwrap_or_default();
                         let is_fully_loaded = pipe.user_data.sound_images_container.is_loaded(&key);
@@ -236,6 +237,7 @@ pub fn render(ui: &mut egui::Ui, pipe: &mut UiRenderPipe<UserDataWithTab>, ui_st
                         valid.map(|_| ()).map_err(|err| err.into())
                     },
                     |_, name| tab.assets_store.selected_entry == name,
+                    |s| s,
                     |ui, _, name, pos, asset_size| {
                         let key: ResourceKey = name.try_into().unwrap_or_default();
                         let img = pipe

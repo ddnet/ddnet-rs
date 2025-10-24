@@ -38,6 +38,7 @@ pub fn ctf_list(
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.ctf == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let item_size = asset_size / 2.0;
             let pos = pos + vec2::new(item_size / 2.0 - (asset_size / 2.0), 0.0);

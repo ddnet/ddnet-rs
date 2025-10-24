@@ -14,9 +14,9 @@ use ui_generic::traits::UiPageInterface;
 use crate::{
     events::UiEvents,
     main_menu::{
-        features::EnabledFeatures, monitors::UiMonitors, page::MainMenuUi,
-        player_settings_ntfy::PlayerSettingsSync, profiles_interface::ProfilesInterface,
-        spatial_chat::SpatialChat,
+        ddnet_info::DdnetInfoRequest, features::EnabledFeatures, monitors::UiMonitors,
+        page::MainMenuUi, player_settings_ntfy::PlayerSettingsSync,
+        profiles_interface::ProfilesInterface, spatial_chat::SpatialChat,
     },
     thumbnail_container::{
         DEFAULT_THUMBNAIL_CONTAINER_PATH, ThumbnailContainer, load_thumbnail_container,
@@ -61,6 +61,7 @@ impl IngameMenuUi {
         account_info: AccountInfo,
         votes: Votes,
         cur_time: &Duration,
+        ddnet_info_req: Arc<dyn DdnetInfoRequest>,
     ) -> Self {
         let main_menu = MainMenuUi::new(
             graphics,
@@ -79,6 +80,7 @@ impl IngameMenuUi {
             raw_input_info,
             browser_data,
             features,
+            ddnet_info_req,
         );
 
         let map_vote_thumbnail_container = load_thumbnail_container(

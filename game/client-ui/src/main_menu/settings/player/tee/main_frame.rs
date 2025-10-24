@@ -218,6 +218,7 @@ pub fn render_skin(
                         skin_valid.map(|_| ()).map_err(|err| err.into())
                     },
                     |_, name| skin_name == name,
+                    |s| s,
                     |ui, _, name, pos, skin_size| {
                         render_tee_for_ui(
                             canvas_handle,

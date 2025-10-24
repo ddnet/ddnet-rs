@@ -34,6 +34,7 @@ pub fn hook_list(
             valid.map(|_| ()).map_err(|err| err.into())
         },
         |_, name| player.hook == name,
+        |s| s,
         |ui, _, name, pos, asset_size| {
             let hook_size = asset_size / 2.0;
             let pos = pos - vec2::new(hook_size * 1.25, 0.0);
