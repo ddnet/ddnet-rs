@@ -61,11 +61,11 @@ impl QuinnNetworkConnectionWrapper {
         let send_buffer = [packet_len.to_le_bytes().to_vec(), packet.take()].concat();
         let written_bytes = send_stream.write_all(send_buffer.as_slice()).await;
         if let Err(err) = written_bytes {
-            Err(anyhow!(format!("packet write failed: {}", err.to_string())))
+            Err(anyhow!(format!("packet write failed: {err}")))
         } else {
             match send_stream.flush().await {
                 Ok(_) => Ok(()),
-                Err(err) => Err(anyhow!(format!("packet flush failed: {}", err.to_string()))),
+                Err(err) => Err(anyhow!(format!("packet flush failed: {err}"))),
             }
         }
     }
@@ -110,19 +110,13 @@ impl NetworkConnectionInterface for QuinnNetworkConnectionWrapper {
             } else {
                 let finish_res = stream.finish();
                 if let Err(err) = finish_res {
-                    Err(anyhow!(format!(
-                        "packet finish failed: {}",
-                        err.to_string()
-                    )))
+                    Err(anyhow!(format!("packet finish failed: {err}")))
                 } else {
                     Ok(())
                 }
             }
         } else {
-            Err(anyhow!(format!(
-                "sent stream err: {}",
-                uni.unwrap_err().to_string()
-            )))
+            Err(anyhow!(format!("sent stream err: {}", uni.unwrap_err())))
         }
     }
 

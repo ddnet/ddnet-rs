@@ -2419,7 +2419,7 @@ impl Client {
                         let mut hasher = sha2::Sha256::new();
                         hasher.update(&file);
                         let hash = hasher.finalize();
-                        if sha256.is_none_or(|check_hash| check_hash == hash.as_slice()) {
+                        if sha256.is_none_or(|check_hash| check_hash == *hash) {
                             let map_name = name.clone();
                             let _ = io
                                 .rt

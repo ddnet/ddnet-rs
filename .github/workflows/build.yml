@@ -19,17 +19,32 @@ jobs:
           features: "bundled_data_dir,ffmpeg,microphone,auto_updater"
           bin: ddnet-rs
           server-bin: server
+          x264-src: x264
+          x264-build: x264-build
+          x264-cache-path: x264-build
+          x264-lib-dir: /usr/local/lib
+          x264-include-dir: /usr/local/include
         - os: macOS-latest
           features-debug: "bundled_data_dir,ffmpeg,microphone"
           features: "bundled_data_dir,ffmpeg,microphone,auto_updater"
           bin: ddnet-rs
           server-bin: server
+          x264-src: x264
+          x264-build: x264-build
+          x264-cache-path: x264-build
+          x264-lib-dir: /usr/local/lib
+          x264-include-dir: /usr/local/include
         - os: windows-latest
           # ffmpeg takes years on win
           features-debug: "bundled_data_dir,microphone"
           features: "bundled_data_dir,ffmpeg,microphone,auto_updater"
           bin: ddnet-rs.exe
           server-bin: server.exe
+          x264-src: /c/x264
+          x264-build: /c/build-x264
+          x264-cache-path: 'C:\build-x264'
+          x264-lib-dir: /mingw64/lib
+          x264-include-dir: /mingw64/include
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -73,58 +88,91 @@ jobs:
       run: |
         sudo apt update -y
         sudo apt install rustc cargo gcc libwayland-dev libasound2-dev nasm -y
-        # for ffmpeg
-        sudo apt install -y clang libavcodec-dev libavformat-dev libavutil-dev libx264-dev
+        # for ffmpeg, DON'T install libx264
+        sudo apt install -y clang libavcodec-dev libavformat-dev libavutil-dev
+        echo "LIBOPUS_NO_PKG=1" >> "$GITHUB_ENV"
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig" >> "$GITHUB_ENV"
 
     - name: Prepare macOS
       if: contains(matrix.os, 'macOS')
       run: |
         brew update || true
         brew install pkg-config autoconf automake || true
-        # for ffmpeg
+        # for ffmpeg, DON'T install libx264
         brew install ffmpeg || true
         # for building molten vk
         brew install python-setuptools || true
+        echo "LIBOPUS_NO_PKG=1" >> "$GITHUB_ENV"
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig" >> "$GITHUB_ENV"
 
     - name: Prepare msys dependencies
       if: contains(matrix.os, 'windows')
       run: |
         # important detail: mingw-w64-x86_64-libx264 is installed for the package config files!
         pacman --noconfirm -S git make mingw-w64-x86_64-libx264 mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm mingw-w64-x86_64-opus
-        # self compile for now
-        # https://github.com/msys2/MINGW-packages/issues/8824
-        git clone --depth=1 https://github.com/mirror/x264 /c/x264
-
-    - name: Setup cache for x264 (Windows)
-      if: contains(matrix.os, 'windows')
-      uses: actions/cache@v4
-      id: x264-cache-compiled
-      with:
-        path: C:\build-x264
-        key: ${{ runner.os }}-buildx264-${{ hashFiles('/c/x264') }}
-
-    - name: Compile x264 (Windows)
-      if: contains(matrix.os, 'windows') && steps.x264-cache-compiled.outputs.cache-hit != 'true'
-      run: |
-        (
-          mkdir /c/build-x264
-          cd /c/build-x264
-          /c/x264/configure --enable-static
-          make -j$(nproc)
-        )
 
     - name: Prepare msys
       if: contains(matrix.os, 'windows')
       run: |
-        rm /mingw64/lib/libx264.dll.a
-        cp /c/build-x264/libx264.a /mingw64/lib/libx264.a
-        # also copy headers to match the compiled static library
-        cp /c/x264/x264.h /mingw64/include/x264.h
-        cp /c/build-x264/x264_config.h /mingw64/include/x264_config.h
         rustup target add x86_64-pc-windows-gnu
         rustup update stable
         rustup set default-host x86_64-pc-windows-gnu
         rustup default stable-x86_64-pc-windows-gnu
+
+    - name: Setup cache for x264
+      uses: actions/cache@v4
+      id: x264-cache
+      with:
+        path: ${{ matrix.x264-cache-path }}
+        key: ${{ runner.os }}-x264-0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee
+
+    - name: Build static x264
+      if: steps.x264-cache.outputs.cache-hit != 'true'
+      run: |
+        set -e
+        SRC="${{ matrix.x264-src }}"
+        BUILD="${{ matrix.x264-build }}"
+        if [ "$RUNNER_OS" != "Windows" ]; then
+          SRC="$GITHUB_WORKSPACE/$SRC"
+          BUILD="$GITHUB_WORKSPACE/$BUILD"
+        fi
+        git clone --no-checkout https://code.videolan.org/videolan/x264.git "$SRC"
+        cd "$SRC"
+        git fetch origin 0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee --depth 1
+        git checkout 0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee
+        mkdir -p "$BUILD"
+        cd "$BUILD"
+        "$SRC/configure" --enable-static --enable-pic
+        if command -v nproc >/dev/null 2>&1; then
+          CORES=$(nproc)
+        else
+          CORES=$(sysctl -n hw.ncpu)
+        fi
+        make -j8 libx264.a
+        cp "$SRC/x264.h" "$BUILD/x264.h"
+
+    - name: Install x264 artifacts
+      run: |
+        set -e
+        BUILD="${{ matrix.x264-build }}"
+        if [ "$RUNNER_OS" != "Windows" ]; then
+          BUILD="$GITHUB_WORKSPACE/$BUILD"
+        fi
+        LIB_DIR="${{ matrix.x264-lib-dir }}"
+        INCLUDE_DIR="${{ matrix.x264-include-dir }}"
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          rm -f "$LIB_DIR/libx264.dll.a"
+          cp "$BUILD/libx264.a" "$LIB_DIR/libx264.a"
+          cp "$BUILD/x264.h" "$INCLUDE_DIR/x264.h"
+          cp "$BUILD/x264_config.h" "$INCLUDE_DIR/x264_config.h"
+        else
+          sudo mkdir -p "$LIB_DIR" "$INCLUDE_DIR"
+          sudo cp "$BUILD/libx264.a" "$LIB_DIR/libx264.a"
+          sudo cp "$BUILD/x264.h" "$INCLUDE_DIR/x264.h"
+          sudo cp "$BUILD/x264_config.h" "$INCLUDE_DIR/x264_config.h"
+          sudo mkdir -p /usr/local/lib/pkgconfig
+          sudo cp "$BUILD/x264.pc" /usr/local/lib/pkgconfig/x264.pc
+        fi
 
     - uses: Swatinem/rust-cache@v2
 
