@@ -35,7 +35,7 @@ pub mod state {
     };
     use game_interface::types::emoticons::EmoticonType;
     use game_interface::types::fixed_zoom_level::FixedZoomLevel;
-    use game_interface::types::game::{GameTickCooldown, GameTickType};
+    use game_interface::types::game::{GameTickCooldown, GameTickCooldownAndLength, GameTickType};
     use game_interface::types::id_gen::{IdGenerator, IdGeneratorIdType};
     use game_interface::types::id_types::{
         CharacterId, CtfFlagId, LaserId, PickupId, PlayerId, ProjectileId, StageId,
@@ -1416,6 +1416,19 @@ pub mod state {
             character: &Character,
             intra_tick_ratio: f64,
         ) -> CharacterRenderInfo {
+            fn remaining_and_total_time(
+                cooldown: &GameTickCooldownAndLength,
+            ) -> (Option<Duration>, Duration) {
+                (
+                    cooldown
+                        .get()
+                        .map(|l| Duration::from_micros(l.get() * (1000000 / TICKS_PER_SECOND))),
+                    cooldown
+                        .length()
+                        .map(|l| Duration::from_micros(l.get() * (1000000 / TICKS_PER_SECOND)))
+                        .unwrap_or_default(),
+                )
+            }
             let lerped_pos = character::lerp_core_pos(prev_character, character, intra_tick_ratio);
             CharacterRenderInfo {
                 lerped_pos: lerped_pos / 32.0,
@@ -1490,34 +1503,44 @@ pub mod state {
                 left_eye: prev_character.core.eye,
                 buffs: {
                     let mut buffs = self.game_pools.character_buffs.new();
-                    buffs.extend(prev_character.reusable_core.buffs.iter().map(|(buff, _)| {
-                        match buff {
-                            CharacterBuff::Ninja => (
-                                CharacterBuff::Ninja,
-                                CharacterBuffInfo {
-                                    remaining_time: None,
-                                },
-                            ),
-                            CharacterBuff::Ghost => (
-                                CharacterBuff::Ghost,
-                                CharacterBuffInfo {
-                                    remaining_time: None,
-                                },
-                            ),
-                        }
-                    }));
+                    buffs.extend(
+                        prev_character
+                            .reusable_core
+                            .buffs
+                            .iter()
+                            .map(|(buff, props)| match buff {
+                                CharacterBuff::Ninja => (CharacterBuff::Ninja, {
+                                    let (remaining_time, total_time) =
+                                        remaining_and_total_time(&props.remaining_tick);
+                                    CharacterBuffInfo {
+                                        remaining_time,
+                                        total_time,
+                                    }
+                                }),
+                                CharacterBuff::Ghost => (CharacterBuff::Ghost, {
+                                    let (remaining_time, total_time) =
+                                        remaining_and_total_time(&props.remaining_tick);
+                                    CharacterBuffInfo {
+                                        remaining_time,
+                                        total_time,
+                                    }
+                                }),
+                            }),
+                    );
                     buffs
                 },
                 debuffs: {
                     let mut debuffs = self.game_pools.character_debuffs.new();
                     debuffs.extend(prev_character.reusable_core.debuffs.iter().map(
-                        |(debuff, _)| match debuff {
-                            CharacterDebuff::Freeze => (
-                                CharacterDebuff::Freeze,
+                        |(debuff, props)| match debuff {
+                            CharacterDebuff::Freeze => (CharacterDebuff::Freeze, {
+                                let (remaining_time, total_time) =
+                                    remaining_and_total_time(&props.remaining_tick);
                                 CharacterDebuffInfo {
-                                    remaining_time: None,
-                                },
-                            ),
+                                    remaining_time,
+                                    total_time,
+                                }
+                            }),
                         },
                     ));
                     debuffs

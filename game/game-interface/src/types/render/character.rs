@@ -37,6 +37,8 @@ pub enum CharacterBuff {
 pub struct CharacterBuffInfo {
     /// the remaining time, or `None` if unknown
     pub remaining_time: Option<Duration>,
+    /// total time this buff exists
+    pub total_time: Duration,
 }
 
 #[derive(Debug, Hiarc, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
@@ -49,6 +51,8 @@ pub enum CharacterDebuff {
 pub struct CharacterDebuffInfo {
     /// the remaining time, or `None` if unknown
     pub remaining_time: Option<Duration>,
+    /// total time this debuff exists
+    pub total_time: Duration,
 }
 
 #[derive(

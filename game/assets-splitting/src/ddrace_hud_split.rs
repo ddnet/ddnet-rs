@@ -27,8 +27,10 @@ pub struct DdraceHudConvertResult {
     pub endless_hook: DdraceHudPart,
     pub jetpack: DdraceHudPart,
 
-    pub freeze_left: DdraceHudPart,
-    pub freeze_right: DdraceHudPart,
+    pub freeze_full_left: DdraceHudPart,
+    pub freeze_full: DdraceHudPart,
+    pub freeze_empty: DdraceHudPart,
+    pub freeze_empty_right: DdraceHudPart,
     pub disabled_hook_others: DdraceHudPart,
     pub disabled_hammer: DdraceHudPart,
     pub disabled_shotgun: DdraceHudPart,
@@ -36,8 +38,10 @@ pub struct DdraceHudConvertResult {
     pub disabled_laser: DdraceHudPart,
     pub disabled_gun: DdraceHudPart,
 
-    pub ninja_left: DdraceHudPart,
-    pub ninja_right: DdraceHudPart,
+    pub ninja_full_left: DdraceHudPart,
+    pub ninja_full: DdraceHudPart,
+    pub ninja_empty: DdraceHudPart,
+    pub ninja_empty_right: DdraceHudPart,
     pub tele_grenade: DdraceHudPart,
     pub tele_pistol: DdraceHudPart,
     pub tele_laser: DdraceHudPart,
@@ -71,10 +75,14 @@ pub fn split_ddrace_hud(
         let mut endless_hook: Vec<u8> = Default::default();
         let mut jetpack: Vec<u8> = Default::default();
 
-        let mut freeze_left: Vec<u8> = Default::default();
-        let mut freeze_right: Vec<u8> = Default::default();
-        let mut ninja_left: Vec<u8> = Default::default();
-        let mut ninja_right: Vec<u8> = Default::default();
+        let mut freeze_full_left: Vec<u8> = Default::default();
+        let mut freeze_full: Vec<u8> = Default::default();
+        let mut freeze_empty: Vec<u8> = Default::default();
+        let mut freeze_empty_right: Vec<u8> = Default::default();
+        let mut ninja_full_left: Vec<u8> = Default::default();
+        let mut ninja_full: Vec<u8> = Default::default();
+        let mut ninja_empty: Vec<u8> = Default::default();
+        let mut ninja_empty_right: Vec<u8> = Default::default();
         let mut disabled_hook_others: Vec<u8> = Default::default();
         let mut disabled_hammer: Vec<u8> = Default::default();
         let mut disabled_shotgun: Vec<u8> = Default::default();
@@ -122,16 +130,24 @@ pub fn split_ddrace_hud(
                     let rest = y_chunk;
 
                     let rest = if y < segment_height * 2 + segment_height {
-                        let (img_part, rest) = rest.split_at(segment_full_width * 2);
-                        freeze_left.extend(img_part);
-                        let (img_part, rest) = rest.split_at(segment_full_width * 2);
-                        freeze_right.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        freeze_full_left.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        freeze_full.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        freeze_empty.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        freeze_empty_right.extend(img_part);
                         rest
                     } else {
-                        let (img_part, rest) = rest.split_at(segment_full_width * 2);
-                        ninja_left.extend(img_part);
-                        let (img_part, rest) = rest.split_at(segment_full_width * 2);
-                        ninja_right.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        ninja_full_left.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        ninja_full.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        ninja_empty.extend(img_part);
+                        let (img_part, rest) = rest.split_at(segment_full_width);
+                        ninja_empty_right.extend(img_part);
                         rest
                     };
 
@@ -186,10 +202,18 @@ pub fn split_ddrace_hud(
             endless_hook: DdraceHudPart::new(endless_hook, segment_width * 2, segment_height * 2),
             jetpack: DdraceHudPart::new(jetpack, segment_width * 2, segment_height * 2),
 
-            freeze_left: DdraceHudPart::new(freeze_left, segment_width * 2, segment_height),
-            freeze_right: DdraceHudPart::new(freeze_right, segment_width * 2, segment_height),
-            ninja_left: DdraceHudPart::new(ninja_left, segment_width * 2, segment_height),
-            ninja_right: DdraceHudPart::new(ninja_right, segment_width * 2, segment_height),
+            freeze_full_left: DdraceHudPart::new(freeze_full_left, segment_width, segment_height),
+            freeze_full: DdraceHudPart::new(freeze_full, segment_width, segment_height),
+            freeze_empty: DdraceHudPart::new(freeze_empty, segment_width, segment_height),
+            freeze_empty_right: DdraceHudPart::new(
+                freeze_empty_right,
+                segment_width,
+                segment_height,
+            ),
+            ninja_full_left: DdraceHudPart::new(ninja_full_left, segment_width, segment_height),
+            ninja_full: DdraceHudPart::new(ninja_full, segment_width, segment_height),
+            ninja_empty: DdraceHudPart::new(ninja_empty, segment_width, segment_height),
+            ninja_empty_right: DdraceHudPart::new(ninja_empty_right, segment_width, segment_height),
             disabled_hook_others: DdraceHudPart::new(
                 disabled_hook_others,
                 segment_width * 2,

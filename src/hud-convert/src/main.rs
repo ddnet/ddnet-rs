@@ -113,15 +113,27 @@ fn main() {
 
     write_part(
         &mut write_mode,
-        converted.freeze_left,
+        converted.freeze_full_left,
         &args.output,
-        "huds/default/ddrace/freeze_left",
+        "huds/default/ddrace/freeze_full_left",
     );
     write_part(
         &mut write_mode,
-        converted.freeze_right,
+        converted.freeze_full,
         &args.output,
-        "huds/default/ddrace/freeze_right",
+        "huds/default/ddrace/freeze_full",
+    );
+    write_part(
+        &mut write_mode,
+        converted.freeze_empty,
+        &args.output,
+        "huds/default/ddrace/freeze_empty",
+    );
+    write_part(
+        &mut write_mode,
+        converted.freeze_empty_right,
+        &args.output,
+        "huds/default/ddrace/freeze_empty_right",
     );
     write_part(
         &mut write_mode,
@@ -162,15 +174,27 @@ fn main() {
 
     write_part(
         &mut write_mode,
-        converted.ninja_left,
+        converted.ninja_full_left,
         &args.output,
-        "huds/default/ddrace/ninja_left",
+        "huds/default/ddrace/ninja_full_left",
     );
     write_part(
         &mut write_mode,
-        converted.ninja_right,
+        converted.ninja_full,
         &args.output,
-        "huds/default/ddrace/ninja_right",
+        "huds/default/ddrace/ninja_full",
+    );
+    write_part(
+        &mut write_mode,
+        converted.ninja_empty,
+        &args.output,
+        "huds/default/ddrace/ninja_empty",
+    );
+    write_part(
+        &mut write_mode,
+        converted.ninja_empty_right,
+        &args.output,
+        "huds/default/ddrace/ninja_empty_right",
     );
     write_part(
         &mut write_mode,

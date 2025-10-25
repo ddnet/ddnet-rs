@@ -793,6 +793,15 @@ impl RenderGame {
             let local_characters_stage = camera_character_info
                 .map(|c| c.stage_id == Some(*stage_id))
                 .unwrap_or_default();
+            self.players.render_freeze_bars(
+                &cam,
+                &stage.world.characters,
+                &render_info.character_infos,
+                &mut self.containers.freeze_container,
+                camera_player.map(|(id, _)| id),
+                !local_characters_stage && !forced_non_phased_rendering,
+                render_info.settings.phased_alpha,
+            );
             self.players.render_nameplates(
                 cur_time,
                 &cam,

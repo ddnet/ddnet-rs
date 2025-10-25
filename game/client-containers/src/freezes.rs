@@ -1,56 +1,52 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use graphics::{
-    graphics_mt::GraphicsMultiThreaded, handles::texture::texture::GraphicsTextureHandle,
+    graphics_mt::GraphicsMultiThreaded,
+    handles::texture::texture::{GraphicsTextureHandle, TextureContainer},
 };
 use sound::{
     sound_handle::SoundObjectHandle, sound_mt::SoundMultiThreaded,
     sound_mt_types::SoundBackendMemory, sound_object::SoundObject,
 };
 
-use crate::{
-    container::{
-        ContainerLoadedItem, ContainerLoadedItemDir, load_sound_file_part_list_and_upload,
-    },
-    skins::{LoadSkin, Skin},
+use crate::container::{
+    ContainerItemLoadData, ContainerLoadedItem, ContainerLoadedItemDir, load_file_part_and_upload,
+    load_sound_file_part_list_and_upload,
 };
 
 use super::container::{Container, ContainerLoad};
 
 #[derive(Debug)]
 pub struct Freeze {
-    pub skin: Rc<Skin>,
-
     pub attacks: Vec<SoundObject>,
+
+    pub freeze_bar_empty: TextureContainer,
+    pub freeze_bar_empty_right: TextureContainer,
+    pub freeze_bar_full: TextureContainer,
+    pub freeze_bar_full_left: TextureContainer,
 }
 
 #[derive(Debug)]
 pub struct LoadFreeze {
-    skin: LoadSkin,
-
     attacks: Vec<SoundBackendMemory>,
 
-    _freeze_name: String,
+    freeze_bar_empty: ContainerItemLoadData,
+    freeze_bar_empty_right: ContainerItemLoadData,
+    freeze_bar_full: ContainerItemLoadData,
+    freeze_bar_full_left: ContainerItemLoadData,
+
+    freeze_name: String,
 }
 
 impl LoadFreeze {
     pub fn new(
         graphics_mt: &GraphicsMultiThreaded,
         sound_mt: &SoundMultiThreaded,
-        mut files: ContainerLoadedItemDir,
+        files: ContainerLoadedItemDir,
         default_files: &ContainerLoadedItemDir,
         freeze_name: &str,
     ) -> anyhow::Result<Self> {
         Ok(Self {
-            skin: LoadSkin::new(
-                graphics_mt,
-                sound_mt,
-                &mut files,
-                default_files,
-                freeze_name,
-                Some("skin"),
-            )?,
-
             attacks: load_sound_file_part_list_and_upload(
                 sound_mt,
                 &files,
@@ -60,8 +56,53 @@ impl LoadFreeze {
                 "attack",
             )?,
 
-            _freeze_name: freeze_name.to_string(),
+            freeze_bar_empty: load_file_part_and_upload(
+                graphics_mt,
+                &files,
+                default_files,
+                freeze_name,
+                &[],
+                "freeze_bar_empty",
+            )?
+            .img,
+            freeze_bar_empty_right: load_file_part_and_upload(
+                graphics_mt,
+                &files,
+                default_files,
+                freeze_name,
+                &[],
+                "freeze_bar_empty_right",
+            )?
+            .img,
+            freeze_bar_full: load_file_part_and_upload(
+                graphics_mt,
+                &files,
+                default_files,
+                freeze_name,
+                &[],
+                "freeze_bar_full",
+            )?
+            .img,
+            freeze_bar_full_left: load_file_part_and_upload(
+                graphics_mt,
+                &files,
+                default_files,
+                freeze_name,
+                &[],
+                "freeze_bar_full_left",
+            )?
+            .img,
+
+            freeze_name: freeze_name.to_string(),
         })
+    }
+
+    pub(crate) fn load_file_into_texture(
+        texture_handle: &GraphicsTextureHandle,
+        img: ContainerItemLoadData,
+        name: &str,
+    ) -> TextureContainer {
+        texture_handle.load_texture_rgba_u8(img.data, name).unwrap()
     }
 }
 
@@ -90,13 +131,32 @@ impl ContainerLoad<Freeze> for LoadFreeze {
         sound_object_handle: &SoundObjectHandle,
     ) -> Freeze {
         Freeze {
-            skin: self.skin.convert(texture_handle, sound_object_handle),
-
             attacks: self
                 .attacks
                 .into_iter()
                 .map(|s| sound_object_handle.create(s))
                 .collect(),
+
+            freeze_bar_empty: LoadFreeze::load_file_into_texture(
+                texture_handle,
+                self.freeze_bar_empty,
+                &self.freeze_name,
+            ),
+            freeze_bar_empty_right: LoadFreeze::load_file_into_texture(
+                texture_handle,
+                self.freeze_bar_empty_right,
+                &self.freeze_name,
+            ),
+            freeze_bar_full: LoadFreeze::load_file_into_texture(
+                texture_handle,
+                self.freeze_bar_full,
+                &self.freeze_name,
+            ),
+            freeze_bar_full_left: LoadFreeze::load_file_into_texture(
+                texture_handle,
+                self.freeze_bar_full_left,
+                &self.freeze_name,
+            ),
         }
     }
 }
