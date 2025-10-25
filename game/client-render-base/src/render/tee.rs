@@ -20,6 +20,7 @@ use super::animation::AnimState;
 pub enum TeeRenderSkinColor {
     Original,
     Colorable(ColorRgba),
+    Freeze,
 }
 
 impl TeeRenderSkinColor {
@@ -30,6 +31,7 @@ impl TeeRenderSkinColor {
                 color.a *= alpha;
                 color
             }
+            Self::Freeze => ColorRgba::new(1.0, 1.0, 1.0, alpha),
         }
     }
 }
@@ -56,6 +58,7 @@ impl RenderSkin for Skin {
         match color {
             TeeRenderSkinColor::Original => &self.textures,
             TeeRenderSkinColor::Colorable(_) => &self.grey_scaled_textures,
+            TeeRenderSkinColor::Freeze => &self.frozen_textures,
         }
     }
 }

@@ -1,4 +1,7 @@
-use std::num::NonZeroU64;
+use std::{
+    num::NonZeroU64,
+    ops::{Deref, DerefMut},
+};
 
 use hiarc::Hiarc;
 use serde::{Deserialize, Serialize};
@@ -69,6 +72,58 @@ impl GameTickCooldown {
 impl From<GameTickType> for GameTickCooldown {
     fn from(value: GameTickType) -> Self {
         Self::new(value)
+    }
+}
+
+/// Like [`GameTickCooldown`] but also stores the original countdown start length.
+#[derive(Debug, Hiarc, Default, Clone, Copy, Serialize, Deserialize)]
+pub struct GameTickCooldownAndLength {
+    countdown: GameTickCooldown,
+    length: Option<NonZeroGameTickType>,
+}
+
+impl GameTickCooldownAndLength {
+    /// if `ticks` is zero that basically means that there is no cooldown,
+    /// which also is the default.
+    pub fn new(ticks: GameTickType) -> Self {
+        let length = (ticks > 0).then(|| NonZeroGameTickType::new(ticks).unwrap());
+        Self {
+            countdown: ticks.into(),
+            length,
+        }
+    }
+
+    /// Like [`Self::new`], but takes the length explictly.
+    pub fn new_with_length(ticks: GameTickType, length: GameTickType) -> Self {
+        let length = (length > 0).then(|| NonZeroGameTickType::new(length).unwrap());
+        Self {
+            countdown: ticks.into(),
+            length,
+        }
+    }
+
+    pub fn length(&self) -> Option<NonZeroGameTickType> {
+        self.length
+    }
+}
+
+impl From<GameTickType> for GameTickCooldownAndLength {
+    fn from(value: GameTickType) -> Self {
+        Self::new(value)
+    }
+}
+
+impl Deref for GameTickCooldownAndLength {
+    type Target = GameTickCooldown;
+
+    fn deref(&self) -> &Self::Target {
+        &self.countdown
+    }
+}
+
+impl DerefMut for GameTickCooldownAndLength {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.countdown
     }
 }
 

@@ -116,8 +116,10 @@ impl LoadHud {
         insert_part("endless_hook", converted.endless_hook)?;
         insert_part("jetpack", converted.jetpack)?;
 
-        insert_part("freeze_left", converted.freeze_left)?;
-        insert_part("freeze_right", converted.freeze_right)?;
+        insert_part("freeze_full_left", converted.freeze_full_left)?;
+        insert_part("freeze_full", converted.freeze_full)?;
+        insert_part("freeze_empty", converted.freeze_empty)?;
+        insert_part("freeze_empty_right", converted.freeze_empty_right)?;
         insert_part("disabled_hook_others", converted.disabled_hook_others)?;
         insert_part("disabled_hammer", converted.disabled_hammer)?;
         insert_part("disabled_shotgun", converted.disabled_shotgun)?;
@@ -125,8 +127,10 @@ impl LoadHud {
         insert_part("disabled_laser", converted.disabled_laser)?;
         insert_part("disabled_gun", converted.disabled_gun)?;
 
-        insert_part("ninja_left", converted.ninja_left)?;
-        insert_part("ninja_right", converted.ninja_right)?;
+        insert_part("ninja_full_left", converted.ninja_full_left)?;
+        insert_part("ninja_full", converted.ninja_full)?;
+        insert_part("ninja_empty", converted.ninja_empty)?;
+        insert_part("ninja_empty_right", converted.ninja_empty_right)?;
         insert_part("tele_grenade", converted.tele_grenade)?;
         insert_part("tele_pistol", converted.tele_pistol)?;
         insert_part("tele_laser", converted.tele_laser)?;

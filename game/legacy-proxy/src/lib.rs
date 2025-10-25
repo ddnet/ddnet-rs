@@ -38,7 +38,7 @@ use game_interface::{
         emoticons::EmoticonType,
         fixed_zoom_level::FixedZoomLevel,
         flag::FlagType,
-        game::{GameTickCooldownAndLastActionCounter, GameTickType},
+        game::{GameTickCooldownAndLastActionCounter, GameTickCooldownAndLength, GameTickType},
         id_gen::IdGenerator,
         id_types::{CharacterId, CtfFlagId, LaserId, PickupId, PlayerId, ProjectileId, StageId},
         input::{
@@ -1189,10 +1189,18 @@ impl Client {
                         && ddnet_char.freeze_start.0 != 0
                     {
                         let remaining = ddnet_char.freeze_end.0.saturating_sub(tick);
+                        let length = ddnet_char
+                            .freeze_end
+                            .0
+                            .saturating_sub(ddnet_char.freeze_start.0)
+                            .unsigned_abs();
                         reusable_core.debuffs.insert(
                             CharacterDebuff::Freeze,
                             BuffProps {
-                                remaining_tick: (remaining.unsigned_abs() as u64).into(),
+                                remaining_tick: GameTickCooldownAndLength::new_with_length(
+                                    remaining.unsigned_abs() as u64,
+                                    length as u64,
+                                ),
                                 interact_tick: Default::default(),
                                 interact_cursor_dir: Default::default(),
                                 interact_val: 0.0,

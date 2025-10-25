@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
 use game_interface::types::{
-    character_info::{MAX_ASSET_NAME_LEN, NetworkSkinInfo},
-    render::character::TeeEye,
+    character_info::MAX_ASSET_NAME_LEN,
     resource_key::{NetworkResourceKey, ResourceKey},
 };
+use math::math::vector::vec2;
 use ui_base::types::{UiRenderPipe, UiState};
 
-use crate::{main_menu::user_data::UserData, utils::render_tee_for_ui_with_skin};
+use crate::{main_menu::user_data::UserData, utils::render_texture_for_ui};
 
 pub fn freeze_list(
     ui: &mut egui::Ui,
@@ -39,24 +39,56 @@ pub fn freeze_list(
         |_, name| player.freeze == name,
         |s| s,
         |ui, _, name, pos, asset_size| {
-            let skin_info = NetworkSkinInfo::Original;
             let key: ResourceKey = name.try_into().unwrap_or_default();
-            render_tee_for_ui_with_skin(
+            let freeze = pipe.user_data.freeze_container.get_or_default(&key);
+            let single_size = asset_size / 4.0;
+            render_texture_for_ui(
+                pipe.user_data.stream_handle,
                 pipe.user_data.canvas_handle,
-                pipe.user_data
-                    .freeze_container
-                    .get_or_default(&key)
-                    .skin
-                    .clone(),
-                pipe.user_data.render_tee,
+                &freeze.freeze_bar_full_left,
                 ui,
                 ui_state,
                 ui.ctx().screen_rect(),
                 Some(ui.clip_rect()),
-                Some(&skin_info),
-                pos,
-                asset_size,
-                TeeEye::Normal,
+                vec2::new(pos.x - single_size / 2.0 - single_size, pos.y),
+                vec2::new(single_size, single_size),
+                None,
+            );
+            render_texture_for_ui(
+                pipe.user_data.stream_handle,
+                pipe.user_data.canvas_handle,
+                &freeze.freeze_bar_full,
+                ui,
+                ui_state,
+                ui.ctx().screen_rect(),
+                Some(ui.clip_rect()),
+                vec2::new(pos.x - single_size / 2.0, pos.y),
+                vec2::new(single_size, single_size),
+                None,
+            );
+            render_texture_for_ui(
+                pipe.user_data.stream_handle,
+                pipe.user_data.canvas_handle,
+                &freeze.freeze_bar_empty,
+                ui,
+                ui_state,
+                ui.ctx().screen_rect(),
+                Some(ui.clip_rect()),
+                vec2::new(pos.x + single_size / 2.0, pos.y),
+                vec2::new(single_size, single_size),
+                None,
+            );
+            render_texture_for_ui(
+                pipe.user_data.stream_handle,
+                pipe.user_data.canvas_handle,
+                &freeze.freeze_bar_empty_right,
+                ui,
+                ui_state,
+                ui.ctx().screen_rect(),
+                Some(ui.clip_rect()),
+                vec2::new(pos.x + single_size / 2.0 + single_size, pos.y),
+                vec2::new(single_size, single_size),
+                None,
             );
         },
         |_, name| {

@@ -25,7 +25,10 @@ pub mod character {
         pooling::GamePooling,
         types::{
             emoticons::{EmoticonType, EnumCount},
-            game::{GameTickCooldown, GameTickCooldownAndLastActionCounter, GameTickType},
+            game::{
+                GameTickCooldown, GameTickCooldownAndLastActionCounter, GameTickCooldownAndLength,
+                GameTickType,
+            },
             id_types::{CharacterId, StageId},
             input::{CharacterInput, CharacterInputConsumableDiff, cursor::CharacterInputCursor},
             network_stats::PlayerNetworkStats,
@@ -92,7 +95,7 @@ pub mod character {
 
     #[derive(Debug, Hiarc, Serialize, Deserialize, Copy, Clone)]
     pub struct BuffProps {
-        pub remaining_tick: GameTickCooldown,
+        pub remaining_tick: GameTickCooldownAndLength,
         pub interact_tick: GameTickCooldown,
         pub interact_cursor_dir: vec2,
         pub interact_val: f32,

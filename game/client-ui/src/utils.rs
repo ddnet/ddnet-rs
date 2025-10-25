@@ -35,7 +35,7 @@ use graphics::{
     },
     streaming::quad_scope_begin,
 };
-use graphics_types::rendering::{ColorRgba, State};
+use graphics_types::rendering::{ColorRgba, State, WrapType};
 use math::math::vector::{dvec2, ubvec4, vec2};
 use pool::mt_datatypes::PoolVec;
 use tracing::instrument;
@@ -631,6 +631,7 @@ pub fn render_texture_for_ui(
     impl CustomCallbackTrait for RenderTextureCb {
         fn render(&self) {
             let mut state = State::new();
+            state.wrap(WrapType::Clamp);
             state.map_canvas(
                 self.render_rect.min.x,
                 self.render_rect.min.y,

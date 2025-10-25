@@ -54,6 +54,7 @@ pub struct LoadNinja {
 
 impl LoadNinja {
     pub fn new(
+        tp: &rayon::ThreadPool,
         graphics_mt: &GraphicsMultiThreaded,
         sound_mt: &SoundMultiThreaded,
         mut files: ContainerLoadedItemDir,
@@ -89,6 +90,7 @@ impl LoadNinja {
             )?,
 
             skin: LoadSkin::new(
+                tp,
                 graphics_mt,
                 sound_mt,
                 &mut files,
@@ -147,14 +149,19 @@ impl ContainerLoad<Ninja> for LoadNinja {
         item_name: &str,
         files: ContainerLoadedItem,
         default_files: &ContainerLoadedItemDir,
-        _runtime_thread_pool: &Arc<rayon::ThreadPool>,
+        runtime_thread_pool: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
         sound_mt: &SoundMultiThreaded,
     ) -> anyhow::Result<Self> {
         match files {
-            ContainerLoadedItem::Directory(files) => {
-                Self::new(graphics_mt, sound_mt, files, default_files, item_name)
-            }
+            ContainerLoadedItem::Directory(files) => Self::new(
+                runtime_thread_pool,
+                graphics_mt,
+                sound_mt,
+                files,
+                default_files,
+                item_name,
+            ),
             ContainerLoadedItem::SingleFile(_) => Err(anyhow::anyhow!(
                 "single file mode is currently not supported"
             )),

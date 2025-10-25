@@ -13,7 +13,7 @@ use graphics_types::{
     commands::TexFlags, rendering::ColorRgba, types::GraphicsMemoryAllocationType,
 };
 use hiarc::Hiarc;
-use image_utils::png::PngResultPersistent;
+use image_utils::{png::PngResultPersistent, utils::dilate_image};
 use math::math::vector::vec3;
 use rustc_hash::FxHashMap;
 use sound::{
@@ -163,6 +163,7 @@ pub struct SkinTextures {
 pub struct Skin {
     pub textures: SkinTextures,
     pub grey_scaled_textures: SkinTextures,
+    pub frozen_textures: SkinTextures,
     pub metrics: SkinMetrics,
 
     pub blood_color: ColorRgba,
@@ -702,6 +703,7 @@ impl LoadSkinTextures {
 pub struct LoadSkin {
     textures: LoadSkinTextures,
     grey_scaled_textures: LoadSkinTextures,
+    frozen_textures: LoadSkinTextures,
 
     blood_color: ColorRgba,
 
@@ -741,7 +743,7 @@ impl LoadSkin {
         }
     }
 
-    fn make_grey_scale(tex: &mut PngResultPersistent) {
+    fn make_grey_scale(tp: &rayon::ThreadPool, tex: &mut PngResultPersistent) {
         let pixel_step = 4;
 
         // make the texture gray scale
@@ -753,51 +755,399 @@ impl LoadSkin {
 
             tex.data[i * pixel_step..=i * pixel_step + 2].copy_from_slice(&[luma, luma, luma]);
         }
+        dilate_image(
+            tp,
+            tex.data.as_mut(),
+            tex.width as usize,
+            tex.height as usize,
+            4,
+        );
+    }
+
+    fn frost_noise(x: u32, y: u32) -> f32 {
+        let mut v = x.wrapping_mul(0x5165_7a7f) ^ y.wrapping_mul(0x27d4_eb2d);
+        v ^= v >> 15;
+        v = v.wrapping_mul(0x85eb_ca6b);
+        ((v >> 24) & 0xff) as f32 / 255.0
+    }
+
+    fn make_frozen(tp: &rayon::ThreadPool, tex: &mut PngResultPersistent) {
+        if tex.width == 0 || tex.height == 0 {
+            return;
+        }
+
+        const FROST_PALETTE: [[f32; 3]; 4] = [
+            [0.10, 0.26, 0.56],
+            [0.32, 0.58, 0.90],
+            [0.62, 0.84, 1.0],
+            [0.92, 0.98, 1.0],
+        ];
+
+        let pixel_step = 4;
+        let width = tex.width as usize;
+        let height = tex.height as usize;
+        let pitch = width * pixel_step;
+        let original = tex.data.clone();
+
+        let mut tone = vec![0.0f32; width * height];
+        let mut highlight = vec![0.0f32; width * height];
+        let mut top_surface: Vec<Option<usize>> = vec![None; width];
+
+        for y in 0..height {
+            for x in 0..width {
+                let idx = y * pitch + x * pixel_step;
+                let alpha = original[idx + 3];
+                if alpha == 0 {
+                    continue;
+                }
+
+                if top_surface[x].is_none() && original[idx + 3] > 96 {
+                    top_surface[x] = Some(y);
+                }
+
+                let r = original[idx] as f32 / 255.0;
+                let g = original[idx + 1] as f32 / 255.0;
+                let b = original[idx + 2] as f32 / 255.0;
+
+                let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                let inverse_luma = (1.0 - luma).clamp(0.0, 1.0);
+
+                let noise_primary = Self::frost_noise(x as u32, y as u32);
+                let noise_secondary = Self::frost_noise(x as u32 + 37, y as u32 ^ 0x15_72);
+                let noise_tertiary = Self::frost_noise(x as u32 ^ 0x4213, y as u32 + 91);
+                let avg_noise =
+                    (noise_primary + noise_secondary * 0.5 + noise_tertiary * 0.25) / 1.75;
+                let centered_noise = (avg_noise - 0.5) * 0.12;
+
+                let neighbors = [
+                    (-1, 0),
+                    (1, 0),
+                    (0, -1),
+                    (0, 1),
+                    (-1, -1),
+                    (1, -1),
+                    (-1, 1),
+                    (1, 1),
+                ];
+                let neighbor_count = neighbors.len() as f32;
+                let mut edge = 0.0;
+                for (dx, dy) in neighbors {
+                    let nx = x as isize + dx;
+                    let ny = y as isize + dy;
+                    if nx < 0 || ny < 0 || nx >= width as isize || ny >= height as isize {
+                        edge += 1.0;
+                        continue;
+                    }
+                    let n_idx = ny as usize * pitch + nx as usize * pixel_step;
+                    if original[n_idx + 3] == 0 {
+                        edge += 1.0;
+                    }
+                }
+                let edge_factor = (edge / neighbor_count).clamp(0.0, 1.0);
+
+                let tone_value =
+                    (inverse_luma * 0.65 + edge_factor * 0.25 + centered_noise).clamp(0.0, 1.0);
+                tone[y * width + x] = tone_value;
+
+                let shine_value =
+                    (edge_factor.powf(1.4) * 0.7 + avg_noise.powf(4.0) * 0.3).clamp(0.0, 1.0);
+                highlight[y * width + x] = shine_value;
+            }
+        }
+
+        const GAUSS_KERNEL: [f32; 7] = [0.00443, 0.0540, 0.2420, 0.3991, 0.2420, 0.0540, 0.00443];
+        let radius = 3i32;
+        let mut blur_temp = vec![0.0f32; width * height];
+
+        for y in 0..height {
+            for x in 0..width {
+                let mut acc = 0.0;
+                for k in -radius..=radius {
+                    let sx = (x as i32 + k).clamp(0, width as i32 - 1) as usize;
+                    let weight = GAUSS_KERNEL[(k + radius) as usize];
+                    acc += tone[y * width + sx] * weight;
+                }
+                blur_temp[y * width + x] = acc;
+            }
+        }
+        for y in 0..height {
+            for x in 0..width {
+                let mut acc = 0.0;
+                for k in -radius..=radius {
+                    let sy = (y as i32 + k).clamp(0, height as i32 - 1) as usize;
+                    let weight = GAUSS_KERNEL[(k + radius) as usize];
+                    acc += blur_temp[sy * width + x] * weight;
+                }
+                tone[y * width + x] = acc;
+            }
+        }
+
+        let mut icicle_mask = vec![0.0f32; width * height];
+        let mut icicle_tone = vec![0.0f32; width * height];
+        let mut icicle_shine = vec![0.0f32; width * height];
+        let mut solid_run_length = vec![0usize; width * height];
+        let mut solid_alpha_acc = vec![0.0f32; width * height];
+        let max_length = ((height as f32) * 0.28).round() as usize;
+
+        for x in 0..width {
+            let Some(top) = top_surface[x] else {
+                continue;
+            };
+
+            let spawn = Self::frost_noise(x as u32 ^ 0x9e37_79b9, top as u32 + 0x2d);
+            if spawn < 0.62 {
+                continue;
+            }
+
+            let mut length =
+                ((spawn - 0.62) / 0.38 * max_length as f32).clamp(0.0, max_length as f32);
+            length = length.max(3.0);
+            let length = length.round() as usize;
+            if length < 3 {
+                continue;
+            }
+
+            let base_tone = tone[top * width + x];
+            let base_shine = highlight[top * width + x].max(0.35);
+            let sparkle_seed = Self::frost_noise(x as u32 + 0x1357, top as u32 ^ 0x2468);
+
+            for offset in 0..length {
+                let y = top + offset;
+                if y >= height {
+                    break;
+                }
+
+                let alpha_idx = y * pitch + x * pixel_step + 3;
+                let alpha = original[alpha_idx] as f32 / 255.0;
+                let density = alpha.powf(2.2);
+                if density < 0.35 {
+                    break;
+                }
+
+                let idx_current = y * width + x;
+                let prev_index = if offset == 0 {
+                    None
+                } else {
+                    Some((y - 1) * width + x)
+                };
+                let previous_run = prev_index.map_or(0, |idx| solid_run_length[idx]);
+                let previous_alpha = prev_index.map_or(1.0, |idx| solid_alpha_acc[idx]);
+
+                solid_run_length[idx_current] = previous_run + 1;
+                solid_alpha_acc[idx_current] = previous_alpha * 0.6 + density * 0.4;
+
+                let progress = offset as f32 / length as f32;
+                let taper =
+                    (1.0 - progress).powf(1.8) * (density * previous_alpha.max(0.35)).powf(0.7);
+                let base_spread = 1.0 + (1.0 - progress) * 2.3;
+                let max_dx = base_spread.ceil() as i32;
+                for dx in -max_dx..=max_dx {
+                    let nx = x as i32 + dx;
+                    if nx < 0 || nx >= width as i32 {
+                        continue;
+                    }
+
+                    let dist = (dx as f32).abs() / base_spread;
+                    if dist > 1.1 {
+                        continue;
+                    }
+                    let radial = (1.0 - dist.powf(1.45)).clamp(0.0, 1.0);
+                    let neighbor_alpha =
+                        original[y * pitch + nx as usize * pixel_step + 3] as f32 / 255.0;
+                    let cross_density = density * neighbor_alpha;
+                    let weight = (taper * radial * (1.0 - 0.25 * progress)
+                        + sparkle_seed * 0.05
+                        + cross_density * 0.1)
+                        .clamp(0.0, 1.0);
+                    if weight <= 0.001 {
+                        continue;
+                    }
+
+                    let index = y * width + nx as usize;
+                    let strength = weight;
+                    if strength > icicle_mask[index] {
+                        icicle_mask[index] = strength;
+                        let tone_boost =
+                            (base_tone * 0.6 + (0.55 + 0.35 * (1.0 - progress))).clamp(0.0, 1.0);
+                        icicle_tone[index] = tone_boost;
+                        icicle_shine[index] =
+                            (base_shine + 0.25 + sparkle_seed * 0.15 + (1.0 - progress) * 0.3)
+                                .clamp(0.0, 1.0);
+                    }
+                }
+            }
+        }
+
+        const ICICLE_KERNEL: [f32; 5] = [0.0625, 0.25, 0.375, 0.25, 0.0625];
+        let kernel_radius = (ICICLE_KERNEL.len() / 2) as i32;
+        let blur_field = |src: &[f32]| -> Vec<f32> {
+            let mut tmp = vec![0.0f32; width * height];
+            let mut dst = vec![0.0f32; width * height];
+
+            for y in 0..height {
+                for x in 0..width {
+                    let mut acc = 0.0f32;
+                    for (k_idx, weight) in ICICLE_KERNEL.iter().enumerate() {
+                        let k = k_idx as i32 - kernel_radius;
+                        let sx = (x as i32 + k).clamp(0, width as i32 - 1) as usize;
+                        acc += src[y * width + sx] * weight;
+                    }
+                    tmp[y * width + x] = acc;
+                }
+            }
+
+            for y in 0..height {
+                for x in 0..width {
+                    let mut acc = 0.0f32;
+                    for (k_idx, weight) in ICICLE_KERNEL.iter().enumerate() {
+                        let k = k_idx as i32 - kernel_radius;
+                        let sy = (y as i32 + k).clamp(0, height as i32 - 1) as usize;
+                        acc += tmp[sy * width + x] * weight;
+                    }
+                    dst[y * width + x] = acc;
+                }
+            }
+
+            dst
+        };
+
+        let blurred_mask = blur_field(&icicle_mask);
+        let weighted_tone: Vec<f32> = icicle_tone
+            .iter()
+            .zip(icicle_mask.iter())
+            .map(|(tone, mask)| tone * mask)
+            .collect();
+        let weighted_shine: Vec<f32> = icicle_shine
+            .iter()
+            .zip(icicle_mask.iter())
+            .map(|(shine, mask)| shine * mask)
+            .collect();
+        let blurred_tone = blur_field(&weighted_tone);
+        let blurred_shine = blur_field(&weighted_shine);
+
+        let field_len = width * height;
+        for i in 0..field_len {
+            let m = blurred_mask[i].clamp(0.0, 1.0).powf(0.82);
+            if m > 0.002 {
+                let denom = m.max(1e-4);
+                icicle_mask[i] = m;
+                icicle_tone[i] = (blurred_tone[i] / denom).clamp(0.0, 1.0);
+                icicle_shine[i] = (blurred_shine[i] / denom).clamp(0.0, 1.0);
+            } else {
+                icicle_mask[i] = 0.0;
+                icicle_tone[i] = 0.0;
+                icicle_shine[i] = 0.0;
+            }
+        }
+
+        for y in 0..height {
+            for x in 0..width {
+                let idx_pix = y * width + x;
+                let mut tone_value = tone[idx_pix];
+                let mut shine_value = highlight[idx_pix];
+                let icicle = icicle_mask[idx_pix];
+                if icicle > 0.0 {
+                    tone_value = tone_value.max(icicle_tone[idx_pix]);
+                    shine_value = shine_value.max(icicle_shine[idx_pix]);
+                }
+                let idx = y * pitch + x * pixel_step;
+                let alpha = original[idx + 3];
+                if alpha == 0 && icicle <= 0.0 {
+                    continue;
+                }
+
+                let max_index = FROST_PALETTE.len() as f32 - 1.0;
+                let palette_pos = (tone_value * max_index).clamp(0.0, max_index);
+                let base_idx = palette_pos.floor() as usize;
+                let next_idx = (base_idx + 1).min(FROST_PALETTE.len() - 1);
+                let mix = if next_idx == base_idx {
+                    0.0
+                } else {
+                    palette_pos - base_idx as f32
+                };
+
+                let base = FROST_PALETTE[base_idx];
+                let next = FROST_PALETTE[next_idx];
+                let mut frost_tint = [
+                    base[0] + (next[0] - base[0]) * mix,
+                    base[1] + (next[1] - base[1]) * mix,
+                    base[2] + (next[2] - base[2]) * mix,
+                ];
+
+                let highlight_mix = (shine_value * 0.55 + icicle * 0.3).clamp(0.0, 0.7);
+                frost_tint.iter_mut().for_each(|c| {
+                    *c = (*c + highlight_mix * (1.0 - *c)).clamp(0.0, 1.0);
+                });
+
+                let mut final_alpha = alpha as f32;
+                if icicle > 0.0 {
+                    let icicle_alpha =
+                        ((icicle * 0.9) + icicle.powf(1.6) * 0.4).clamp(0.0, 1.0) * 255.0;
+                    final_alpha = final_alpha.max(icicle_alpha);
+                }
+
+                if final_alpha <= 0.0 {
+                    continue;
+                }
+
+                final_alpha = (final_alpha * (1.0 + 0.08 * shine_value + 0.04 * tone_value))
+                    .clamp(0.0, 255.0);
+                final_alpha = final_alpha.max(alpha as f32);
+                let final_a = final_alpha.round();
+
+                tex.data[idx] = (frost_tint[0] * 255.0).round().clamp(0.0, 255.0) as u8;
+                tex.data[idx + 1] = (frost_tint[1] * 255.0).round().clamp(0.0, 255.0) as u8;
+                tex.data[idx + 2] = (frost_tint[2] * 255.0).round().clamp(0.0, 255.0) as u8;
+                tex.data[idx + 3] = final_a as u8;
+            }
+        }
+        dilate_image(
+            tp,
+            tex.data.as_mut(),
+            tex.width as usize,
+            tex.height as usize,
+            4,
+        );
     }
 
     fn grey_scale(
+        tp: &rayon::ThreadPool,
         body_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
-
         left_hand_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
-
         right_hand_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
-
         left_foot_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
-
         right_foot_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
-
         left_eyes: &mut [PngResultPersistent; TeeEye::COUNT],
-
         right_eyes: &mut [PngResultPersistent; TeeEye::COUNT],
     ) {
         let pixel_step = 4;
         // create grey scales
         let (body, body_outline) = body_and_outline;
-        Self::make_grey_scale(body);
-        Self::make_grey_scale(body_outline);
+        Self::make_grey_scale(tp, body);
+        Self::make_grey_scale(tp, body_outline);
 
         let (left_hand, left_hand_outline) = left_hand_and_outline;
-        Self::make_grey_scale(left_hand);
-        Self::make_grey_scale(left_hand_outline);
+        Self::make_grey_scale(tp, left_hand);
+        Self::make_grey_scale(tp, left_hand_outline);
 
         let (right_hand, right_hand_outline) = right_hand_and_outline;
-        Self::make_grey_scale(right_hand);
-        Self::make_grey_scale(right_hand_outline);
+        Self::make_grey_scale(tp, right_hand);
+        Self::make_grey_scale(tp, right_hand_outline);
 
         let (left_foot, left_foot_outline) = left_foot_and_outline;
-        Self::make_grey_scale(left_foot);
-        Self::make_grey_scale(left_foot_outline);
+        Self::make_grey_scale(tp, left_foot);
+        Self::make_grey_scale(tp, left_foot_outline);
 
         let (right_foot, right_foot_outline) = right_foot_and_outline;
-        Self::make_grey_scale(right_foot);
-        Self::make_grey_scale(right_foot_outline);
+        Self::make_grey_scale(tp, right_foot);
+        Self::make_grey_scale(tp, right_foot_outline);
 
         left_eyes.iter_mut().for_each(|tex| {
-            Self::make_grey_scale(tex);
+            Self::make_grey_scale(tp, tex);
         });
 
         right_eyes.iter_mut().for_each(|tex| {
-            Self::make_grey_scale(tex);
+            Self::make_grey_scale(tp, tex);
         });
 
         let mut freq: [i32; 256] = [0; 256];
@@ -838,9 +1188,65 @@ impl LoadSkin {
                 body.data[y * body_pitch + x * pixel_step + 2] = v;
             }
         }
+        dilate_image(
+            tp,
+            body.data.as_mut(),
+            body.width as usize,
+            body.height as usize,
+            4,
+        );
+    }
+
+    fn freeze(
+        tp: &rayon::ThreadPool,
+        body_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        marking_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        decoration_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        left_hand_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        right_hand_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        left_foot_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        right_foot_and_outline: (&mut PngResultPersistent, &mut PngResultPersistent),
+        left_eyes: &mut [PngResultPersistent; TeeEye::COUNT],
+        right_eyes: &mut [PngResultPersistent; TeeEye::COUNT],
+    ) {
+        let (body, body_outline) = body_and_outline;
+        Self::make_frozen(tp, body);
+        Self::make_frozen(tp, body_outline);
+
+        let (marking, marking_outline) = marking_and_outline;
+        Self::make_frozen(tp, marking);
+        Self::make_frozen(tp, marking_outline);
+
+        let (decoration, decoration_outline) = decoration_and_outline;
+        Self::make_frozen(tp, decoration);
+        Self::make_frozen(tp, decoration_outline);
+
+        let (left_hand, left_hand_outline) = left_hand_and_outline;
+        Self::make_frozen(tp, left_hand);
+        Self::make_frozen(tp, left_hand_outline);
+
+        let (right_hand, right_hand_outline) = right_hand_and_outline;
+        Self::make_frozen(tp, right_hand);
+        Self::make_frozen(tp, right_hand_outline);
+
+        let (left_foot, left_foot_outline) = left_foot_and_outline;
+        Self::make_frozen(tp, left_foot);
+        Self::make_frozen(tp, left_foot_outline);
+
+        let (right_foot, right_foot_outline) = right_foot_and_outline;
+        Self::make_frozen(tp, right_foot);
+        Self::make_frozen(tp, right_foot_outline);
+
+        left_eyes
+            .iter_mut()
+            .for_each(|eye| Self::make_frozen(tp, eye));
+        right_eyes
+            .iter_mut()
+            .for_each(|eye| Self::make_frozen(tp, eye));
     }
 
     pub(crate) fn new(
+        tp: &rayon::ThreadPool,
         graphics_mt: &GraphicsMultiThreaded,
         sound_mt: &SoundMultiThreaded,
         files: &mut ContainerLoadedItemDir,
@@ -853,6 +1259,7 @@ impl LoadSkin {
 
         let mut grey_scaled_textures_data = textures_data.clone();
         Self::grey_scale(
+            tp,
             (
                 &mut grey_scaled_textures_data.body,
                 &mut grey_scaled_textures_data.body_outline,
@@ -875,6 +1282,41 @@ impl LoadSkin {
             ),
             &mut grey_scaled_textures_data.left_eyes,
             &mut grey_scaled_textures_data.right_eyes,
+        );
+
+        let mut frozen_textures_data = textures_data.clone();
+        Self::freeze(
+            tp,
+            (
+                &mut frozen_textures_data.body,
+                &mut frozen_textures_data.body_outline,
+            ),
+            (
+                &mut frozen_textures_data.marking,
+                &mut frozen_textures_data.marking_outline,
+            ),
+            (
+                &mut frozen_textures_data.decoration,
+                &mut frozen_textures_data.decoration_outline,
+            ),
+            (
+                &mut frozen_textures_data.left_hand,
+                &mut frozen_textures_data.left_hand_outline,
+            ),
+            (
+                &mut frozen_textures_data.right_hand,
+                &mut frozen_textures_data.right_hand_outline,
+            ),
+            (
+                &mut frozen_textures_data.left_foot,
+                &mut frozen_textures_data.left_foot_outline,
+            ),
+            (
+                &mut frozen_textures_data.right_foot,
+                &mut frozen_textures_data.right_foot_outline,
+            ),
+            &mut frozen_textures_data.left_eyes,
+            &mut frozen_textures_data.right_eyes,
         );
 
         let mut metrics_body = SkinMetricVariable::default();
@@ -913,19 +1355,25 @@ impl LoadSkin {
             textures_data.left_foot_outline.height,
         );
 
+        let blood_color = Self::get_blood_color(
+            &textures_data.body.data,
+            textures_data.body.width as usize,
+            textures_data.body.height as usize,
+        );
+        let textures = textures_data.load_into_texture(graphics_mt);
+        let grey_scaled_textures = grey_scaled_textures_data.load_into_texture(graphics_mt);
+        let frozen_textures = frozen_textures_data.load_into_texture(graphics_mt);
+
         Ok(Self {
-            blood_color: Self::get_blood_color(
-                &textures_data.body.data,
-                textures_data.body.width as usize,
-                textures_data.body.height as usize,
-            ),
+            blood_color,
             metrics: SkinMetrics {
                 body: metrics_body,
                 feet: metrics_feet,
             },
 
-            textures: textures_data.load_into_texture(graphics_mt),
-            grey_scaled_textures: grey_scaled_textures_data.load_into_texture(graphics_mt),
+            textures,
+            grey_scaled_textures,
+            frozen_textures,
 
             sound: LoadSkinSounds {
                 ground_jump: load_sound_file_part_list_and_upload(
@@ -1020,12 +1468,13 @@ impl ContainerLoad<Rc<Skin>> for LoadSkin {
         item_name: &str,
         files: ContainerLoadedItem,
         default_files: &ContainerLoadedItemDir,
-        _runtime_thread_pool: &Arc<rayon::ThreadPool>,
+        runtime_thread_pool: &Arc<rayon::ThreadPool>,
         graphics_mt: &GraphicsMultiThreaded,
         sound_mt: &SoundMultiThreaded,
     ) -> anyhow::Result<Self> {
         match files {
             ContainerLoadedItem::Directory(mut files) => Self::new(
+                runtime_thread_pool,
                 graphics_mt,
                 sound_mt,
                 &mut files,
@@ -1040,6 +1489,7 @@ impl ContainerLoad<Rc<Skin>> for LoadSkin {
 
                 let mut files = ContainerLoadedItemDir::new(files);
                 Self::new(
+                    runtime_thread_pool,
                     graphics_mt,
                     sound_mt,
                     &mut files,
@@ -1062,6 +1512,9 @@ impl ContainerLoad<Rc<Skin>> for LoadSkin {
                 .load_skin_into_texture(&self.skin_name, texture_handle),
             grey_scaled_textures: self
                 .grey_scaled_textures
+                .load_skin_into_texture(&self.skin_name, texture_handle),
+            frozen_textures: self
+                .frozen_textures
                 .load_skin_into_texture(&self.skin_name, texture_handle),
             metrics: self.metrics,
             blood_color: self.blood_color,
