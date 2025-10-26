@@ -28,7 +28,7 @@ things that you need to know:\n\
 - You are over 13+ years old.\n\
 \n\
 If you still want to try out spatial chat write  \n\
-`I read and understand the warnings about spatial chat`  \n\
+> I read and understand the warnings about spatial chat\n\n\
 in the following text box:\
 ";
 
