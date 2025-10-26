@@ -178,7 +178,7 @@ enum LegacyInputFlags {
     Chatting = 1 << 2,
     Scoreboard = 1 << 3,
     Aim = 1 << 4,
-    // SpecCam = 1 << 5,
+    SpecCam = 1 << 5,
 }
 
 #[derive(Debug)]
@@ -2608,6 +2608,13 @@ impl Client {
                 let can_process = matches!(*state, ClientState::Ingame);
                 let prev_snap_tick = base.last_snap_tick;
                 if let Some(Ok(Some(snap))) = can_process.then_some(snap.as_ref()) {
+                    let viewport = player.latest_char_input.viewport.to_vec2() * 32.0;
+                    socket.sendg(Game::ClShowDistance(game::ClShowDistance {
+                        x: viewport.x as i32,
+                        y: viewport.y as i32,
+                    }));
+                    socket.flush();
+
                     let items: Vec<_> = snap
                         .items()
                         .map(|item| {
@@ -3389,64 +3396,64 @@ impl Client {
         }
         let (mut next_weapon_diff, mut prev_weapon_diff) = to_diff(diff.weapon_diff);
 
+        // get latest char
+        let char = base
+            .char_new_id_to_legacy
+            .get(&self_char_id)
+            .and_then(|legacy_id| base.legacy_id_in_stage_id.get(legacy_id))
+            .and_then(|stage_id| latest_snapshot.stages.get(stage_id))
+            .and_then(|stage| stage.world.characters.get(&self_char_id));
+
         // simulate wanted weapon with weapon diff instead
-        if let Some(wanted_weapon) = diff.weapon_req {
-            // get latest char
-            let char = base
-                .char_new_id_to_legacy
-                .get(&self_char_id)
-                .and_then(|legacy_id| base.legacy_id_in_stage_id.get(legacy_id))
-                .and_then(|stage_id| latest_snapshot.stages.get(stage_id))
-                .and_then(|stage| stage.world.characters.get(&self_char_id));
-            if let Some(char) = char {
-                // advance active weapon to whatever is wanted
-                let weapons = &char.reusable_core.weapons;
-                let wanted_weapon = weapons
-                    .keys()
-                    .enumerate()
-                    .find(|&(_, k)| *k == wanted_weapon);
+        if let Some(wanted_weapon) = diff.weapon_req
+            && let Some(char) = char
+        {
+            // advance active weapon to whatever is wanted
+            let weapons = &char.reusable_core.weapons;
+            let wanted_weapon = weapons
+                .keys()
+                .enumerate()
+                .find(|&(_, k)| *k == wanted_weapon);
 
-                let mut extra_weapon_diff = 0;
-                let rstart = base.last_snap_tick + 1;
-                let rend = intended_tick;
-                for (old_tick, (_, inp)) in latest_inputs.range(rstart.min(rend)..rstart.max(rend))
+            let mut extra_weapon_diff = 0;
+            let rstart = base.last_snap_tick + 1;
+            let rend = intended_tick;
+            for (old_tick, (_, inp)) in latest_inputs.range(rstart.min(rend)..rstart.max(rend)) {
+                if let Some(prev_inp) = latest_inputs
+                    .range(0..*old_tick)
+                    .next_back()
+                    .map(|(_, (_, prev_inp))| prev_inp)
                 {
-                    if let Some(prev_inp) = latest_inputs
-                        .range(0..*old_tick)
-                        .next_back()
-                        .map(|(_, (_, prev_inp))| prev_inp)
-                    {
-                        extra_weapon_diff +=
-                            inp.next_weapon.saturating_sub(prev_inp.next_weapon) as i64 / 2
-                                - inp.prev_weapon.saturating_sub(prev_inp.prev_weapon) as i64 / 2;
-                    }
+                    extra_weapon_diff +=
+                        inp.next_weapon.saturating_sub(prev_inp.next_weapon) as i64 / 2
+                            - inp.prev_weapon.saturating_sub(prev_inp.prev_weapon) as i64 / 2;
                 }
-                let cur_weapon = weapons
+            }
+            let cur_weapon = weapons
+                .keys()
+                .enumerate()
+                .find(|&(_, k)| *k == char.core.active_weapon)
+                .map(|(index, _)| index);
+
+            let cur_weapon = cur_weapon.and_then(|index| {
+                let index = (index as i64
+                    + (extra_weapon_diff % weapons.len() as i64)
+                    + weapons.len() as i64) as usize
+                    % weapons.len();
+                weapons
                     .keys()
                     .enumerate()
-                    .find(|&(_, k)| *k == char.core.active_weapon)
-                    .map(|(index, _)| index);
+                    .nth(index)
+                    .map(|(index, _)| index)
+            });
 
-                let cur_weapon = cur_weapon.and_then(|index| {
-                    let index = (index as i64
-                        + (extra_weapon_diff % weapons.len() as i64)
-                        + weapons.len() as i64) as usize
-                        % weapons.len();
-                    weapons
-                        .keys()
-                        .enumerate()
-                        .nth(index)
-                        .map(|(index, _)| index)
-                });
-
-                if let Some((cur_weapon_index, (wanted_weapon_index, _))) =
-                    cur_weapon.zip(wanted_weapon)
-                {
-                    if wanted_weapon_index > cur_weapon_index {
-                        next_weapon_diff += (wanted_weapon_index - cur_weapon_index) as i32 * 2;
-                    } else {
-                        prev_weapon_diff += (cur_weapon_index - wanted_weapon_index) as i32 * 2;
-                    }
+            if let Some((cur_weapon_index, (wanted_weapon_index, _))) =
+                cur_weapon.zip(wanted_weapon)
+            {
+                if wanted_weapon_index > cur_weapon_index {
+                    next_weapon_diff += (wanted_weapon_index - cur_weapon_index) as i32 * 2;
+                } else {
+                    prev_weapon_diff += (cur_weapon_index - wanted_weapon_index) as i32 * 2;
                 }
             }
         }
@@ -3469,6 +3476,25 @@ impl Client {
         if inp.state.flags.contains(CharacterInputFlags::MENU_UI) {
             player_flags |= LegacyInputFlags::InMenu as i32;
         }
+
+        if let Some(char) = char {
+            if matches!(
+                char.phased,
+                SnapshotCharacterPhasedState::Normal {
+                    ingame_spectate: Some(SnapshotCharacterSpectateMode::Free(_)),
+                    ..
+                }
+            ) {
+                player_flags |= LegacyInputFlags::SpecCam as i32;
+            }
+        } else if latest_snapshot
+            .spectator_players
+            .get(&self_char_id)
+            .is_some()
+        {
+            player_flags |= LegacyInputFlags::SpecCam as i32;
+        }
+
         let mut input = snap_obj::PlayerInput {
             direction: *state.dir,
             target_x,
