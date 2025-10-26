@@ -14,7 +14,7 @@ publish = false
 #panic = "abort"
 
 [package.metadata.cargo-machete]
-ignored = ["tracing"]
+ignored = ["tracing", "audiopus_sys"]
 
 [package.metadata.bundle]
 short_description = "DDraceNetwork, a free cooperative platformer game"
@@ -284,6 +284,10 @@ trybuild = "1.0"
 url = "2.5.7"
 x509-cert = { version = "0.2.5" }
 
+audiopus_sys = { git = "https://github.com/Jupeyy/audiopus_sys.git", branch = "ddnet-rs", features = [
+  "static",
+] }
+
 alloc-track = { version = "0.3.1", optional = true }
 stats_alloc = { version = "0.1.10", optional = true }
 
@@ -313,6 +317,7 @@ graphics-base-traits = { path = "lib/graphics-base-traits" }
 #[target.'cfg(target_os = "windows")'.patch.crates-io]
 [patch.crates-io]
 ffmpeg-sys-next = { git = "https://github.com/Jupeyy/rust-ffmpeg-sys.git", branch = "pr_mingw_workaround" }
+audiopus_sys = { git = "https://github.com/Jupeyy/audiopus_sys.git", branch = "ddnet-rs" }
 
 # super slow in debug
 [profile.dev.package.blake3]
