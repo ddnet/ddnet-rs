@@ -26,8 +26,13 @@ fn main() {
             &mut mem
         })
         .unwrap();
-    let converted =
-        assets_splitting::skin_split::split_06_skin(img.data, img.width, img.height).unwrap();
+    let converted = assets_splitting::skin_split::split_06_skin(
+        &rayon::ThreadPoolBuilder::new().build().unwrap(),
+        img.data,
+        img.width,
+        img.height,
+    )
+    .unwrap();
 
     std::fs::create_dir_all(&args.output).unwrap();
     std::fs::create_dir_all(&(args.output.clone() + "/eyes_left")).unwrap();
@@ -59,6 +64,7 @@ fn main() {
         &args.output,
         "eyes_left/normal",
     );
+    write_part(converted.eye_blink.clone(), &args.output, "eyes_left/blink");
     write_part(converted.eye_angry.clone(), &args.output, "eyes_left/angry");
     write_part(converted.eye_pain.clone(), &args.output, "eyes_left/pain");
     write_part(converted.eye_happy.clone(), &args.output, "eyes_left/happy");
@@ -70,6 +76,7 @@ fn main() {
     );
 
     write_part(converted.eye_normal, &args.output, "eyes_right/normal");
+    write_part(converted.eye_blink, &args.output, "eyes_right/blink");
     write_part(converted.eye_angry, &args.output, "eyes_right/angry");
     write_part(converted.eye_pain, &args.output, "eyes_right/pain");
     write_part(converted.eye_happy, &args.output, "eyes_right/happy");

@@ -6,4 +6,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+image-utils = { path = "../../lib/image-utils" }
+
 anyhow = { version = "1.0.99", features = ["backtrace"] }
+rayon = "1.11.0"

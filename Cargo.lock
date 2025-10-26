@@ -610,6 +610,8 @@ name = "assets-splitting"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "image-utils",
+ "rayon",
 ]
 
 [[package]]
@@ -9541,6 +9543,7 @@ dependencies = [
  "assets-splitting",
  "clap 4.5.50",
  "image-utils",
+ "rayon",
 ]
 
 [[package]]
