@@ -223,7 +223,7 @@ impl LoadWeapon {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "fire",
             )?,
             switch: load_sound_file_part_list_and_upload(
@@ -231,7 +231,7 @@ impl LoadWeapon {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "switch",
             )?,
             noammo: load_sound_file_part_list_and_upload(
@@ -239,7 +239,7 @@ impl LoadWeapon {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "noammo",
             )?,
         })
@@ -356,7 +356,7 @@ impl LoadGrenade {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "explosion",
             )?,
 
@@ -365,7 +365,7 @@ impl LoadGrenade {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "spawn",
             )?,
 
@@ -374,7 +374,7 @@ impl LoadGrenade {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "collect",
             )?,
 
@@ -425,7 +425,7 @@ impl LoadLaser {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "bounce",
             )?,
 
@@ -434,7 +434,7 @@ impl LoadLaser {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "spawn",
             )?,
 
@@ -443,7 +443,7 @@ impl LoadLaser {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "collect",
             )?,
 
@@ -502,7 +502,7 @@ impl LoadShotgun {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "spawn",
             )?,
 
@@ -511,7 +511,7 @@ impl LoadShotgun {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "collect",
             )?,
 
@@ -558,7 +558,7 @@ impl LoadHammer {
                 files,
                 default_files,
                 weapon_name,
-                &[weapon_part],
+                &[weapon_part, "audio"],
                 "hit",
             )?,
         })
