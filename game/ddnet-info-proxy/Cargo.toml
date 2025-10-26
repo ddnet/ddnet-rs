@@ -10,20 +10,20 @@ base-io-traits = { path = "../../lib/base-io-traits" }
 
 client-ui = { path = "../client-ui" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-axum = "0.8.4"
-reqwest = { version = "0.12.23", default-features = false, features = [
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+axum = "0.8.6"
+reqwest = { version = "0.12.24", default-features = false, features = [
   "rustls-tls",
   "json",
 ] }
-serde = { version = "1.0.219", features = ["derive"] }
-tokio = { version = "1.47.1", features = [
+serde = { version = "1.0.228", features = ["derive"] }
+tokio = { version = "1.48.0", features = [
   "rt-multi-thread",
   "macros",
   "sync",
   "time",
 ] }
-tracing = { version = "0.1.40", default-features = false, features = [
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }
 url = { version = "2.5.7", features = ["serde"] }

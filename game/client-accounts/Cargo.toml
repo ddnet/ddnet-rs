@@ -10,11 +10,11 @@ steam = { path = "../../lib/steam" }
 client-ui = { path = "../client-ui" }
 http-accounts = { path = "../http-accounts" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 async-trait = "0.1.89"
-chrono = { version = "0.4.41" }
+chrono = { version = "0.4.42" }
 ddnet-account-client-http-fs = { version = "0.3.0" }
 ddnet-accounts-shared = { version = "0.2.0" }
 email_address = { version = "0.2.9", features = ["serde"] }
-serde_json = "1.0.143"
+serde_json = "1.0.145"
 url = { version = "2.5.7", features = ["serde"] }

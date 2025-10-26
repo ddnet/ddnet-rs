@@ -41,12 +41,12 @@ pool = { path = "../../../lib/pool", features = ["enable_hiarc"] }
 
 api-state = { path = "../../../game/api-state" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 arrayvec = "0.7.6"
-bitflags = { version = "2.9.4", features = ["serde"] }
+bitflags = { version = "2.10.0", features = ["serde"] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 rayon = "1.11.0"
-tracing = { version = "0.1.40", default-features = false, features = [
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }

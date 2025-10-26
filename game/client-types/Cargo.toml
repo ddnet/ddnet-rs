@@ -13,5 +13,5 @@ game-base = { path = "../game-base" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-serde = { version = "1.0.219", features = ["derive"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+serde = { version = "1.0.228", features = ["derive"] }

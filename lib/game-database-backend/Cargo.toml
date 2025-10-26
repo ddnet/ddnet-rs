@@ -28,16 +28,16 @@ ddnet-account-sql = { version = "0.3.0", default-features = false }
 # when updating to the next major version check if
 # https://github.com/launchbadge/sqlx/issues/3387 is fixed
 # and remove the workaround in the code
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 async-trait = "0.1.89"
-parking_lot = "0.12.4"
+parking_lot = "0.12.5"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "chrono"] }
 
 [dev-dependencies]
 base = { path = "../../lib/base" }
 base-io = { path = "../../lib/base-io" }
 
-tokio = { version = "1.47.1", features = [
+tokio = { version = "1.48.0", features = [
   "rt-multi-thread",
   "sync",
   "fs",

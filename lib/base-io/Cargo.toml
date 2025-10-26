@@ -7,11 +7,11 @@ edition = "2024"
 base-io-traits = { path = "../base-io-traits" }
 hiarc = { path = "../hiarc", features = ["enable_anyhow", "enable_tokio"] }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 urlencoding = "2.1.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.47.1", features = [
+tokio = { version = "1.48.0", features = [
   "rt-multi-thread",
   "net",
   "sync",
@@ -24,4 +24,4 @@ tokio = { version = "1.47.1", features = [
 async-executor = "1.13.3"
 async-task = "4.7.1"
 futures-lite = "2.6.1"
-tokio = { version = "1.47.1", features = ["sync", "macros"] }
+tokio = { version = "1.48.0", features = ["sync", "macros"] }

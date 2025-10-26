@@ -12,7 +12,7 @@ base-io = { path = "../../lib/base-io" }
 legacy-map = { path = "../../game/legacy-map" }
 map = { path = "../../game/map" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 ogg-opus = { git = "https://github.com/Jupeyy/ogg-opus.git", branch = "ddnet-rs" }
 oxipng = { version = "9.1", features = ["parallel"], default-features = false }
 rayon = "1.11.0"
@@ -23,5 +23,5 @@ base-fs = { path = "../../lib/base-fs" }
 base-io = { path = "../../lib/base-io" }
 difference = "2.0"
 rustc-hash = "2.1.1"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.143"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"

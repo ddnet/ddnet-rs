@@ -12,6 +12,6 @@ default = ["mysql", "sqlite"]
 [dependencies]
 game-database = { path = "../game-database", default-features = false }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 ddnet-account-sql = { version = "0.3.0", default-features = false }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "chrono"] }

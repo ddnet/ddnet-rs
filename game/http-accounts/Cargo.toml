@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 base-io-traits = { path = "../../lib/base-io-traits" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 async-trait = "0.1.89"
 url = { version = "2.5.7", features = ["serde"] }
 

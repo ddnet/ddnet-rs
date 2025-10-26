@@ -11,10 +11,10 @@ base = { path = "../base" }
 
 steamworks = { version = "0.12.2", optional = true }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 async-trait = "0.1.89"
 log = "0.4.28"
-tokio = { version = "1.47.1", features = [
+tokio = { version = "1.48.0", features = [
   "rt-multi-thread",
   "sync",
   "fs",

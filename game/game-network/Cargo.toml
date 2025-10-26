@@ -14,8 +14,8 @@ game-interface = { path = "../game-interface" }
 async-trait = "0.1.89"
 bincode = { features = ["serde"], version = "2.0.1" }
 log = "0.4.28"
-serde = "1.0.219"
-tokio = { version = "1.47.1", features = [
+serde = "1.0.228"
+tokio = { version = "1.48.0", features = [
   "rt-multi-thread",
   "sync",
   "time",

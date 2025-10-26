@@ -8,5 +8,5 @@ edition = "2024"
 [dependencies]
 image-utils = { path = "../../lib/image-utils" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 rayon = "1.11.0"

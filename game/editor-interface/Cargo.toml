@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 map = { path = "../map" }
 
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }

@@ -8,9 +8,9 @@ base = { path = "../base" }
 hiarc = { path = "../hiarc", features = ["derive"] }
 math = { path = "../math" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-serde = { version = "1.0.219", features = ["derive"] }
-thiserror = "2.0.16"
-tracing = { version = "0.1.40", default-features = false, features = [
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.17"
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }

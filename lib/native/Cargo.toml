@@ -7,10 +7,10 @@ edition = "2024"
 base = { path = "../base" }
 native-display = { path = "../native-display" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 log = "0.4.28"
 raw-window-handle = "0.6.2"
-tracing = { version = "0.1.40", default-features = false, features = [
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }
 winit = { version = "0.30.12", features = ["serde", "android-native-activity"] }

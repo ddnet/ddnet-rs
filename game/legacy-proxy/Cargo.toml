@@ -25,7 +25,7 @@ libtw2-net = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc
 libtw2-packer = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc00c48483dca51eedf04656efb66d" }
 libtw2-snapshot = { git = "https://github.com/Jupeyy/libtw2.git", rev = "0b6b1b7533dc00c48483dca51eedf04656efb66d" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 # stuck for compat with libtw2
 arrayvec = "=0.5.2"
 # stuck for compat with libtw2
@@ -38,7 +38,7 @@ sha2 = "0.10.9"
 futures = "0.3.31"
 log = "0.4.28"
 rayon = "1.11.0"
-tokio = { version = "1.47.1", features = [
+tokio = { version = "1.48.0", features = [
   "rt-multi-thread",
   "sync",
   "fs",

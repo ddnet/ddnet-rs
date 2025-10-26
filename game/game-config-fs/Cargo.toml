@@ -8,4 +8,4 @@ base-io = { path = "../../lib/base-io" }
 
 game-config = { path = "../game-config" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }

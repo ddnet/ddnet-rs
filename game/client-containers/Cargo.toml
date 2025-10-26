@@ -25,7 +25,7 @@ assets-base = { path = "../assets-base" }
 assets-splitting = { path = "../assets-splitting" }
 game-interface = { path = "../game-interface" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 arrayvec = "0.7.6"
 either = "1.15.0"
 fixed = "1.29.0"
@@ -37,9 +37,9 @@ log = "0.4.28"
 num-traits = "0.2.19"
 rayon = "1.11.0"
 rustc-hash = "2.1.1"
-serde_json = "1.0.143"
-tokio = { version = "1.47.1", default-features = false, features = ["sync"] }
-tracing = { version = "0.1.40", default-features = false, features = [
+serde_json = "1.0.145"
+tokio = { version = "1.48.0", default-features = false, features = ["sync"] }
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }
 url = "2.5.7"

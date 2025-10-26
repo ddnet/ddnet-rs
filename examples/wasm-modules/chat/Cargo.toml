@@ -22,4 +22,4 @@ client-ui = { path = "../../../game/client-ui" }
 game-base = { path = "../../../game/game-base" }
 game-interface = { path = "../../../game/game-interface" }
 
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui = { version = "0.32.3", default-features = false, features = ["serde"] }
