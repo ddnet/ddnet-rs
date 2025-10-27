@@ -24,12 +24,12 @@ client-render-game = { path = "../client-render-game" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 rayon = "1.11.0"
-tracing = { version = "0.1.40", default-features = false, features = [
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }
-wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
+wasmer = { version = "6.1.0", default-features = false, features = [
   "sys",
   "cranelift",
 ] }

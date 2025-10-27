@@ -226,7 +226,7 @@ impl ClientStatsData {
     }
 
     pub fn render_fps(&mut self, ui: &mut egui::Ui, pipe: &mut UiRenderPipe<()>, bottom: bool) {
-        let cur_time = pipe.cur_time;
+        let cur_time: Duration = pipe.cur_time;
         let time_diff = cur_time - self.last_frame_time;
         self.last_frame_time = cur_time;
 
@@ -262,6 +262,7 @@ pub struct ClientStatsRenderPipe<'a> {
     pub connection_issues: bool,
     pub force_bottom: bool,
     pub show_fps: bool,
+    pub mic_active: bool,
 }
 
 /// This component collects various client statistics and displays them optionally
@@ -318,6 +319,28 @@ impl ClientStats {
         );
     }
 
+    fn render_mic(ui: &mut egui::Ui, bottom: bool) {
+        let (pos, anchor) = if bottom {
+            (
+                ui.ctx().screen_rect().right_bottom() - egui::vec2(-5.0, 20.0),
+                egui::Align2::RIGHT_BOTTOM,
+            )
+        } else {
+            (
+                ui.ctx().screen_rect().right_top() + egui::vec2(-5.0, 20.0),
+                egui::Align2::RIGHT_TOP,
+            )
+        };
+
+        ui.painter().text(
+            pos,
+            anchor,
+            "\u{f130}",
+            FontId::proportional(18.0),
+            Color32::from_rgb(200, 200, 255),
+        );
+    }
+
     #[instrument(level = "trace", skip_all)]
     pub fn render(&mut self, pipe: &mut ClientStatsRenderPipe) {
         let dbg_hud_open = self.ui.ui_state.is_ui_open;
@@ -343,12 +366,12 @@ impl ClientStats {
                         },
                     );
                 }
+                let bottom = dbg_hud_open || !game_active || pipe.force_bottom;
                 if pipe.show_fps {
-                    self.stats.render_fps(
-                        ui,
-                        inner_pipe,
-                        dbg_hud_open || !game_active || pipe.force_bottom,
-                    );
+                    self.stats.render_fps(ui, inner_pipe, bottom);
+                }
+                if pipe.mic_active {
+                    Self::render_mic(ui, bottom);
                 }
                 if pipe.connection_issues {
                     Self::render_connection_issues(ui);

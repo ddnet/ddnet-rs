@@ -31,7 +31,7 @@ hashlink = { git = "https://github.com/Jupeyy/hashlink/", branch = "ddnet", feat
   "serde_impl",
 ] }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 bincode = { version = "2.0.1", features = ["serde"] }
 fixed = "1.29.0"
 futures = "0.3.31"
@@ -40,7 +40,7 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 rayon = "1.11.0"
 rustc-hash = "2.1.1"
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 strum = { version = "0.27.2", features = ["derive"] }
-time = { version = "0.3.43", features = ["serde"] }
+time = { version = "0.3.44", features = ["serde"] }
 url = { version = "2.5.7", features = ["serde"] }

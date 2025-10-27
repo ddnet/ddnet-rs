@@ -7,4 +7,4 @@ edition = "2024"
 base-io = { path = "../base-io" }
 config = { path = "../config" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }

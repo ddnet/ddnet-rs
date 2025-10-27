@@ -19,4 +19,4 @@ client-render-base = { path = "../../../game/client-render-base" }
 client-types = { path = "../../../game/client-types" }
 client-ui = { path = "../../../game/client-ui" }
 
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui = { version = "0.32.3", default-features = false, features = ["serde"] }

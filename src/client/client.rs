@@ -2151,6 +2151,11 @@ impl ClientNativeImpl {
             },
             force_bottom: self.ui_manager.ui.ui_state.is_ui_open,
             show_fps: self.config.game.cl.show_fps,
+            mic_active: if let Game::Active(game) = &self.game {
+                matches!(game.spatial_world, SpatialChatGameWorldTy::World(_))
+            } else {
+                false
+            },
         });
 
         self.sound.swap();

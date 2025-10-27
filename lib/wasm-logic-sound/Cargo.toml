@@ -13,9 +13,9 @@ hiarc = { path = "../hiarc", features = [
 sound = { path = "../sound" }
 wasm-runtime-types = { path = "../wasm-runtime-types" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 sendable = "0.6.1"
-wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
+wasmer = { version = "6.1.0", default-features = false, features = [
   "sys",
   "cranelift",
 ] }

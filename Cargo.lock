@@ -610,6 +610,8 @@ name = "assets-splitting"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "image-utils",
+ "rayon",
 ]
 
 [[package]]
@@ -6630,9 +6632,9 @@ dependencies = [
 
 [[package]]
 name = "moxcms"
-version = "0.7.7"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c588e11a3082784af229e23e8e4ecf5bcc6fbe4f69101e0421ce8d79da7f0b40"
+checksum = "692af879e4d9383c0fd9dec15524af6b6977c8bf1c6b278a4526d5341347c574"
 dependencies = [
  "num-traits",
  "pxfm",
@@ -9541,6 +9543,7 @@ dependencies = [
  "assets-splitting",
  "clap 4.5.50",
  "image-utils",
+ "rayon",
 ]
 
 [[package]]

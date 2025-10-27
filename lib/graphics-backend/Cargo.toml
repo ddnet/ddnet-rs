@@ -29,7 +29,7 @@ math = { path = "../math" }
 native = { path = "../native" }
 pool = { path = "../pool" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 arc-swap = "1.7.1"
 ash = "0.38.0"
 ash-window = "0.13.0"
@@ -38,20 +38,20 @@ bincode = { features = ["serde"], version = "2.0.1" }
 crossbeam = "0.8.4"
 either = "1.15.0"
 futures = "0.3.31"
-libc = "0.2.175"
+libc = "0.2.177"
 log = "0.4.28"
 naga = { version = "26.0.0", features = ["wgsl-in", "spv-out", "glsl-out"] }
-naga_oil = "0.19.0"
+naga_oil = "0.19.1"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-parking_lot = "0.12.4"
+parking_lot = "0.12.5"
 raw-window-handle = "0.6.2"
 rayon = "1.11.0"
 replace_with = "0.1.8"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.143"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 strum = { version = "0.27.2", features = ["derive"] }
-thiserror = "2.0.16"
+thiserror = "2.0.17"
 thread-priority = "3.0.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]

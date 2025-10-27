@@ -11,7 +11,7 @@ hiarc = { path = "../hiarc", features = ["enable_hashlink"] }
 math = { path = "../math" }
 pool = { path = "../pool", features = ["enable_hiarc"] }
 
-bitflags = { version = "2.9.4", features = ["serde"] }
+bitflags = { version = "2.10.0", features = ["serde"] }
 num-traits = "0.2.19"
-serde = "1.0.219"
+serde = "1.0.228"
 strum = { version = "0.27.2", features = ["derive"] }

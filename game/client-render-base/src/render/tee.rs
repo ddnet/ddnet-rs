@@ -234,16 +234,8 @@ impl RenderTeeMath {
 
         // eye
         let eye_scale = render_size * 0.40;
-        let eye_left_height = if info.eye_left == TeeEye::Blink {
-            render_size * 0.15
-        } else {
-            eye_scale
-        };
-        let eye_right_height = if info.eye_right == TeeEye::Blink {
-            render_size * 0.15
-        } else {
-            eye_scale
-        };
+        let eye_left_height = eye_scale;
+        let eye_right_height = eye_scale;
         let eye_separation = (0.075 - 0.010 * direction.x.abs()) * render_size;
         let offset = vec2 {
             x: direction.x * 0.125,

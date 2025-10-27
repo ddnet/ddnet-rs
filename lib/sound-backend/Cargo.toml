@@ -16,7 +16,7 @@ hiarc = { path = "../hiarc", features = [
 math = { path = "../math" }
 sound = { path = "../sound" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 kira = "0.9.6"
 log = "0.4.28"
 mint = "0.5.9"

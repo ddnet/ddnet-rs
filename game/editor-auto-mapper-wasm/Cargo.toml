@@ -11,8 +11,8 @@ base-io-traits = { path = "../../lib/base-io-traits" }
 cache = { path = "../../lib/cache" }
 wasm-runtime = { path = "../../lib/wasm-runtime" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+wasmer = { version = "6.1.0", default-features = false, features = [
   "sys",
   "cranelift",
 ] }

@@ -13,11 +13,11 @@ bin-patch = { path = "../../lib/bin-patch" }
 game-base = { path = "../game-base" }
 game-interface = { path = "../game-interface" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 bincode = { features = ["serde"], version = "2.0.1" }
 itertools = "0.14.0"
 log = "0.4.28"
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 zstd = { version = "0.13", default-features = false, features = [
   "experimental",
   "zdict_builder",
@@ -26,5 +26,5 @@ zstd = { version = "0.13", default-features = false, features = [
 # feature related
 base-io = { path = "../../lib/base-io", optional = true }
 
-chrono = { version = "0.4.41", features = ["serde"], optional = true }
-tempfile = { version = "3.21.0", optional = true }
+chrono = { version = "0.4.42", features = ["serde"], optional = true }
+tempfile = { version = "3.23.0", optional = true }

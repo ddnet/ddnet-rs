@@ -11,6 +11,6 @@ command-parser = { path = "../../lib/command-parser" }
 hiarc = { path = "../../lib/hiarc" }
 input-binds = { path = "../../lib/input-binds" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 log = "0.4.28"
-serde_json = "1.0.143"
+serde_json = "1.0.145"

@@ -9,7 +9,7 @@ game-database = { path = "../game-database" }
 wasm-runtime-types = { path = "../wasm-runtime-types" }
 
 sendable = "0.6.1"
-wasmer = { version = "6.1.0-rc.3", default-features = false, features = [
+wasmer = { version = "6.1.0", default-features = false, features = [
   "sys",
   "cranelift",
 ] }

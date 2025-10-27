@@ -14,8 +14,8 @@ game-database-macros = { path = "../game-database-macros" }
 
 hiarc = { path = "../../lib/hiarc", features = ["derive"] }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 async-trait = "0.1.89"
-chrono = { version = "0.4.41", default-features = false, features = ["serde"] }
+chrono = { version = "0.4.42", default-features = false, features = ["serde"] }
 futures = "0.3.31"
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }

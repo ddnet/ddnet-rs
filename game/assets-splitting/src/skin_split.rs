@@ -1,4 +1,7 @@
+use std::borrow::Cow;
+
 use anyhow::anyhow;
+use image_utils::{png::resize_rgba, utils::dilate_image};
 
 #[derive(Debug, Clone)]
 pub struct Skin06Part {
@@ -29,6 +32,7 @@ pub struct Skin06ConvertResult {
     pub foot_outline: Skin06Part,
 
     pub eye_normal: Skin06Part,
+    pub eye_blink: Skin06Part,
     pub eye_angry: Skin06Part,
     pub eye_pain: Skin06Part,
     pub eye_happy: Skin06Part,
@@ -38,7 +42,7 @@ pub struct Skin06ConvertResult {
     pub watermark: Skin06Part,
 }
 
-/// skin texture is like this (assuming 256x128)
+/// Skin texture is like this (assuming 256x128)
 ///
 /// |-------------------------------------------------------------------------------------|
 /// |                        |                                  | 32x32    | 32x32        |
@@ -54,6 +58,7 @@ pub struct Skin06ConvertResult {
 ///
 /// Additionally the width has to be divisible by 8 and the height by 4
 pub fn split_06_skin(
+    tp: &rayon::ThreadPool,
     skin_file: &[u8],
     width: u32,
     height: u32,
@@ -120,6 +125,8 @@ pub fn split_06_skin(
                     eye_surprise.extend(eye_surprise_seg);
                 }
             });
+        let eye_blink = generate_eye_blink_texture(tp, &eye_normal, segment_width, segment_height);
+
         Ok(Skin06ConvertResult {
             body: Skin06Part::new(body, segment_width * 3, segment_height * 3),
             body_outline: Skin06Part::new(body_outline, segment_width * 3, segment_height * 3),
@@ -131,6 +138,7 @@ pub fn split_06_skin(
             foot_outline: Skin06Part::new(foot_outline, segment_width * 2, segment_height),
 
             eye_normal: Skin06Part::new(eye_normal, segment_width, segment_height),
+            eye_blink: Skin06Part::new(eye_blink, segment_width, segment_height),
             eye_angry: Skin06Part::new(eye_angry, segment_width, segment_height),
             eye_pain: Skin06Part::new(eye_pain, segment_width, segment_height),
             eye_happy: Skin06Part::new(eye_happy, segment_width, segment_height),
@@ -140,4 +148,39 @@ pub fn split_06_skin(
             watermark: Skin06Part::new(watermark, segment_width * 2, segment_height),
         })
     }
+}
+
+fn generate_eye_blink_texture(
+    tp: &rayon::ThreadPool,
+    eye_normal: &[u8],
+    width: usize,
+    height: usize,
+) -> Vec<u8> {
+    const BLINK_HEIGHT_RATIO: f32 = 0.15 / 0.40;
+    let target_height = ((height as f32) * BLINK_HEIGHT_RATIO)
+        .round()
+        .clamp(1.0, height as f32) as u32;
+
+    let resized = resize_rgba(
+        Cow::Borrowed(eye_normal),
+        width as u32,
+        height as u32,
+        width as u32,
+        target_height,
+    );
+
+    let mut blink = vec![0u8; width * height * 4];
+    let stride = width * 4;
+    let offset_y = ((height as u32).saturating_sub(target_height) / 2) as usize;
+
+    for row in 0..target_height as usize {
+        let src_start = row * stride;
+        let dst_start = (offset_y + row) * stride;
+        blink[dst_start..dst_start + stride]
+            .copy_from_slice(&resized[src_start..src_start + stride]);
+    }
+
+    dilate_image(tp, &mut blink, width, height, 4);
+
+    blink
 }

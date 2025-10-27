@@ -12,7 +12,7 @@ image-utils = { path = "../image-utils" }
 math = { path = "../math" }
 pool = { path = "../pool", features = ["enable_hiarc"] }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-tracing = { version = "0.1.40", default-features = false, features = [
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }

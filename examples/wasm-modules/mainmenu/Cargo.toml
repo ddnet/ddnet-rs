@@ -21,8 +21,8 @@ client-ui = { path = "../../../game/client-ui" }
 game-base = { path = "../../../game/game-base" }
 game-config = { path = "../../../game/game-config" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
 async-trait = "0.1.89"
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+egui = { version = "0.32.3", default-features = false, features = ["serde"] }
 email_address = { version = "0.2.9", features = ["serde"] }
-serde_json = "1.0.143"
+serde_json = "1.0.145"

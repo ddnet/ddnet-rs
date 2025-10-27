@@ -31,11 +31,11 @@ game-base = { path = "../game-base" }
 game-config = { path = "../game-config" }
 game-interface = { path = "../game-interface" }
 
-anyhow = { version = "1.0.99", features = ["backtrace"] }
-egui = { version = "0.32.2", default-features = false, features = ["serde"] }
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+egui = { version = "0.32.3", default-features = false, features = ["serde"] }
 log = "0.4.28"
 rayon = "1.11.0"
-serde = { version = "1.0.219", features = ["derive"] }
-tracing = { version = "0.1.40", default-features = false, features = [
+serde = { version = "1.0.228", features = ["derive"] }
+tracing = { version = "0.1.41", default-features = false, features = [
   "attributes",
 ] }

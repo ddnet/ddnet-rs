@@ -6,6 +6,6 @@ edition = "2024"
 [dependencies]
 base = { path = "../../lib/base" }
 
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 
 ddnet-accounts-types = { version = "0.1.0" }

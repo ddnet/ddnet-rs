@@ -273,6 +273,7 @@ pub struct LoadSkinTexturesData {
 
 impl LoadSkinTexturesData {
     fn load_full(
+        tp: &rayon::ThreadPool,
         files: &mut FxHashMap<PathBuf, Vec<u8>>,
         file: Vec<u8>,
         skin_extra_path: Option<&str>,
@@ -284,7 +285,7 @@ impl LoadSkinTexturesData {
                 &mut mem
             })?;
         let converted =
-            assets_splitting::skin_split::split_06_skin(img.data, img.width, img.height)?;
+            assets_splitting::skin_split::split_06_skin(tp, img.data, img.width, img.height)?;
         let base: PathBuf = if let Some(skin_extra_path) = skin_extra_path {
             skin_extra_path.into()
         } else {
@@ -313,6 +314,7 @@ impl LoadSkinTexturesData {
         insert_part("foot_left_outline", converted.foot_outline, true)?;
 
         insert_part("eyes_left/normal", converted.eye_normal, true)?;
+        insert_part("eyes_left/blink", converted.eye_blink, true)?;
         insert_part("eyes_left/angry", converted.eye_angry, true)?;
         insert_part("eyes_left/pain", converted.eye_pain, true)?;
         insert_part("eyes_left/happy", converted.eye_happy, true)?;
@@ -324,6 +326,7 @@ impl LoadSkinTexturesData {
     }
 
     pub(crate) fn load_skin(
+        tp: &rayon::ThreadPool,
         files: &mut ContainerLoadedItemDir,
         default_files: &ContainerLoadedItemDir,
         skin_name: &str,
@@ -337,7 +340,7 @@ impl LoadSkinTexturesData {
         };
         let full_path = full_path.join("full.png");
         if let Some(file) = files.files.remove(&full_path) {
-            Self::load_full(&mut files.files, file, skin_extra_path)?;
+            Self::load_full(tp, &mut files.files, file, skin_extra_path)?;
         }
 
         let load_eyes =
@@ -381,7 +384,7 @@ impl LoadSkinTexturesData {
                         default_files,
                         skin_name,
                         extra_paths.as_slice(),
-                        "normal",
+                        "blink",
                     )?
                     .png;
                     eyes[TeeEye::Pain as usize] = load_file_part_as_png(
@@ -1255,7 +1258,7 @@ impl LoadSkin {
         skin_extra_path: Option<&str>,
     ) -> anyhow::Result<Self> {
         let textures_data =
-            LoadSkinTexturesData::load_skin(files, default_files, skin_name, skin_extra_path)?;
+            LoadSkinTexturesData::load_skin(tp, files, default_files, skin_name, skin_extra_path)?;
 
         let mut grey_scaled_textures_data = textures_data.clone();
         Self::grey_scale(
