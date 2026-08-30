@@ -2214,6 +2214,7 @@ impl ClientNativeImpl {
                 player_settings_sync: self.player_settings_sync.clone(),
                 votes: self.votes.clone(),
             },
+            self.config.engine.dbg.untrusted_cert,
         )
         .unwrap();
     }
