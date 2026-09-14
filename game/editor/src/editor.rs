@@ -2193,29 +2193,13 @@ impl Editor {
         if let Some(tab) = active_tab {
             // handle zoom
             if self.current_scroll_delta.y.abs() > 0.01 {
-                let zoom_ranges = [
-                    (0.0..0.6, 0.1),
-                    (0.6..1.0, 0.2),
-                    (1.0..5.0, 0.5),
-                    (5.0..10.0, 1.0),
-                    (10.0..f32::MAX, 10.0),
-                ];
-                // zoom in => non-inclusive range, zoom out => inclusive range
-                let (_, step) = zoom_ranges
-                    .iter()
-                    .find(|&(zoom_range, _)| {
-                        if self.current_scroll_delta.y.is_sign_negative() {
-                            (zoom_range.start..zoom_range.end)
-                                .contains(&tab.map.groups.user.zoom.abs())
-                        } else {
-                            (zoom_range.start..=zoom_range.end)
-                                .contains(&tab.map.groups.user.zoom.abs())
-                        }
-                    })
-                    .unwrap();
-                tab.map.groups.user.zoom = (tab.map.groups.user.zoom
-                    + step * -self.current_scroll_delta.y.signum())
-                .clamp(0.2, 200.0);
+                const SCROLL_POINTS_PER_NOTCH: f32 = 40.0;
+                const ZOOM_FACTOR_PER_NOTCH: f32 = 1.1;
+
+                let notches = -self.current_scroll_delta.y / SCROLL_POINTS_PER_NOTCH;
+                let zoom_factor = ZOOM_FACTOR_PER_NOTCH.powf(notches);
+                tab.map.groups.user.zoom =
+                    (tab.map.groups.user.zoom * zoom_factor).clamp(0.2, 200.0);
             }
 
             // change active tool set
