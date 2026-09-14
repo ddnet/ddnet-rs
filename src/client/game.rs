@@ -137,6 +137,7 @@ impl Game {
         connect: GameConnect,
         accounts: &Arc<Accounts>,
         auto_cleanup: DisconnectAutoCleanup,
+        ignore_certs: bool,
     ) -> anyhow::Result<Self> {
         let servers = connect.browser_data.list();
         let time_now = base.time.now();
@@ -152,7 +153,7 @@ impl Game {
             });
             let should_check = match &server_cert {
                 ServerCertMode::Cert(_) | ServerCertMode::Hash(_) => false,
-                ServerCertMode::Unknown => true,
+                ServerCertMode::Unknown => !ignore_certs,
             };
 
             if should_check && !outdated {
