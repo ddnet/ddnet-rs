@@ -1,6 +1,6 @@
 mod client;
 pub mod projectile;
-mod socket;
+pub mod socket;
 
 use anyhow::anyhow;
 use base::{

@@ -1,5 +1,8 @@
 use anyhow::anyhow;
-use base_io::{io::Io, runtime::IoRuntimeTask};
+use base_io::{
+    io::Io,
+    runtime::{IoRuntime, IoRuntimeTask},
+};
 use futures::FutureExt;
 use libtw2_net::{Timestamp, net::Callback};
 use rand::Rng;
@@ -28,6 +31,7 @@ type ThreadedReceiver = Arc<Mutex<Receiver<(Vec<u8>, SocketAddr)>>>;
 struct AsyncSocket {
     sender: Sender<Option<(Vec<u8>, SocketAddr)>>,
     receiver: ThreadedReceiver,
+    local_addr: SocketAddr,
     _recv_task: IoRuntimeTask<()>,
     _send_task: IoRuntimeTask<()>,
 }
@@ -71,12 +75,40 @@ impl Socket {
         if v4.is_none() && v6.is_none() {
             return Err(io::Error::other(NoAddressFamiliesSupported(())).into());
         }
+        Self::from_sockets(&io.rt, v4, v6)
+    }
+
+    /// Bind both address families for a legacy server.
+    pub fn bind(rt: &IoRuntime, v4: SocketAddr, v6: SocketAddr) -> anyhow::Result<Self> {
+        let (v4, v6) = rt
+            .spawn(async move { Ok((UdpSocket::bind(v4).await?, UdpSocket::bind(v6).await?)) })
+            .get()?;
+        Self::from_sockets(rt, Some(v4), Some(v6))
+    }
+
+    pub fn local_addr(&self, ipv4: bool) -> io::Result<SocketAddr> {
+        (if ipv4 { &self.v4 } else { &self.v6 })
+            .as_ref()
+            .map(|socket| socket.local_addr)
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::AddrNotAvailable,
+                    "address family unavailable",
+                )
+            })
+    }
+
+    fn from_sockets(
+        rt: &IoRuntime,
+        v4: Option<UdpSocket>,
+        v6: Option<UdpSocket>,
+    ) -> anyhow::Result<Self> {
         let spawn_socket = |s: Arc<UdpSocket>| {
             // recv
+            let local_addr = s.local_addr().unwrap();
             let socket = s.clone();
             let (sender, receiver) = channel::<(Vec<u8>, SocketAddr)>(4096);
-            let recv_task = io
-                .rt
+            let recv_task = rt
                 .spawn(
                     async move {
                         let mut b = Vec::with_capacity(4096);
@@ -100,7 +132,7 @@ impl Socket {
                 .abortable();
             // send
             let (sender, mut receiver_task) = channel::<Option<(Vec<u8>, SocketAddr)>>(4096);
-            let send_task = io.rt.spawn(
+            let send_task = rt.spawn(
                 async move {
                     while let Some(Some((pkt, addr))) = receiver_task.recv().await {
                         socket.send_to(&pkt, addr).await.map_err(|err| {
@@ -119,6 +151,7 @@ impl Socket {
                 }),
             );
             AsyncSocket {
+                local_addr,
                 sender,
                 receiver: Arc::new(Mutex::new(receiver)),
                 _recv_task: recv_task,

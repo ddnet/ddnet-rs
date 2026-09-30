@@ -196,7 +196,7 @@ pub mod game_objects {
     }
 
     impl GameObjectDefinitionsBase<ivec2> {
-        pub fn new(physics_group: &MapGroupPhysics) -> Self {
+        pub fn new(physics_group: &MapGroupPhysics, race: bool) -> Self {
             let width = physics_group.attr.width.get() as u32;
             let height = physics_group.attr.height.get() as u32;
             let mut pickups = GameObjectsPickupDefinitions::<ivec2>::default();
@@ -238,8 +238,12 @@ pub mod game_objects {
                             .push(ivec2::new(x as i32, y as i32));
                     }
                     i if i == EntityTiles::WeaponShotgunOrPullerInRace as u8 => {
-                        pickups.weapons[WeaponType::Puller as usize]
-                            .push(ivec2::new(x as i32, y as i32));
+                        let weapon = if race {
+                            WeaponType::Puller
+                        } else {
+                            WeaponType::Shotgun
+                        };
+                        pickups.weapons[weapon as usize].push(ivec2::new(x as i32, y as i32));
                     }
                     i if i == EntityTiles::PowerupNinja as u8 => {
                         pickups.ninjas.push(ivec2::new(x as i32, y as i32));

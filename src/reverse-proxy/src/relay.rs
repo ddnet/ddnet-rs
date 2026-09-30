@@ -148,19 +148,7 @@ async fn connect_backend(
             .context("unsupported client identity")?;
         Certificate::from_der(chain.first().context("empty client certificate chain")?)?
     };
-    let (_, key) = config.identity()?;
-    let forwarded = create_proxy_certificate(&key, front.remote_address(), &cert)?;
-    let hash = parse_hash(&config.backend_public_key_hash)?;
-    let options = NetworkClientInitOptions::new(
-        NetworkClientCertCheckMode::CheckByPubKeyHash {
-            hash: std::borrow::Cow::Borrowed(&hash),
-        },
-        NetworkClientCertMode::FromCertAndPrivateKey {
-            cert: forwarded,
-            private_key: key,
-        },
-    )
-    .with_timeout(Duration::from_secs(config.idle_timeout_seconds));
+    let options = backend_options(config, front.remote_address(), &cert)?;
     let connecting = endpoint.connect_with(
         configure_client(&options)?,
         backend_game,
@@ -170,6 +158,28 @@ async fn connect_backend(
         result = tokio::time::timeout(Duration::from_secs(config.connect_timeout_seconds), connecting) => Ok(result??),
         _ = front.closed() => anyhow::bail!("client disconnected before backend connected"),
     }
+}
+
+/// Shared authenticated backend setup for native and legacy frontends.
+pub fn backend_options(
+    config: &Config,
+    original_addr: SocketAddr,
+    cert: &Certificate,
+) -> anyhow::Result<NetworkClientInitOptions<'static>> {
+    let (_, key) = config.identity()?;
+    let forwarded = create_proxy_certificate(&key, original_addr, cert)?;
+    let hash = parse_hash(&config.backend_public_key_hash)?;
+    let options = NetworkClientInitOptions::new(
+        NetworkClientCertCheckMode::CheckByPubKeyHash {
+            hash: std::borrow::Cow::Owned(hash),
+        },
+        NetworkClientCertMode::FromCertAndPrivateKey {
+            cert: forwarded,
+            private_key: key,
+        },
+    )
+    .with_timeout(Duration::from_secs(config.idle_timeout_seconds));
+    Ok(options)
 }
 
 fn make_frontends(config: &Config) -> anyhow::Result<(Endpoint, Endpoint)> {

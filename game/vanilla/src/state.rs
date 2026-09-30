@@ -513,9 +513,15 @@ pub mod state {
             let (physics_group, map_config) =
                 Map::read_physics_group_and_config(&MapFileReader::new(map)?)?;
 
+            // Apply the map game type before creating pickups and default tuning.
+            Self::handle_map_config_variables(&mut config, map_config.config_variables);
+
             let w = physics_group.attr.width.get() as u32;
             let tiles = physics_group.get_game_layer_tiles().clone();
-            let game_objects = GameObjectDefinitions::new(&physics_group);
+            let game_objects = GameObjectDefinitions::new(
+                &physics_group,
+                matches!(config.game_type, ConfigGameType::Race),
+            );
 
             let default_tune = match config.game_type {
                 ConfigGameType::Race => Tunings::race_default(TICKS_PER_SECOND),
@@ -525,8 +531,6 @@ pub mod state {
             };
             let mut collision = Collision::with_default_tune(physics_group, true, default_tune)?;
 
-            // Always handle config variables before commands.
-            Self::handle_map_config_variables(&mut config, map_config.config_variables);
             for cmd in map_config.commands {
                 if let Some((cmd, val)) =
                     cmd.value

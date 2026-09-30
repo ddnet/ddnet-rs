@@ -64,16 +64,17 @@ async fn register(
     client: &reqwest::Client,
     master: &str,
     info: &str,
-    port: u16,
+    address: (u16, &str),
     secret: &str,
     challenge: &str,
     serial: u64,
 ) -> anyhow::Result<()> {
+    let (port, protocol) = address;
     let mut response = client
         .post(master)
         .header(
             "Address",
-            format!("ddrs-0.1+quic://connecting-address.invalid:{port}"),
+            format!("{protocol}://connecting-address.invalid:{port}"),
         )
         .header("Secret", secret)
         .header("Challenge-Secret", challenge)
@@ -104,6 +105,20 @@ pub async fn run(
     initial: &ServerInfo,
     masters: &[url::Url],
 ) -> anyhow::Result<()> {
+    run_with_info(config, initial, masters, "ddrs-0.1+quic", |info| {
+        Ok(serde_json::to_string(&info.browser_info)?)
+    })
+    .await
+}
+
+/// Share authenticated discovery and registration with translating frontends.
+pub async fn run_with_info(
+    config: &Config,
+    initial: &ServerInfo,
+    masters: &[url::Url],
+    protocol: &str,
+    prepare: impl Fn(&ServerInfo) -> anyhow::Result<String>,
+) -> anyhow::Result<()> {
     let s2s = client(config)?;
     let url = format!("https://{}/server-info", config.backend_s2s);
     let hash = config.hash()?;
@@ -132,7 +147,7 @@ pub async fn run(
                     "backend game ports changed; restart the proxy to rediscover them"
                 );
                 info.browser_info.cert_sha256_fingerprint = hash;
-                let info = serde_json::to_string(&info.browser_info)?;
+                let info = prepare(&info)?;
                 serial += 1;
                 let register_family = |client, port, family| {
                     let info = &info;
@@ -145,7 +160,7 @@ pub async fn run(
                                 client,
                                 master.as_str(),
                                 info,
-                                port,
+                                (port, protocol),
                                 secret,
                                 challenge,
                                 serial,
@@ -265,7 +280,7 @@ mod tests {
             &reqwest::Client::new(),
             &master_url,
             &json,
-            8310,
+            (8310, "ddrs-0.1+quic"),
             "test-secret",
             "challenge",
             7,

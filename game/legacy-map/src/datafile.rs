@@ -2775,7 +2775,7 @@ impl CDatafileWrapper {
                 assert!(!img_data.is_empty());
                 let data_item = CDatafileItem {
                     size: img_data.len() as i32,
-                    type_and_id: ((MapItemTypes::Image as i32) << 16) | (index as i32),
+                    type_and_id: ((MapItemTypes::Image as i32) << 16) | (img_counter as i32),
                 };
                 data_item.write_to_vec(&mut data_items);
                 data_items.append(&mut img_data);
